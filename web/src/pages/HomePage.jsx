@@ -1,10 +1,18 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import EventCard from '../components/EventCard.jsx'
-import Icon from '../components/Icon.jsx'
-import { ActiveFilters, Empty, IconSelect, SearchInput } from '../components/ui.jsx'
+import Icon, { CATEGORY_ICON } from '../components/Icon.jsx'
+import { Empty, IconSelect, Money, SearchInput } from '../components/ui.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
-import { PROVINCES, listEvents, platformStats, useStore } from '../mock/store.js'
+import {
+  PROVINCES,
+  getVenue,
+  listEvents,
+  minPriceCents,
+  platformStats,
+  scarcity,
+  useStore,
+} from '../mock/store.js'
 
 // One tap into the searches people actually run.
 const QUICK_SEARCHES = [
@@ -15,6 +23,90 @@ const QUICK_SEARCHES = [
   { q: 'cheap', en: 'Under $20', km: 'ក្រោម $20', icon: 'wallet', params: { maxUsd: '20' } },
 ]
 
+/** Whole days from now until an ISO date, floored at 0. */
+function daysUntil(iso) {
+  return Math.max(0, Math.ceil((new Date(iso).getTime() - Date.now()) / 86400000))
+}
+
+/**
+ * "Next up" card in the hero. Fills the empty half of the banner with the
+ * soonest event on sale, and gives the page a single obvious first action.
+ */
+function Spotlight({ event }) {
+  const { t, locale, date, time } = useLocale()
+  const venue = getVenue(event.venue_id)
+  const price = minPriceCents(event.id)
+  const left = daysUntil(event.starts_at)
+  const scarce = scarcity(event.id)
+
+  const countdown =
+    left === 0
+      ? locale === 'km'
+        ? 'ថ្ងៃនេះ'
+        : 'Tonight'
+      : left === 1
+        ? locale === 'km'
+          ? 'ថ្ងៃស្អែក'
+          : 'Tomorrow'
+        : locale === 'km'
+          ? `ក្នុងរយៈពេល ${left} ថ្ងៃ`
+          : `In ${left} days`
+
+  return (
+    <aside className="spotlight" aria-label={locale === 'km' ? 'ព្រឹត្តិការណ៍បន្ទាប់' : 'Next event'}>
+      <div className="spot-head">
+        <span className="tiny">
+          <Icon name="clock" size={13} /> {locale === 'km' ? 'ជិតមកដល់' : 'Next up'}
+        </span>
+        <span className="spot-when">{countdown}</span>
+      </div>
+
+      <Link to={`/events/${event.id}`} className={`spot-art cover-${event.cover}`}>
+        <Icon
+          name={CATEGORY_ICON[event.category] || 'ticket'}
+          size={48}
+          strokeWidth={1.3}
+          className="cat-icon"
+        />
+        {(scarce.level === 'almost-full' || scarce.level === 'filling') && (
+          <span className="spot-flag badge badge-solid badge-hot">
+            <Icon name="trending" size={12} />
+            {scarce.level === 'almost-full'
+              ? t('almostFull')
+              : `${scarce.remaining} ${t('seatsLeft')}`}
+          </span>
+        )}
+      </Link>
+
+      <div className="spot-body">
+        <strong>{locale === 'km' ? event.title_km : event.title_en}</strong>
+        <span className={locale === 'km' ? 'spot-alt' : 'spot-alt km'}>
+          {locale === 'km' ? event.title_en : event.title_km}
+        </span>
+        <span className="spot-meta">
+          <Icon name="mapPin" size={14} />
+          {locale === 'km' ? venue?.name_km : venue?.name_en}
+        </span>
+        <span className="spot-meta">
+          <Icon name="calendar" size={14} />
+          {date(event.starts_at)} · {time(event.doors_open_at)} {t('doorsOpen').toLowerCase()}
+        </span>
+      </div>
+
+      <div className="spot-foot">
+        <span className="price-tag">
+          <span className="tiny">{t('from_price')}</span>
+          <Money cents={price} stacked />
+        </span>
+        <Link className="btn btn-accent btn-sm" to={`/events/${event.id}`}>
+          {locale === 'km' ? 'មើលព្រឹត្តិការណ៍' : 'View event'}
+          <Icon name="arrowRight" size={14} />
+        </Link>
+      </div>
+    </aside>
+  )
+}
+
 export default function HomePage() {
   useStore()
   const { t, locale } = useLocale()
@@ -23,6 +115,7 @@ export default function HomePage() {
   const [province, setProvince] = useState('')
 
   const published = listEvents({ sort: 'soonest' })
+  const spotlight = published[0]
   const featured = published.slice(0, 4)
   const upcoming = published.slice(4, 12)
   const stats = platformStats()
@@ -38,12 +131,15 @@ export default function HomePage() {
   return (
     <>
       <section className="hero">
-        <div className="hero-inner">
+        <div className="hero-inner hero-grid">
+          <div className="hero-copy">
           <span className="hero-kicker">
             <Icon name="qr" size={14} />
             {locale === 'km' ? 'បង់ប្រាក់តាមបាគង និង ABA' : 'Pay with Bakong KHQR & ABA PayWay'}
           </span>
-          <h1>{t('heroTitle')}</h1>
+          <h1>
+            {t('heroTitleLead')} <span className="hero-accent">{t('heroTitleAccent')}</span>
+          </h1>
           <p>{t('heroSub')}</p>
 
           <form className="searchbar" onSubmit={submit} role="search">
@@ -76,7 +172,7 @@ export default function HomePage() {
             </span>
             <button className="btn btn-primary" type="submit">
               <Icon name="search" size={16} />
-              {t('search')}
+              {t('searchLabel')}
             </button>
           </form>
 
@@ -105,6 +201,11 @@ export default function HomePage() {
               {locale === 'km' ? 'ខេត្ត/ក្រុង' : 'provinces covered'}
             </div>
           </div>
+          </div>
+
+          {/* The soonest event, sold from the hero itself rather than leaving
+              half the banner empty. */}
+          {spotlight && <Spotlight event={spotlight} />}
         </div>
       </section>
 

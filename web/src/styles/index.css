@@ -46,7 +46,7 @@
   --color-line-2: #f0f2f8;
   --color-surface: #ffffff;
   --color-surface-2: #f7f8fd;
-  --color-page: #f4f6fb;
+  --color-page: #f5f6fa;
 
   /* Semantic status colours, named by meaning rather than by hue so they do not
      shadow Tailwind's own palettes, which all stay available. */
@@ -97,6 +97,11 @@
     @apply bg-page text-ink font-sans antialiased;
     font-size: 15px;
     line-height: 1.65;
+    /* Faint indigo wash under the navbar so inner pages are not a flat slab of
+       grey. Anchored to the document, not the viewport: `fixed` would drag the
+       tint down the screen as you scroll and read as a smudge. */
+    background-image: radial-gradient(1100px 460px at 50% 0%, rgba(48, 63, 146, 0.045), transparent 72%);
+    background-repeat: no-repeat;
   }
 
   /* Khmer needs more vertical room and a script-aware family. */
@@ -559,12 +564,36 @@
   }
 
   /* ------------------------------------------------------------------ hero */
+  /* Blooms over a navy→indigo base. The warm one stays small and high in the
+     corner: spread wide over navy it turned muddy brown. The third sits behind
+     the headline so the type has something to lift off. */
   .hero {
-    @apply py-[3.2rem] pb-[3.6rem] text-white;
+    @apply relative isolate py-[3.4rem] pb-[4.6rem] text-white;
     background:
-      radial-gradient(1000px 420px at 12% -10%, rgba(242, 167, 27, 0.28), transparent 60%),
-      radial-gradient(900px 400px at 88% 0%, rgba(64, 84, 200, 0.55), transparent 65%),
-      linear-gradient(160deg, var(--color-brand-900), var(--color-brand-700));
+      radial-gradient(520px 240px at 1% -14%, rgba(242, 167, 27, 0.22), transparent 62%),
+      radial-gradient(700px 380px at 26% 6%, rgba(72, 96, 224, 0.34), transparent 66%),
+      radial-gradient(900px 520px at 95% -16%, rgba(99, 122, 248, 0.52), transparent 64%),
+      radial-gradient(820px 500px at 74% 120%, rgba(129, 62, 208, 0.34), transparent 62%),
+      radial-gradient(1400px 180px at 50% 100%, rgba(150, 170, 255, 0.14), transparent 72%),
+      linear-gradient(168deg, #0d1330 0%, #161f46 50%, #1f295a 100%);
+    box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.12);
+  }
+  /* Fine dot grid for texture, faded out before it reaches the content. */
+  .hero::after {
+    content: '';
+    @apply pointer-events-none absolute inset-0 -z-10;
+    background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+    background-size: 22px 22px;
+    mask-image: radial-gradient(120% 90% at 80% 0%, rgba(0, 0, 0, 0.95), transparent 62%);
+    -webkit-mask-image: radial-gradient(120% 90% at 80% 0%, rgba(0, 0, 0, 0.95), transparent 62%);
+  }
+
+  /* One accented word carries the eye; the rest of the headline stays white. */
+  .hero-accent {
+    background: linear-gradient(100deg, #ffdf9b, var(--color-gold-500) 48%, #ff9f45);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
   }
   /* Same box shape as .nav-inner / .container / .footer-inner: the max-width
      carries its own horizontal padding, so all four content edges are flush. */
@@ -582,14 +611,100 @@
     @apply mb-[0.9rem] inline-flex items-center gap-[0.4rem] rounded-full border border-white/20
       bg-white/15 px-[0.7rem] py-[0.28rem] text-[0.78rem] font-semibold;
   }
+  /* Copy on the left, the next event on sale on the right. Below 1080px the
+     card drops under the search rather than squeezing both. */
+  .hero-grid {
+    @apply grid items-center gap-10;
+    grid-template-columns: minmax(0, 1fr) 360px;
+  }
+  @media (max-width: 1080px) {
+    .hero-grid {
+      @apply grid-cols-1 gap-8;
+    }
+  }
+  .hero-copy {
+    @apply min-w-0;
+  }
+
   .hero-stats {
-    @apply mt-[1.8rem] flex flex-wrap gap-8;
+    @apply mt-[1.9rem] flex flex-wrap gap-y-4;
   }
   .hero-stats div {
-    @apply text-[0.8rem] text-white/70;
+    @apply pr-7 text-[0.8rem] text-white/70;
+  }
+  .hero-stats div + div {
+    @apply border-l border-white/15 pl-7;
+  }
+  /* Once the row wraps, a left divider lands at the start of a line with
+     nothing to divide — fall back to plain spacing. */
+  @media (max-width: 620px) {
+    .hero-stats {
+      @apply gap-x-7;
+    }
+    .hero-stats div {
+      @apply pr-0;
+    }
+    .hero-stats div + div {
+      @apply border-l-0 pl-0;
+    }
   }
   .hero-stats b {
     @apply block text-[1.35rem] leading-[1.2] text-white;
+  }
+
+  /* ------------------------------------------------ hero "next up" card */
+  .spotlight {
+    @apply overflow-hidden rounded-card border border-white/15 bg-white/10 shadow-pop backdrop-blur-[6px];
+  }
+  .spot-head {
+    @apply flex items-center justify-between gap-2 px-[0.9rem] pt-[0.8rem] pb-[0.6rem];
+  }
+  .spot-head .tiny {
+    @apply inline-flex items-center gap-[0.3rem] text-white/60;
+  }
+  .spot-when {
+    @apply rounded-full bg-gold-500/20 px-[0.55rem] py-[0.15rem] text-[0.74rem] font-bold;
+    color: #ffdca1;
+  }
+  .spot-art {
+    @apply relative mx-[0.9rem] grid h-[104px] place-items-center rounded-ui text-white/95;
+  }
+  .spot-art:hover {
+    @apply no-underline brightness-105;
+  }
+  .spot-art .cat-icon {
+    @apply opacity-95;
+    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.25));
+  }
+  .spot-flag {
+    @apply absolute right-[0.5rem] top-[0.5rem];
+  }
+  .spot-body {
+    @apply flex flex-col gap-[0.15rem] px-[0.9rem] pt-[0.75rem];
+  }
+  .spot-body strong {
+    @apply text-[1.02rem] leading-[1.35] text-white;
+  }
+  .spot-alt {
+    @apply mb-[0.35rem] text-[0.84rem] text-white/55;
+  }
+  .spot-meta {
+    @apply inline-flex items-center gap-[0.4rem] text-[0.82rem] text-white/70;
+  }
+  .spot-meta .icon {
+    @apply text-white/45;
+  }
+  .spot-foot {
+    @apply mt-[0.9rem] flex items-end justify-between gap-3 border-t border-white/10 px-[0.9rem] py-[0.8rem];
+  }
+  .spot-foot .price-tag .tiny {
+    @apply text-white/50;
+  }
+  .spot-foot .price-tag b {
+    @apply text-white;
+  }
+  .spot-foot .price-tag .khr {
+    @apply text-white/55;
   }
 
   /* ------------------------------------------------------------ search bar */
@@ -597,6 +712,7 @@
   .searchbar {
     @apply mt-[1.7rem] grid max-w-[880px] items-center gap-0 rounded-full bg-surface p-[0.4rem] shadow-pop;
     grid-template-columns: minmax(0, 1fr) 224px auto;
+    transition: box-shadow 0.15s ease;
   }
   .searchbar .sb-cell {
     @apply relative flex min-w-0 items-center;
@@ -609,12 +725,20 @@
   .searchbar .select {
     @apply min-h-[46px] border-transparent bg-transparent text-[0.95rem] shadow-none;
   }
-  .searchbar .input:focus,
-  .searchbar .select:focus {
-    @apply shadow-none;
+  html[lang='km'] :is(.searchbar .input, .searchbar .select) {
+    @apply min-h-[52px];
   }
+  .searchbar .input:focus,
+  .searchbar .select:focus,
+  .searchbar .input:focus-visible,
+  .searchbar .select:focus-visible {
+    @apply border-transparent shadow-none outline-none;
+  }
+  /* Nothing at all on focus inside the pill: no ring, no border, no tint. The
+     text caret is the cue for the query field. The submit button keeps its own
+     focus ring, so the bar is still keyboard-navigable with a visible target. */
   .searchbar .sb-cell:focus-within {
-    @apply rounded-full shadow-focus;
+    @apply bg-transparent shadow-none;
   }
   .searchbar .btn {
     @apply min-h-[46px] whitespace-nowrap rounded-full px-[1.4rem];

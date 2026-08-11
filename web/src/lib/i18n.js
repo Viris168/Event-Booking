@@ -23,6 +23,12 @@ const dict = {
     en: "Live events across Cambodia",
     km: "ព្រឹត្តិការណ៍ផ្ទាល់នៅទូទាំងប្រទេសកម្ពុជា",
   },
+  // Split so the last word can carry the accent treatment in the hero.
+  heroTitleLead: {
+    en: "Live events across",
+    km: "ព្រឹត្តិការណ៍ផ្ទាល់នៅទូទាំងប្រទេស",
+  },
+  heroTitleAccent: { en: "Cambodia", km: "កម្ពុជា" },
   heroSub: {
     en: "Concerts, festivals and conferences — reserve your seat, pay with Bakong or ABA, show your QR at the door.",
     km: "ការប្រគំតន្ត្រី ពិធីបុណ្យ និងសន្និសីទ — កក់កៅអី ទូទាត់ប្រាក់តាមរយៈបាគង ឬ ABA រួចបង្ហាញ QR កូដនៅច្រកចូល។",
