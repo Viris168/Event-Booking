@@ -79,7 +79,7 @@ CREATE TABLE venue (
     street_address      TEXT NOT NULL,
     lat                 NUMERIC(9,6),
     lng                 NUMERIC(9,6),
-    created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+    created_at         TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE venue_seat (
@@ -434,3 +434,4 @@ CREATE INDEX idx_booking_status_history_booking
 CREATE INDEX idx_booking_item_zone
     ON booking_item (event_zone_id)
     WHERE event_zone_id IS NOT NULL;
+
