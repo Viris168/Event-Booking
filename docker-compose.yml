@@ -8,7 +8,11 @@ services:
       POSTGRES_USER: ${DB_USERNAME:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
     ports:
-      - "${DB_PORT:-5432}:5432"
+      # Host port intentionally non-default (not 5432) so this doesn't collide
+      # with other Postgres containers you already have running in Docker
+      # Desktop. Container-internal port stays 5432 - only the host side
+      # (left of the colon) needed to move.
+      - "${DB_PORT:-55432}:5432"
     volumes:
       - event_booking_pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -17,5 +21,31 @@ services:
       timeout: 5s
       retries: 10
 
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: event-booking-pgadmin
+    restart: unless-stopped
+    environment:
+      # pgAdmin validates this as an email format and rejects reserved
+      # TLDs (.local, .test, .example, .invalid, .localhost) even though
+      # it never actually sends mail here (CHECK_EMAIL_DELIVERABILITY is
+      # off) - so this just needs to look like a normal address.
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@eventbooking.dev}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+    ports:
+      # Also non-default (pgAdmin's usual convention is 5050) for the same
+      # collision-avoidance reason as the DB port above.
+      - "${PGADMIN_PORT:-55050}:80"
+    volumes:
+      - event_booking_pgadmin:/var/lib/pgadmin
+      # Pre-registers the "Event Booking (local)" connection so it shows up
+      # in the left sidebar on first login instead of you typing host/port/
+      # db name in by hand. Only read on a fresh pgadmin volume.
+      - ./pgadmin-servers.json:/pgadmin4/servers.json:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   event_booking_pgdata:
+  event_booking_pgadmin:

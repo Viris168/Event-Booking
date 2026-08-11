@@ -89,7 +89,15 @@
         </dependency>
 
         <!-- Flyway: runs db/migration/V*.sql in order, tracks what already ran.
-             flyway-database-postgresql is required separately since Flyway 10. -->
+             flyway-database-postgresql is required separately since Flyway 10.
+             spring-boot-flyway carries the auto-configuration that actually
+             triggers migration on startup - in Boot 4 it lives in its own
+             module instead of spring-boot-autoconfigure, so flyway-core alone
+             puts Flyway on the classpath but nothing ever runs it. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-flyway</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-core</artifactId>
@@ -104,13 +112,6 @@
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <optional>true</optional>
-        </dependency>
-
-        <!-- Loads the .env file into Spring's environment automatically -->
-        <dependency>
-            <groupId>me.paulschwarz</groupId>
-            <artifactId>spring-dotenv</artifactId>
-            <version>4.0.0</version>
         </dependency>
 
         <!-- Tests -->

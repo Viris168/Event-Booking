@@ -1,0 +1,17 @@
+# Repo-root ignores. Module-level build output and secrets are handled by the
+# nested api/.gitignore - a .gitignore only applies to its own directory and
+# below, which is why the root-level IDE folders need this file too.
+
+### IDE ###
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+
+### OS ###
+.DS_Store
+Thumbs.db
+
+### Logs ###
+*.log

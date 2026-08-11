@@ -5,6 +5,21 @@ spring:
   application:
     name: event-booking-api
 
+  # Loads api/.env into the environment so the ${...} placeholders below pick
+  # it up. Boot has no native .env support, so the file is read as a plain
+  # properties file - hence the [.properties] format hint. `optional:` means
+  # startup still works without a .env (CI, prod), falling back to the
+  # defaults after each `:` below.
+  #
+  # Two paths because these resolve against the process working directory,
+  # which differs by launcher: `mvn spring-boot:run` uses api/, while
+  # IntelliJ's Spring Boot run config defaults to the repo root. Only one of
+  # the two ever exists, so listing both makes startup launcher-independent.
+  config:
+    import:
+      - optional:file:./.env[.properties]
+      - optional:file:./api/.env[.properties]
+
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/event_booking}
     username: ${DB_USERNAME:postgres}
