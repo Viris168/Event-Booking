@@ -1,6 +1,6 @@
 import { Link, useParams } from 'react-router-dom'
 import Icon from '../../components/Icon.jsx'
-import { Alert, Badge, Money, Progress, Stat } from '../../components/ui.jsx'
+import { Alert, Badge, Money, Progress, ResponsiveTable, Stat } from '../../components/ui.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
 import { usd } from '../../lib/format.js'
 import { getVenue, listBookings, salesSummary, useStore } from '../../mock/store.js'
@@ -96,7 +96,7 @@ export default function EventSalesPage() {
           <div className="panel-head">
             <h2>{locale === 'km' ? 'តាមតំបន់ និងតម្លៃ' : 'By seat class & zone'}</h2>
           </div>
-          <div className="table-wrap">
+          <ResponsiveTable>
             <table className="table">
               <thead>
                 <tr>
@@ -143,7 +143,7 @@ export default function EventSalesPage() {
                 )}
               </tbody>
             </table>
-          </div>
+</ResponsiveTable>
         </div>
 
         <div className="stack">
@@ -168,7 +168,7 @@ export default function EventSalesPage() {
             <div className="panel-head">
               <h3>{locale === 'km' ? 'ការកក់ថ្មីៗ' : 'Recent bookings'}</h3>
             </div>
-            <div className="table-wrap">
+            <ResponsiveTable>
               <table className="table" style={{ minWidth: 0 }}>
                 <tbody>
                   {bookings.slice(0, 8).map((b) => (
@@ -192,7 +192,7 @@ export default function EventSalesPage() {
                   )}
                 </tbody>
               </table>
-            </div>
+</ResponsiveTable>
           </div>
         </div>
       </div>

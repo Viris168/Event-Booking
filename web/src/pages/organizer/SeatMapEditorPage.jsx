@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import Icon from '../../components/Icon.jsx'
-import { Alert, Field } from '../../components/ui.jsx'
+import { Alert, Field, ResponsiveTable } from '../../components/ui.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
 import {
@@ -222,7 +222,7 @@ export default function SeatMapEditorPage() {
             <div className="panel-head">
               <h3>{locale === 'km' ? 'ផ្នែក' : 'Sections'}</h3>
             </div>
-            <div className="table-wrap">
+            <ResponsiveTable>
               <table className="table" style={{ minWidth: 0 }}>
                 <thead>
                   <tr>
@@ -261,7 +261,7 @@ export default function SeatMapEditorPage() {
                   )}
                 </tbody>
               </table>
-            </div>
+</ResponsiveTable>
           </div>
         </div>
       </div>

@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import Icon from '../../components/Icon.jsx'
-import { Badge, Empty, Progress, Stat } from '../../components/ui.jsx'
+import { Badge, Empty, Progress, ResponsiveTable, Stat } from '../../components/ui.jsx'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
 import { usd } from '../../lib/format.js'
@@ -78,7 +78,7 @@ export default function OrganizerDashboardPage() {
           <h2>{t('myEvents')}</h2>
         </div>
         {events.length ? (
-          <div className="table-wrap">
+          <ResponsiveTable>
             <table className="table">
               <thead>
                 <tr>
@@ -149,7 +149,7 @@ export default function OrganizerDashboardPage() {
                 })}
               </tbody>
             </table>
-          </div>
+</ResponsiveTable>
         ) : (
           <Empty icon="calendar" title={locale === 'km' ? 'គ្មានព្រឹត្តិការណ៍' : 'No events yet'}>
             <Link className="btn btn-sm btn-primary" to="/organizer/events/new">

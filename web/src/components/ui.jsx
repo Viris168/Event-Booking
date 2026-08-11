@@ -1,5 +1,6 @@
 // Small shared presentational pieces used across all three role areas.
 
+import { useLayoutEffect, useRef } from 'react'
 import Icon from './Icon.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
 import { khr, khrFromUsdCents, usd } from '../lib/format.js'
@@ -171,6 +172,43 @@ export function ActiveFilters({ items, onClearAll, clearAllLabel = 'Clear all' }
           {clearAllLabel}
         </button>
       )}
+    </div>
+  )
+}
+
+/**
+ * Table wrapper that survives narrow screens.
+ *
+ * Wide viewports get the normal table. Below 900px (iPad portrait and every
+ * phone) the stylesheet stacks each row into a labelled card — reading a row
+ * top-to-bottom beats scrolling a 7-column grid sideways.
+ *
+ * The labels are mirrored from the column headers after each render rather than
+ * hand-written per cell, so they can never drift from the `<th>`s and they
+ * follow the EN/KM toggle for free.
+ */
+export function ResponsiveTable({ children, className = '' }) {
+  const ref = useRef(null)
+
+  useLayoutEffect(() => {
+    const table = ref.current?.querySelector('table')
+    if (!table) return
+    const heads = [...table.querySelectorAll('thead th')].map((th) => th.textContent.trim())
+    if (!heads.length) return
+    for (const row of table.querySelectorAll('tbody tr')) {
+      const cells = [...row.children]
+      // Full-width rows (empty states, expanded detail) stay unlabelled.
+      const labelled = cells.length === heads.length
+      cells.forEach((cell, i) => {
+        if (labelled && heads[i]) cell.setAttribute('data-label', heads[i])
+        else cell.removeAttribute('data-label')
+      })
+    }
+  })
+
+  return (
+    <div className={`table-wrap ${className}`} ref={ref}>
+      {children}
     </div>
   )
 }

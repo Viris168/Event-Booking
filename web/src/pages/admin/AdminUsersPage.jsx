@@ -1,6 +1,6 @@
 import { Fragment, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Badge, Field, Money } from '../../components/ui.jsx'
+import { Badge, Field, Money, ResponsiveTable } from '../../components/ui.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
 import { listBookings, listUsers, setUserDisabled, useStore } from '../../mock/store.js'
@@ -33,7 +33,7 @@ export default function AdminUsersPage() {
       <div className="panel" style={{ marginBottom: '1.2rem' }}>
         <div className="panel-body">
           <div className="filterbar">
-            <Field label={t('search')}>
+            <Field label={t('searchLabel')}>
               <input
                 className="input"
                 value={q}
@@ -63,7 +63,7 @@ export default function AdminUsersPage() {
       </div>
 
       <div className="panel">
-        <div className="table-wrap">
+        <ResponsiveTable>
           <table className="table">
             <thead>
               <tr>
@@ -173,7 +173,7 @@ export default function AdminUsersPage() {
               })}
             </tbody>
           </table>
-        </div>
+</ResponsiveTable>
       </div>
     </div>
   )

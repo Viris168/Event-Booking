@@ -2,7 +2,7 @@ import { Link, useParams } from 'react-router-dom'
 import HoldBar from '../components/HoldBar.jsx'
 import Icon from '../components/Icon.jsx'
 import TicketCard from '../components/TicketCard.jsx'
-import { Alert, Badge, Money, Steps } from '../components/ui.jsx'
+import { Alert, Badge, Money, ResponsiveTable, Steps } from '../components/ui.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
 import { useToast } from '../context/ToastContext.jsx'
@@ -226,7 +226,7 @@ export default function BookingDetailPage() {
             <div className="panel-head">
               <h2>{t('paymentHistory')}</h2>
             </div>
-            <div className="table-wrap">
+            <ResponsiveTable>
               <table className="table">
                 <thead>
                   <tr>
@@ -262,7 +262,7 @@ export default function BookingDetailPage() {
                   )}
                 </tbody>
               </table>
-            </div>
+</ResponsiveTable>
           </div>
         </div>
 

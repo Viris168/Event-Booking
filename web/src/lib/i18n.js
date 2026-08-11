@@ -28,6 +28,7 @@ const dict = {
     km: "ការប្រគំតន្ត្រី ពិធីបុណ្យ និងសន្និសីទ — កក់កៅអី ទូទាត់ប្រាក់តាមរយៈបាគង ឬ ABA រួចបង្ហាញ QR កូដនៅច្រកចូល។",
   },
   search: { en: "Search events", km: "ស្វែងរកព្រឹត្តិការណ៍" },
+  searchLabel: { en: "Search", km: "ស្វែងរក" },
   province: { en: "Province", km: "ខេត្ត/ក្រុង" },
   allProvinces: { en: "All provinces", km: "គ្រប់ខេត្ត/ក្រុង" },
   featured: {

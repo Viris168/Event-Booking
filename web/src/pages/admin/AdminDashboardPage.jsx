@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import Icon from '../../components/Icon.jsx'
-import { Alert, Badge, Money, Stat } from '../../components/ui.jsx'
+import { Alert, Badge, Money, ResponsiveTable, Stat } from '../../components/ui.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
 import { timeAgo, usd } from '../../lib/format.js'
 import { listPayments, platformStats, recentBookings, useStore } from '../../mock/store.js'
@@ -105,7 +105,7 @@ export default function AdminDashboardPage() {
               <Icon name="arrowRight" size={14} />
             </Link>
           </div>
-          <div className="table-wrap">
+          <ResponsiveTable>
             <table className="table">
               <thead>
                 <tr>
@@ -141,7 +141,7 @@ export default function AdminDashboardPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+</ResponsiveTable>
         </div>
 
         <div className="panel">

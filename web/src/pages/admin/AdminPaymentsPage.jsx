@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Alert, Badge, Field } from '../../components/ui.jsx'
+import { Alert, Badge, Field, ResponsiveTable } from '../../components/ui.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
 import { timeAgo, usd } from '../../lib/format.js'
@@ -119,7 +119,7 @@ export default function AdminPaymentsPage() {
       </div>
 
       <div className="panel">
-        <div className="table-wrap">
+        <ResponsiveTable>
           <table className="table">
             <thead>
               <tr>
@@ -174,7 +174,7 @@ export default function AdminPaymentsPage() {
               )}
             </tbody>
           </table>
-        </div>
+</ResponsiveTable>
       </div>
 
       <p className="hint" style={{ marginTop: '0.8rem' }}>

@@ -1025,6 +1025,75 @@
     @apply text-right tabular-nums;
   }
 
+  /* Below iPad-portrait width a 6–8 column grid cannot be read without scrolling
+     sideways, so each row becomes a labelled card instead. The labels come from
+     <ResponsiveTable>, which mirrors the <th> text onto every cell. */
+  @media (max-width: 900px) {
+    .table-wrap {
+      @apply overflow-x-visible p-[0.8rem];
+    }
+    .table {
+      @apply min-w-0;
+    }
+    /* The column headers are redundant once every cell carries its own label
+       via ::before (which assistive tech announces), and `sr-only` on a <thead>
+       leaves its rows laid out at full table width inside a 1px clip box. */
+    .table thead {
+      @apply hidden;
+    }
+    .table tbody tr {
+      @apply mb-[0.6rem] block rounded-ui border border-line bg-surface px-[0.8rem];
+    }
+    .table tbody tr:last-child {
+      @apply mb-0;
+    }
+    .table tbody tr:hover {
+      @apply bg-surface;
+    }
+    .table tbody tr.flagged {
+      background: #fff8ec;
+    }
+    .table tbody tr.flagged td {
+      @apply bg-transparent;
+    }
+    .table td {
+      @apply grid items-start gap-3 border-b border-dashed border-line-2 px-0 py-[0.5rem];
+      /* Cap the label column so values do not start halfway across an iPad. */
+      grid-template-columns: minmax(84px, min(34%, 190px)) minmax(0, 1fr);
+    }
+    .table tr td:last-child {
+      @apply border-b-0;
+    }
+    /* Cells with no header (full-width empty states, expanded detail rows). */
+    .table td:not([data-label]) {
+      @apply block;
+    }
+    .table td[data-label]::before {
+      content: attr(data-label);
+      @apply text-tiny font-bold uppercase tracking-[0.05em] text-muted;
+    }
+    /* Keep every part of a multi-line cell (value + its secondary line) in the
+       value column; otherwise the second child wraps under the label. */
+    .table td[data-label] > * {
+      grid-column: 2;
+      justify-self: start;
+    }
+    /* …except the things that are meant to fill the column. */
+    .table td[data-label] > .progress,
+    .table td[data-label] > .row,
+    .table td[data-label] > .stack-sm {
+      @apply w-full;
+      justify-self: stretch;
+    }
+    .table td.num {
+      @apply text-left;
+    }
+    /* Action buttons read better full-width at the foot of the card. */
+    .table td .row {
+      @apply gap-[0.4rem];
+    }
+  }
+
   /* ----------------------------------------------------------------- stats */
   .stats {
     @apply grid gap-[0.9rem];

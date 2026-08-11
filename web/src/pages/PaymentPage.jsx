@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import HoldBar from '../components/HoldBar.jsx'
 import Icon from '../components/Icon.jsx'
 import QrGlyph from '../components/QrGlyph.jsx'
-import { Alert, Badge, Money, Steps } from '../components/ui.jsx'
+import { Alert, Badge, Money, ResponsiveTable, Steps } from '../components/ui.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
 import { countdown, khr, usd } from '../lib/format.js'
 import {
@@ -250,7 +250,7 @@ export default function PaymentPage() {
             <div className="panel-head">
               <h3>{t('paymentHistory')}</h3>
             </div>
-            <div className="table-wrap">
+            <ResponsiveTable>
               <table className="table">
                 <thead>
                   <tr>
@@ -273,7 +273,7 @@ export default function PaymentPage() {
                   ))}
                 </tbody>
               </table>
-            </div>
+</ResponsiveTable>
           </div>
 
           {isOpen && (

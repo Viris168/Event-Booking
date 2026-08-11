@@ -132,10 +132,28 @@ with icons, the user block with log-out, the language toggle and the demo role
 switch. The drawer closes on navigation, on Escape and on an outside click. The
 hold countdown deliberately sits *outside* the drawer so it is never hidden.
 
+**Tables** are the other place narrow screens hurt: a 7-column admin grid is
+unreadable on a phone. Below 900px (iPad portrait and every phone) each row
+stacks into a labelled card — label on the left, value on the right — instead of
+scrolling sideways.
+
+Wrap any table in `<ResponsiveTable>` (from `components/ui.jsx`) instead of a
+`<div className="table-wrap">`. It copies each `<th>`'s text onto that column's
+cells as `data-label` after every render, and the stylesheet renders those
+labels with `::before`. Nothing is hand-written per cell, so the labels can
+never drift from the headers and they follow the EN/KM toggle for free. Rows
+that span the whole table (empty states, the expanded user detail row) are left
+unlabelled and render full-width.
+
+Two details if you restyle it: cell children are pinned to `grid-column: 2` so a
+secondary line stays under its value rather than under the label, and they
+`justify-self: start` so badges hug their text — `.progress`, `.row` and
+`.stack-sm` opt back into filling the column.
+
 Other breakpoints: `.split` and `.summary` collapse at 900px, `.pay-grid` and
 `.search-row` at 820px (single column at 560px), `.searchbar` at 760px,
-`.ticket` at 520px. Tables and the seat map scroll horizontally inside their own
-wrappers rather than stretching the page.
+`.ticket` at 520px. The seat map still scrolls inside its own wrapper — panning
+a seating chart is the right interaction there.
 
 ### Icons
 [web/src/components/Icon.jsx](web/src/components/Icon.jsx) is a self-contained

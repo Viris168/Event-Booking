@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Badge, Field, Progress } from '../../components/ui.jsx'
+import { Badge, Field, Progress, ResponsiveTable } from '../../components/ui.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
 import { usd } from '../../lib/format.js'
@@ -54,7 +54,7 @@ export default function AdminEventsPage() {
       <div className="panel" style={{ marginBottom: '1.2rem' }}>
         <div className="panel-body">
           <div className="filterbar">
-            <Field label={t('search')}>
+            <Field label={t('searchLabel')}>
               <input className="input" value={q} onChange={(e) => setQ(e.target.value)} />
             </Field>
             <Field label={t('status')}>
@@ -82,7 +82,7 @@ export default function AdminEventsPage() {
       </div>
 
       <div className="panel">
-        <div className="table-wrap">
+        <ResponsiveTable>
           <table className="table">
             <thead>
               <tr>
@@ -155,7 +155,7 @@ export default function AdminEventsPage() {
               })}
             </tbody>
           </table>
-        </div>
+</ResponsiveTable>
       </div>
     </div>
   )
