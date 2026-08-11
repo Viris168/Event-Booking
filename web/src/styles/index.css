@@ -89,6 +89,65 @@
 
   --text-small: 0.82rem;
   --text-tiny: 0.74rem;
+
+  /* Brand-as-text and brand-as-tint. Separate from the brand-* scale because
+     those paint solid surfaces (navbar, primary button) and must NOT invert,
+     while these must. */
+  --color-link: #303f92;
+  --color-on-tint: #24306c;
+  --color-tint: #f2f5ff;
+  --color-tint-2: #e8ecfb;
+
+  /* CANCELLED needs its own pair: the brief wants all eight booking states
+     visually distinct, so it cannot just reuse the quiet tokens. */
+  --color-cancelled: #4a4f5e;
+  --color-cancelled-soft: #e2e4ea;
+
+  --color-placeholder: #9aa4bd;
+}
+
+/* ------------------------------------------------------------------- dark */
+/* Tailwind 4 utilities compile to `var(--color-*)`, so overriding the tokens
+   re-themes every @apply rule in the components layer at once. */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+[data-theme='dark'] {
+  --color-page: #0c111f;
+  --color-surface: #141a2b;
+  --color-surface-2: #1a2136;
+  --color-line: #273049;
+  --color-line-2: #1f2740;
+  --color-ink: #e9edf7;
+  --color-ink-2: #b9c2d8;
+  --color-muted: #8b96b1;
+  --color-placeholder: #6a7691;
+
+  --color-link: #9db0ff;
+  --color-on-tint: #c6d0ff;
+  --color-tint: #19203a;
+  --color-tint-2: #26325a;
+
+  /* Soft status fills become dark tints; the solid ones lighten so they stay
+     legible as text on those tints. */
+  --color-success: #5fd4a0;
+  --color-success-soft: #12301f;
+  --color-warning: #f0b45a;
+  --color-warning-soft: #2f2413;
+  --color-danger: #f38f8f;
+  --color-danger-soft: #331a1c;
+  --color-info: #86b3ff;
+  --color-info-soft: #16233d;
+  --color-refund: #c6a6f7;
+  --color-refund-soft: #241a3a;
+  --color-settled: #6ed2d8;
+  --color-settled-soft: #103033;
+  --color-quiet: #a5afc6;
+  --color-quiet-soft: #222a3d;
+  --color-cancelled: #9aa4ba;
+  --color-cancelled-soft: #1e2434;
+
+  /* Tints used on the dark hero/footer keep their light values on purpose. */
+  --color-gold-100: #3a2c10;
 }
 
 /* ------------------------------------------------------------------ base */
@@ -134,7 +193,7 @@
   }
 
   a {
-    @apply text-brand-600 no-underline;
+    @apply text-link no-underline;
   }
   a:hover {
     @apply underline;
@@ -184,7 +243,7 @@
     @apply overflow-hidden text-ellipsis whitespace-nowrap;
   }
   & .icon {
-    color: #97a1bb;
+    color: color-mix(in oklab, var(--color-muted) 84%, transparent);
   }
 }
 
@@ -374,6 +433,9 @@
   /* The brand never wraps; below ~430px it drops to the mark alone. */
   .nav-brand-text {
     @apply whitespace-nowrap;
+    /* Latin wordmark: keep it in Inter even when the UI switches to Khmer, so
+       the weight is identical in both locales. */
+    font-family: var(--font-sans);
   }
   /* Narrow-screen cluster: the hold countdown stays visible at every width
      (it is time-critical) and everything else folds into the drawer. */
@@ -458,7 +520,7 @@
     @apply text-ink no-underline;
   }
   .subnav a.active {
-    @apply border-b-brand-500 text-brand-600;
+    @apply border-b-brand-500 text-link;
   }
 
   /* --------------------------------------------------------------- buttons */
@@ -500,7 +562,7 @@
     @apply border-line bg-surface text-ink-2;
   }
   .btn-outline:hover:not(:disabled) {
-    @apply border-brand-500 text-brand-600;
+    @apply border-brand-500 text-link;
   }
 
   .btn-ghost {
@@ -620,6 +682,11 @@
   @media (max-width: 1080px) {
     .hero-grid {
       @apply grid-cols-1 gap-8;
+    }
+    /* Desktop-only flourish: on medium and small screens the hero should get
+       straight to the search rather than pushing it below a big card. */
+    .spotlight {
+      @apply hidden;
     }
   }
   .hero-copy {
@@ -775,7 +842,7 @@
   }
   .field-icon > .icon {
     @apply pointer-events-none absolute left-[0.72rem];
-    color: #8e99b3;
+    color: color-mix(in oklab, var(--color-muted) 88%, transparent);
   }
   .field-icon .input,
   .field-icon .select {
@@ -834,8 +901,8 @@
     @apply flex flex-wrap items-center gap-[0.4rem];
   }
   .filter-pill {
-    @apply inline-flex items-center gap-[0.35rem] rounded-full border border-brand-100
-      bg-brand-50 py-[0.2rem] pl-[0.65rem] pr-[0.3rem] text-[0.78rem] text-brand-700;
+    @apply inline-flex items-center gap-[0.35rem] rounded-full border border-tint-2
+      bg-tint py-[0.2rem] pl-[0.65rem] pr-[0.3rem] text-[0.78rem] text-on-tint;
     font-weight: 650;
   }
   .filter-pill button {
@@ -844,6 +911,105 @@
   }
   .filter-pill button:hover {
     background: rgba(48, 63, 146, 0.22);
+  }
+
+  /* ----------------------------------------------------------------- auth */
+  /* One centred column — no marketing panel, no split screen. */
+  .auth-wrap {
+    @apply mx-auto flex max-w-[460px] flex-col gap-4;
+  }
+  .auth-head {
+    @apply mb-5;
+  }
+  .auth-head h1 {
+    @apply text-[1.5rem];
+  }
+  .auth-switch {
+    @apply mt-4 text-center text-small text-muted;
+  }
+  .auth-back {
+    @apply inline-flex items-center justify-center gap-[0.35rem] self-center text-small text-muted;
+  }
+
+  /* Password input with a reveal toggle. */
+  .pw-field {
+    @apply relative flex w-full items-center;
+  }
+  .pw-field .input {
+    @apply pr-11;
+  }
+  /* Leading lock + trailing reveal button on the same input. */
+  .field-icon.pw-field .input {
+    @apply pl-[2.2rem] pr-11;
+  }
+  .pw-toggle {
+    @apply absolute right-[0.4rem] grid size-8 place-items-center rounded-[9px] border-0 bg-transparent text-muted;
+  }
+  .pw-toggle:hover {
+    @apply bg-surface-2 text-ink;
+  }
+  .pw-toggle[aria-pressed='true'] {
+    @apply text-link;
+  }
+
+  /* Segmented two-option control (language preference). */
+  .seg {
+    @apply grid gap-2;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  @media (max-width: 420px) {
+    .seg {
+      @apply grid-cols-1;
+    }
+  }
+  .seg-opt {
+    @apply flex cursor-pointer items-center gap-2 rounded-ui border border-line
+      bg-surface px-3 py-[0.6rem] text-[0.88rem];
+  }
+  .seg-opt:hover {
+    @apply border-brand-500;
+  }
+  .seg-opt:has(:focus-visible) {
+    @apply shadow-focus;
+  }
+  .seg-opt.on {
+    @apply border-brand-500 bg-tint text-link;
+  }
+  .seg-code {
+    @apply grid h-7 min-w-9 flex-none place-items-center rounded-tiny border border-line
+      bg-surface-2 px-1 text-[0.74rem] font-bold text-ink-2;
+  }
+  .seg-opt.on .seg-code {
+    @apply border-brand-500 bg-brand-600 text-white;
+  }
+  .seg-text b {
+    @apply block font-semibold leading-tight;
+  }
+  .seg-text em {
+    @apply block text-[0.72rem] not-italic text-muted;
+  }
+
+  /* Demo accounts, as a pickable list rather than a row of chips. */
+  .auth-demo {
+    @apply flex flex-col gap-2;
+  }
+  .demo-list {
+    @apply mt-1 grid gap-1;
+  }
+  .demo-row {
+    @apply flex w-full items-center gap-2 rounded-[10px] border border-dashed
+      bg-surface/60 px-[0.6rem] py-[0.45rem] text-left text-[0.82rem] text-ink;
+    border-color: color-mix(in oklab, var(--color-gold-600) 30%, transparent);
+  }
+  .demo-row:hover {
+    @apply bg-surface;
+    border-color: color-mix(in oklab, var(--color-gold-600) 55%, transparent);
+  }
+  .demo-row b {
+    @apply block font-semibold;
+  }
+  .demo-row em {
+    @apply block text-[0.72rem] not-italic text-muted;
   }
 
   /* ------------------------------------------------------------ event card */
@@ -975,8 +1141,7 @@
     @apply bg-quiet-soft text-quiet;
   }
   .s-CANCELLED {
-    background: #e2e4ea;
-    color: #4a4f5e;
+    @apply bg-cancelled-soft text-cancelled;
   }
   /* event + payment + hold states */
   .s-DRAFT {
@@ -1001,7 +1166,7 @@
     @apply bg-danger-soft text-danger;
   }
   .s-ACTIVE {
-    @apply bg-brand-100 text-brand-600;
+    @apply bg-tint-2 text-link;
   }
   .s-CONSUMED {
     @apply bg-quiet-soft text-quiet;
@@ -1017,10 +1182,10 @@
     @apply bg-warning-soft text-warning;
   }
   .badge-cool {
-    @apply bg-brand-100 text-brand-600;
+    @apply bg-tint-2 text-link;
   }
   .badge-mode {
-    @apply border border-brand-100 bg-brand-50 text-brand-600;
+    @apply border border-tint-2 bg-tint text-link;
   }
 
   /* ----------------------------------------------------------------- forms */
@@ -1048,7 +1213,35 @@
     background-position: right 0.6rem center;
   }
   .select:hover {
-    border-color: #cfd6e6;
+    border-color: color-mix(in oklab, var(--color-muted) 40%, var(--color-line));
+  }
+  /* The chevron is a data URI, so its stroke can't read a variable — swap the
+     whole image for a lighter one in dark mode. */
+  [data-theme='dark'] .select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238b96b1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  }
+  /* Surfaces that stay light in both themes — a QR must keep its contrast to
+     scan, and the date chip sits on cover art. Re-declaring the neutral tokens
+     locally re-themes every descendant utility in one place. */
+  [data-theme='dark'] :is(.qr-frame, .ev-media .ev-date) {
+    /* Re-declaring the tokens fixes descendants that apply a colour utility… */
+    --color-ink: #131a2b;
+    --color-ink-2: #3c4661;
+    --color-muted: #6b7794;
+    /* …but an inherited colour is already computed, so it needs setting too. */
+    color: #131a2b;
+  }
+  /* Cards need a visible edge against a dark page, and the toast needs to
+     separate from it. */
+  [data-theme='dark'] :is(.toast, .qr-frame) {
+    @apply border border-line;
+  }
+  /* The pref group sits on the always-dark navbar, so it never inverts. */
+  .pref-group {
+    @apply inline-flex flex-none items-center gap-[0.35rem];
+  }
+  .theme-toggle {
+    @apply flex-none;
   }
   .textarea {
     @apply min-h-24 resize-y;
@@ -1062,7 +1255,7 @@
     @apply border-danger;
   }
   .input::placeholder {
-    color: #9aa4bd;
+    @apply text-placeholder;
   }
   .hint {
     @apply text-[0.76rem] text-muted;
@@ -1088,7 +1281,7 @@
     @apply border-brand-500;
   }
   .radio-card.selected {
-    @apply border-brand-500 bg-brand-50;
+    @apply border-brand-500 bg-tint;
     box-shadow: inset 0 0 0 1px var(--color-brand-500);
   }
   .radio-card input {
@@ -1096,10 +1289,11 @@
     accent-color: var(--color-brand-600);
   }
   .radio-card .rc-title {
+    @apply block;
     font-weight: 650;
   }
   .radio-card .rc-sub {
-    @apply text-[0.8rem] text-muted;
+    @apply block text-[0.8rem] text-muted;
   }
   .radio-card .rc-logo {
     @apply grid size-[38px] flex-none place-items-center rounded-[10px] border border-line bg-surface-2 text-[1.1rem];
@@ -1140,10 +1334,10 @@
     @apply border-b border-line-2 px-[0.9rem] py-[0.7rem] align-middle;
   }
   .table tbody tr:hover {
-    @apply bg-brand-50;
+    @apply bg-tint;
   }
   .table tr.flagged td {
-    background: #fff8ec;
+    @apply bg-warning-soft;
   }
   .table .num {
     @apply text-right tabular-nums;
@@ -1175,7 +1369,7 @@
       @apply bg-surface;
     }
     .table tbody tr.flagged {
-      background: #fff8ec;
+      @apply bg-warning-soft;
     }
     .table tbody tr.flagged td {
       @apply bg-transparent;
@@ -1238,8 +1432,8 @@
   }
   /* Named to avoid colliding with the .alert component, which is display:flex. */
   .stat-flagged {
-    @apply border-warning-soft;
-    background: #fffaf0;
+    @apply bg-warning-soft;
+    border-color: color-mix(in oklab, var(--color-warning) 26%, transparent);
   }
   .stat-head {
     @apply mb-[0.35rem] flex items-center justify-between gap-[0.6rem];
@@ -1279,10 +1473,10 @@
   }
   .row-label {
     @apply text-[9px] font-bold;
-    fill: #9aa4bd;
+    fill: var(--color-muted);
   }
   .seat {
-    stroke: rgba(19, 26, 58, 0.12);
+    stroke: color-mix(in oklab, var(--color-ink) 14%, transparent);
     stroke-width: 1;
   }
   .seat-available {
@@ -1294,13 +1488,40 @@
   }
   .seat-selected {
     @apply cursor-pointer;
+    /* Owned here rather than via a `fill` attribute: Safari does not support
+       var() in SVG presentation attributes, so the selection never repainted. */
+    fill: var(--color-ink);
     stroke: var(--color-brand-900);
     stroke-width: 2;
+  }
+  [data-theme='dark'] .seat-selected {
+    stroke: var(--color-surface);
   }
   .seat-held,
   .seat-sold,
   .seat-blocked {
     @apply cursor-not-allowed;
+  }
+  /* Unavailable seats are painted here, not by a fill attribute, so they recede
+     on a dark map instead of glowing brighter than the live selection. */
+  .seat-sold {
+    fill: color-mix(in oklab, var(--color-muted) 40%, var(--color-surface-2));
+  }
+  .seat-held {
+    fill: color-mix(in oklab, var(--color-gold-500) 62%, var(--color-surface-2));
+  }
+  .seat-blocked {
+    fill: color-mix(in oklab, var(--color-line) 85%, var(--color-surface-2));
+  }
+  /* Legend swatches read the same mixes so map and key can never drift. */
+  .swatch-sold {
+    background: color-mix(in oklab, var(--color-muted) 40%, var(--color-surface-2));
+  }
+  .swatch-selected {
+    background: var(--color-ink);
+  }
+  .swatch-held {
+    background: color-mix(in oklab, var(--color-gold-500) 62%, var(--color-surface-2));
   }
   .legend {
     @apply flex flex-wrap gap-[0.9rem] text-[0.78rem] text-ink-2;
@@ -1310,7 +1531,7 @@
   }
   .swatch {
     @apply size-3 flex-none rounded;
-    border: 1px solid rgba(19, 26, 58, 0.14);
+    border: 1px solid color-mix(in oklab, var(--color-ink) 16%, transparent);
   }
 
   /* -------------------------------------------------------------- GA zones */
@@ -1319,7 +1540,7 @@
     grid-template-columns: minmax(0, 1fr) auto;
   }
   .zone-card.picked {
-    @apply border-brand-500 bg-brand-50;
+    @apply border-brand-500 bg-tint;
   }
   .zone-card.full {
     @apply opacity-70;
@@ -1338,14 +1559,14 @@
     @apply inline-flex items-center overflow-hidden rounded-[10px] border border-line bg-surface;
   }
   .stepper button {
-    @apply grid h-10 w-[38px] place-items-center border-0 bg-surface text-[1.1rem] font-bold text-brand-600;
+    @apply grid h-10 w-[38px] place-items-center border-0 bg-surface text-[1.1rem] font-bold text-link;
   }
   .stepper button:disabled {
     @apply cursor-not-allowed;
-    color: #b8bfd0;
+    color: color-mix(in oklab, var(--color-muted) 55%, transparent);
   }
   .stepper button:hover:not(:disabled) {
-    @apply bg-brand-50;
+    @apply bg-tint;
   }
   .stepper .qty {
     @apply h-10 min-w-[42px] border-x border-line text-center font-bold leading-10 tabular-nums;
@@ -1467,15 +1688,15 @@
   }
   .status-strip.wait {
     @apply bg-warning-soft text-warning;
-    border-color: #f7dfae;
+    border-color: color-mix(in oklab, var(--color-warning) 30%, transparent);
   }
   .status-strip.ok {
     @apply bg-success-soft text-success;
-    border-color: #b7e7cd;
+    border-color: color-mix(in oklab, var(--color-success) 30%, transparent);
   }
   .status-strip.bad {
     @apply bg-danger-soft text-danger;
-    border-color: #f4c4c4;
+    border-color: color-mix(in oklab, var(--color-danger) 30%, transparent);
   }
   .status-strip.neutral {
     @apply bg-quiet-soft text-quiet;
@@ -1497,7 +1718,7 @@
     @apply grid size-5 place-items-center rounded-full bg-line-2 text-[0.7rem] font-extrabold not-italic text-muted;
   }
   .steps .step.active {
-    @apply text-brand-600;
+    @apply text-link;
   }
   .steps .step.active i {
     @apply bg-brand-600 text-white;
@@ -1585,22 +1806,19 @@
     @apply grid size-6 flex-none place-items-center rounded-[7px] bg-white/65;
   }
   .alert-info {
-    @apply border-brand-100 bg-brand-50 text-brand-700;
+    @apply border-tint-2 bg-tint text-on-tint;
   }
   .alert-warn {
-    @apply text-warning;
-    background: #fffaf0;
-    border-color: #f7e2ba;
+    @apply bg-warning-soft text-warning;
+    border-color: color-mix(in oklab, var(--color-warning) 28%, transparent);
   }
   .alert-danger {
-    @apply text-danger;
-    background: #fff5f5;
-    border-color: #f6cfcf;
+    @apply bg-danger-soft text-danger;
+    border-color: color-mix(in oklab, var(--color-danger) 28%, transparent);
   }
   .alert-success {
-    @apply text-success;
-    background: #f2fbf6;
-    border-color: #c4ecd7;
+    @apply bg-success-soft text-success;
+    border-color: color-mix(in oklab, var(--color-success) 28%, transparent);
   }
   .alert b {
     @apply block;
@@ -1703,6 +1921,7 @@
   }
   .footer-brand strong {
     @apply block text-[0.98rem] tracking-[-0.01em] text-white;
+    font-family: var(--font-sans);
   }
   .footer-brand p {
     @apply mt-1 leading-[1.7];
@@ -1752,9 +1971,8 @@
   }
 
   .demo-note {
-    @apply rounded-ui border border-dashed bg-gold-100 px-[0.85rem] py-[0.6rem] text-[0.8rem];
-    color: #6b4400;
-    border-color: #e6bd6a;
+    @apply rounded-ui border border-dashed bg-gold-100 px-[0.85rem] py-[0.6rem] text-[0.8rem] text-gold-600;
+    border-color: color-mix(in oklab, var(--color-gold-600) 40%, transparent);
   }
 
   /* ------------------------------------------------------------ event hero */
@@ -1801,19 +2019,19 @@
   /* Tinted rounded-square icon holder: stat headers, list rows, empty states. */
   .icon-chip {
     @apply inline-grid size-[34px] flex-none place-items-center rounded-[10px]
-      border border-brand-100 bg-brand-50 text-brand-600;
+      border border-tint-2 bg-tint text-link;
   }
   .icon-chip.gold {
     @apply bg-gold-100 text-gold-600;
-    border-color: #f6e2b8;
+    border-color: color-mix(in oklab, var(--color-gold-600) 26%, transparent);
   }
   .icon-chip.green {
     @apply bg-success-soft text-success;
-    border-color: #bfe8d3;
+    border-color: color-mix(in oklab, var(--color-success) 26%, transparent);
   }
   .icon-chip.red {
     @apply bg-danger-soft text-danger;
-    border-color: #f5cccc;
+    border-color: color-mix(in oklab, var(--color-danger) 26%, transparent);
   }
   .icon-chip.plain {
     @apply border-line bg-surface-2 text-ink-2;

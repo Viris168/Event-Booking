@@ -12,8 +12,8 @@ npm run dev      # http://localhost:5173
 npm run build    # production build into web/dist
 ```
 
-Demo logins (password `password` for all), or use the gear icon in the navbar to
-switch roles without logging out:
+Demo logins (password `password` for all). The login page lists them as tappable
+rows, so you can switch role experiences without typing:
 
 | Login | Role |
 |---|---|
@@ -39,10 +39,12 @@ web/src
 │   └── store.js              the fake "backend": every read/write the UI performs
 ├── context/
 │   ├── AuthContext.jsx       session + role flags (isOrganizer / isAdmin)
+│   ├── ThemeContext.jsx      light/dark, persisted, follows the OS until set
 │   ├── LocaleContext.jsx     locale, t(), pick(), date helpers
 │   └── ToastContext.jsx      toast(message, 'info' | 'success' | 'error')
 ├── components/               Icon, Navbar, EventCard, SeatMap, ZonePicker,
-│                             HoldBar, QrGlyph, TicketCard, ui.jsx (shared bits)
+│                             HoldBar, QrGlyph, TicketCard, AuthLayout,
+│                             ui.jsx (shared bits)
 ├── routes/ProtectedRoute.jsx role guard
 └── pages/
     ├── (public + customer)   Home, Events, EventDetail, Checkout, Payment,
@@ -102,6 +104,39 @@ brief requires distinct treatments. Status colours are named semantically
 (`--color-success`, `--color-danger`, `--color-warning`, `--color-refund`,
 `--color-settled`, `--color-quiet`) so Tailwind's own `green-*`/`red-*` palettes
 stay untouched and available.
+
+### Dark mode
+`ThemeContext` writes `data-theme="light|dark"` (and `color-scheme`) onto
+`<html>`, persists the choice, and follows the OS until the user picks a side.
+The toggle sits next to the language toggle in the navbar — both are display
+preferences, so they live together.
+
+Because Tailwind 4 utilities compile to `var(--color-*)`, dark mode is mostly a
+**token override**: one `[data-theme='dark']` block re-points the neutrals and
+the `*-soft` status fills, and every `@apply` rule in the components layer
+follows. The `brand-*` scale deliberately does **not** invert — it paints solid
+surfaces (navbar, primary button, hero). Brand-as-text and brand-as-tint go
+through four separate tokens that do invert: `--color-link`, `--color-on-tint`,
+`--color-tint`, `--color-tint-2`.
+
+Three traps that cost real debugging here:
+
+1. **An inherited `color` is already computed.** Re-declaring `--color-ink`
+   inside a container fixes descendants that *apply a colour utility*, but not
+   ones that merely inherit — those need an explicit `color`. See the
+   `.qr-frame` rule.
+2. **Some surfaces must stay light.** A KHQR panel has to keep its contrast to
+   scan, and the date chip sits on cover art. Those re-declare the light tokens
+   locally rather than inverting.
+3. **SVG presentation attributes can't read `var()` in Safari.** The selected
+   seat is painted by `.seat-selected { fill: var(--color-ink) }` in CSS, which
+   overrides the attribute and works everywhere. Sold/held/blocked seats and the
+   legend swatches share the same `color-mix()` values so the map and its key
+   can never drift.
+
+Also worth knowing: `Noto Sans Khmer` is loaded at 400–800 because several
+elements ask for 800, and the Latin wordmark is pinned to Inter so its weight
+does not change with the locale.
 
 ### Page width (header / body / footer alignment)
 Two tokens drive the whole shell, so the navbar, sub-nav, hero, page body and

@@ -4,19 +4,22 @@ import { BrowserRouter } from 'react-router-dom'
 import App from './App.jsx'
 import { AuthProvider } from './context/AuthContext.jsx'
 import { LocaleProvider } from './context/LocaleContext.jsx'
+import { ThemeProvider } from './context/ThemeContext.jsx'
 import { ToastProvider } from './context/ToastContext.jsx'
 import './styles/index.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter>
-      <LocaleProvider>
+      <ThemeProvider>
+        <LocaleProvider>
         <ToastProvider>
           <AuthProvider>
             <App />
           </AuthProvider>
         </ToastProvider>
-      </LocaleProvider>
+        </LocaleProvider>
+      </ThemeProvider>
     </BrowserRouter>
   </React.StrictMode>,
 )

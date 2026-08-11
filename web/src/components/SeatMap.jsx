@@ -4,11 +4,6 @@ import { usd } from '../lib/format.js'
 
 // Seat classes are coloured by tier so price is readable straight off the map.
 const CLASS_COLORS = ['#4054c8', '#0d9488', '#c2410c', '#7e22ce', '#0f766e']
-const STATE_FILL = {
-  SOLD: '#c9cede',
-  HELD: '#f2c98b',
-  BLOCKED: '#e6e8ef',
-}
 
 /**
  * Interactive seat map driven by venue_seat pos_x/pos_y, grouped by section and
@@ -46,9 +41,13 @@ export default function SeatMap({ seats, seatClasses, selected, onToggle, disabl
     }
   }, [seats])
 
+  /**
+   * Only AVAILABLE seats get a fill attribute (their price-tier colour). Every
+   * other state — sold, held, blocked, selected — is painted by the stylesheet
+   * so it can follow the light/dark tokens.
+   */
   function fillFor(seat) {
-    if (selected.includes(seat.id)) return '#131a3a'
-    if (seat.status !== 'AVAILABLE') return STATE_FILL[seat.status] || '#e6e8ef'
+    if (seat.status !== 'AVAILABLE') return undefined
     return colorByClass[seat.seat_class_id] || '#4054c8'
   }
 
@@ -146,15 +145,15 @@ export default function SeatMap({ seats, seatClasses, selected, onToggle, disabl
           </span>
         ))}
         <span>
-          <i className="swatch" style={{ background: '#131a3a' }} />
+          <i className="swatch swatch-selected" />
           {t('yourSelection')}
         </span>
         <span>
-          <i className="swatch" style={{ background: STATE_FILL.HELD }} />
+          <i className="swatch swatch-held" />
           {t('heldByOthers')}
         </span>
         <span>
-          <i className="swatch" style={{ background: STATE_FILL.SOLD }} />
+          <i className="swatch swatch-sold" />
           {t('sold')}
         </span>
       </div>

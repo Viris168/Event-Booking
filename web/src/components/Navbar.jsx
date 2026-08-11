@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import Icon from './Icon.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
+import { useTheme } from '../context/ThemeContext.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
 import { activeHoldsForUser, useStore } from '../mock/store.js'
 import { countdown } from '../lib/format.js'
@@ -13,34 +14,27 @@ const ROLE_LABEL = {
 }
 
 export default function Navbar() {
-  const { isAuthenticated, user, role, isOrganizer, isAdmin, logout, switchTo } = useAuth()
+  const { isAuthenticated, user, role, isOrganizer, isAdmin, logout } = useAuth()
   const { t, locale, setLocale } = useLocale()
+  const { isDark, toggle: toggleTheme } = useTheme()
   const navigate = useNavigate()
   const location = useLocation()
   useStore() // keeps the hold pill counting down
-  const [showSwitcher, setShowSwitcher] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const navRef = useRef(null)
 
   // Close both panels on navigation, on Escape, and on an outside click.
   useEffect(() => {
     setMenuOpen(false)
-    setShowSwitcher(false)
   }, [location.pathname])
 
   useEffect(() => {
-    if (!menuOpen && !showSwitcher) return
+    if (!menuOpen) return
     const onKey = (e) => {
-      if (e.key === 'Escape') {
-        setMenuOpen(false)
-        setShowSwitcher(false)
-      }
+      if (e.key === 'Escape') setMenuOpen(false)
     }
     const onClick = (e) => {
-      if (!navRef.current?.contains(e.target)) {
-        setMenuOpen(false)
-        setShowSwitcher(false)
-      }
+      if (!navRef.current?.contains(e.target)) setMenuOpen(false)
     }
     document.addEventListener('keydown', onKey)
     document.addEventListener('mousedown', onClick)
@@ -48,7 +42,7 @@ export default function Navbar() {
       document.removeEventListener('keydown', onKey)
       document.removeEventListener('mousedown', onClick)
     }
-  }, [menuOpen, showSwitcher])
+  }, [menuOpen])
 
   // A live hold is the most time-critical thing on screen: surface it globally,
   // at every width — it stays outside the drawer so it is never hidden.
@@ -70,13 +64,24 @@ export default function Navbar() {
     navigate('/')
   }
 
-  const langToggle = (
-    <div className="lang-toggle" role="group" aria-label="Language">
-      <button aria-pressed={locale === 'en'} onClick={() => setLocale('en')}>
-        EN
-      </button>
-      <button aria-pressed={locale === 'km'} onClick={() => setLocale('km')} className="km">
-        ខ្មែរ
+  const displayPrefs = (
+    <div className="pref-group">
+      <div className="lang-toggle" role="group" aria-label="Language">
+        <button aria-pressed={locale === 'en'} onClick={() => setLocale('en')}>
+          EN
+        </button>
+        <button aria-pressed={locale === 'km'} onClick={() => setLocale('km')} className="km">
+          ខ្មែរ
+        </button>
+      </div>
+      <button
+        className="nav-icon-btn theme-toggle"
+        onClick={toggleTheme}
+        title={isDark ? t('lightMode') : t('darkMode')}
+        aria-label={isDark ? t('lightMode') : t('darkMode')}
+        aria-pressed={isDark}
+      >
+        <Icon name={isDark ? 'sun' : 'moon'} size={17} />
       </button>
     </div>
   )
@@ -108,7 +113,7 @@ export default function Navbar() {
 
           <span className="nav-sep" aria-hidden="true" />
 
-          {langToggle}
+          {displayPrefs}
 
           {isAuthenticated ? (
             <>
@@ -136,17 +141,6 @@ export default function Navbar() {
             </>
           )}
 
-          {/* Demo affordance: the design has three role experiences, and this
-              prototype has no real auth to switch between them. */}
-          <button
-            className={`nav-icon-btn ${showSwitcher ? 'on' : ''}`}
-            onClick={() => setShowSwitcher((v) => !v)}
-            title="Demo: switch role"
-            aria-label="Demo: switch role"
-            aria-expanded={showSwitcher}
-          >
-            <Icon name="settings" size={17} />
-          </button>
         </div>
 
         {/* --------------------------------------------------- narrow screens */}
@@ -210,39 +204,12 @@ export default function Navbar() {
             </div>
 
             <div className="drawer-foot">
-              {langToggle}
-              <button
-                className={`nav-icon-btn ${showSwitcher ? 'on' : ''}`}
-                onClick={() => setShowSwitcher((v) => !v)}
-                title="Demo: switch role"
-                aria-label="Demo: switch role"
-                aria-expanded={showSwitcher}
-              >
-                <Icon name="settings" size={17} />
-              </button>
+              {displayPrefs}
             </div>
           </div>
         </div>
       )}
 
-      {showSwitcher && (
-        <div className="role-switch">
-          <div className="role-switch-inner">
-            <span className="tiny">
-              <Icon name="shield" size={13} /> Demo role switch
-            </span>
-            <button className="chip" onClick={() => { switchTo(1); setShowSwitcher(false); setMenuOpen(false) }}>
-              <Icon name="user" size={13} /> Dara Sok · Customer
-            </button>
-            <button className="chip" onClick={() => { switchTo(2); setShowSwitcher(false); setMenuOpen(false) }}>
-              <Icon name="building" size={13} /> Chantha Meas · Organizer
-            </button>
-            <button className="chip" onClick={() => { switchTo(3); setShowSwitcher(false); setMenuOpen(false) }}>
-              <Icon name="shield" size={13} /> Platform Admin
-            </button>
-          </div>
-        </div>
-      )}
     </nav>
   )
 }

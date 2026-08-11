@@ -35,9 +35,6 @@ export function AuthProvider({ children }) {
 
   const logout = useCallback(() => setUserId(null), [])
 
-  /** Demo helper: jump between the three role experiences without a password. */
-  const switchTo = useCallback((id) => setUserId(Number(id)), [])
-
   const value = useMemo(() => {
     const role = user?.role || null
     return {
@@ -50,9 +47,8 @@ export function AuthProvider({ children }) {
       login,
       register,
       logout,
-      switchTo,
     }
-  }, [user, login, register, logout, switchTo])
+  }, [user, login, register, logout])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

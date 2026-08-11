@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import AuthLayout, { PasswordField } from '../components/AuthLayout.jsx'
+import Icon from '../components/Icon.jsx'
 import { Alert, Field } from '../components/ui.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
@@ -22,7 +24,7 @@ export default function RegisterPage() {
     phone_e164: '+855',
     email: '',
     password: '',
-    locale: locale,
+    locale,
   })
   const [errors, setErrors] = useState({})
   const [serverError, setServerError] = useState(null)
@@ -41,8 +43,7 @@ export default function RegisterPage() {
         locale === 'km' ? 'ទម្រង់៖ +855 និងលេខ ៨–៩ តួ' : 'Format: +855 followed by 8–9 digits'
     if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
       next.email = locale === 'km' ? 'អ៊ីមែលមិនត្រឹមត្រូវ' : 'Enter a valid email'
-    if (form.password.length < 8)
-      next.password = locale === 'km' ? 'ត្រូវការ ៨ តួអក្សរជាអប្បបរមា' : 'At least 8 characters'
+    if (form.password.length < 8) next.password = t('passwordHint')
     setErrors(next)
     return Object.keys(next).length === 0
   }
@@ -71,107 +72,111 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="container container-narrow">
-      <div className="panel">
-        <div className="panel-body">
-          <h1>{t('registerTitle')}</h1>
-          <p className="muted">
-            {locale === 'km'
-              ? 'គណនីថ្មីទាំងអស់ចាប់ផ្តើមជាអតិថិជន។'
-              : 'Every new account starts as a customer.'}
-          </p>
+    <AuthLayout
+      title={t('registerTitle')}
+      subtitle={
+        locale === 'km'
+          ? 'គណនីថ្មីទាំងអស់ចាប់ផ្តើមជាអតិថិជន។'
+          : 'Every new account starts as a customer.'
+      }
+    >
+      <form className="stack" onSubmit={submit} noValidate>
+        <Field label={t('displayName')} error={errors.display_name}>
+          <span className="field-icon">
+            <Icon name="user" size={16} />
+            <input
+              className="input"
+              value={form.display_name}
+              onChange={(e) => set('display_name', e.target.value)}
+              aria-invalid={!!errors.display_name}
+              autoComplete="name"
+            />
+          </span>
+        </Field>
 
-          <form className="stack" onSubmit={submit} style={{ marginTop: '1.2rem' }} noValidate>
-            <Field label={t('displayName')} error={errors.display_name}>
-              <input
-                className="input"
-                value={form.display_name}
-                onChange={(e) => set('display_name', e.target.value)}
-                aria-invalid={!!errors.display_name}
-                autoComplete="name"
-              />
-            </Field>
+        <Field
+          label={t('phone')}
+          error={errors.phone_e164}
+          hint={locale === 'km' ? 'ឧ. +85512345678' : 'e.g. +85512345678'}
+        >
+          <span className="field-icon">
+            <Icon name="phone" size={16} />
+            <input
+              className="input"
+              value={form.phone_e164}
+              onChange={(e) => set('phone_e164', e.target.value)}
+              aria-invalid={!!errors.phone_e164}
+              inputMode="tel"
+              autoComplete="tel"
+            />
+          </span>
+        </Field>
 
-            <Field
-              label={t('phone')}
-              error={errors.phone_e164}
-              hint={locale === 'km' ? 'ឧ. +85512345678' : 'e.g. +85512345678'}
-            >
-              <input
-                className="input"
-                value={form.phone_e164}
-                onChange={(e) => set('phone_e164', e.target.value)}
-                aria-invalid={!!errors.phone_e164}
-                inputMode="tel"
-                autoComplete="tel"
-              />
-            </Field>
+        <Field label={t('email')} optional error={errors.email}>
+          <span className="field-icon">
+            <Icon name="mail" size={16} />
+            <input
+              className="input"
+              type="email"
+              value={form.email}
+              onChange={(e) => set('email', e.target.value)}
+              aria-invalid={!!errors.email}
+              autoComplete="email"
+            />
+          </span>
+        </Field>
 
-            <Field label={t('email')} optional error={errors.email}>
-              <input
-                className="input"
-                type="email"
-                value={form.email}
-                onChange={(e) => set('email', e.target.value)}
-                aria-invalid={!!errors.email}
-                autoComplete="email"
-              />
-            </Field>
+        <Field label={t('password')} error={errors.password} hint={t('passwordHint')}>
+          <PasswordField
+            value={form.password}
+            onChange={(v) => set('password', v)}
+            autoComplete="new-password"
+            invalid={!!errors.password}
+          />
+        </Field>
 
-            <Field label={t('password')} error={errors.password}>
-              <input
-                className="input"
-                type="password"
-                value={form.password}
-                onChange={(e) => set('password', e.target.value)}
-                aria-invalid={!!errors.password}
-                autoComplete="new-password"
-              />
-            </Field>
+        <Field label={t('preferredLanguage')}>
+          {/* Segmented control, mirroring the navbar language toggle. Real radio
+              inputs keep native arrow-key behaviour; the labels are the UI. */}
+          <div className="seg">
+            {[
+              { code: 'EN', value: 'en', label: 'English', sub: 'អង់គ្លេស' },
+              { code: 'ខ្មែរ', value: 'km', label: 'ភាសាខ្មែរ', sub: 'Khmer' },
+            ].map((o) => (
+              <label key={o.value} className={`seg-opt ${form.locale === o.value ? 'on' : ''}`}>
+                <input
+                  type="radio"
+                  name="locale"
+                  className="sr-only"
+                  checked={form.locale === o.value}
+                  onChange={() => set('locale', o.value)}
+                />
+                <span className={`seg-code ${o.value === 'km' ? 'km' : ''}`}>{o.code}</span>
+                <span className="seg-text">
+                  <b className={o.value === 'km' ? 'km' : ''}>{o.label}</b>
+                  <em>{o.sub}</em>
+                </span>
+                {form.locale === o.value && <Icon name="check" size={15} className="ml-auto" />}
+              </label>
+            ))}
+          </div>
+        </Field>
 
-            <Field label={t('preferredLanguage')}>
-              <div className="radio-cards" style={{ gridTemplateColumns: '1fr 1fr', display: 'grid' }}>
-                <label className={`radio-card ${form.locale === 'km' ? 'selected' : ''}`}>
-                  <input
-                    type="radio"
-                    name="locale"
-                    checked={form.locale === 'km'}
-                    onChange={() => set('locale', 'km')}
-                  />
-                  <span>
-                    <span className="rc-title km">ភាសាខ្មែរ</span>
-                    <span className="rc-sub">Khmer</span>
-                  </span>
-                </label>
-                <label className={`radio-card ${form.locale === 'en' ? 'selected' : ''}`}>
-                  <input
-                    type="radio"
-                    name="locale"
-                    checked={form.locale === 'en'}
-                    onChange={() => set('locale', 'en')}
-                  />
-                  <span>
-                    <span className="rc-title">English</span>
-                    <span className="rc-sub">អង់គ្លេស</span>
-                  </span>
-                </label>
-              </div>
-            </Field>
+        {serverError && (
+          <Alert tone="danger">
+            {ERRORS[serverError]?.[locale] || ERRORS[serverError]?.en || serverError}
+          </Alert>
+        )}
 
-            {serverError && (
-              <Alert tone="danger">{ERRORS[serverError]?.[locale] || ERRORS[serverError]?.en || serverError}</Alert>
-            )}
+        <button className="btn btn-primary btn-lg btn-block" type="submit" disabled={busy}>
+          <Icon name="check" size={17} />
+          {t('register')}
+        </button>
+      </form>
 
-            <button className="btn btn-primary btn-lg btn-block" type="submit" disabled={busy}>
-              {t('register')}
-            </button>
-          </form>
-
-          <p className="small muted text-center" style={{ marginTop: '1rem' }}>
-            {t('haveAccount')} <Link to="/login">{t('login')}</Link>
-          </p>
-        </div>
-      </div>
-    </div>
+      <p className="auth-switch">
+        {t('haveAccount')} <Link to="/login">{t('login')}</Link>
+      </p>
+    </AuthLayout>
   )
 }

@@ -254,7 +254,8 @@ export default function HomePage() {
             browser — no API calls are made. Log in as <span className="mono">dara@example.com</span>{' '}
             (customer), <span className="mono">organizer@example.com</span>, or{' '}
             <span className="mono">admin@example.com</span> with the password{' '}
-            <span className="mono">password</span>, or use the role switcher (gear icon) in the navbar.
+            <span className="mono">password</span> — each one lands in a different role
+            experience.
           </div>
         </section>
       </div>

@@ -1,13 +1,15 @@
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import AuthLayout, { PasswordField } from '../components/AuthLayout.jsx'
+import Icon from '../components/Icon.jsx'
 import { Alert, Field } from '../components/ui.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
 
 const DEMO = [
-  { label: 'Customer · Dara Sok', id: 'dara@example.com' },
-  { label: 'Organizer · Chantha Meas', id: 'organizer@example.com' },
-  { label: 'Platform admin', id: 'admin@example.com' },
+  { label: 'Dara Sok', role: 'Customer', icon: 'user', id: 'dara@example.com' },
+  { label: 'Chantha Meas', role: 'Organizer', icon: 'building', id: 'organizer@example.com' },
+  { label: 'Platform Admin', role: 'Platform admin', icon: 'shield', id: 'admin@example.com' },
 ]
 
 const ERRORS = {
@@ -44,71 +46,76 @@ export default function LoginPage() {
     navigate(from, { replace: true })
   }
 
-  return (
-    <div className="container container-narrow">
-      <div className="panel">
-        <div className="panel-body">
-          <h1>{t('loginTitle')}</h1>
-          <p className="muted">{t('loginSub')}</p>
+  /** One tap to fill a demo account — the prototype has no real accounts. */
+  function useDemo(id) {
+    setIdentifier(id)
+    setPassword('password')
+    setError(null)
+  }
 
-          {location.state?.from && (
-            <div style={{ marginTop: '1rem' }}>
-              <Alert tone="info">{t('loginRequired')}</Alert>
-            </div>
-          )}
-
-          <form className="stack" onSubmit={submit} style={{ marginTop: '1.2rem' }} noValidate>
-            <Field label={t('phoneOrEmail')} hint="+85512345678 · dara@example.com">
-              <input
-                className="input"
-                value={identifier}
-                onChange={(e) => setIdentifier(e.target.value)}
-                autoComplete="username"
-              />
-            </Field>
-            <Field label={t('password')}>
-              <input
-                className="input"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="current-password"
-              />
-            </Field>
-
-            {error && (
-              <Alert tone="danger">{ERRORS[error]?.[locale] || ERRORS[error]?.en || error}</Alert>
-            )}
-
-            <button className="btn btn-primary btn-lg btn-block" type="submit" disabled={busy}>
-              {t('login')}
-            </button>
-          </form>
-
-          <p className="small muted text-center" style={{ marginTop: '1rem' }}>
-            {t('noAccount')} <Link to="/register">{t('register')}</Link>
-          </p>
-        </div>
-      </div>
-
-      <div className="demo-note" style={{ marginTop: '1rem' }}>
-        <b>{t('demoAccounts')}</b> — password <span className="mono">password</span>
-        <div className="chips" style={{ marginTop: '0.5rem' }}>
-          {DEMO.map((d) => (
-            <button
-              key={d.id}
-              type="button"
-              className="chip"
-              onClick={() => {
-                setIdentifier(d.id)
-                setPassword('password')
-              }}
-            >
-              {d.label}
-            </button>
-          ))}
-        </div>
+  const demoPanel = (
+    <div className="demo-note auth-demo">
+      <b className="with-icon">
+        <Icon name="info" size={14} />
+        {t('demoAccounts')}
+      </b>
+      <span className="small">
+        {locale === 'km'
+          ? 'ចុចមួយណាមួយដើម្បីបំពេញ — ពាក្យសម្ងាត់គឺ'
+          : 'Tap one to fill the form — the password is'}{' '}
+        <span className="mono">password</span>
+      </span>
+      <div className="demo-list">
+        {DEMO.map((d) => (
+          <button key={d.id} type="button" className="demo-row" onClick={() => useDemo(d.id)}>
+            <Icon name={d.icon} size={15} />
+            <span>
+              <b>{d.label}</b>
+              <em>{d.role}</em>
+            </span>
+            <Icon name="arrowRight" size={14} className="ml-auto" />
+          </button>
+        ))}
       </div>
     </div>
+  )
+
+  return (
+    <AuthLayout title={t('loginTitle')} subtitle={t('loginSub')} footer={demoPanel}>
+      {location.state?.from && (
+        <div style={{ marginBottom: '1rem' }}>
+          <Alert tone="info">{t('loginRequired')}</Alert>
+        </div>
+      )}
+
+      <form className="stack" onSubmit={submit} noValidate>
+        <Field label={t('phoneOrEmail')} hint="+85512345678 · dara@example.com">
+          <span className="field-icon">
+            <Icon name="user" size={16} />
+            <input
+              className="input"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
+              autoComplete="username"
+            />
+          </span>
+        </Field>
+
+        <Field label={t('password')}>
+          <PasswordField value={password} onChange={setPassword} />
+        </Field>
+
+        {error && <Alert tone="danger">{ERRORS[error]?.[locale] || ERRORS[error]?.en || error}</Alert>}
+
+        <button className="btn btn-primary btn-lg btn-block" type="submit" disabled={busy}>
+          <Icon name="login" size={17} />
+          {t('login')}
+        </button>
+      </form>
+
+      <p className="auth-switch">
+        {t('noAccount')} <Link to="/register">{t('register')}</Link>
+      </p>
+    </AuthLayout>
   )
 }

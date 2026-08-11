@@ -1,13 +1,11 @@
 // Minimal EN/KM dictionary for UI chrome. Content strings (event titles,
 // venue names, zone names) come from the data as _en/_km pairs instead.
-// Minimal EN/KM dictionary for UI chrome. Content strings (event titles,
-// venue names, zone names) come from the data as _en/_km pairs instead.
 
 export const LOCALES = ["en", "km"];
 
 const dict = {
   // nav / chrome
-  brand: { en: 'KH-Event Booking', km: 'KH-Event Booking' },
+  brand: { en: "KH-Event Booking", km: "KH-Event Booking" },
   home: { en: "Home", km: "ទំព័រដើម" },
   events: { en: "Events", km: "ព្រឹត្តិការណ៍" },
   myBookings: { en: "My Bookings", km: "ការកក់របស់ខ្ញុំ" },
@@ -16,6 +14,8 @@ const dict = {
   login: { en: "Log in", km: "ចូលគណនី" },
   register: { en: "Sign up", km: "បង្កើតគណនី" },
   logout: { en: "Log out", km: "ចាកចេញ" },
+  darkMode: { en: "Dark mode", km: "ទម្រង់ងងឹត" },
+  lightMode: { en: "Light mode", km: "ទម្រង់ភ្លឺ" },
   checkIn: { en: "Check-in", km: "ពិនិត្យសំបុត្រចូល" },
 
   // browse
@@ -171,6 +171,14 @@ const dict = {
   admitOne: { en: "Admit one", km: "សំបុត្រសម្រាប់ចូលម្នាក់" },
 
   // auth
+  // auth pages
+  showPassword: { en: "Show password", km: "បង្ហាញពាក្យសម្ងាត់" },
+  hidePassword: { en: "Hide password", km: "លាក់ពាក្យសម្ងាត់" },
+  passwordHint: {
+    en: "At least 8 characters",
+    km: "ត្រូវការ ៨ តួអក្សរជាអប្បបរមា",
+  },
+  backHome: { en: "Back to Home", km: "ត្រឡប់ទៅទំព័រដើម" },
   loginTitle: { en: "Welcome back", km: "សូមស្វាគមន៍ការត្រឡប់មកវិញ" },
   loginSub: {
     en: "Log in with your phone or email",
