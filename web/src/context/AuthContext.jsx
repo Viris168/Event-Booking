@@ -1,43 +1,59 @@
-import { createContext, useContext, useState, useCallback } from 'react'
-import * as authApi from '../api/auth.js'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { authenticate, getOrganizerProfileForUser, getUserById, registerUser } from '../mock/store.js'
 
 const AuthContext = createContext(null)
 
-function decodeUser(token) {
-  try {
-    const payload = JSON.parse(atob(token.split('.')[1]))
-    return { email: payload.sub, role: payload.role }
-  } catch {
-    return null
-  }
-}
+// Roles as they exist in the backend enum (Role.java / app_user.role).
+export const ROLES = ['CUSTOMER', 'ORGANIZER', 'PLATFORM_ADMIN']
+
+const SESSION_KEY = 'mockUserId'
 
 export function AuthProvider({ children }) {
-  const [token, setToken] = useState(() => localStorage.getItem('token'))
-  const [user, setUser] = useState(() => {
-    const t = localStorage.getItem('token')
-    return t ? decodeUser(t) : null
+  const [userId, setUserId] = useState(() => {
+    const raw = localStorage.getItem(SESSION_KEY)
+    return raw ? Number(raw) : null
   })
 
-  const login = useCallback(async (credentials) => {
-    const data = await authApi.login(credentials)
-    localStorage.setItem('token', data.token)
-    setToken(data.token)
-    setUser(decodeUser(data.token))
-    return data
+  useEffect(() => {
+    if (userId) localStorage.setItem(SESSION_KEY, String(userId))
+    else localStorage.removeItem(SESSION_KEY)
+  }, [userId])
+
+  const user = userId ? getUserById(userId) : null
+
+  const login = useCallback(({ identifier, password }) => {
+    const result = authenticate(identifier, password)
+    if (result.user) setUserId(result.user.id)
+    return result
   }, [])
 
-  const register = useCallback(async (payload) => {
-    return authApi.register(payload)
+  const register = useCallback((payload) => {
+    const result = registerUser(payload)
+    if (result.user) setUserId(result.user.id)
+    return result
   }, [])
 
-  const logout = useCallback(() => {
-    localStorage.removeItem('token')
-    setToken(null)
-    setUser(null)
-  }, [])
+  const logout = useCallback(() => setUserId(null), [])
 
-  const value = { token, user, isAuthenticated: !!token, login, register, logout }
+  /** Demo helper: jump between the three role experiences without a password. */
+  const switchTo = useCallback((id) => setUserId(Number(id)), [])
+
+  const value = useMemo(() => {
+    const role = user?.role || null
+    return {
+      user,
+      role,
+      isAuthenticated: !!user,
+      isOrganizer: role === 'ORGANIZER' || role === 'PLATFORM_ADMIN',
+      isAdmin: role === 'PLATFORM_ADMIN',
+      organizerProfile: user ? getOrganizerProfileForUser(user.id) : null,
+      login,
+      register,
+      logout,
+      switchTo,
+    }
+  }, [user, login, register, logout, switchTo])
+
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
