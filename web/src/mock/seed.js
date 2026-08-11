@@ -133,6 +133,95 @@ export function buildSeed() {
       created_at: days(-9),
       password: 'password',
     },
+    // --- ids 8+ : volume for the admin user list, filters and sales tables ---
+    {
+      id: nextUserId(),
+      phone_e164: '+85592334455',
+      email: 'ratana.k@example.com',
+      display_name: 'Ratana Kim',
+      locale: 'km',
+      role: 'CUSTOMER',
+      is_disabled: false,
+      created_at: days(-160),
+      password: 'password',
+    },
+    {
+      id: nextUserId(),
+      phone_e164: '+85578220011',
+      email: null,
+      display_name: 'Chenda Pich',
+      locale: 'km',
+      role: 'CUSTOMER',
+      is_disabled: false,
+      created_at: days(-95),
+      password: 'password',
+    },
+    {
+      id: nextUserId(),
+      phone_e164: '+85512667788',
+      email: 'nita@example.com',
+      display_name: 'Nita Chhun',
+      locale: 'en',
+      role: 'CUSTOMER',
+      is_disabled: false,
+      created_at: days(-72),
+      password: 'password',
+    },
+    {
+      id: nextUserId(),
+      phone_e164: '+85517889900',
+      email: 'sokha.t@example.com',
+      display_name: 'Sokha Tep',
+      locale: 'km',
+      role: 'CUSTOMER',
+      is_disabled: false,
+      created_at: days(-58),
+      password: 'password',
+    },
+    {
+      id: nextUserId(),
+      phone_e164: '+85569445566',
+      email: 'bopha@example.com',
+      display_name: 'Bopha Rin',
+      locale: 'km',
+      role: 'CUSTOMER',
+      is_disabled: false,
+      created_at: days(-33),
+      password: 'password',
+    },
+    {
+      id: nextUserId(),
+      phone_e164: '+85597001122',
+      email: 'james.w@example.com',
+      display_name: 'James Whitfield',
+      locale: 'en',
+      role: 'CUSTOMER',
+      is_disabled: false,
+      created_at: days(-27),
+      password: 'password',
+    },
+    {
+      id: nextUserId(),
+      phone_e164: '+85586773311',
+      email: 'chargeback@example.com',
+      display_name: 'Rithy Long',
+      locale: 'en',
+      role: 'CUSTOMER',
+      is_disabled: true,
+      created_at: days(-14),
+      password: 'password',
+    },
+    {
+      id: nextUserId(),
+      phone_e164: '+85511556677',
+      email: 'battambang.arts@example.com',
+      display_name: 'Sovann Chey',
+      locale: 'km',
+      role: 'ORGANIZER',
+      is_disabled: false,
+      created_at: days(-140),
+      password: 'password',
+    },
   ]
 
   const organizerProfiles = [
@@ -151,6 +240,14 @@ export function buildSeed() {
       org_name_km: 'អង្គរ អ៊ីវេន',
       telegram_chat_id: null,
       created_at: days(-200),
+    },
+    {
+      id: nextOrgId(),
+      user_id: 15,
+      org_name_en: 'Battambang Arts Collective',
+      org_name_km: 'សមាគមសិល្បៈបាត់ដំបង',
+      telegram_chat_id: '-1009988776',
+      created_at: days(-140),
     },
   ]
 
@@ -261,6 +358,82 @@ export function buildSeed() {
       street_address: 'River Road',
       lat: 10.6104,
       lng: 104.1809,
+    },
+    [],
+  )
+
+  // Remaining provinces, so the province filter is not mostly empty.
+  const battambangHall = addVenue(
+    {
+      organizer_id: 3,
+      name_en: 'Battambang Provincial Hall',
+      name_km: 'សាលាខេត្តបាត់ដំបង',
+      province_code: 'BB',
+      khan_district: 'Battambang District',
+      sangkat_commune: 'Sangkat Svay Por',
+      street_address: 'Street 1, Riverside',
+      lat: 13.0957,
+      lng: 103.2022,
+    },
+    [{ label: 'Hall Floor', rows: 6, cols: 14 }],
+  )
+
+  const angkorConvention = addVenue(
+    {
+      organizer_id: 2,
+      name_en: 'Angkor Convention Centre',
+      name_km: 'មជ្ឈមណ្ឌលសន្និសីទអង្គរ',
+      province_code: 'SR',
+      khan_district: 'Siem Reap District',
+      sangkat_commune: 'Sangkat Svay Dangkum',
+      street_address: 'National Road 6',
+      lat: 13.3611,
+      lng: 103.8598,
+    },
+    [{ label: 'Auditorium', rows: 7, cols: 16 }],
+  )
+
+  const mekongGrounds = addVenue(
+    {
+      organizer_id: 3,
+      name_en: 'Mekong Riverside Grounds',
+      name_km: 'ទីលានមាត់ទឹកមេគង្គ',
+      province_code: 'KPC',
+      khan_district: 'Kampong Cham District',
+      sangkat_commune: 'Sangkat Veal Vong',
+      street_address: 'Preah Monivong Riverside',
+      lat: 11.9934,
+      lng: 105.4636,
+    },
+    [],
+  )
+
+  const silkIsland = addVenue(
+    {
+      organizer_id: 1,
+      name_en: 'Koh Dach Silk Island Grounds',
+      name_km: 'ទីលានកោះដាច់',
+      province_code: 'KDL',
+      khan_district: 'Muk Kampul District',
+      sangkat_commune: 'Commune Koh Dach',
+      street_address: 'Silk Island Ferry Road',
+      lat: 11.6486,
+      lng: 104.9631,
+    },
+    [],
+  )
+
+  const chisorField = addVenue(
+    {
+      organizer_id: 3,
+      name_en: 'Phnom Chisor Open Field',
+      name_km: 'ទីលានវាលភ្នំជីសូរ',
+      province_code: 'TKO',
+      khan_district: 'Samraong District',
+      sangkat_commune: 'Commune Rovieng',
+      street_address: 'Phnom Chisor Access Road',
+      lat: 11.2216,
+      lng: 104.9269,
     },
     [],
   )
@@ -643,6 +816,350 @@ export function buildSeed() {
     soldRatio: 0.1,
   })
 
+  // ---------------------------------------------------- more published events
+  // Spread across every province, category and inventory mode so the events
+  // page paginates and the province / price / date filters all have something
+  // to bite on.
+  addEvent({
+    organizer_id: 3,
+    venue_id: battambangHall.id,
+    inventory_mode: 'SEATED',
+    slug: 'battambang-circus-night',
+    title_en: 'Phare Circus — Battambang Night',
+    title_km: 'សៀកផារ៉េ — រាត្រីបាត់ដំបង',
+    description_en:
+      'The touring company returns to the province where it started: acrobatics, live band, and a story told without a word of dialogue.',
+    description_km:
+      'ក្រុមសៀកដែលធ្វើដំណើរសម្តែងត្រឡប់មកខេត្តកំណើតវិញ៖ សម្តែងកាយសម្ព័ន្ធ តន្ត្រីផ្ទាល់ និងរឿងរ៉ាវដែលនិទានដោយគ្មានពាក្យសំដី។',
+    starts_at: days(16),
+    doors_open_at: days(16),
+    sales_open_at: days(-35),
+    sales_close_at: days(15),
+    cover: 'plum',
+    category: 'culture',
+    classes: [
+      { name_en: 'Hall Floor', name_km: 'កម្រាលសាល', price_usd_cents: 2200, section_label: 'Hall Floor' },
+    ],
+    soldRatio: 0.48,
+  })
+
+  addEvent({
+    organizer_id: 3,
+    venue_id: mekongGrounds.id,
+    inventory_mode: 'ZONED',
+    slug: 'mekong-dragon-boat-festival',
+    title_en: 'Mekong Dragon Boat Festival',
+    title_km: 'មហោស្រពទូកនាគមេគង្គ',
+    description_en:
+      'Two days of racing on the Mekong, with a riverside food market and an evening lantern float.',
+    description_km:
+      'ការប្រណាំងទូកពីរថ្ងៃនៅលើទន្លេមេគង្គ ជាមួយផ្សារម្ហូបមាត់ទឹក និងការបណ្ដែតប្រទីបពេលល្ងាច។',
+    starts_at: days(27),
+    doors_open_at: days(27),
+    sales_open_at: days(-30),
+    sales_close_at: days(26),
+    cover: 'river',
+    category: 'festival',
+    zones: [
+      {
+        name_en: 'GA Riverbank',
+        name_km: 'ចូលទូទៅ មាត់ទឹក',
+        price_usd_cents: 800,
+        capacity: 2500,
+        held_qty: 18,
+        sold_qty: 940,
+      },
+      {
+        name_en: 'Shaded Grandstand',
+        name_km: 'វេទិកាមានដំបូល',
+        price_usd_cents: 2000,
+        capacity: 400,
+        held_qty: 6,
+        sold_qty: 312,
+      },
+    ],
+  })
+
+  addEvent({
+    organizer_id: 2,
+    venue_id: angkorConvention.id,
+    inventory_mode: 'SEATED',
+    slug: 'startup-cambodia-demo-day',
+    title_en: 'Startup Cambodia Demo Day',
+    title_km: 'ថ្ងៃបង្ហាញស្តាតអាប់កម្ពុជា',
+    description_en:
+      'Sixteen teams pitch to a room of regional investors. Doors open early for the founder breakfast.',
+    description_km:
+      'ក្រុមចំនួន ១៦ បង្ហាញគម្រោងទៅកាន់វិនិយោគិនក្នុងតំបន់។ បើកទ្វារមុនម៉ោង សម្រាប់អាហារពេលព្រឹករបស់ស្ថាបនិក។',
+    starts_at: days(19),
+    doors_open_at: days(19),
+    sales_open_at: days(-45),
+    sales_close_at: days(18),
+    cover: 'teal',
+    category: 'conference',
+    classes: [
+      { name_en: 'Auditorium', name_km: 'សាលសន្និសីទ', price_usd_cents: 1500, section_label: 'Auditorium' },
+    ],
+    soldRatio: 0.41,
+  })
+
+  addEvent({
+    organizer_id: 1,
+    venue_id: olympic.id,
+    inventory_mode: 'MIXED',
+    slug: 'khmer-rock-revival',
+    title_en: 'Khmer Rock Revival',
+    title_km: 'ការរស់ឡើងវិញនៃរ៉ុកខ្មែរ',
+    description_en:
+      'Six bands reworking the psychedelic rock of the late sixties, closing with a full-stage jam.',
+    description_km:
+      'ក្រុមតន្ត្រី ៦ ក្រុម រៀបចំបទរ៉ុកស៊ីខេដេលិកនៃចុងទសវត្សរ៍ ៦០ ឡើងវិញ បញ្ចប់ដោយការលេងរួមគ្នាពេញឆាក។',
+    starts_at: days(33),
+    doors_open_at: days(33),
+    sales_open_at: days(-18),
+    sales_close_at: days(32),
+    cover: 'rose',
+    category: 'music',
+    classes: [
+      {
+        name_en: 'Grandstand A',
+        name_km: 'វេទិកាទស្សនា ក',
+        price_usd_cents: 2800,
+        section_label: 'Grandstand A',
+      },
+      {
+        name_en: 'Grandstand B',
+        name_km: 'វេទិកាទស្សនា ខ',
+        price_usd_cents: 1600,
+        section_label: 'Grandstand B',
+      },
+    ],
+    soldRatio: 0.15,
+    zones: [
+      {
+        name_en: 'GA Pit',
+        name_km: 'ទីលានមុខឆាក',
+        price_usd_cents: 2200,
+        capacity: 800,
+        held_qty: 11,
+        sold_qty: 366,
+      },
+    ],
+  })
+
+  addEvent({
+    organizer_id: 1,
+    venue_id: silkIsland.id,
+    inventory_mode: 'ZONED',
+    slug: 'silk-island-craft-fair',
+    title_en: 'Silk Island Craft Fair',
+    title_km: 'ពិព័រណ៍សិប្បកម្មកោះដាច់',
+    description_en:
+      'Weaving demonstrations, a village lunch and a ferry shuttle from Phnom Penh included in the ticket.',
+    description_km:
+      'ការបង្ហាញការត្បាញ អាហារថ្ងៃត្រង់បែបភូមិ និងសេវាជិះទូកចម្លងពីភ្នំពេញ រួមបញ្ចូលក្នុងសំបុត្រ។',
+    starts_at: days(11),
+    doors_open_at: days(11),
+    sales_open_at: days(-22),
+    sales_close_at: days(10),
+    cover: 'gold',
+    category: 'culture',
+    zones: [
+      {
+        name_en: 'Day Pass',
+        name_km: 'សំបុត្រពេញមួយថ្ងៃ',
+        price_usd_cents: 1400,
+        capacity: 500,
+        held_qty: 5,
+        sold_qty: 214,
+      },
+    ],
+  })
+
+  addEvent({
+    organizer_id: 2,
+    venue_id: angkorAmphi.id,
+    inventory_mode: 'SEATED',
+    slug: 'angkor-half-marathon-pasta-night',
+    title_en: 'Angkor Half Marathon — Carb Night',
+    title_km: 'អង្គរហាហ្វម៉ារ៉ាតុង — រាត្រីអាហារមុនប្រណាំង',
+    description_en:
+      'Race-eve dinner and briefing for registered runners, with the course walkthrough on the big screen.',
+    description_km:
+      'អាហារពេលល្ងាចមុនថ្ងៃប្រណាំង និងការណែនាំសម្រាប់អ្នករត់ដែលបានចុះឈ្មោះ ជាមួយការបង្ហាញផ្លូវប្រណាំងលើអេក្រង់ធំ។',
+    starts_at: days(42),
+    doors_open_at: days(42),
+    sales_open_at: days(-12),
+    sales_close_at: days(41),
+    cover: 'lime',
+    category: 'sport',
+    classes: [
+      { name_en: 'Terrace', name_km: 'ដីរាប', price_usd_cents: 1200, section_label: 'Terrace' },
+    ],
+    soldRatio: 0.29,
+  })
+
+  addEvent({
+    organizer_id: 3,
+    venue_id: chisorField.id,
+    inventory_mode: 'ZONED',
+    slug: 'takeo-countryside-music-camp',
+    title_en: 'Takeo Countryside Music Camp',
+    title_km: 'ជំរុំតន្ត្រីជនបទតាកែវ',
+    description_en:
+      'An overnight camp under Phnom Chisor: acoustic sets, a shared kitchen, and space to pitch a tent.',
+    description_km:
+      'ជំរុំមួយយប់នៅក្រោមភ្នំជីសូរ៖ ការសម្តែងតន្ត្រីអាកូស្ទិក ផ្ទះបាយរួម និងទីកន្លែងសម្រាប់ដំឡើងតង់។',
+    starts_at: days(54),
+    doors_open_at: days(54),
+    sales_open_at: days(-8),
+    sales_close_at: days(53),
+    cover: 'cyan',
+    category: 'festival',
+    zones: [
+      {
+        name_en: 'Camping Pass',
+        name_km: 'សំបុត្រជំរុំ',
+        price_usd_cents: 1800,
+        capacity: 350,
+        held_qty: 3,
+        sold_qty: 96,
+      },
+      {
+        name_en: 'Day Only',
+        name_km: 'តែពេលថ្ងៃ',
+        price_usd_cents: 900,
+        capacity: 250,
+        held_qty: 0,
+        sold_qty: 61,
+      },
+    ],
+  })
+
+  addEvent({
+    organizer_id: 1,
+    venue_id: chaktomuk.id,
+    inventory_mode: 'SEATED',
+    slug: 'national-classical-gala',
+    title_en: 'National Classical Gala',
+    title_km: 'មហោស្រពតន្ត្រីបុរាណជាតិ',
+    description_en:
+      'Pinpeat and smot ensembles from four provinces share one stage for the Royal University anniversary.',
+    description_km:
+      'វង់ភ្លេងពិណពាទ្យ និងក្រុមស្មូតមកពីបួនខេត្ត ឡើងសម្តែងលើឆាកតែមួយ ក្នុងឱកាសខួបសាកលវិទ្យាល័យភូមិន្ទ។',
+    starts_at: days(64),
+    doors_open_at: days(64),
+    sales_open_at: days(-6),
+    sales_close_at: days(63),
+    cover: 'indigo',
+    category: 'culture',
+    classes: [
+      { name_en: 'Zone A', name_km: 'តំបន់ ក', price_usd_cents: 3200, section_label: 'Zone A' },
+      { name_en: 'Zone B', name_km: 'តំបន់ ខ', price_usd_cents: 1800, section_label: 'Zone B' },
+    ],
+    soldRatio: 0.12,
+  })
+
+  addEvent({
+    organizer_id: 2,
+    venue_id: beachArena.id,
+    inventory_mode: 'ZONED',
+    slug: 'sihanoukville-sunset-sessions',
+    title_en: 'Sunset Sessions — Otres Beach',
+    title_km: 'វគ្គថ្ងៃលិច — ឆ្នេរអូត្រែស',
+    description_en: 'Weekly sundown DJ set on the sand. Bring nothing, buy a drink, stay for the stars.',
+    description_km:
+      'ការសម្តែងរបស់ឌីជេពេលថ្ងៃលិចប្រចាំសប្តាហ៍នៅលើខ្សាច់។ មិនចាំបាច់យកអ្វីមក ទិញភេសជ្ជៈមួយ រួចនៅមើលផ្កាយ។',
+    starts_at: days(7),
+    doors_open_at: days(7),
+    sales_open_at: days(-16),
+    sales_close_at: days(6),
+    cover: 'sunset',
+    category: 'music',
+    zones: [
+      {
+        name_en: 'GA Beach',
+        name_km: 'ចូលទូទៅ ឆ្នេរ',
+        price_usd_cents: 700,
+        capacity: 600,
+        held_qty: 9,
+        sold_qty: 523,
+      },
+    ],
+  })
+
+  addEvent({
+    organizer_id: 1,
+    venue_id: kohPich.id,
+    inventory_mode: 'SEATED',
+    slug: 'phnom-penh-comedy-gala',
+    title_en: 'Phnom Penh Comedy Gala',
+    title_km: 'មហោស្រពកំប្លែងភ្នំពេញ',
+    description_en: 'Eight comedians, two languages, one microphone. Khmer and English sets alternate.',
+    description_km:
+      'អ្នកកំប្លែង ៨ នាក់ ពីរភាសា មីក្រូតែមួយ។ ការសម្តែងជាភាសាខ្មែរ និងអង់គ្លេសឆ្លាស់គ្នា។',
+    starts_at: days(24),
+    doors_open_at: days(24),
+    sales_open_at: days(-28),
+    sales_close_at: days(23),
+    cover: 'rose',
+    category: 'comedy',
+    classes: [
+      { name_en: 'Main Floor', name_km: 'កម្រាលឥដ្ឋធំ', price_usd_cents: 1900, section_label: 'Main Floor' },
+    ],
+    soldRatio: 0.63,
+  })
+
+  // A second draft + a second take-down, so the moderation screens have volume.
+  addEvent({
+    organizer_id: 3,
+    venue_id: battambangHall.id,
+    inventory_mode: 'SEATED',
+    slug: 'battambang-film-week',
+    title_en: 'Battambang Film Week',
+    title_km: 'សប្តាហ៍ភាពយន្តបាត់ដំបង',
+    description_en: 'Programme still being confirmed with the visiting directors.',
+    description_km: 'កម្មវិធីកំពុងបញ្ជាក់ជាមួយអ្នកដឹកនាំរឿងដែលមកទស្សនកិច្ច។',
+    status: 'DRAFT',
+    starts_at: days(88),
+    doors_open_at: days(88),
+    sales_open_at: days(20),
+    sales_close_at: days(87),
+    cover: 'teal',
+    category: 'culture',
+    classes: [
+      { name_en: 'Hall Floor', name_km: 'កម្រាលសាល', price_usd_cents: 1000, section_label: 'Hall Floor' },
+    ],
+  })
+
+  addEvent({
+    organizer_id: 2,
+    venue_id: angkorConvention.id,
+    inventory_mode: 'ZONED',
+    slug: 'crypto-expo-taken-down',
+    title_en: 'Crypto Expo Siem Reap',
+    title_km: 'ពិព័រណ៍គ្រីបតូសៀមរាប',
+    description_en: 'Taken down after the organizer could not verify the advertised speakers.',
+    description_km: 'ត្រូវបានដកចេញ បន្ទាប់ពីអ្នករៀបចំមិនអាចផ្ទៀងផ្ទាត់វាគ្មិនដែលបានផ្សាយ។',
+    status: 'TAKEN_DOWN',
+    starts_at: days(45),
+    doors_open_at: days(45),
+    sales_open_at: days(-15),
+    sales_close_at: days(44),
+    cover: 'cyan',
+    category: 'conference',
+    zones: [
+      {
+        name_en: 'GA Expo',
+        name_km: 'ចូលទូទៅ ពិព័រណ៍',
+        price_usd_cents: 4000,
+        capacity: 800,
+        held_qty: 0,
+        sold_qty: 12,
+      },
+    ],
+  })
+
   // Normalise show times to realistic local hours (the offsets above are
   // relative to "now", which would otherwise put doors open at 14:05).
   for (const event of events) {
@@ -687,7 +1204,13 @@ export function buildSeed() {
       event_id: event.id,
       user_id: cfg.userId,
       status: holdStatus,
-      expires_at: cfg.holdExpiresAt || new Date(now - 3600000).toISOString(),
+      // A hold that is still ACTIVE (awaiting confirmation, or a failed attempt
+      // the customer can retry) must not already be past its expiry, or the
+      // store's sweep expires it on first read and the booking flips to
+      // EXPIRED. Consumed/released holds keep a past timestamp.
+      expires_at:
+        cfg.holdExpiresAt ||
+        (holdStatus === 'ACTIVE' ? days(2) : new Date(now - 3600000).toISOString()),
       created_at: cfg.createdAt,
       extended: false,
     }
@@ -1024,6 +1547,230 @@ export function buildSeed() {
     history: [
       { from: null, to: 'PENDING_PAYMENT', by: 6, at: days(-1) },
       { from: 'PENDING_PAYMENT', to: 'CONFIRMED', by: null, at: days(-1) },
+    ],
+  })
+
+  // ------------------------------------------------- bookings on the new events
+  // Volume for the admin tables, the organizer sales summaries and the
+  // reconciliation flag, spread across the customers added above.
+  const paid = (provider, ref) => [{ provider, status: 'SUCCESS', provider_ref: ref }]
+  const confirmedHistory = (userId, at) => [
+    { from: null, to: 'PENDING_PAYMENT', by: userId, at },
+    { from: 'PENDING_PAYMENT', to: 'CONFIRMED', by: null, at },
+  ]
+
+  seedBooking({
+    eventId: 10,
+    userId: 8,
+    state: 'CONFIRMED',
+    buyerName: 'Ratana Kim',
+    buyerPhone: '+85592334455',
+    buyerEmail: 'ratana.k@example.com',
+    createdAt: days(-5),
+    stateChangedAt: days(-5),
+    seats: [{ className: 'Hall Floor', qty: 2 }],
+    paymentAttempts: paid('BAKONG_KHQR', 'BKG-91200455'),
+    history: confirmedHistory(8, days(-5)),
+  })
+
+  seedBooking({
+    eventId: 11,
+    userId: 9,
+    state: 'CONFIRMED',
+    buyerName: 'Chenda Pich',
+    buyerPhone: '+85578220011',
+    createdAt: days(-9),
+    stateChangedAt: days(-9),
+    zones: [{ zoneName: 'GA Riverbank', qty: 4 }],
+    paymentAttempts: paid('ABA_PAYWAY', 'ABA-TXN-80145'),
+    history: confirmedHistory(9, days(-9)),
+  })
+
+  seedBooking({
+    eventId: 12,
+    userId: 10,
+    state: 'CONFIRMED',
+    buyerName: 'Nita Chhun',
+    buyerPhone: '+85512667788',
+    buyerEmail: 'nita@example.com',
+    createdAt: days(-7),
+    stateChangedAt: days(-7),
+    seats: [{ className: 'Auditorium', qty: 1 }],
+    paymentAttempts: paid('BAKONG_KHQR', 'BKG-91330871'),
+    history: confirmedHistory(10, days(-7)),
+    checkedIn: days(-0.4),
+  })
+
+  // A second live hold, on a different account and event.
+  seedBooking({
+    eventId: 13,
+    userId: 11,
+    state: 'PENDING_PAYMENT',
+    buyerName: 'Sokha Tep',
+    buyerPhone: '+85517889900',
+    createdAt: mins(-3),
+    holdExpiresAt: mins(7),
+    zones: [{ zoneName: 'GA Pit', qty: 2 }],
+    paymentAttempts: [{ provider: 'BAKONG_KHQR', status: 'PENDING', provider_ref: 'BKG-99510338' }],
+    history: [{ from: null, to: 'PENDING_PAYMENT', by: 11, at: mins(-3) }],
+  })
+
+  seedBooking({
+    eventId: 14,
+    userId: 12,
+    state: 'CONFIRMED',
+    buyerName: 'Bopha Rin',
+    buyerPhone: '+85569445566',
+    createdAt: days(-4),
+    stateChangedAt: days(-4),
+    zones: [{ zoneName: 'Day Pass', qty: 2 }],
+    paymentAttempts: paid('BAKONG_KHQR', 'BKG-91442201'),
+    history: confirmedHistory(12, days(-4)),
+    checkedIn: days(-0.1),
+  })
+
+  seedBooking({
+    eventId: 15,
+    userId: 13,
+    state: 'REFUND_REQUESTED',
+    buyerName: 'James Whitfield',
+    buyerPhone: '+85597001122',
+    buyerEmail: 'james.w@example.com',
+    createdAt: days(-13),
+    stateChangedAt: days(-2),
+    seats: [{ className: 'Terrace', qty: 2 }],
+    paymentAttempts: paid('ABA_PAYWAY', 'ABA-TXN-80990'),
+    history: [
+      { from: null, to: 'PENDING_PAYMENT', by: 13, at: days(-13) },
+      { from: 'PENDING_PAYMENT', to: 'CONFIRMED', by: null, at: days(-13) },
+      { from: 'CONFIRMED', to: 'REFUND_REQUESTED', by: 13, note: 'Injured, cannot run', at: days(-2) },
+    ],
+  })
+
+  seedBooking({
+    eventId: 17,
+    userId: 8,
+    state: 'CONFIRMED',
+    buyerName: 'Ratana Kim',
+    buyerPhone: '+85592334455',
+    createdAt: days(-3),
+    stateChangedAt: days(-3),
+    seats: [{ className: 'Zone A', qty: 3 }],
+    paymentAttempts: paid('BAKONG_KHQR', 'BKG-91556690'),
+    history: confirmedHistory(8, days(-3)),
+  })
+
+  seedBooking({
+    eventId: 18,
+    userId: 9,
+    state: 'CONFIRMED',
+    buyerName: 'Chenda Pich',
+    buyerPhone: '+85578220011',
+    createdAt: days(-2),
+    stateChangedAt: days(-2),
+    zones: [{ zoneName: 'GA Beach', qty: 2 }],
+    paymentAttempts: paid('ABA_PAYWAY', 'ABA-TXN-81233'),
+    history: confirmedHistory(9, days(-2)),
+  })
+
+  seedBooking({
+    eventId: 19,
+    userId: 10,
+    state: 'PAYMENT_FAILED',
+    buyerName: 'Nita Chhun',
+    buyerPhone: '+85512667788',
+    createdAt: days(-1),
+    stateChangedAt: days(-1),
+    seats: [{ className: 'Main Floor', qty: 2 }],
+    paymentAttempts: [
+      { provider: 'ABA_PAYWAY', status: 'FAILED', provider_ref: 'ABA-TXN-81400' },
+    ],
+    history: [
+      { from: null, to: 'PENDING_PAYMENT', by: 10, at: days(-1) },
+      { from: 'PENDING_PAYMENT', to: 'PAYMENT_FAILED', by: null, note: 'Card declined', at: days(-1) },
+    ],
+  })
+
+  // A second payment stuck without a webhook — the reconciliation flag needs
+  // more than one row to be worth looking at.
+  seedBooking({
+    eventId: 19,
+    userId: 5,
+    state: 'AWAITING_CONFIRMATION',
+    buyerName: 'Ly Hour',
+    buyerPhone: '+85596112233',
+    createdAt: hours(-6),
+    stateChangedAt: hours(-5),
+    seats: [{ className: 'Main Floor', qty: 1 }],
+    paymentAttempts: [
+      { provider: 'ABA_PAYWAY', status: 'PENDING', provider_ref: 'ABA-TXN-81455', created_at: hours(-6) },
+    ],
+    history: [
+      { from: null, to: 'PENDING_PAYMENT', by: 5, at: hours(-6) },
+      { from: 'PENDING_PAYMENT', to: 'AWAITING_CONFIRMATION', by: null, note: 'No webhook yet', at: hours(-5) },
+    ],
+  })
+
+  seedBooking({
+    eventId: 11,
+    userId: 14,
+    state: 'REFUNDED',
+    buyerName: 'Rithy Long',
+    buyerPhone: '+85586773311',
+    createdAt: days(-19),
+    stateChangedAt: days(-10),
+    zones: [{ zoneName: 'Shaded Grandstand', qty: 2 }],
+    paymentAttempts: paid('BAKONG_KHQR', 'BKG-90880012'),
+    history: [
+      { from: null, to: 'PENDING_PAYMENT', by: 14, at: days(-19) },
+      { from: 'PENDING_PAYMENT', to: 'CONFIRMED', by: null, at: days(-19) },
+      { from: 'CONFIRMED', to: 'REFUND_REQUESTED', by: 14, at: days(-12) },
+      { from: 'REFUND_REQUESTED', to: 'REFUNDED', by: 3, note: 'Chargeback raised', at: days(-10) },
+    ],
+  })
+
+  seedBooking({
+    eventId: 16,
+    userId: 12,
+    state: 'CONFIRMED',
+    buyerName: 'Bopha Rin',
+    buyerPhone: '+85569445566',
+    createdAt: days(-6),
+    stateChangedAt: days(-6),
+    zones: [{ zoneName: 'Camping Pass', qty: 1 }],
+    paymentAttempts: paid('BAKONG_KHQR', 'BKG-91610044'),
+    history: confirmedHistory(12, days(-6)),
+  })
+
+  seedBooking({
+    eventId: 10,
+    userId: 6,
+    state: 'CANCELLED',
+    buyerName: 'Srey Mom',
+    buyerPhone: '+85588554477',
+    createdAt: days(-10),
+    stateChangedAt: days(-10),
+    seats: [{ className: 'Hall Floor', qty: 1 }],
+    paymentAttempts: [{ provider: 'BAKONG_KHQR', status: 'CANCELLED', provider_ref: 'BKG-90990123' }],
+    history: [
+      { from: null, to: 'PENDING_PAYMENT', by: 6, at: days(-10) },
+      { from: 'PENDING_PAYMENT', to: 'CANCELLED', by: 6, note: 'Changed plans', at: days(-10) },
+    ],
+  })
+
+  seedBooking({
+    eventId: 12,
+    userId: 13,
+    state: 'EXPIRED',
+    buyerName: 'James Whitfield',
+    buyerPhone: '+85597001122',
+    createdAt: days(-8),
+    stateChangedAt: days(-8),
+    seats: [{ className: 'Auditorium', qty: 2 }],
+    paymentAttempts: [{ provider: 'BAKONG_KHQR', status: 'EXPIRED', provider_ref: 'BKG-91010777' }],
+    history: [
+      { from: null, to: 'PENDING_PAYMENT', by: 13, at: days(-8) },
+      { from: 'PENDING_PAYMENT', to: 'EXPIRED', by: null, note: 'Hold expired before payment', at: days(-8) },
     ],
   })
 

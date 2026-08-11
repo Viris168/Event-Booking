@@ -202,7 +202,19 @@ The FX rate is `FX_RATE_KHR_PER_USD` in `lib/format.js`; bookings store their ow
 a historical total.
 
 ### Fake data
-[web/src/mock/seed.js](web/src/mock/seed.js) builds the world on page load.
+[web/src/mock/seed.js](web/src/mock/seed.js) builds the world on page load:
+
+| | |
+|---|---|
+| 15 users | 11 customers, 3 organizers, 1 admin, 2 disabled |
+| 11 venues | 762 seats, covering all 8 provinces |
+| 21 events | 17 published, 2 draft, 2 taken down; every category and all three inventory modes |
+| 26 bookings | at least two in each of the eight states, 38 tickets, 27 payment attempts |
+
+That is enough to paginate the events list (3 pages at 8 per page), fill the
+admin tables, give every filter something to match, and put three payments in
+the "pending too long" reconciliation flag.
+
 
 - **Add an event** → another `addEvent({...})` call. `classes` = seated pricing
   per venue section, `zones` = general-admission tiers, `soldRatio` controls how
