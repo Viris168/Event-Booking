@@ -98,7 +98,7 @@ export default function PaymentPage() {
           <h1>{isKhqr ? t('scanToPay') : t('payway')}</h1>
           <p>
             {locale === 'km' ? event.title_km : event.title_en} · {t('bookingRef')}{' '}
-            <span className="mono strong">{booking.booking_ref}</span>
+            <span className="mono font-bold">{booking.booking_ref}</span>
           </p>
         </div>
         <Badge status={booking.state} />
@@ -125,7 +125,7 @@ export default function PaymentPage() {
               </div>
               <div className="qr-body">
                 <QrGlyph token={payment?.provider_ref || booking.booking_ref} label="Bakong KHQR" />
-                <span className="small muted center">
+                <span className="small muted text-center">
                   {locale === 'km'
                     ? 'ស្កេនដោយ Bakong, ABA, ACLEDA, Wing…'
                     : 'Scan with Bakong, ABA, ACLEDA, Wing…'}
@@ -134,7 +134,7 @@ export default function PaymentPage() {
             </div>
           ) : (
             <div className="panel">
-              <div className="panel-body stack-sm center" style={{ alignItems: 'center' }}>
+              <div className="panel-body stack-sm text-center" style={{ alignItems: 'center' }}>
                 <span className="icon-chip lg">
                   <Icon name="bank" size={22} />
                 </span>
@@ -175,7 +175,7 @@ export default function PaymentPage() {
                 size={18}
               />
             )}
-            <span className="grow">
+            <span className="flex-auto min-w-0">
               {payment?.status === 'SUCCESS'
                 ? t('paymentReceived')
                 : payment?.status === 'FAILED'

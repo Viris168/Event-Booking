@@ -99,7 +99,7 @@ export default function OrganizerDashboardPage() {
                   return (
                     <tr key={e.id}>
                       <td>
-                        <Link to={`/events/${e.id}`} className="strong">
+                        <Link to={`/events/${e.id}`} className="font-bold">
                           {locale === 'km' ? e.title_km : e.title_en}
                         </Link>
                         <div className="small muted">{locale === 'km' ? venue?.name_km : venue?.name_en}</div>
@@ -112,13 +112,13 @@ export default function OrganizerDashboardPage() {
                       </td>
                       <td className="small">{date(e.starts_at)}</td>
                       <td>
-                        <div className="small strong">
+                        <div className="small font-bold">
                           {inv.sold} / {inv.capacity}
                           {inv.held ? <span className="muted"> · {inv.held} held</span> : null}
                         </div>
                         <Progress sold={inv.sold} held={inv.held} capacity={inv.capacity} />
                       </td>
-                      <td className="num strong">{usd(sales.revenue_usd_cents)}</td>
+                      <td className="num font-bold">{usd(sales.revenue_usd_cents)}</td>
                       <td>
                         <div className="row row-tight">
                           <Link className="btn btn-sm btn-outline" to={`/organizer/events/${e.id}/edit`}>

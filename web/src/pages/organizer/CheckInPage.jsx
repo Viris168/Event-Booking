@@ -72,7 +72,7 @@ export default function CheckInPage() {
                 <Field label={t('manualEntry')} hint="eb-4820-kh-1-1">
                   <div className="row">
                     <input
-                      className="input grow"
+                      className="input flex-auto min-w-0"
                       value={code}
                       onChange={(e) => setCode(e.target.value)}
                       placeholder="Ticket code"

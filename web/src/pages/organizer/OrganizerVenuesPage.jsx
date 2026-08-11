@@ -188,7 +188,7 @@ export default function OrganizerVenuesPage() {
               <div className="panel-body stack-sm">
                 <div className="spread">
                   <div>
-                    <div className="strong">{locale === 'km' ? venue.name_km : venue.name_en}</div>
+                    <div className="font-bold">{locale === 'km' ? venue.name_km : venue.name_en}</div>
                     <div className={locale === 'km' ? 'small muted' : 'small muted km'}>
                       {locale === 'km' ? venue.name_en : venue.name_km}
                     </div>

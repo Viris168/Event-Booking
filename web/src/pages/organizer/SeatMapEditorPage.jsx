@@ -180,7 +180,7 @@ export default function SeatMapEditorPage() {
                 <input className="input" value={section} onChange={(e) => setSection(e.target.value)} />
               </Field>
               <div className="row">
-                <Field label={locale === 'km' ? 'ជួរ' : 'Rows'} className="grow">
+                <Field label={locale === 'km' ? 'ជួរ' : 'Rows'} className="flex-auto min-w-0">
                   <input
                     className="input"
                     type="number"
@@ -190,7 +190,7 @@ export default function SeatMapEditorPage() {
                     onChange={(e) => setRows(e.target.value)}
                   />
                 </Field>
-                <Field label={locale === 'km' ? 'កៅអី/ជួរ' : 'Seats per row'} className="grow">
+                <Field label={locale === 'km' ? 'កៅអី/ជួរ' : 'Seats per row'} className="flex-auto min-w-0">
                   <input
                     className="input"
                     type="number"
@@ -235,7 +235,7 @@ export default function SeatMapEditorPage() {
                 <tbody>
                   {sections.map((s) => (
                     <tr key={s.label}>
-                      <td className="strong">{s.label}</td>
+                      <td className="font-bold">{s.label}</td>
                       <td className="num">{s.rows}</td>
                       <td className="num">{s.count}</td>
                       <td>

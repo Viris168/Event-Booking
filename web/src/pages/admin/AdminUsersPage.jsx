@@ -87,7 +87,7 @@ export default function AdminUsersPage() {
                   <Fragment key={u.id}>
                     <tr className={u.is_disabled ? 'flagged' : ''}>
                       <td>
-                        <div className="strong">{u.display_name}</div>
+                        <div className="font-bold">{u.display_name}</div>
                         <div className="small muted">#{u.id}</div>
                       </td>
                       <td>

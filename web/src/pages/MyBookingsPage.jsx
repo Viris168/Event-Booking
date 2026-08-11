@@ -66,7 +66,7 @@ export default function MyBookingsPage() {
               <Link key={booking.id} to={`/bookings/${booking.id}`} className="card">
                 <div className="card-body">
                   <div className="spread">
-                    <div className="grow">
+                    <div className="flex-auto min-w-0">
                       <div className="row row-tight">
                         <Badge status={booking.state} />
                         <span className="mono small muted">{booking.booking_ref}</span>
@@ -77,7 +77,7 @@ export default function MyBookingsPage() {
                           </span>
                         )}
                       </div>
-                      <div className="strong" style={{ marginTop: '0.35rem' }}>
+                      <div className="font-bold" style={{ marginTop: '0.35rem' }}>
                         {locale === 'km' ? event.title_km : event.title_en}
                       </div>
                       <div className="meta-row">

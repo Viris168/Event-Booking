@@ -167,7 +167,7 @@ export default function RegisterPage() {
             </button>
           </form>
 
-          <p className="small muted center" style={{ marginTop: '1rem' }}>
+          <p className="small muted text-center" style={{ marginTop: '1rem' }}>
             {t('haveAccount')} <Link to="/login">{t('login')}</Link>
           </p>
         </div>

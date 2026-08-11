@@ -18,7 +18,7 @@ export default function OrganizerLayout() {
         ]}
       />
       {!organizerProfile && isAdmin && (
-        <div className="container flush" style={{ paddingBottom: 0 }}>
+        <div className="container pt-0!" style={{ paddingBottom: 0 }}>
           <Alert tone="info" title="Viewing as platform admin">
             You have no organizer profile of your own, so these screens show every organizer's
             events and venues.

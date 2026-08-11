@@ -102,7 +102,7 @@ export default function AdminEventsPage() {
                 return (
                   <tr key={e.id} className={e.status === 'TAKEN_DOWN' ? 'flagged' : ''}>
                     <td>
-                      <Link to={`/events/${e.id}`} className="strong">
+                      <Link to={`/events/${e.id}`} className="font-bold">
                         {locale === 'km' ? e.title_km : e.title_en}
                       </Link>
                       <div className="small muted">
@@ -121,7 +121,7 @@ export default function AdminEventsPage() {
                       </div>
                       <Progress sold={inv.sold} held={inv.held} capacity={inv.capacity} />
                     </td>
-                    <td className="num strong">{usd(salesSummary(e.id).revenue_usd_cents)}</td>
+                    <td className="num font-bold">{usd(salesSummary(e.id).revenue_usd_cents)}</td>
                     <td>
                       <div className="row row-tight">
                         <Link className="btn btn-sm btn-ghost" to={`/organizer/events/${e.id}/sales`}>

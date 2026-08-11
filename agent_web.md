@@ -1,7 +1,7 @@
 # Web frontend — change guide
 
-The `web/` app is a **UI prototype**: React 19 + Vite + React Router 7, plain CSS,
-**no API calls**. Everything on screen comes from an in-memory mock backend that
+The `web/` app is a **UI prototype**: React 19 + Vite + React Router 7 +
+**Tailwind CSS 4**, **no API calls**. Everything on screen comes from an in-memory mock backend that
 mirrors `api/src/main/resources/db/migration/V1__schema.sql` field for field, so
 swapping in the real API later is a matter of replacing one file's functions.
 
@@ -29,7 +29,8 @@ switch roles without logging out:
 web/src
 ├── main.jsx                  provider stack: Router > Locale > Toast > Auth > App
 ├── App.jsx                   ALL routes (public / customer / organizer / admin)
-├── styles/index.css          the whole design system (tokens at the top)
+├── styles/index.css          the whole Tailwind 4 setup: @theme tokens,
+│                             @utility helpers, @layer components
 ├── lib/
 │   ├── format.js             money (USD+KHR), dates, countdown, phone regex
 │   └── i18n.js               EN/KM dictionary + status labels
@@ -55,41 +56,86 @@ web/src
 
 ## 2. Common changes
 
-### Colors, spacing, shadows
-Everything is a token at the top of [web/src/styles/index.css](web/src/styles/index.css)
-under `:root` — `--brand-*`, `--gold-*`, `--ink`, `--line`, `--r*` (radii),
-`--shadow*`. Change a token, the whole app follows.
+### Styling — Tailwind CSS 4
+
+Tailwind 4 is configured **entirely in CSS**. There is no `tailwind.config.js`
+and no PostCSS setup — `@tailwindcss/vite` is registered in `vite.config.js` and
+everything else lives in [web/src/styles/index.css](web/src/styles/index.css),
+which has four parts:
+
+| Block | What goes there |
+|---|---|
+| `@theme` | design tokens; each one also generates utilities (`bg-brand-600`, `text-muted`, `rounded-card`, `shadow-float`, `max-w-shell`, `px-page`) |
+| `@layer base` | element defaults (body type, headings, links, focus ring) |
+| `@utility` | single-purpose helpers registered as real utilities, so `md:stack` works |
+| `@layer components` | multi-element / stateful components (`.btn`, `.panel`, `.ev-card`, `.holdbar`, the seat map, the eight `.s-*` status pills) |
+
+Change a token, the whole app follows. Any Tailwind utility can also be used
+directly in JSX — that is the preferred way to write **new** markup.
+
+**Why components are still CSS.** Several classes are built at runtime —
+`` `s-${booking.state}` ``, `` `cover-${event.cover}` ``, `` `alert-${tone}` `` —
+so Tailwind's scanner can never see them. CSS in `@layer components` is always
+emitted, which makes those safe; a utility-string built in JS would be purged.
+
+**Three traps worth knowing** (all of them bit during the migration):
+
+1. **The utilities layer outranks components.** A helper defined with `@utility`
+   beats any component rule that tries to override it, regardless of
+   specificity. That is why `.row`/`.row-tight`, `.tiny`, `.km`, `.small` and
+   `.mono` are component classes, not utilities.
+2. **One key name per namespace.** `--spacing-page` and `--container-page` would
+   both answer to `page`, and `max-w-page` silently resolved to the *spacing*
+   value (1.15rem). The width token is therefore `--container-shell`
+   (`max-w-shell`) and the gutter is `--spacing-page` (`px-page`).
+3. **Named font sizes carry a line-height.** `text-base` sets `font-size` *and*
+   `line-height`; the hand-written CSS only ever set `font-size`. Use
+   `text-[1rem]` when you want the inherited line-height.
+
+`container` is a Tailwind built-in, so ours is declared with `@utility
+container` to override it — otherwise the built-in's breakpoint max-widths win
+and clamp the shell to 1280px.
+
+Booking-status colours are the `.s-<STATE>` classes. Each of the eight booking
+states has its own pair; **don't collapse two states into one colour** — the
+brief requires distinct treatments. Status colours are named semantically
+(`--color-success`, `--color-danger`, `--color-warning`, `--color-refund`,
+`--color-settled`, `--color-quiet`) so Tailwind's own `green-*`/`red-*` palettes
+stay untouched and available.
 
 ### Page width (header / body / footer alignment)
 Two tokens drive the whole shell, so the navbar, sub-nav, hero, page body and
 footer all share one content column and their edges stay flush:
 
 ```css
---page-max: 1360px;   /* content column width  */
---page-pad: 1.15rem;  /* gutter on both sides  */
+--container-shell: 1360px;  /* content column -> max-w-shell */
+--spacing-page: 1.15rem;    /* gutter both sides -> px-page  */
 ```
 
-`.nav-inner`, `.subnav-inner`, `.role-switch-inner`, `.hero-inner`,
-`.container` and `.footer-inner` each apply *both* (max-width **and** their own
-horizontal padding). If you add another full-bleed band, follow that pattern —
-putting the padding on the parent instead shifts the content edge and breaks
-alignment. `.container-narrow` keeps the full-width shell and centres a 640px
-reading column inside it, so login/404 pages still line up.
+`.nav-inner`, `.subnav-inner`, `.role-switch-inner`, `.hero-inner`, `container`
+and `.footer-inner` each apply *both* (max-width **and** their own horizontal
+padding). If you add another full-bleed band, follow that pattern — putting the
+padding on the parent instead shifts the content edge and breaks alignment.
+`.container-narrow` keeps the full-width shell and centres a 640px reading
+column inside it, so login/404 pages still line up.
 
 Event-card rows use `.grid-cards` (4-up → 3 at 1180px → 2 at 980px → 1 at
-640px). If you change `--page-max`, re-check that grid and `PAGE_SIZE` in
+640px). If you change `--container-shell`, re-check that grid and `PAGE_SIZE` in
 `EventsPage.jsx` (currently 8, i.e. two full rows of four).
 
-### Brand name
-The product name lives in one place: the `brand` key in
-[web/src/lib/i18n.js](web/src/lib/i18n.js) (currently `KH-Event Booking`, kept
-Latin in both locales). It renders in the navbar and footer. Two other copies
-are intentionally standalone: the `<title>` in `web/index.html`, and the
-merchant line on the KHQR panel in `PaymentPage.jsx`.
+### Responsive
+Every page is checked for horizontal overflow at 1024 / 768 / 390px.
 
-Booking-status colors are the `.s-<STATE>` classes in the same file. Each of the
-eight booking states has its own pair; **don't collapse two states into one
-color** — the brief requires distinct treatments.
+The navbar switches at **960px**: above it, the full bar; below it, the brand,
+the live hold countdown and a hamburger that opens `.nav-drawer` — stacked links
+with icons, the user block with log-out, the language toggle and the demo role
+switch. The drawer closes on navigation, on Escape and on an outside click. The
+hold countdown deliberately sits *outside* the drawer so it is never hidden.
+
+Other breakpoints: `.split` and `.summary` collapse at 900px, `.pay-grid` and
+`.search-row` at 820px (single column at 560px), `.searchbar` at 760px,
+`.ticket` at 520px. Tables and the seat map scroll horizontally inside their own
+wrappers rather than stretching the page.
 
 ### Icons
 [web/src/components/Icon.jsx](web/src/components/Icon.jsx) is a self-contained

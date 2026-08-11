@@ -394,7 +394,7 @@ export default function EventDetailPage() {
                     {t('goToCheckout')}
                     <Icon name="arrowRight" size={16} />
                   </Link>
-                  <p className="hint center" style={{ marginTop: '0.5rem' }}>
+                  <p className="hint text-center" style={{ marginTop: '0.5rem' }}>
                     <Icon name="clock" size={13} /> {t('notYoursYet')}
                   </p>
                 </>
@@ -457,7 +457,7 @@ export default function EventDetailPage() {
                   >
                     {reserving ? t('reserving') : `${t('reserve')} · 10:00`}
                   </button>
-                  <p className="hint center" style={{ marginTop: '0.5rem' }}>
+                  <p className="hint text-center" style={{ marginTop: '0.5rem' }}>
                     {locale === 'km'
                       ? 'ការកក់ទុករយៈពេល ១០ នាទី។ សំបុត្រជារបស់អ្នកបន្ទាប់ពីបង់ប្រាក់ជោគជ័យ។'
                       : 'Reserving holds them for 10 minutes. They are only yours once payment clears.'}
@@ -471,7 +471,7 @@ export default function EventDetailPage() {
             <div className="panel-body stack-sm">
               <div className="spread">
                 <span className="tiny">{t('capacity')}</span>
-                <span className="small strong">
+                <span className="small font-bold">
                   {summary.sold} / {summary.capacity}
                 </span>
               </div>

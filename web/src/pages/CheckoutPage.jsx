@@ -158,7 +158,7 @@ export default function CheckoutPage() {
                   <span className="rc-logo" aria-hidden="true">
                     <Icon name="qr" size={19} />
                   </span>
-                  <span className="grow">
+                  <span className="flex-auto min-w-0">
                     <span className="rc-title">{t('khqr')}</span>
                     <span className="rc-sub">{t('khqrHint')}</span>
                   </span>
@@ -176,7 +176,7 @@ export default function CheckoutPage() {
                   <span className="rc-logo" aria-hidden="true">
                     <Icon name="bank" size={19} />
                   </span>
-                  <span className="grow">
+                  <span className="flex-auto min-w-0">
                     <span className="rc-title">{t('payway')}</span>
                     <span className="rc-sub">{t('paywayHint')}</span>
                   </span>

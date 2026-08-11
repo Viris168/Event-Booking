@@ -126,14 +126,14 @@ export default function AdminDashboardPage() {
                       </Link>
                     </td>
                     <td>
-                      <div className="small strong">{b.buyer_name}</div>
+                      <div className="small font-bold">{b.buyer_name}</div>
                       <div className="small muted mono">{b.buyer_phone_e164}</div>
                     </td>
                     <td className="small">{locale === 'km' ? b.event?.title_km : b.event?.title_en}</td>
                     <td>
                       <Badge status={b.state} />
                     </td>
-                    <td className="num strong">{usd(b.total_usd_cents)}</td>
+                    <td className="num font-bold">{usd(b.total_usd_cents)}</td>
                     <td className="small muted" title={dateTime(b.created_at)}>
                       {timeAgo(b.created_at)}
                     </td>

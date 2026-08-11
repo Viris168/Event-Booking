@@ -112,7 +112,7 @@ export default function EventSalesPage() {
                 {summary.lines.map((line) => (
                   <tr key={`${line.kind}-${line.id}`}>
                     <td>
-                      <div className="strong">{locale === 'km' ? line.name_km : line.name_en}</div>
+                      <div className="font-bold">{locale === 'km' ? line.name_km : line.name_en}</div>
                       <div className={locale === 'km' ? 'small muted' : 'small muted km'}>
                         {locale === 'km' ? line.name_en : line.name_km}
                       </div>
@@ -121,7 +121,7 @@ export default function EventSalesPage() {
                       <span className="badge badge-mode">{line.kind === 'SEAT' ? 'Seated' : 'GA'}</span>
                     </td>
                     <td className="num">{usd(line.price_usd_cents)}</td>
-                    <td className="num strong">
+                    <td className="num font-bold">
                       {line.sold}
                       {line.held ? <span className="muted"> +{line.held}</span> : null}
                     </td>
@@ -131,7 +131,7 @@ export default function EventSalesPage() {
                       </div>
                       <Progress sold={line.sold} held={line.held} capacity={line.capacity} />
                     </td>
-                    <td className="num strong">{usd(line.revenue_usd_cents)}</td>
+                    <td className="num font-bold">{usd(line.revenue_usd_cents)}</td>
                   </tr>
                 ))}
                 {!summary.lines.length && (
@@ -155,7 +155,7 @@ export default function EventSalesPage() {
               {STATES.filter((s) => summary.stateCounts[s]).map((s) => (
                 <div className="spread" key={s}>
                   <Badge status={s} />
-                  <span className="strong">{summary.stateCounts[s]}</span>
+                  <span className="font-bold">{summary.stateCounts[s]}</span>
                 </div>
               ))}
               {!Object.keys(summary.stateCounts).length && (
@@ -182,7 +182,7 @@ export default function EventSalesPage() {
                       <td>
                         <Badge status={b.state} />
                       </td>
-                      <td className="num strong">{usd(b.total_usd_cents)}</td>
+                      <td className="num font-bold">{usd(b.total_usd_cents)}</td>
                     </tr>
                   ))}
                   {!bookings.length && (

@@ -27,7 +27,7 @@ export function Money({ cents, rate, stacked = false, className = '' }) {
     )
   }
   return (
-    <span className={`nowrap ${className}`}>
+    <span className={`whitespace-nowrap ${className}`}>
       {usd(cents)} <span className="khr muted">· {riel}</span>
     </span>
   )
@@ -40,7 +40,7 @@ export function Alert({ tone = 'info', icon, title, children, actions }) {
       <span className="alert-icon">
         <Icon name={icon || fallback} size={17} />
       </span>
-      <div className="grow">
+      <div className="flex-auto min-w-0">
         {title && <b>{title}</b>}
         {children}
         {actions && <div className="row" style={{ marginTop: '0.6rem' }}>{actions}</div>}
@@ -55,7 +55,7 @@ export function Empty({ icon = 'ticket', title, children }) {
       <span className="icon-chip lg plain" style={{ marginBottom: '0.7rem' }}>
         <Icon name={icon} size={22} />
       </span>
-      <p className="strong">{title}</p>
+      <p className="font-bold">{title}</p>
       {children && <p className="small">{children}</p>}
     </div>
   )

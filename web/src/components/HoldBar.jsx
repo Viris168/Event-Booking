@@ -24,7 +24,7 @@ export default function HoldBar({ hold, onExtend, onRelease, checkoutTo }) {
         <Icon name="clock" size={17} strokeWidth={2} />
         {countdown(msLeft)}
       </span>
-      <div className="hb-copy grow">
+      <div className="hb-copy flex-auto min-w-0">
         <b>{t('holdActive')}</b>
         <span>
           {t('holdExpiresIn')} {countdown(msLeft)} · {t('notYoursYet')}

@@ -56,7 +56,7 @@ export default function AdminPaymentsPage() {
                     {b.booking_ref}
                   </Link>
                   <span>{b.buyer_name}</span>
-                  <span className="strong">{usd(b.total_usd_cents)}</span>
+                  <span className="font-bold">{usd(b.total_usd_cents)}</span>
                   <button
                     className="btn btn-sm btn-primary"
                     onClick={() => {
@@ -136,7 +136,7 @@ export default function AdminPaymentsPage() {
               {payments.map((p) => (
                 <tr key={p.id} className={p.stuck ? 'flagged' : ''}>
                   <td>
-                    <div className="small strong">{p.provider === 'BAKONG_KHQR' ? 'Bakong KHQR' : 'ABA PayWay'}</div>
+                    <div className="small font-bold">{p.provider === 'BAKONG_KHQR' ? 'Bakong KHQR' : 'ABA PayWay'}</div>
                     <div className="small muted">{p.currency_charged}</div>
                   </td>
                   <td className="mono small">{p.provider_ref || '—'}</td>
@@ -154,7 +154,7 @@ export default function AdminPaymentsPage() {
                       {p.stuck && <span className="badge badge-warm">⚠︎ {t('reconciliation')}</span>}
                     </div>
                   </td>
-                  <td className="num strong">
+                  <td className="num font-bold">
                     {p.currency_charged === 'KHR'
                       ? `៛${p.amount_khr.toLocaleString('en-US')}`
                       : usd(p.amount_usd_cents)}
