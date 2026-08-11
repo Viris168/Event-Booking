@@ -609,16 +609,11 @@ export default function EventFormPage() {
                       key={c}
                       type="button"
                       onClick={() => set('cover', c)}
-                      className={`cover-${c}`}
+                      className={`cover-${c} h-[30px] w-[38px] cursor-pointer rounded-tiny ${
+                        form.cover === c ? 'border-2 border-brand-900' : 'border border-line'
+                      }`}
                       aria-label={c}
                       aria-pressed={form.cover === c}
-                      style={{
-                        width: 38,
-                        height: 30,
-                        borderRadius: 8,
-                        border: form.cover === c ? '2px solid var(--brand-900)' : '1px solid var(--line)',
-                        cursor: 'pointer',
-                      }}
                     />
                   ))}
                 </div>

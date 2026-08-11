@@ -478,11 +478,11 @@ export default function EventDetailPage() {
               <Progress sold={summary.sold} held={summary.held} capacity={summary.capacity} />
               <div className="legend small">
                 <span>
-                  <i className="swatch" style={{ background: 'var(--brand-500)' }} />
+                  <i className="swatch bg-brand-500" />
                   {t('sold')}
                 </span>
                 <span>
-                  <i className="swatch" style={{ background: 'var(--gold-500)' }} />
+                  <i className="swatch bg-gold-500" />
                   {t('heldByOthers')}
                 </span>
               </div>

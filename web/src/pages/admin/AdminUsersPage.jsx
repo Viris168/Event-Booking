@@ -140,7 +140,7 @@ export default function AdminUsersPage() {
                     </tr>
                     {expanded === u.id && (
                       <tr>
-                        <td colSpan="8" style={{ background: 'var(--surface-2)' }}>
+                        <td colSpan="8" className="bg-surface-2">
                           <div className="spread" style={{ marginBottom: '0.5rem' }}>
                             <span className="tiny">
                               {locale === 'km' ? 'ប្រវត្តិការកក់' : 'Booking history'}

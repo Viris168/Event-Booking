@@ -1214,7 +1214,7 @@
     @apply inline-flex items-center overflow-hidden rounded-[10px] border border-line bg-surface;
   }
   .stepper button {
-    @apply h-10 w-[38px] border-0 bg-surface text-[1.1rem] font-bold text-brand-600;
+    @apply grid h-10 w-[38px] place-items-center border-0 bg-surface text-[1.1rem] font-bold text-brand-600;
   }
   .stepper button:disabled {
     @apply cursor-not-allowed;
@@ -1518,7 +1518,7 @@
     @apply mt-[1.6rem] flex items-center justify-center gap-[0.35rem];
   }
   .pager button {
-    @apply h-9 min-w-9 rounded-[9px] border border-line bg-surface text-[0.85rem];
+    @apply grid h-9 min-w-9 place-items-center rounded-[9px] border border-line bg-surface text-[0.85rem];
     font-weight: 650;
   }
   .pager button[aria-current='true'] {
@@ -1667,6 +1667,12 @@
   .icon {
     @apply flex-none;
     vertical-align: -0.18em;
+  }
+  /* The baseline nudge above is for icons sitting next to text; inside a grid or
+     flex centring context it just pushes them off-centre. */
+  :is(.stepper button, .pager button, .nav-icon-btn, .icon-chip, .alert-icon, .clear-btn, .filter-pill button)
+    > .icon {
+    vertical-align: baseline;
   }
   /* Tinted rounded-square icon holder: stat headers, list rows, empty states. */
   .icon-chip {
