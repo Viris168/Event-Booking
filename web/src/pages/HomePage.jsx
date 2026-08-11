@@ -23,8 +23,8 @@ export default function HomePage() {
   const [province, setProvince] = useState('')
 
   const published = listEvents({ sort: 'soonest' })
-  const featured = published.slice(0, 3)
-  const upcoming = published.slice(3, 9)
+  const featured = published.slice(0, 4)
+  const upcoming = published.slice(4, 12)
   const stats = platformStats()
 
   function submit(e) {
@@ -118,7 +118,7 @@ export default function HomePage() {
             </Link>
           </div>
           {featured.length ? (
-            <div className="grid grid-3">
+            <div className="grid grid-cards">
               {featured.map((e) => (
                 <EventCard key={e.id} event={e} />
               ))}
@@ -136,7 +136,7 @@ export default function HomePage() {
               <Icon name="arrowRight" size={15} />
             </Link>
           </div>
-          <div className="grid grid-3">
+          <div className="grid grid-cards">
             {upcoming.map((e) => (
               <EventCard key={e.id} event={e} />
             ))}

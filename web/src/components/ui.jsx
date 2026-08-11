@@ -63,7 +63,7 @@ export function Empty({ icon = 'ticket', title, children }) {
 
 export function Stat({ label, value, sub, icon, tone = '', alert = false }) {
   return (
-    <div className={`stat ${alert ? 'alert' : ''}`}>
+    <div className={`stat ${alert ? 'stat-flagged' : ''}`}>
       <div className="stat-head">
         <span className="stat-label">{label}</span>
         {icon && (

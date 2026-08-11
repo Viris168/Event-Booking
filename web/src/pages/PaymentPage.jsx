@@ -119,7 +119,7 @@ export default function PaymentPage() {
                 </span>
               </div>
               <div className="qr-amount">
-                <div className="tiny">Event Booking Cambodia</div>
+                <div className="tiny">KH-EVENT BOOKING</div>
                 <b>{khr(booking.total_khr)}</b>
                 <div className="small muted">{usd(booking.total_usd_cents)}</div>
               </div>

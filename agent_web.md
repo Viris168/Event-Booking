@@ -60,6 +60,33 @@ Everything is a token at the top of [web/src/styles/index.css](web/src/styles/in
 under `:root` — `--brand-*`, `--gold-*`, `--ink`, `--line`, `--r*` (radii),
 `--shadow*`. Change a token, the whole app follows.
 
+### Page width (header / body / footer alignment)
+Two tokens drive the whole shell, so the navbar, sub-nav, hero, page body and
+footer all share one content column and their edges stay flush:
+
+```css
+--page-max: 1360px;   /* content column width  */
+--page-pad: 1.15rem;  /* gutter on both sides  */
+```
+
+`.nav-inner`, `.subnav-inner`, `.role-switch-inner`, `.hero-inner`,
+`.container` and `.footer-inner` each apply *both* (max-width **and** their own
+horizontal padding). If you add another full-bleed band, follow that pattern —
+putting the padding on the parent instead shifts the content edge and breaks
+alignment. `.container-narrow` keeps the full-width shell and centres a 640px
+reading column inside it, so login/404 pages still line up.
+
+Event-card rows use `.grid-cards` (4-up → 3 at 1180px → 2 at 980px → 1 at
+640px). If you change `--page-max`, re-check that grid and `PAGE_SIZE` in
+`EventsPage.jsx` (currently 8, i.e. two full rows of four).
+
+### Brand name
+The product name lives in one place: the `brand` key in
+[web/src/lib/i18n.js](web/src/lib/i18n.js) (currently `KH-Event Booking`, kept
+Latin in both locales). It renders in the navbar and footer. Two other copies
+are intentionally standalone: the `<title>` in `web/index.html`, and the
+merchant line on the KHQR panel in `PaymentPage.jsx`.
+
 Booking-status colors are the `.s-<STATE>` classes in the same file. Each of the
 eight booking states has its own pair; **don't collapse two states into one
 color** — the brief requires distinct treatments.

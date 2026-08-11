@@ -45,6 +45,14 @@
   --teal-600: #0d6f74;
   --teal-100: #d5f1f2;
 
+  /* Page shell: navbar, sub-nav, hero, page body and footer all measure their
+     content against these two values, so every edge lines up vertically. */
+  /* 1360px fits a 4-up event grid (~317px cards) and gives the organizer/admin
+     tables room to breathe. Change this one value to rescale every shell —
+     navbar, sub-nav, hero, page body and footer all read from it. */
+  --page-max: 1360px;
+  --page-pad: 1.15rem;
+
   /* shape */
   --r-sm: 8px;
   --r: 12px;
@@ -141,15 +149,20 @@ textarea {
 
 /* ------------------------------------------------------------------ layout */
 .container {
-  max-width: 1120px;
+  max-width: var(--page-max);
   margin: 0 auto;
-  padding: 1.75rem 1.1rem 4rem;
+  padding: 1.75rem var(--page-pad) 4rem;
 }
+/* Kept for intent (dense tooling vs storefront); the shell width is shared so
+   headers, bodies and footers stay flush with one another. */
 .container-wide {
-  max-width: 1360px;
+  max-width: var(--page-max);
 }
-.container-narrow {
+/* Narrow pages keep the full-width shell and centre a reading column inside it,
+   so the page edges still align with the navbar and footer. */
+.container-narrow > * {
   max-width: 640px;
+  margin-inline: auto;
 }
 .flush {
   padding-top: 0;
@@ -193,14 +206,40 @@ textarea {
   display: grid;
   gap: 1.1rem;
 }
+/* Explicit column counts rather than auto-fill: the shell width is fixed, so
+   the card rhythm should be too (auto-fill would go 4-up at 1200px). */
 .grid-2 {
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 .grid-3 {
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 .grid-4 {
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+/* Event-card grid: 4-up on desktop, stepping down with the viewport. */
+.grid-cards {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+@media (max-width: 1180px) {
+  .grid-cards {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 980px) {
+  .grid-3,
+  .grid-4,
+  .grid-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 640px) {
+  .grid-2,
+  .grid-3,
+  .grid-4,
+  .grid-cards {
+    grid-template-columns: 1fr;
+  }
 }
 
 .split {
@@ -283,9 +322,9 @@ textarea {
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 .nav-inner {
-  max-width: 1360px;
+  max-width: var(--page-max);
   margin: 0 auto;
-  padding: 0.7rem 1.1rem;
+  padding: 0.7rem var(--page-pad);
   display: flex;
   align-items: center;
   gap: 1rem;
@@ -432,9 +471,9 @@ textarea {
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 .role-switch-inner {
-  max-width: 1360px;
+  max-width: var(--page-max);
   margin: 0 auto;
-  padding: 0.55rem 1.1rem;
+  padding: 0.55rem var(--page-pad);
   display: flex;
   gap: 0.5rem;
   align-items: center;
@@ -465,9 +504,9 @@ textarea {
   border-bottom: 1px solid var(--line);
 }
 .subnav-inner {
-  max-width: 1360px;
+  max-width: var(--page-max);
   margin: 0 auto;
-  padding: 0 1.1rem;
+  padding: 0 var(--page-pad);
   display: flex;
   gap: 0.25rem;
   overflow-x: auto;
@@ -642,11 +681,14 @@ a.card:hover {
     radial-gradient(900px 400px at 88% 0%, rgba(64, 84, 200, 0.55), transparent 65%),
     linear-gradient(160deg, var(--brand-900), var(--brand-700));
   color: #fff;
-  padding: 3.2rem 1.1rem 3.6rem;
+  padding: 3.2rem 0 3.6rem;
 }
+/* Same box shape as .nav-inner / .container / .footer-inner: the max-width
+   carries its own horizontal padding, so all four content edges are flush. */
 .hero-inner {
-  max-width: 1120px;
+  max-width: var(--page-max);
   margin: 0 auto;
+  padding-inline: var(--page-pad);
 }
 .hero h1 {
   color: #fff;
@@ -1406,7 +1448,8 @@ a.card:hover {
   font-size: 0.78rem;
   color: var(--muted);
 }
-.stat.alert {
+/* Named to avoid colliding with the .alert component, which is display:flex. */
+.stat-flagged {
   border-color: var(--amber-100);
   background: #fffaf0;
 }
@@ -2120,20 +2163,154 @@ a.card:hover {
   }
 }
 
+/* ----------------------------------------------------------------- footer */
+/* Dark, to bookend the navbar; same shell width so its edges stay flush. */
 .footer {
-  border-top: 1px solid var(--line);
-  background: var(--surface);
-  padding: 1.6rem 1.1rem;
-  color: var(--muted);
-  font-size: 0.82rem;
+  background: var(--brand-900);
+  color: rgba(255, 255, 255, 0.62);
+  padding: 2.4rem 0 1.1rem;
+  font-size: 0.85rem;
 }
 .footer-inner {
-  max-width: 1120px;
+  max-width: var(--page-max);
   margin: 0 auto;
+  padding-inline: var(--page-pad);
+}
+.footer-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2.2fr) repeat(3, minmax(0, 1fr));
+  gap: 1.6rem 2rem;
+}
+@media (max-width: 900px) {
+  .footer-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .footer-brand {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 560px) {
+  .footer-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.footer-brand {
   display: flex;
-  gap: 1rem;
+  gap: 0.7rem;
+  align-items: flex-start;
+  max-width: 46ch;
+}
+.footer-mark {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(140deg, var(--gold-500), #e0672c);
+  color: #3a2603;
+  flex: none;
+}
+.footer-brand strong {
+  display: block;
+  color: #fff;
+  font-size: 0.98rem;
+  letter-spacing: -0.01em;
+}
+.footer-brand p {
+  margin-top: 0.25rem;
+  line-height: 1.7;
+}
+.footer-reach {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.6rem;
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.footer-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  align-items: flex-start;
+  min-width: 0;
+}
+.footer-col h4 {
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 0.72rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  font-weight: 700;
+  margin-bottom: 0.15rem;
+}
+.footer-col a {
+  color: rgba(255, 255, 255, 0.74);
+}
+.footer-col a:hover {
+  color: #fff;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.4);
+}
+.footer-pay {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: rgba(255, 255, 255, 0.74);
+}
+.footer-fx {
+  margin-top: 0.35rem;
+  font-family: var(--mono);
+  font-size: 0.76rem;
+  color: rgba(255, 255, 255, 0.55);
+}
+.footer-fx em {
+  display: block;
+  font-family: var(--sans);
+  font-style: normal;
+  font-size: 0.76rem;
+  color: rgba(255, 255, 255, 0.4);
+  margin-top: 0.2rem;
+}
+
+.footer-bottom {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  gap: 0.8rem 1.4rem;
+  align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.45);
+}
+.footer-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.footer-lang {
+  display: inline-flex;
+  gap: 2px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  padding: 2px;
+}
+.footer-lang button {
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.6);
+  padding: 0.22rem 0.7rem;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 0.76rem;
+  font-weight: 650;
+}
+.footer-lang button[aria-pressed='true'] {
+  background: #fff;
+  color: var(--brand-900);
 }
 
 .demo-note {

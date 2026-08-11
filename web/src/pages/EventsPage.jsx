@@ -6,7 +6,7 @@ import { ActiveFilters, Empty, Field, IconSelect, Pager, SearchInput } from '../
 import { useLocale } from '../context/LocaleContext.jsx'
 import { PROVINCES, listEvents, provinceName, useStore } from '../mock/store.js'
 
-const PAGE_SIZE = 6
+const PAGE_SIZE = 8
 const EMPTY = { q: '', province: '', from: '', to: '', minUsd: '', maxUsd: '', sort: 'soonest' }
 
 export default function EventsPage() {
@@ -197,7 +197,7 @@ export default function EventsPage() {
 
       {visible.length ? (
         <>
-          <div className="grid grid-3" style={{ marginTop: '1.4rem' }}>
+          <div className="grid grid-cards" style={{ marginTop: '1.4rem' }}>
             {visible.map((e) => (
               <EventCard key={e.id} event={e} />
             ))}
