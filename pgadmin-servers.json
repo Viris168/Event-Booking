@@ -1,0 +1,14 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "Event Booking (local)",
+      "Group": "Servers",
+      "Host": "postgres",
+      "Port": 5432,
+      "MaintenanceDB": "event_booking",
+      "Username": "postgres",
+      "SSLMode": "prefer",
+      "Comment": "Connects over the internal docker-compose network, so this uses the container's real port 5432, not the remapped host port 55432 from docker-compose.yml."
+    }
+  }
+}

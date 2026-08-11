@@ -25,18 +25,22 @@ event-booking/
 Each person on the team runs their **own local Postgres container** — nobody connects to a shared server. What's actually shared is the *schema*: every change to it lives as a versioned file in `api/src/main/resources/db/migration/`, committed to git. Flyway applies those files automatically, in order, the moment the API starts, so everyone's local database ends up structurally identical.
 
 ```bash
-docker compose up -d      # starts Postgres 16 on localhost:5432
+docker compose up -d      # starts Postgres 16 on localhost:55432, pgAdmin on localhost:55050
 ```
 
-That's it — no `.env` needed for this step. `docker-compose.yml` defaults (`event_booking` / `postgres` / `postgres`) already match `api/.env.example`. Data persists in a named Docker volume across restarts; run `docker compose down -v` only if you want to wipe it and start clean.
+That's it — no `.env` needed for this step. `docker-compose.yml` defaults (`event_booking` / `postgres` / `postgres`) already match `api/.env.example`. Data persists in named Docker volumes across restarts; run `docker compose down -v` only if you want to wipe it and start clean.
+
+Ports are intentionally non-default (`55432` instead of `5432`, `55050` instead of `5050`) so they don't collide with other Postgres/pgAdmin containers you might already have running.
 
 Useful commands:
 ```bash
-docker compose ps               # check it's healthy
-docker compose logs -f postgres # tail logs
+docker compose ps               # check both services are healthy
+docker compose logs -f postgres # tail DB logs
 docker compose down             # stop (keeps data)
-docker compose down -v          # stop and wipe the volume
+docker compose down -v          # stop and wipe both volumes
 ```
+
+**pgAdmin (web UI for the database):** open http://localhost:55050, log in with `admin@eventbooking.dev` / `admin` (from `docker-compose.yml`'s defaults — override via `PGADMIN_EMAIL`/`PGADMIN_PASSWORD` in a root `.env` if you want your own). The "Event Booking (local)" server is pre-registered in the sidebar — click it, enter the DB password (`postgres`), and you're browsing tables. It connects over the internal Docker network, so it uses Postgres's real port 5432 internally even though your browser/`psql`/the API reach it on `55432`.
 
 **Making a schema change:** never edit a migration file that's already been applied anywhere (including on a teammate's machine) — Flyway checksums each file and will refuse to start if one has changed underneath it. Instead, add a new one: `V2__add_something.sql`, `V3__...`, etc. Commit it, push, and everyone else picks it up automatically the next time they `git pull` and restart the app.
 
