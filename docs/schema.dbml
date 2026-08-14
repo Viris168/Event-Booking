@@ -1,0 +1,494 @@
+// ============================================================
+// Event Booking - ERD for dbdiagram.io
+// Generated from V1__schema.sql + V2__venue.sql
+//
+// Paste the whole file into https://dbdiagram.io
+//
+// NOTE: the real schema uses TEXT + CHECK constraints, not native
+// Postgres enums. They are modelled as Enums here purely so the
+// allowed values are visible in the diagram.
+// ============================================================
+
+// ---------- Enums (TEXT + CHECK in the real schema) ----------
+
+Enum user_role {
+  CUSTOMER
+  ORGANIZER
+  PLATFORM_ADMIN
+}
+
+Enum user_locale {
+  km
+  en
+}
+
+Enum inventory_mode {
+  SEATED
+  ZONED
+  MIXED
+}
+
+Enum event_status {
+  DRAFT
+  PUBLISHED
+  TAKEN_DOWN
+}
+
+Enum event_seat_status {
+  AVAILABLE
+  HELD
+  SOLD
+  BLOCKED
+}
+
+Enum hold_status {
+  ACTIVE
+  CONSUMED
+  EXPIRED
+  RELEASED
+}
+
+Enum booking_state {
+  PENDING_PAYMENT
+  AWAITING_CONFIRMATION
+  PAYMENT_FAILED
+  CONFIRMED
+  REFUND_REQUESTED
+  REFUNDED
+  EXPIRED
+  CANCELLED
+}
+
+Enum payment_provider {
+  BAKONG_KHQR
+  ABA_PAYWAY
+}
+
+Enum payment_status {
+  CREATED
+  PENDING
+  SUCCESS
+  FAILED
+  CANCELLED
+  EXPIRED
+}
+
+Enum currency {
+  USD
+  KHR
+}
+
+// ---------- 1. Identity & tenancy ----------
+
+Table app_user {
+  id bigint [pk, increment]
+  phone_e164 text [not null, unique, note: 'CHECK ~ ^\+855[0-9]{8,9}$']
+  email text [unique]
+  password_hash text [not null]
+  display_name text [not null]
+  locale user_locale [not null, default: 'km']
+  role user_role [not null, default: 'CUSTOMER']
+  is_disabled boolean [not null, default: false]
+  created_at timestamptz [not null, default: `now()`]
+}
+
+Table organizer_profile {
+  id bigint [pk, increment]
+  user_id bigint [not null, unique, ref: - app_user.id]
+  org_name_en text [not null]
+  org_name_km text [not null]
+  telegram_chat_id text
+  created_at timestamptz [not null, default: `now()`]
+
+  Note: 'One-to-one with app_user. A user becomes an organizer by gaining a profile row.'
+}
+
+Table refresh_token {
+  id bigint [pk, increment]
+  user_id bigint [not null, ref: > app_user.id, note: 'ON DELETE CASCADE']
+  token_hash text [not null, unique, note: 'SHA-256 of the opaque token']
+  issued_at timestamptz [not null, default: `now()`]
+  expires_at timestamptz [not null]
+  revoked_at timestamptz [note: 'NULL = still valid']
+  user_agent text
+
+  indexes {
+    user_id [name: 'idx_refresh_token_user_active']
+  }
+
+  Note: '''
+  [FIX 2] Access token is a stateless 15-min JWT and is never stored.
+  Only the refresh token is persisted, hashed, so a DB leak cannot be
+  replayed. Rotation = revoke old row + insert new. Revocation is instant.
+  idx_refresh_token_user_active is PARTIAL: WHERE revoked_at IS NULL
+  '''
+}
+
+// ---------- 2. Reference / lookup ----------
+
+Table province_ref {
+  code text [pk]
+  name_en text [not null]
+  name_km text [not null]
+}
+
+// ---------- 3. Venue & physical seat map (event-independent) ----------
+
+Table venue {
+  id bigint [pk, increment]
+  organizer_id bigint [not null, ref: > organizer_profile.id]
+  name_en text [not null]
+  name_km text [not null]
+  province_code text [not null, ref: > province_ref.code]
+  khan_district text [not null]
+  sangkat_commune text [not null]
+  street_address text [not null]
+  lat "numeric(9,6)"
+  lng "numeric(9,6)"
+  created_at timestamptz [not null, default: `now()`]
+  is_disabled boolean [not null, default: false, note: 'added in V2']
+}
+
+Table venue_seat {
+  id bigint [pk, increment]
+  venue_id bigint [not null, ref: > venue.id]
+  section_label text [not null, note: "e.g. 'Zone A'"]
+  row_label text [not null]
+  seat_number text [not null]
+  pos_x "numeric(7,2)" [not null]
+  pos_y "numeric(7,2)" [not null]
+
+  indexes {
+    (venue_id, section_label, row_label, seat_number) [unique]
+    venue_id [name: 'idx_venue_seat_venue']
+  }
+
+  Note: 'Physical seat map, reused across every event at this venue.'
+}
+
+// ---------- 4. Event ----------
+
+Table event {
+  id bigint [pk, increment]
+  organizer_id bigint [not null, ref: > organizer_profile.id]
+  venue_id bigint [not null, ref: > venue.id]
+  inventory_mode inventory_mode [not null]
+  slug text [not null, unique]
+  title_en text [not null]
+  title_km text [not null]
+  description_en text [not null, default: '']
+  description_km text [not null, default: '']
+  status event_status [not null, default: 'DRAFT']
+  starts_at timestamptz [not null]
+  doors_open_at timestamptz [not null]
+  sales_open_at timestamptz [not null]
+  sales_close_at timestamptz [not null]
+  created_at timestamptz [not null, default: `now()`]
+
+  Note: '''
+  inventory_mode is a DESCRIPTOR, not a hard wall. A MIXED event may carry
+  BOTH seat_class/event_seat rows AND event_zone rows at the same time.
+
+  Guarded by triggers:
+    trg_guard_seat_class   - seat_class INSERT requires SEATED or MIXED
+    trg_guard_event_zone   - event_zone INSERT requires ZONED or MIXED
+    trg_guard_mode_change  - [FIX 4] blocks UPDATE of inventory_mode when
+                             inventory of the newly-disallowed kind exists
+
+  CHECK (sales_close_at <= starts_at)
+  '''
+}
+
+// ---------- 5. Pricing tiers ----------
+
+Table seat_class {
+  id bigint [pk, increment]
+  event_id bigint [not null, ref: > event.id, note: 'ON DELETE CASCADE']
+  name_en text [not null, note: "'Zone A', 'Zone B'"]
+  name_km text [not null]
+  price_usd_cents integer [not null, note: 'CHECK > 0']
+
+  indexes {
+    (event_id, name_en) [unique]
+  }
+
+  Note: 'Assigned-seating price tier. Requires inventory_mode SEATED or MIXED.'
+}
+
+Table event_zone {
+  id bigint [pk, increment]
+  event_id bigint [not null, ref: > event.id, note: 'ON DELETE CASCADE']
+  name_en text [not null, note: "'GA Floor'"]
+  name_km text [not null]
+  price_usd_cents integer [not null, note: 'CHECK > 0']
+  capacity integer [not null, note: 'CHECK > 0']
+  held_qty integer [not null, default: 0]
+  sold_qty integer [not null, default: 0]
+  version bigint [not null, default: 0, note: 'optimistic locking']
+  active boolean [not null, default: true, note: 'added in V2']
+
+  indexes {
+    (event_id, name_en) [unique]
+    event_id [name: 'idx_event_zone_event']
+  }
+
+  Note: '''
+  General-admission capacity bucket - no seat rows, just counters.
+  CHECK (held_qty + sold_qty <= capacity)
+  Requires inventory_mode ZONED or MIXED.
+  '''
+}
+
+// ---------- 6. Per-event seat inventory (hot table) ----------
+
+Table event_seat {
+  id bigint [pk, increment]
+  event_id bigint [not null, ref: > event.id, note: 'ON DELETE CASCADE']
+  venue_seat_id bigint [not null, ref: > venue_seat.id]
+  seat_class_id bigint [not null, ref: > seat_class.id]
+  status event_seat_status [not null, default: 'AVAILABLE']
+  hold_id bigint [ref: > hold.id, note: 'ON DELETE SET NULL']
+  hold_expires_at timestamptz
+  version bigint [not null, default: 0, note: 'optimistic locking']
+
+  indexes {
+    (event_id, venue_seat_id) [unique]
+    (event_id, status) [name: 'idx_event_seat_event_status']
+    hold_id [name: 'idx_event_seat_hold']
+  }
+
+  Note: '''
+  The hottest table in the schema - one row per physical seat per event,
+  materialised from venue_seat when the event is published.
+
+  [FIX 5] idx_event_seat_hold is PARTIAL: WHERE hold_id IS NOT NULL
+  Most rows have hold_id NULL at any moment, so indexing them would bloat
+  the index for nothing. Serves "release/expire hold" = WHERE hold_id = ?
+  '''
+}
+
+// ---------- 7. Holds ----------
+
+Table hold {
+  id bigint [pk, increment]
+  event_id bigint [not null, ref: > event.id]
+  user_id bigint [not null, ref: > app_user.id]
+  status hold_status [not null, default: 'ACTIVE']
+  expires_at timestamptz [not null]
+  created_at timestamptz [not null, default: `now()`]
+  extended boolean [not null, default: false]
+
+  indexes {
+    (event_id, user_id) [unique, name: 'uq_hold_one_active_per_user_event']
+    (status, expires_at) [name: 'idx_hold_expiry']
+  }
+
+  Note: '''
+  One hold can cover a MIX in a single cart: specific event_seat rows
+  (via event_seat.hold_id) PLUS zone quantities (via hold_zone_line).
+
+  [FIX 3] uq_hold_one_active_per_user_event is PARTIAL: WHERE status = 'ACTIVE'
+  Without it a scripted client can POST /holds in a loop and reserve the whole
+  venue on one account. App should translate the unique violation into
+  409 HOLD_ALREADY_ACTIVE, not a raw SQL error.
+
+  idx_hold_expiry is PARTIAL: WHERE status = 'ACTIVE' (drives the sweeper).
+  '''
+}
+
+Table hold_zone_line {
+  id bigint [pk, increment]
+  hold_id bigint [not null, ref: > hold.id, note: 'ON DELETE CASCADE']
+  event_zone_id bigint [not null, ref: > event_zone.id]
+  qty integer [not null, note: 'CHECK > 0']
+
+  indexes {
+    (hold_id, event_zone_id) [unique]
+  }
+}
+
+// ---------- 8. Booking & line items ----------
+
+Table booking {
+  id bigint [pk, increment]
+  booking_ref text [not null, unique]
+  event_id bigint [not null, ref: > event.id]
+  user_id bigint [not null, ref: > app_user.id]
+  hold_id bigint [not null, unique, ref: - hold.id]
+  state booking_state [not null, default: 'PENDING_PAYMENT']
+  buyer_name text [not null]
+  buyer_phone_e164 text [not null, note: 'CHECK ~ ^\+855[0-9]{8,9}$']
+  buyer_email text
+  subtotal_usd_cents bigint [not null, note: 'CHECK > 0']
+  total_usd_cents bigint [not null, note: 'CHECK > 0']
+  fx_rate_khr_per_usd "numeric(12,4)" [not null, note: 'rate frozen at booking time']
+  total_khr bigint [not null]
+  created_at timestamptz [not null, default: `now()`]
+  state_changed_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (event_id, state) [name: 'idx_booking_event_state']
+    (user_id, state) [name: 'idx_booking_user_state']
+  }
+
+  Note: 'hold_id is UNIQUE - a hold converts into at most one booking.'
+}
+
+Table booking_item {
+  id bigint [pk, increment]
+  booking_id bigint [not null, ref: > booking.id, note: 'ON DELETE CASCADE']
+  event_seat_id bigint [ref: > event_seat.id, note: 'NULL for zone lines']
+  event_zone_id bigint [ref: > event_zone.id, note: 'NULL for seat lines']
+  qty integer [not null, default: 1, note: 'CHECK > 0']
+  unit_price_usd_cents integer [not null]
+
+  indexes {
+    event_seat_id [unique, name: 'uq_booking_item_seat']
+    event_zone_id [name: 'idx_booking_item_zone']
+  }
+
+  Note: '''
+  Every row is EITHER a single seat (qty = 1) OR a zone quantity (qty > 0)
+  - never both, never neither - so seat and zone lines coexist on one booking:
+
+    CHECK ((event_seat_id IS NOT NULL AND event_zone_id IS NULL AND qty = 1)
+        OR (event_seat_id IS NULL AND event_zone_id IS NOT NULL AND qty > 0))
+
+  uq_booking_item_seat is PARTIAL: WHERE event_seat_id IS NOT NULL
+  Structural double-booking guard, enforced regardless of app logic.
+  '''
+}
+
+// ---------- 9. Payments ----------
+
+Table payment_transaction {
+  id bigint [pk, increment]
+  booking_id bigint [not null, ref: > booking.id]
+  provider payment_provider [not null]
+  provider_ref text
+  idempotency_key text [not null, unique]
+  currency_charged currency [not null]
+  amount_usd_cents bigint [not null]
+  amount_khr bigint [not null]
+  status payment_status [not null, default: 'CREATED']
+  expires_at timestamptz [not null]
+  created_at timestamptz [not null, default: `now()`]
+  resolved_at timestamptz
+
+  indexes {
+    (provider, provider_ref) [unique, name: 'uq_payment_txn_provider_ref']
+    booking_id [unique, name: 'uq_payment_txn_one_success_per_booking']
+    (booking_id, status) [name: 'idx_payment_txn_booking']
+  }
+
+  Note: '''
+  A booking may accumulate several attempt rows (retry after a failed PIN,
+  switching KHQR -> PayWay).
+
+  [FIX 1] uq_payment_txn_one_success_per_booking is PARTIAL:
+    WHERE status = 'SUCCESS'
+  At most ONE successful payment per booking, ever. Last line of defence
+  behind webhook idempotency - even if a duplicate callback slips past every
+  application check, the database refuses the second success row.
+
+  uq_payment_txn_provider_ref is PARTIAL: WHERE provider_ref IS NOT NULL
+  '''
+}
+
+Table payment_webhook_event {
+  id bigint [pk, increment]
+  provider payment_provider [not null]
+  provider_event_id text [not null]
+  payment_transaction_id bigint [ref: > payment_transaction.id]
+  payload jsonb [not null]
+  received_at timestamptz [not null, default: `now()`]
+  processed_at timestamptz
+
+  indexes {
+    (provider, provider_event_id) [unique]
+  }
+
+  Note: 'UNIQUE (provider, provider_event_id) = webhook idempotency at the DB level.'
+}
+
+// ---------- 10. Tickets & audit ----------
+
+Table ticket {
+  id bigint [pk, increment]
+  booking_item_id bigint [not null, ref: > booking_item.id]
+  unit_seq integer [not null, default: 1, note: 'CHECK > 0']
+  qr_token uuid [not null, unique, default: `gen_random_uuid()`]
+  checked_in_at timestamptz
+  checked_in_by bigint [ref: > app_user.id]
+  issued_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (booking_item_id, unit_seq) [unique]
+    booking_item_id [name: 'idx_ticket_booking_item']
+  }
+
+  Note: '''
+  One ticket per ADMISSION UNIT, not per booking_item.
+  A seat line (qty always 1) gets exactly one ticket.
+  A zone line with qty = 3 gets THREE independently scannable
+  tickets, unit_seq 1..3.
+  '''
+}
+
+Table booking_status_history {
+  id bigint [pk, increment]
+  booking_id bigint [not null, ref: > booking.id]
+  from_state text [note: 'NULL on the first transition']
+  to_state text [not null]
+  changed_by_user_id bigint [ref: > app_user.id, note: 'ON DELETE SET NULL']
+  note text
+  changed_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (booking_id, changed_at) [name: 'idx_booking_status_history_booking']
+  }
+}
+
+// ---------- Visual grouping ----------
+
+TableGroup "1 - Identity & tenancy" {
+  app_user
+  organizer_profile
+  refresh_token
+}
+
+TableGroup "2 - Reference" {
+  province_ref
+}
+
+TableGroup "3 - Venue (event-independent)" {
+  venue
+  venue_seat
+}
+
+TableGroup "4-6 - Event & inventory" {
+  event
+  seat_class
+  event_zone
+  event_seat
+}
+
+TableGroup "7 - Holds" {
+  hold
+  hold_zone_line
+}
+
+TableGroup "8 - Booking" {
+  booking
+  booking_item
+}
+
+TableGroup "9 - Payments" {
+  payment_transaction
+  payment_webhook_event
+}
+
+TableGroup "10 - Tickets & audit" {
+  ticket
+  booking_status_history
+}
