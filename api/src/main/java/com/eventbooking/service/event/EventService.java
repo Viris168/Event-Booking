@@ -3,7 +3,6 @@ package com.eventbooking.service.event;
 import com.eventbooking.dto.event.CreateEventRequest;
 import com.eventbooking.dto.event.EventResponse;
 import com.eventbooking.dto.event.UpdateEventRequest;
-import com.eventbooking.model.Venue;
 
 public interface EventService {
     EventResponse createEvent(CreateEventRequest request);
