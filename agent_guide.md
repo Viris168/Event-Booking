@@ -40,6 +40,9 @@ The following schema tables currently have entities in `com.eventbooking.model`:
 - `venue_seat` -> `VenueSeat`
 - `event_seat` -> `EventSeat`
 - `hold` -> `Hold`
+- `booking` -> `Booking`, `booking_item` -> `BookingItem`, `booking_status_history` -> `BookingStatusHistory`
+- `payment_transaction` -> `PaymentTransaction`
+- `app_user` -> `AppUser`
 
 Entity mapping rules:
 
@@ -69,6 +72,10 @@ Keep these enums in `com.eventbooking.Enumeration`:
 - `EventStatus`: `DRAFT`, `PUBLISHED`, `TAKEN_DOWN`
 - `SeatStatus`: `AVAILABLE`, `HELD`, `SOLD`, `BLOCKED`
 - `HoldStatus`: `ACTIVE`, `CONSUMED`, `EXPIRED`, `RELEASED`
+- `PaymentProvider`: `BAKONG_KHQR`, `ABA_PAYWAY`
+- `PaymentStatus`: `CREATED`, `PENDING`, `SUCCESS`, `FAILED`, `CANCELLED`, `EXPIRED`
+- `PaymentCurrency`: `USD`, `KHR` — also carries the ISO 4217 numeric code and minor-unit
+  count, because the KHQR payload needs both and there is no second place to keep them
 - `BookingStatus` and `Role` also live in this package.
 
 Use `SeatStatus`; do not recreate the old `EventSeatStatus` name.
@@ -158,6 +165,28 @@ Seats are generated in bulk from venue-seat IDs. Do not add per-seat create/upda
 
 A hold cart must contain at least one seat or zone item. Zone quantities must be positive. `totalUsdCents` is calculated by application logic rather than stored on the `hold` table.
 
+### Booking
+
+`dto/booking` contains `CheckoutRequest`, `BookingResponse`, and `BookingItemResponse`.
+
+`CheckoutRequest` carries only the hold id and who the tickets are for. It must never
+accept an amount: everything priced is read from the hold, so a tampered request cannot
+change what is owed.
+
+### Payment
+
+`dto/payment` contains:
+
+- `StartPaymentRequest` — the provider, and nothing else. Same reasoning as checkout: the
+  amount and currency come from the booking's snapshotted totals.
+- `PaymentResponse`
+
+`PaymentResponse` deliberately carries more than the `payment_transaction` row.
+`bookingState` and `pollAfterMs` let a pay screen drive its whole wait from one response —
+render, poll on the interval the server asks for, stop when the booking reads `CONFIRMED` —
+without a second request or a hard-coded timer. `qrPayload` is null once the attempt is
+settled, so a closed attempt never keeps offering something scannable.
+
 ## Intended endpoint surface
 
 | Resource | Endpoints |
@@ -168,6 +197,13 @@ A hold cart must contain at least one seat or zone item. Zone quantities must be
 | Event zone | `POST /events/{id}/zones` |
 | Event seat | `POST /events/{id}/seats/generate`, `GET /events/{id}/seats` |
 | Hold | `POST /holds`, `GET /holds/{id}` |
+| Booking | `POST /bookings`, `GET /bookings/me`, `GET /bookings/{id}` — **implemented** |
+| Payment | `POST /bookings/{id}/payments`, `GET /bookings/{id}/payments`, `GET /payments/{id}`, `POST /payments/{id}/refresh` — **implemented** |
+
+Implemented controllers live under `/api` and are grouped by `@Tag` for Swagger
+(`/swagger-ui.html`). They take an `X-User-Id` header as a stand-in for the authenticated
+principal until the auth lane lands; every ownership failure answers `404`, never `403`,
+so ids cannot be walked.
 
 Do not add general `PUT` or `PATCH` endpoints for seat classes, zones, seats, or holds without an explicit lifecycle requirement.
 

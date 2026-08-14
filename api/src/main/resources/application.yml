@@ -70,3 +70,59 @@ app:
     # How long a booking may sit unpaid before it is expired and its seats and
     # zone capacity go back on sale.
     payment-window-minutes: ${BOOKING_PAYMENT_WINDOW_MINUTES:15}
+  payment:
+    bakong:
+      # MOCK = real KHQR strings, simulated settlement, and the
+      # /api/dev/payments/** endpoints. LIVE talks to the real API and drops
+      # those endpoints entirely.
+      mode: ${BAKONG_MODE:MOCK}
+      base-url: ${BAKONG_BASE_URL:https://api-bakong.nbc.gov.kh}
+      # Issued by NBC against a registered email. Expires - renew it before it
+      # does, or every poll comes back 401 and no booking ever confirms.
+      bearer-token: ${BAKONG_BEARER_TOKEN:}
+      # Where the money lands, e.g. "event_booking@wing".
+      account-id: ${BAKONG_ACCOUNT_ID:event_booking@dev}
+      # INDIVIDUAL uses EMVCo tag 29; MERCHANT uses tag 30 and also needs the
+      # two fields below.
+      account-type: ${BAKONG_ACCOUNT_TYPE:INDIVIDUAL}
+      merchant-id: ${BAKONG_MERCHANT_ID:}
+      acquiring-bank: ${BAKONG_ACQUIRING_BANK:}
+      # Shown in the payer's banking app. Hard EMVCo limits: 25 and 15
+      # characters. Startup fails rather than emitting a QR banks reject.
+      merchant-name: ${BAKONG_MERCHANT_NAME:Event Booking KH}
+      merchant-city: ${BAKONG_MERCHANT_CITY:Phnom Penh}
+      merchant-category-code: ${BAKONG_MCC:5999}
+      store-label: ${BAKONG_STORE_LABEL:EventBooking}
+      terminal-label: ${BAKONG_TERMINAL_LABEL:WEB}
+      # KHR is what Cambodian bank apps expect. Both totals were snapshotted on
+      # the booking at checkout, so this only picks which one is charged.
+      currency: ${BAKONG_CURRENCY:KHR}
+      # Well under the booking payment window: an abandoned QR should be
+      # reclaimed while the customer still has time to start a fresh one.
+      qr-ttl: ${BAKONG_QR_TTL:5m}
+      connect-timeout: ${BAKONG_CONNECT_TIMEOUT:3s}
+      read-timeout: ${BAKONG_READ_TIMEOUT:5s}
+    poll:
+      # The reconciler. Off means nothing settles by itself - a second instance
+      # would want this, since the sweeps do not coordinate across processes.
+      enabled: ${PAYMENT_POLL_ENABLED:true}
+      interval: ${PAYMENT_POLL_INTERVAL:5s}
+      batch-size: ${PAYMENT_POLL_BATCH_SIZE:50}
+      # Floor between provider checks for one attempt; also the interval the API
+      # tells clients to poll on.
+      min-refresh-interval: ${PAYMENT_MIN_REFRESH_INTERVAL:3s}
+      # The timeout that returns seats to the pool.
+      booking-sweep: ${BOOKING_SWEEP_INTERVAL:1m}
+  scheduling:
+    enabled: ${SCHEDULING_ENABLED:true}
+
+# Swagger UI at http://localhost:8080/swagger-ui.html, spec at /v3/api-docs
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    # Endpoints grouped by @Tag, and the tags sorted, so the payment flow does
+    # not end up scattered through the page.
+    tags-sorter: alpha
+    operations-sorter: method
+  api-docs:
+    path: /v3/api-docs

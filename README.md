@@ -52,9 +52,20 @@ cp .env.example .env      # then fill in your JWT secret; DB defaults already ma
 ./mvnw spring-boot:run    # or: mvn spring-boot:run
 ```
 
-Runs on http://localhost:8080. Health check: http://localhost:8080/api/health
+Runs on http://localhost:8080.
+
+- Health check: http://localhost:8080/api/health
+- **Swagger UI: http://localhost:8080/swagger-ui.html** (OpenAPI spec at `/v3/api-docs`)
 
 > Requires Java 21 and the Postgres container from step 0 running. On startup, Flyway creates/updates the schema and Hibernate validates the JPA entities against it (`ddl-auto: validate` — the app won't silently alter tables).
+
+**Trying the booking → payment flow.** The catalog and inventory lanes have no endpoints yet, so there is no way to create an event or a hold over HTTP. Seed one:
+
+```bash
+psql "postgresql://postgres:postgres@localhost:55432/event_booking" -f api/dev-seed.sql
+```
+
+It prints an `X-User-Id` and a `holdId`. Pass that header to the endpoints in Swagger (it stands in for the authenticated user until JWT auth lands), then: check out → issue a KHQR → poll → `POST /api/dev/payments/{id}/pay`. Bakong runs in MOCK mode by default, so no merchant credentials are needed; the QR strings are real, only settlement is simulated. See `agent_api.md` §6 and §10.
 
 ### 2. Web (frontend)
 
@@ -78,17 +89,21 @@ Both apps use `.env` files (already created, ignored by git). Templates are in `
 
 ## Project layout
 
-**API** — layered architecture:
+**API** — grouped by domain lane. See `agent_api.md` for who owns what.
 ```
 api/src/main/java/com/eventbooking/
 ├── controller/   REST endpoints
-├── service/      business logic (booking + concurrency)
+├── model/        JPA entities, one per table
 ├── repository/   Spring Data JPA
-├── model/        entities: User, Event, Booking, Category
-├── dto/          request/response objects
-├── security/     JWT + Spring Security
-├── config/       app configuration
-└── exception/    global error handling
+├── dto/<domain>/ request/response records, grouped by domain
+├── Enumeration/  database-backed enums
+├── booking/      checkout, the booking state machine
+├── payment/      Bakong KHQR: service, reconciler, poller
+│   └── bakong/   QR generation + provider client (live and mock)
+├── catalog/, inventory/   their lanes' services and errors
+├── common/error/ ApiException, ErrorCode, RFC 7807 handler
+├── security/     JWT + Spring Security (not built yet)
+└── config/       scheduling, security, OpenAPI
 ```
 
 **Web** — feature-oriented:
@@ -104,7 +119,15 @@ web/src/
 
 ## Next steps
 
-1. Build the JPA entities (User, Event, Booking, Category)
-2. Add JWT auth (register/login) + role-based access
-3. Implement the booking service with concurrency handling
-4. Build the frontend pages and connect them to the API
+Done: the schema and entities, checkout with real concurrency handling, and Bakong KHQR
+payments by polling (issue #31), all reachable from Swagger.
+
+1. **JWT auth** (register/login, refresh rotation, role-based access) — the one thing
+   blocking everything else. Endpoints currently take an `X-User-Id` header instead, and
+   `SecurityConfig` permits everything.
+2. **Hold endpoints** (inventory lane) — until they exist, holds only come from
+   `api/dev-seed.sql`, and the web cannot reach checkout at all.
+3. **Catalog endpoints** — venues, events, zones, seat maps.
+4. **Ticket issuance** on `CONFIRMED`, one per admission unit.
+5. **Point the frontend at the real API** — `web/` still runs entirely on its own mock
+   store in `web/src/mock/`.

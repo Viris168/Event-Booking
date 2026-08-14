@@ -332,6 +332,41 @@ interceptor) and is currently unused. To go live:
 
 Everything else — layout, states, copy, validation — already matches the schema.
 
+### The payment endpoints are real now (issue #31)
+
+Bookings and Bakong KHQR payments are the first slice with a live backend, so
+`PaymentPage.jsx` is the first page that can be moved off the mock. The API was
+shaped for this screen; the differences from the mock are small but specific:
+
+| Mock (`store.js`) | Real API |
+|---|---|
+| `createBooking(...)` | `POST /api/bookings` `{holdId, buyerName, buyerPhoneE164, buyerEmail}` |
+| `startPayment(bookingId, provider)` | `POST /api/bookings/{id}/payments` `{provider}` |
+| `latestPayment(bookingId)` | the same call — it returns the open attempt rather than opening a second |
+| `paymentsForBooking(bookingId)` | `GET /api/bookings/{id}/payments` |
+| the `setInterval` poll | `GET /api/payments/{id}` every `pollAfterMs` |
+| `resolvePayment(id, 'SUCCESS')` | `POST /api/dev/payments/{id}/pay` — **MOCK mode only**, and it disappears entirely in `LIVE` |
+
+Four things worth knowing before wiring it up:
+
+1. **Fields are `camelCase`**, not the mock's `snake_case` (`totalKhr`, not `total_khr`).
+2. **Poll the response, not a timer of your own.** `PaymentResponse` carries `open`
+   (keep polling?), `pollAfterMs` (how long to wait) and `bookingState` — so the
+   redirect to the tickets is `bookingState === 'CONFIRMED'`, from the same
+   response, with no second request. Don't call `/refresh` in a loop: it is
+   rate-limited per attempt because it actually reaches Bakong.
+3. **`qrPayload` is a genuine EMVCo/KHQR string** even in MOCK mode, so `QrGlyph`
+   can be swapped for a real encoder now — the payload will not change shape when
+   the backend goes `LIVE`. It comes back `null` once the attempt is settled.
+4. **`X-User-Id` is required** on every one of these until JWT auth lands; the axios
+   instance can set it the same way it will later set the bearer token.
+
+A QR expiring is not the end of the road: the attempt goes `EXPIRED` and the
+booking to `PAYMENT_FAILED`, but the seats are still the customer's — calling
+`POST /bookings/{id}/payments` again issues a fresh QR. That is exactly what the
+existing "try again" buttons should do. The booking only really dies when its
+15-minute payment window lapses, at which point it reads `EXPIRED`.
+
 ---
 
 ## 5. Known gaps (deliberate, per the brief)

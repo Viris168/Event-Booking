@@ -5,6 +5,7 @@ import com.eventbooking.Enumeration.HoldStatus;
 import com.eventbooking.Enumeration.SeatStatus;
 import com.eventbooking.booking.error.BookingNotFoundException;
 import com.eventbooking.booking.error.EmptyHoldException;
+import com.eventbooking.dto.booking.BookingResponse;
 import com.eventbooking.dto.booking.CheckoutRequest;
 import com.eventbooking.inventory.error.HoldExpiredException;
 import com.eventbooking.inventory.error.HoldNotActiveException;
@@ -23,6 +24,7 @@ import com.eventbooking.repository.HoldRepository;
 import com.eventbooking.repository.HoldZoneLineRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -62,6 +64,7 @@ public class BookingService {
     private final EventZoneRepository eventZoneRepository;
     private final BookingStateMachine stateMachine;
     private final BookingRefGenerator refGenerator;
+    private final BookingMapper mapper;
     private final BookingProperties properties;
 
     public BookingService(BookingRepository bookingRepository,
@@ -71,6 +74,7 @@ public class BookingService {
                           EventZoneRepository eventZoneRepository,
                           BookingStateMachine stateMachine,
                           BookingRefGenerator refGenerator,
+                          BookingMapper mapper,
                           BookingProperties properties) {
         this.bookingRepository = bookingRepository;
         this.holdRepository = holdRepository;
@@ -79,6 +83,7 @@ public class BookingService {
         this.eventZoneRepository = eventZoneRepository;
         this.stateMachine = stateMachine;
         this.refGenerator = refGenerator;
+        this.mapper = mapper;
         this.properties = properties;
     }
 
@@ -307,6 +312,43 @@ public class BookingService {
             throw new BookingNotFoundException("Booking " + bookingId + " does not exist.");
         }
         return booking;
+    }
+
+    // ------------------------------------------------------------------
+    // Controller-facing variants
+    //
+    // The entity-returning methods above are what the rest of the backend
+    // uses. These three exist because open-in-view is off: BookingMapper walks
+    // items, seat classes and zones, so the mapping has to happen inside the
+    // transaction that loaded them, not after a controller gets the entity back.
+    // ------------------------------------------------------------------
+
+    /**
+     * Checkout, mapped for the wire.
+     *
+     * <p><b>The noRollbackFor here is not decoration.</b> A self-call does not
+     * pass through Spring's proxy, so {@link #convertHold} runs inside
+     * <em>this</em> method's transaction and inherits <em>this</em> annotation.
+     * Drop it and the expired-hold release documented on convertHold would be
+     * rolled back on the way out, stranding the inventory. The two must stay in
+     * step.
+     */
+    @Transactional(noRollbackFor = HoldExpiredException.class)
+    public BookingResponse checkout(CheckoutRequest request, Long actorUserId) {
+        return mapper.toResponse(convertHold(request, actorUserId));
+    }
+
+    @Transactional(readOnly = true)
+    public BookingResponse getResponseForUser(Long bookingId, Long actorUserId) {
+        return mapper.toResponse(getForUser(bookingId, actorUserId));
+    }
+
+    @Transactional(readOnly = true)
+    public List<BookingResponse> listForUser(Long actorUserId, int page, int size) {
+        return bookingRepository
+                .findByUserIdOrderByCreatedAtDesc(actorUserId, PageRequest.of(page, size))
+                .map(mapper::toResponse)
+                .getContent();
     }
 
     @Transactional(readOnly = true)

@@ -12,6 +12,7 @@ public enum ErrorCode {
     SEAT_NOT_FOUND(HttpStatus.NOT_FOUND),
     HOLD_NOT_FOUND(HttpStatus.NOT_FOUND),
     BOOKING_NOT_FOUND(HttpStatus.NOT_FOUND),
+    PAYMENT_NOT_FOUND(HttpStatus.NOT_FOUND),
 
     // 400 Bad Request
     INVALID_EVENT_SCHEDULE(HttpStatus.BAD_REQUEST),
@@ -37,9 +38,16 @@ public enum ErrorCode {
     DUPLICATE_SEAT_CLASS_ORDER(HttpStatus.CONFLICT),
     DUPLICATE_ZONE_NAME(HttpStatus.CONFLICT),
     DUPLICATE_SEAT_LOCATION(HttpStatus.CONFLICT),
+    BOOKING_NOT_PAYABLE(HttpStatus.CONFLICT),
+    PAYMENT_ALREADY_SETTLED(HttpStatus.CONFLICT),
 
     // 410 Gone
     HOLD_EXPIRED(HttpStatus.GONE),
+
+    // 501 Not Implemented
+    // The request is valid and the value is a real one; this build just has no
+    // adapter for it yet (ABA PayWay).
+    PAYMENT_PROVIDER_UNSUPPORTED(HttpStatus.NOT_IMPLEMENTED),
 
     // 503 Service Unavailable
     INVENTORY_CONTENTION(HttpStatus.SERVICE_UNAVAILABLE),
