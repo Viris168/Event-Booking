@@ -24,7 +24,17 @@ public record CreateEventRequest(
         @NotNull Instant salesCloseAt
 ) {
     @AssertTrue(message = "salesCloseAt must be before or equal to startsAt")
-    private boolean isSalesWindowValid() {
+    public boolean isSalesWindowValid() {
         return salesCloseAt == null || startsAt == null || !salesCloseAt.isAfter(startsAt);
+    }
+
+    @AssertTrue(message = "salesOpenAt must be before salesCloseAt")
+    public boolean isSalesPeriodValid() {
+        return salesOpenAt == null || salesCloseAt == null || salesOpenAt.isBefore(salesCloseAt);
+    }
+
+    @AssertTrue(message = "doorsOpenAt must be before or equal to startsAt")
+    public boolean isDoorsOpenTimeValid() {
+        return doorsOpenAt == null || startsAt == null || !doorsOpenAt.isAfter(startsAt);
     }
 }

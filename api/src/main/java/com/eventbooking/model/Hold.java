@@ -1,6 +1,7 @@
 package com.eventbooking.model;
 
 import com.eventbooking.Enumeration.HoldStatus;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -27,9 +28,9 @@ import java.util.List;
 @Table(name = "hold")
 @Getter
 @Setter
-@Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class Hold {
 
     @Id
@@ -40,8 +41,9 @@ public class Hold {
     @JoinColumn(name = "event_id", nullable = false)
     private Event event;
 
-    @Column(name = "user_id", nullable = false)
-    private Long userId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "user_id", nullable = false)
+    private AppUser user;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -51,14 +53,15 @@ public class Hold {
     @Column(name = "expires_at", nullable = false)
     private Instant expiresAt;
 
-    @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
-    private Instant createdAt;
+    @Column(name = "created_at", nullable = false, updatable = false)
+    @Builder.Default
+    private Instant createdAt = Instant.now();
 
     @Column(nullable = false)
     @Builder.Default
-    private boolean extended = false;
+    private Boolean extended = false;
 
-    @OneToMany(mappedBy = "hold")
+    @OneToMany(mappedBy = "hold", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-    private List<EventSeat> eventSeats = new ArrayList<>();
+    private List<HoldZoneLine> zoneLines = new ArrayList<>();
 }
