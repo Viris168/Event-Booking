@@ -57,6 +57,10 @@ public class EventZone {
     @Builder.Default
     private Integer soldQty = 0;
 
+    @Column(name = "active", nullable = false)
+    @Builder.Default
+    private Boolean active = true;
+
     @Version
     @Column(nullable = false)
     @Builder.Default

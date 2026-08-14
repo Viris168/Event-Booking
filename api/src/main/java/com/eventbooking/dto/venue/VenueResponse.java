@@ -9,7 +9,7 @@ public record VenueResponse(
         String nameEn,
         String nameKm,
         String provinceCode,
-        String provinceNameEn,
+
         String khanDistrict,
         String sangkatCommune,
         String streetAddress,

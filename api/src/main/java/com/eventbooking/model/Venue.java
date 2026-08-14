@@ -64,4 +64,8 @@ public class Venue {
     @OneToMany(mappedBy = "venue")
     @Builder.Default
     private List<Event> events = new ArrayList<>();
+
+    @Column(name = "is_disabled", nullable = false)
+    @Builder.Default
+    private Boolean isDisabled = false;
 }

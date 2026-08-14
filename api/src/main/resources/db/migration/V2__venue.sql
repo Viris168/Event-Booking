@@ -1,0 +1,2 @@
+ALTER TABLE venue ADD COLUMN is_disabled BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE event_zone ADD COLUMN active boolean NOT NULL DEFAULT true;

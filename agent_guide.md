@@ -15,8 +15,11 @@ This guide records the backend conventions and decisions established for the eve
 api/src/main/java/com/eventbooking/
 ├── Enumeration/       Shared database-backed enums
 ├── model/             JPA entities
+├── mapper/            Entity/DTO mappers grouped by domain
+├── repository/        Spring Data JPA repositories
 └── dto/               DTOs grouped by table/domain
     ├── venue/
+    ├── VenueSeat/
     ├── event/
     ├── seatclass/
     ├── eventzone/
@@ -34,6 +37,7 @@ The following schema tables currently have entities in `com.eventbooking.model`:
 - `event` -> `Event`
 - `seat_class` -> `SeatClass`
 - `event_zone` -> `EventZone`
+- `venue_seat` -> `VenueSeat`
 - `event_seat` -> `EventSeat`
 - `hold` -> `Hold`
 
@@ -48,14 +52,14 @@ Entity mapping rules:
 - Keep associations lazy unless there is a demonstrated reason otherwise.
 - Avoid Lombok `@Data` and generated recursive `toString`/`equals` methods on entity relationships.
 
-Relationships are mapped between the six implemented entities. Foreign keys whose target entities do not exist yet remain scalar IDs:
+Relationships are mapped between the implemented entities. Foreign keys whose target entities do not exist yet, or whose lifecycle is intentionally managed without loading the related entity, remain scalar IDs:
 
 - `Venue.organizerId` represents `venue.organizer_id`.
 - `Event.organizerId` represents `event.organizer_id`.
-- `EventSeat.venueSeatId` represents `event_seat.venue_seat_id`.
 - `Hold.userId` represents `hold.user_id`.
+- `EventSeat.holdId` represents `event_seat.hold_id`.
 
-Replace these IDs with associations only when `OrganizerProfile`, `VenueSeat`, and `AppUser` are implemented, and update DTO/service mapping deliberately.
+`EventSeat.venueSeat` is now a lazy `ManyToOne` association because `VenueSeat` has been implemented. Replace the remaining scalar IDs with associations only when the target model and lifecycle require it, and update DTO/service mapping deliberately.
 
 ## Shared enums
 
@@ -80,6 +84,19 @@ Use `SeatStatus`; do not recreate the old `EventSeatStatus` name.
 - `VenueResponse`
 
 Venue is the only regular resource with an update request. The update is for venue corrections and must not allow organizer/ownership changes.
+
+### Venue seat
+
+`dto/VenueSeat` currently contains:
+
+- `CreateVenueSeatsRequest`
+- `VenueSeatResponse`
+- `VenueSeatMapResponse`
+- `VenueSeatSectionResponse`
+
+Venue seats define a reusable physical seat layout for a venue. They are created in bulk. A request must contain at least one seat and cannot repeat the same section, row, and seat-number combination within the request. The database unique constraint remains the final duplicate check across requests.
+
+`VenueSeatMapResponse` groups seats by section so the frontend can reuse the event seat-map rendering pattern while authoring a venue layout.
 
 ### Event
 
@@ -106,6 +123,8 @@ Service logic must additionally validate allowed status transitions; a non-null 
 - `SeatClassResponse`
 
 Seat classes are create/read only. Before launch, an incorrect price is handled by deleting and recreating the class.
+
+`CreateSeatClassRequest` currently carries `eventId`; service logic must resolve that event and pass it to the mapper.
 
 ### Event zone
 
@@ -152,6 +171,16 @@ A hold cart must contain at least one seat or zone item. Zone quantities must be
 
 Do not add general `PUT` or `PATCH` endpoints for seat classes, zones, seats, or holds without an explicit lifecycle requirement.
 
+## Mapper boundaries
+
+- Keep repository lookups, authentication access, and not-found decisions in the service layer.
+- Mappers should receive already-resolved entities and authenticated IDs as arguments.
+- `EventsMapper` receives a resolved `Venue`.
+- `EventSeatMapper` receives the `Event`, `SeatClass`, and list of `VenueSeat` entities and creates event-specific seats in bulk.
+- `VenueSeatMapper` maps all seat lines in a bulk request to one resolved `Venue`.
+- `SeatClassMapper` and `EventZoneMapper` map their create DTOs with service-resolved parent entities where needed.
+- `HoldMapper` receives a resolved `Event` and authenticated user ID, creates an `ACTIVE` hold, and currently sets its expiry to ten minutes from creation.
+
 ## Concurrency and integrity
 
 - Preserve the database constraint allowing only one active hold per user per event.
@@ -178,3 +207,23 @@ mvn test
 ```
 
 At minimum, compile all changed entities, enums, and DTOs and keep `git diff --check` clean for files changed by the task. Do not modify unrelated working-tree changes.
+
+## Current implementation notes (2026-08-13)
+
+The current working tree adds or changes the following:
+
+- Added the `VenueSeat` entity and `VenueSeatRepository`.
+- Added bulk venue-seat request and grouped seat-map response DTOs.
+- Changed `EventSeat` from scalar `venueSeatId` to a lazy `VenueSeat` association.
+- Changed `EventSeat` from a `Hold` association to scalar `holdId` while retaining `holdExpiresAt` for reservation lifecycle operations.
+- Added Java mappers grouped under `mapper/Event`, `mapper/Hold`, `mapper/SeatClass`, and `mapper/Venue`; removed the old Kotlin `HoldMapper` placeholder.
+- Refactored event, event-seat, seat-class, zone, venue-seat, and hold mapping so resolved parent entities can be supplied by services.
+- Added `eventId` validation to `CreateSeatClassRequest`.
+
+Before treating this work as complete:
+
+- Fix `VenueMapper`: `organizerId` must populate `Venue.organizerId`, not `Venue.id`.
+- Remove unused imports from the new and edited mapper classes.
+- Add service/controller wiring for venue-seat creation and retrieval; no venue-seat endpoint is implemented yet.
+- Confirm whether `eventId` belongs in `CreateSeatClassRequest` when the intended endpoint already identifies the event in its path.
+- Run the Maven test suite and `git diff --check` after the implementation compiles.
