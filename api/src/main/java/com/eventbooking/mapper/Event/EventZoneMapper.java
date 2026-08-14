@@ -1,6 +1,5 @@
 package com.eventbooking.mapper.Event;
 
-import com.eventbooking.dto.event.CreateEventRequest;
 import com.eventbooking.dto.eventzone.CreateEventZoneRequest;
 import com.eventbooking.dto.eventzone.EventZoneResponse;
 import com.eventbooking.model.Event;

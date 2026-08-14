@@ -24,9 +24,9 @@ import java.time.Instant;
 @Table(name = "hold")
 @Getter
 @Setter
-@Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class Hold {
 
     @Id
@@ -37,8 +37,9 @@ public class Hold {
     @JoinColumn(name = "event_id", nullable = false)
     private Event event;
 
-    @Column(name = "user_id", nullable = false)
-    private Long userId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "user_id", nullable = false)
+    private AppUser user;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -48,17 +49,15 @@ public class Hold {
     @Column(name = "expires_at", nullable = false)
     private Instant expiresAt;
 
-    @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
-    private Instant createdAt;
+    @Column(name = "created_at", nullable = false, updatable = false)
+    @Builder.Default
+    private Instant createdAt = Instant.now();
 
     @Column(nullable = false)
     @Builder.Default
-    private boolean extended = false;
+    private Boolean extended = false;
 
-    // No `@OneToMany(mappedBy = "hold") List<EventSeat>` here: EventSeat maps
-    // hold_id as a raw Long rather than an association, so a mappedBy pointing
-    // at a non-existent EventSeat.hold property stops the Spring context from
-    // starting. Load a hold's seats through
-    // EventSeatRepository.findByHoldIdForUpdate instead - checkout wants them
-    // row-locked anyway, which a lazy collection would not give it.
+    @OneToMany(mappedBy = "hold", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Defaultnew
+    private List<HoldZoneLine> zoneLines =  ArrayList<>();
 }

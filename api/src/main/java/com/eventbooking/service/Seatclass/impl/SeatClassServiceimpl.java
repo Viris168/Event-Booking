@@ -26,7 +26,6 @@ public class SeatClassServiceimpl implements SeatClassService {
         this.eventRepository = eventRepository;
     }
 
-
     @Override
     public SeatClassResponse createSeatClass(Long eventId, CreateSeatClassRequest request) {
         Event event = eventRepository.findById(eventId).orElseThrow(()-> new EventNotFoundException(eventId));
