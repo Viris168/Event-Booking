@@ -61,13 +61,9 @@ Applied migrations:
 | Migration | What it does |
 |---|---|
 | `V1__schema.sql` | The whole platform: identity, venues, events, mixed seat+zone inventory, holds, bookings, payments, tickets, audit |
-| `V2__venue.sql` | Adds `venue.is_disabled` and `event_zone.active` |
-| `V3__booking_item_release.sql` | Adds `booking_item.released_at` and narrows the seat double-booking index to *live* lines |
+| `V2__booking_item_release.sql` | Adds `booking_item.released_at` and narrows the seat double-booking index to *live* lines |
 
-Version numbers are global, so check what is already on `main` before naming a new
-migration — two files claiming the same version make Flyway refuse to start.
-
-### Why V3 exists
+### Why V2 exists
 
 V1's `uq_booking_item_seat` was unique on `event_seat_id` across **every** `booking_item`
 row ever written. Because those rows are kept forever as financial history, the first
@@ -205,7 +201,7 @@ it surfaces as a 500. Booking-lane entries:
 
 Integration tests use Testcontainers against real Postgres, because H2 cannot execute the
 plpgsql guard triggers, partial unique indexes or `SELECT ... FOR UPDATE` that this schema
-leans on. A `@SpringBootTest` also runs Hibernate's `validate` against V1..V3, so an
+leans on. A `@SpringBootTest` also runs Hibernate's `validate` against V1 + V2, so an
 entity that drifts from the migrations fails there first.
 
 Integration tests are **not** `@Transactional`: each service call has to commit on its own

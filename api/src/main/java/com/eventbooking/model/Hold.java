@@ -11,6 +11,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -19,6 +20,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "hold")
@@ -55,10 +58,7 @@ public class Hold {
     @Builder.Default
     private boolean extended = false;
 
-    // No `@OneToMany(mappedBy = "hold") List<EventSeat>` here: EventSeat maps
-    // hold_id as a raw Long rather than an association, so a mappedBy pointing
-    // at a non-existent EventSeat.hold property stops the Spring context from
-    // starting. Load a hold's seats through
-    // EventSeatRepository.findByHoldIdForUpdate instead - checkout wants them
-    // row-locked anyway, which a lazy collection would not give it.
+    @OneToMany(mappedBy = "hold")
+    @Builder.Default
+    private List<EventSeat> eventSeats = new ArrayList<>();
 }

@@ -177,7 +177,7 @@ public class BookingService {
             subtotal += unitPrice;
 
             seat.setStatus(SeatStatus.SOLD);
-            seat.setHoldId(null);
+            seat.setHold(null);
             seat.setHoldExpiresAt(null);
         }
 
@@ -348,7 +348,7 @@ public class BookingService {
             if (seat.getStatus() == SeatStatus.HELD) {
                 seat.setStatus(SeatStatus.AVAILABLE);
             }
-            seat.setHoldId(null);
+            seat.setHold(null);
             seat.setHoldExpiresAt(null);
         }
 
@@ -370,7 +370,7 @@ public class BookingService {
      *
      * <p>Stamping releasedAt is what frees the seat for resale: the line is
      * kept as financial history, and uq_booking_item_seat_live only counts
-     * lines that have not been released (see V3__booking_item_release.sql).
+     * lines that have not been released (see V2__booking_item_release.sql).
      */
     private void releaseBookingInventory(Booking booking) {
         Instant now = Instant.now();

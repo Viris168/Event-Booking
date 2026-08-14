@@ -1,5 +1,11 @@
 package com.eventbooking.repository;
 
+<<<<<<< HEAD
+import com.eventbooking.model.Hold;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface HoldRepository extends JpaRepository<Hold,Long> {
+=======
 import com.eventbooking.Enumeration.HoldStatus;
 import com.eventbooking.model.Hold;
 import jakarta.persistence.LockModeType;
@@ -30,4 +36,5 @@ public interface HoldRepository extends JpaRepository<Hold, Long> {
     Optional<Hold> findByIdForUpdate(@Param("id") Long id);
 
     Optional<Hold> findByEventIdAndUserIdAndStatus(Long eventId, Long userId, HoldStatus status);
+>>>>>>> origin/winner-dev
 }

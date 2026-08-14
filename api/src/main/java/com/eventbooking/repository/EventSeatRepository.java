@@ -1,6 +1,11 @@
 package com.eventbooking.repository;
 
 import com.eventbooking.model.EventSeat;
+<<<<<<< HEAD
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface EventSeatRepository extends JpaRepository<EventSeat, Long> {
+=======
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -29,6 +34,7 @@ public interface EventSeatRepository extends JpaRepository<EventSeat, Long> {
      * them in the same order and queue rather than deadlock.
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select s from EventSeat s where s.holdId = :holdId order by s.id")
+    @Query("select s from EventSeat s where s.hold.id = :holdId order by s.id")
     List<EventSeat> findByHoldIdForUpdate(@Param("holdId") Long holdId);
+>>>>>>> origin/winner-dev
 }

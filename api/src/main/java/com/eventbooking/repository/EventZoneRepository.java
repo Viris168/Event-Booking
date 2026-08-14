@@ -1,6 +1,17 @@
 package com.eventbooking.repository;
 
+<<<<<<< HEAD
 import com.eventbooking.model.Event;
+import com.eventbooking.model.EventZone;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+
+public interface EventZoneRepository extends JpaRepository<EventZone, Long> {
+    EventZone findByEvent(Event event);
+
+    List<EventZone> findAllByEventId(Long eventId);
+=======
 import com.eventbooking.model.EventZone;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -10,11 +21,11 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 
+/**
+ * Minimal zone access needed by the booking lane (issue #30). Zone authoring
+ * and capacity holds belong to the inventory lane.
+ */
 public interface EventZoneRepository extends JpaRepository<EventZone, Long> {
-
-    EventZone findByEvent(Event event);
-
-    List<EventZone> findAllByEventId(Long eventId);
 
     /**
      * Row-locks the zones a checkout is about to move from held_qty to
@@ -28,4 +39,5 @@ public interface EventZoneRepository extends JpaRepository<EventZone, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select z from EventZone z where z.id in :ids order by z.id")
     List<EventZone> findAllByIdForUpdate(@Param("ids") List<Long> ids);
+>>>>>>> origin/winner-dev
 }

@@ -66,7 +66,7 @@ public class BookingItem {
      *
      * The row itself is never deleted - it is financial history - so this
      * column is what lets uq_booking_item_seat_live tell a seat that is still
-     * booked from one that merely was, once. See V3__booking_item_release.sql.
+     * booked from one that merely was, once. See V2__booking_item_release.sql.
      */
     @Column(name = "released_at")
     private Instant releasedAt;

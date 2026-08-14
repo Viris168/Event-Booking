@@ -36,7 +36,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * exception that follows it.
  *
  * Booting the full context also runs Hibernate's schema validation against
- * V1..V3, so an entity that drifts from the migrations fails here first.
+ * V1 + V2, so an entity that drifts from the migrations fails here first.
  */
 @SpringBootTest
 @Testcontainers
