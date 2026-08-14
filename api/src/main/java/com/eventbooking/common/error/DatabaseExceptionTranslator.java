@@ -50,6 +50,14 @@ public class DatabaseExceptionTranslator {
             case "uq_event_zone_name_event" -> new DuplicateZoneNameException("Zone name must be unique per event.");
             case "uq_event_seat_location" -> new DuplicateSeatLocationException("Seat location must be unique within the venue.");
             case "uq_active_hold_seat" -> new SeatUnavailableException("Seat is already held by another active hold.");
+            // Backstop behind BookingService's seat-status check: the seat is
+            // already on another live booking. Only reachable if two checkouts
+            // race past the event_seat row lock.
+            case "uq_booking_item_seat_live" -> new SeatUnavailableException("Seat is already booked.");
+            // booking.hold_id is UNIQUE. BookingService probes for an existing
+            // booking first and returns it, so hitting this means two
+            // conversions of one hold raced.
+            case "booking_hold_id_key" -> new HoldNotActiveException("Hold has already been converted to a booking.");
             default -> original;
         };
     }

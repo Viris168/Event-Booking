@@ -63,3 +63,10 @@ app:
     ttl-minutes: ${HOLD_TTL_MINUTES:10}
     extension-minutes: ${HOLD_EXTENSION_MINUTES:3}
     sweeper-interval-ms: ${HOLD_SWEEPER_INTERVAL_MS:30000}
+  booking:
+    # Snapshotted onto every booking as fx_rate_khr_per_usd, so changing this
+    # only affects bookings taken from here on. Replace with a rate feed later.
+    fx-khr-per-usd: ${FX_KHR_PER_USD:4100.0000}
+    # How long a booking may sit unpaid before it is expired and its seats and
+    # zone capacity go back on sale.
+    payment-window-minutes: ${BOOKING_PAYMENT_WINDOW_MINUTES:15}

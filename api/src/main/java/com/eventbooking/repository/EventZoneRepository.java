@@ -10,3 +10,4 @@ public interface EventZoneRepository extends JpaRepository<EventZone, Long> {
     boolean existsByEventId(Long eventId);
 
 }
+
