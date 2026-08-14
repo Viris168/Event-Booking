@@ -109,7 +109,7 @@ public class BookingService {
         Hold hold = holdRepository.findByIdForUpdate(holdId)
                 .orElseThrow(() -> new HoldNotFoundException(holdId));
 
-        if (!hold.getUserId().equals(actorUserId)) {
+        if (!hold.getUser().getId().equals(actorUserId)) {
             throw new HoldNotFoundException(holdId);
         }
 
@@ -146,7 +146,7 @@ public class BookingService {
         Booking booking = Booking.builder()
                 .bookingRef(refGenerator.generate())
                 .event(hold.getEvent())
-                .userId(hold.getUserId())
+                .userId(hold.getUser().getId())
                 .hold(hold)
                 .state(BookingStatus.PENDING_PAYMENT)
                 .buyerName(request.buyerName())
@@ -177,7 +177,7 @@ public class BookingService {
             subtotal += unitPrice;
 
             seat.setStatus(SeatStatus.SOLD);
-            seat.setHold(null);
+            seat.setHoldId(null);
             seat.setHoldExpiresAt(null);
         }
 
@@ -348,7 +348,7 @@ public class BookingService {
             if (seat.getStatus() == SeatStatus.HELD) {
                 seat.setStatus(SeatStatus.AVAILABLE);
             }
-            seat.setHold(null);
+            seat.setHoldId(null);
             seat.setHoldExpiresAt(null);
         }
 

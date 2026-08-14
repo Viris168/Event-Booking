@@ -3,6 +3,7 @@ package com.eventbooking.mapper.Hold;
 import com.eventbooking.Enumeration.HoldStatus;
 import com.eventbooking.catalog.error.EventNotFoundException;
 import com.eventbooking.dto.hold.CreateHoldRequest;
+import com.eventbooking.model.AppUser;
 import com.eventbooking.model.Event;
 import com.eventbooking.model.Hold;
 
@@ -22,11 +23,13 @@ import java.util.List;
 public class HoldMapper {
 
 
-    public static Hold toHold(CreateHoldRequest createHoldRequest, Event event, Long userId) {
+    // Takes the AppUser rather than a raw id: Hold.user is a @ManyToOne now,
+    // so there is no userId to set. Currently has no callers.
+    public static Hold toHold(CreateHoldRequest createHoldRequest, Event event, AppUser user) {
 
         return Hold.builder()
                 .event(event)
-                .userId(userId)
+                .user(user)
                 .status(HoldStatus.ACTIVE)
                 .expiresAt(Instant.now().plus(10, ChronoUnit.MINUTES)) // Hold expires in 10 mins
                 .build();

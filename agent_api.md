@@ -61,15 +61,20 @@ Applied migrations:
 | Migration | What it does |
 |---|---|
 | `V1__schema.sql` | The whole platform: identity, venues, events, mixed seat+zone inventory, holds, bookings, payments, tickets, audit |
-| `V2__booking_item_release.sql` | Adds `booking_item.released_at` and narrows the seat double-booking index to *live* lines |
+| `V2__venue.sql` | Adds `venue.is_disabled` and `event_zone.active` |
+| `V3__booking_item_release.sql` | Adds `booking_item.released_at` and narrows the seat double-booking index to *live* lines |
 
-### Why V2 exists
+> Two migrations may never share a version number — Flyway refuses to start.
+> A `V2__booking_item_release.sql` collided with `V2__venue.sql` during a merge
+> and was renumbered to V3; delete the duplicate rather than keeping both.
+
+### Why V3 exists
 
 V1's `uq_booking_item_seat` was unique on `event_seat_id` across **every** `booking_item`
 row ever written. Because those rows are kept forever as financial history, the first
 cancellation made that seat permanently unsellable — the seat returned to `AVAILABLE`,
 a customer could hold it again, and checkout then died on a `23505` against a booking
-that ended months ago. V2 adds a nullable `released_at`, stamped when a booking reaches
+that ended months ago. V3 adds a nullable `released_at`, stamped when a booking reaches
 a terminal state, and rebuilds the index as `WHERE ... AND released_at IS NULL`.
 
 ---
@@ -201,7 +206,7 @@ it surfaces as a 500. Booking-lane entries:
 
 Integration tests use Testcontainers against real Postgres, because H2 cannot execute the
 plpgsql guard triggers, partial unique indexes or `SELECT ... FOR UPDATE` that this schema
-leans on. A `@SpringBootTest` also runs Hibernate's `validate` against V1 + V2, so an
+leans on. A `@SpringBootTest` also runs Hibernate's `validate` against every migration, so an
 entity that drifts from the migrations fails there first.
 
 Integration tests are **not** `@Transactional`: each service call has to commit on its own
@@ -233,8 +238,12 @@ wired to `web/`, which is still running on its own mock backend.
 
 Still open, in rough dependency order:
 
-- `AppUser` / `OrganizerProfile` / `VenueSeat` entities. Until they exist, their foreign
-  keys stay scalar `Long`s (`Booking.userId`, `Event.organizerId`, `EventSeat.venueSeatId`).
+- `OrganizerProfile` entity. `AppUser` and `VenueSeat` now exist, so `Hold.user` and
+  `EventSeat.venueSeat` are associations; `Event.organizerId` is still a scalar `Long`.
+  `Booking.userId` is also still scalar — worth promoting to `@ManyToOne AppUser` for
+  consistency with `Hold`, which ripples into `BookingResponse` and the booking tests.
+- `EventSeat.holdId` is a raw `Long`, not an association, so anything filtering seats by
+  hold must query `s.holdId` rather than `s.hold.id`.
 - Auth: JWT filter, `refresh_token` rotation, and a `SecurityConfig`. Nothing is secured
   today, so `actorUserId` is passed in by hand rather than read from a principal.
 - `SeatHoldService` / `ZoneHoldService` and the hold sweeper (inventory lane).
