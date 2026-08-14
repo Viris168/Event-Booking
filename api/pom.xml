@@ -81,11 +81,14 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- PostgreSQL driver -->
+        <!-- PostgreSQL driver. Compile-scoped, not runtime:
+             DatabaseExceptionTranslator imports PSQLException and
+             ServerErrorMessage directly to read SQLSTATE and constraint names
+             off a failed write, so the driver has to be on the compile
+             classpath. With scope=runtime the project does not build. -->
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
-            <scope>runtime</scope>
         </dependency>
 
         <!-- Flyway: runs db/migration/V*.sql in order, tracks what already ran.
