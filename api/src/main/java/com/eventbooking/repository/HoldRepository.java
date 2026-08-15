@@ -27,6 +27,18 @@ public interface HoldRepository extends JpaRepository<Hold, Long> {
     @Query("select h from Hold h where h.id = :id")
     Optional<Hold> findByIdForUpdate(@Param("id") Long id);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        SELECT h
+        FROM Hold h
+        WHERE h.id = :holdId
+          AND h.user.id = :userId
+        """)
+    Optional<Hold> findOwnedByIdForUpdate(
+            @Param("holdId") Long holdId,
+            @Param("userId") Long userId
+    );
+
     @Query("""
           SELECT hz.eventZone.id AS id,
                  COALESCE(SUM(hz.qty), 0) AS consumedQuantity
@@ -82,18 +94,6 @@ public interface HoldRepository extends JpaRepository<Hold, Long> {
             @Param("activeStatus") HoldStatus activeStatus
     );
 
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("""
-      SELECT h
-      FROM Hold h
-      WHERE h.id = :holdId
-        AND h.user.id = :userId
-      """)
-    Optional<Hold> findOwnedByIdForUpdate(
-            @Param("holdId") Long holdId,
-            @Param("userId") Long userId
-    );
-
     Hold findByEvent(Event event);
 
     interface ZoneConsumed {
@@ -147,4 +147,18 @@ public interface HoldRepository extends JpaRepository<Hold, Long> {
             @Param("activeStatus") HoldStatus activeStatus,
             @Param("expiredStatus") HoldStatus expiredStatus
     );
+
+    @Modifying(flushAutomatically = true)
+    @Query("""
+        UPDATE Hold h
+        SET h.status = :expiredStatus
+        WHERE h.status = :activeStatus
+          AND h.expiresAt <= :now
+        """)
+    int expireAllActiveHolds(
+            @Param("now") Instant now,
+            @Param("activeStatus") HoldStatus activeStatus,
+            @Param("expiredStatus") HoldStatus expiredStatus
+    );
+
 }
