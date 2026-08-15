@@ -1,3 +1,4 @@
+import { useDocumentTitle } from '../lib/useDocumentTitle.js'
 import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import EventCard from '../components/EventCard.jsx'
@@ -12,6 +13,7 @@ const EMPTY = { q: '', province: '', from: '', to: '', minUsd: '', maxUsd: '', s
 export default function EventsPage() {
   useStore()
   const { t, locale, date } = useLocale()
+  useDocumentTitle(t('events'))
   const [params, setParams] = useSearchParams()
   const [page, setPage] = useState(1)
   const [showAdvanced, setShowAdvanced] = useState(false)
@@ -207,6 +209,16 @@ export default function EventsPage() {
       ) : (
         <Empty icon="search" title={t('noEvents')}>
           {locale === 'km' ? 'សូមសម្រួលតម្រងរបស់អ្នក' : 'Try widening your filters.'}
+          {chips.length > 0 && (
+            <button
+              className="btn btn-sm btn-primary"
+              style={{ marginTop: '0.8rem' }}
+              onClick={() => setParams(new URLSearchParams())}
+            >
+              <Icon name="close" size={14} />
+              {t('reset')}
+            </button>
+          )}
         </Empty>
       )}
     </div>

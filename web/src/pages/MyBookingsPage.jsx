@@ -1,3 +1,4 @@
+import { useDocumentTitle } from '../lib/useDocumentTitle.js'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import Icon from '../components/Icon.jsx'
@@ -21,6 +22,7 @@ const STATES = [
 export default function MyBookingsPage() {
   useStore()
   const { t, locale, status, dateTime, date } = useLocale()
+  useDocumentTitle(t('myBookings'))
   const { user } = useAuth()
   const [state, setState] = useState('')
 

@@ -65,7 +65,7 @@ Runs on http://localhost:8080.
 psql "postgresql://postgres:postgres@localhost:55432/event_booking" -f api/dev-seed.sql
 ```
 
-It prints an `X-User-Id` and a `holdId`. Pass that header to the endpoints in Swagger (it stands in for the authenticated user until JWT auth lands), then: check out → issue a KHQR → poll → `POST /api/dev/payments/{id}/pay`. Bakong runs in MOCK mode by default, so no merchant credentials are needed; the QR strings are real, only settlement is simulated. See `agent_api.md` §6 and §10.
+It prints an `X-User-Id` and a `holdId`. Pass that header to the endpoints in Swagger (it stands in for the authenticated user until JWT auth lands), then: check out → issue a KHQR → poll → `POST /api/dev/payments/{id}/pay` → `GET /api/bookings/{id}/tickets` → open `/api/tickets/{id}/qr.svg` → `POST /api/tickets/scan`. Bakong runs in MOCK mode by default, so no merchant credentials are needed; the QR strings are real, only settlement is simulated. See `agent_api.md` §6, §7 and §11.
 
 ### 2. Web (frontend)
 
@@ -100,6 +100,7 @@ api/src/main/java/com/eventbooking/
 ├── booking/      checkout, the booking state machine
 ├── payment/      Bakong KHQR: service, reconciler, poller
 │   └── bakong/   QR generation + provider client (live and mock)
+├── ticket/       issuance, signed QR codec, SVG renderer, gate check-in
 ├── catalog/, inventory/   their lanes' services and errors
 ├── common/error/ ApiException, ErrorCode, RFC 7807 handler
 ├── security/     JWT + Spring Security (not built yet)
@@ -119,8 +120,9 @@ web/src/
 
 ## Next steps
 
-Done: the schema and entities, checkout with real concurrency handling, and Bakong KHQR
-payments by polling (issue #31), all reachable from Swagger.
+Done: the schema and entities, checkout with real concurrency handling, Bakong KHQR
+payments by polling (#31), and signed single-use QR tickets with gate check-in (#33) —
+all reachable from Swagger.
 
 1. **JWT auth** (register/login, refresh rotation, role-based access) — the one thing
    blocking everything else. Endpoints currently take an `X-User-Id` header instead, and
@@ -128,6 +130,8 @@ payments by polling (issue #31), all reachable from Swagger.
 2. **Hold endpoints** (inventory lane) — until they exist, holds only come from
    `api/dev-seed.sql`, and the web cannot reach checkout at all.
 3. **Catalog endpoints** — venues, events, zones, seat maps.
-4. **Ticket issuance** on `CONFIRMED`, one per admission unit.
+4. **Ticket delivery** — issuance and scanning work, but nothing sends the QR to the
+   buyer yet (the outbox issue).
 5. **Point the frontend at the real API** — `web/` still runs entirely on its own mock
-   store in `web/src/mock/`.
+   store in `web/src/mock/`. The payment and ticket screens are the two that can move
+   today; see `agent_web.md` §4.

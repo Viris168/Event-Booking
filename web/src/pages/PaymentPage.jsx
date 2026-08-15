@@ -1,3 +1,4 @@
+import { useDocumentTitle } from '../lib/useDocumentTitle.js'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import HoldBar from '../components/HoldBar.jsx'
@@ -41,6 +42,7 @@ export default function PaymentPage() {
   const attempts = booking ? paymentsForBooking(booking.id) : []
   const event = booking ? getEvent(booking.event_id) : null
   const hold = booking ? getHold(booking.hold_id) : null
+  useDocumentTitle(booking ? `${t('checkout')} · ${booking.booking_ref}` : null)
 
   // Stand-in for the status poll the real KHQR screen runs.
   useEffect(() => {
@@ -119,7 +121,7 @@ export default function PaymentPage() {
                 </span>
               </div>
               <div className="qr-amount">
-                <div className="tiny">KH-EVENT BOOKING</div>
+                <div className="tiny">EVENT BOOKING CAMBODIA</div>
                 <b>{khr(booking.total_khr)}</b>
                 <div className="small muted">{usd(booking.total_usd_cents)}</div>
               </div>

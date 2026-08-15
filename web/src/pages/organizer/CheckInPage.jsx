@@ -1,3 +1,4 @@
+import { useDocumentTitle } from '../../lib/useDocumentTitle.js'
 import { useState } from 'react'
 import Icon from '../../components/Icon.jsx'
 import { Field } from '../../components/ui.jsx'
@@ -12,6 +13,7 @@ import { checkInTicket, recentCheckIns, ticketsOf, listBookings, useStore } from
 export default function CheckInPage() {
   useStore()
   const { t, locale, dateTime } = useLocale()
+  useDocumentTitle(t('checkIn'))
   const { user, organizerProfile } = useAuth()
   const [code, setCode] = useState('')
   const [last, setLast] = useState(null)

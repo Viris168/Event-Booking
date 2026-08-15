@@ -18,6 +18,7 @@ import com.eventbooking.payment.error.PaymentAlreadySettledException;
 import com.eventbooking.repository.BookingRepository;
 import com.eventbooking.repository.BookingStatusHistoryRepository;
 import com.eventbooking.repository.PaymentTransactionRepository;
+import com.eventbooking.ticket.TicketService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -35,6 +36,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
@@ -52,6 +56,7 @@ class PaymentServiceTest {
 
     private PaymentTransactionRepository paymentRepository;
     private BookingRepository bookingRepository;
+    private TicketService ticketService;
     private List<BookingStatusHistory> history;
     private PaymentService service;
 
@@ -59,6 +64,7 @@ class PaymentServiceTest {
     void setUp() {
         paymentRepository = mock(PaymentTransactionRepository.class);
         bookingRepository = mock(BookingRepository.class);
+        ticketService = mock(TicketService.class);
 
         BookingStatusHistoryRepository historyRepository = mock(BookingStatusHistoryRepository.class);
         history = new ArrayList<>();
@@ -75,6 +81,7 @@ class PaymentServiceTest {
                 new BookingStateMachine(historyRepository),
                 new KhqrGenerator(properties),
                 new PaymentMapper(properties),
+                ticketService,
                 properties,
                 new BookingProperties(new BigDecimal("4100.0000"), 15));
 
@@ -198,6 +205,9 @@ class PaymentServiceTest {
         assertThat(attempt.getProviderTxnHash()).isEqualTo("HASH-1");
         assertThat(booking.getState()).isEqualTo(BookingStatus.CONFIRMED);
         assertThat(history).hasSize(1);
+        // Issue #33: tickets are issued in this same transaction, so a customer
+        // who has paid always has something to show at the gate.
+        verify(ticketService).issueForBooking(booking);
     }
 
     @Test
@@ -219,6 +229,9 @@ class PaymentServiceTest {
         assertThat(history)
                 .as("a second CONFIRMED history row would mean the booking was confirmed twice")
                 .hasSize(1);
+        // And no second set of tickets: the early return on a settled attempt
+        // covers issuance as well as confirmation.
+        verify(ticketService, times(1)).issueForBooking(booking);
     }
 
     @Test
@@ -253,6 +266,9 @@ class PaymentServiceTest {
         assertThat(attempt.getNote()).contains("manual refund");
         assertThat(booking.getState()).isEqualTo(BookingStatus.EXPIRED);
         assertThat(history).isEmpty();
+        // No tickets either - the seats are back on sale, so admitting anyone on
+        // this booking would seat two people in one chair.
+        verifyNoInteractions(ticketService);
     }
 
     // ------------------------------------------------------------------

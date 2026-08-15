@@ -5,7 +5,7 @@ export const LOCALES = ["en", "km"];
 
 const dict = {
   // nav / chrome
-  brand: { en: "KH-Event Booking", km: "KH-Event Booking" },
+  brand: { en: "Event Booking Cambodia", km: "Event Booking Cambodia" },
   home: { en: "Home", km: "ទំព័រដើម" },
   events: { en: "Events", km: "ព្រឹត្តិការណ៍" },
   myBookings: { en: "My Bookings", km: "ការកក់របស់ខ្ញុំ" },

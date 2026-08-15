@@ -1,3 +1,4 @@
+import { useDocumentTitle } from '../../lib/useDocumentTitle.js'
 import { Link } from 'react-router-dom'
 import Icon from '../../components/Icon.jsx'
 import { Badge, Empty, Progress, ResponsiveTable, Stat } from '../../components/ui.jsx'
@@ -16,6 +17,7 @@ import {
 export default function OrganizerDashboardPage() {
   useStore()
   const { t, locale, date } = useLocale()
+  useDocumentTitle(t('organizerDashboard'))
   const { organizerProfile } = useAuth()
   const orgId = organizerProfile?.id || null
 

@@ -13,6 +13,7 @@ public enum ErrorCode {
     HOLD_NOT_FOUND(HttpStatus.NOT_FOUND),
     BOOKING_NOT_FOUND(HttpStatus.NOT_FOUND),
     PAYMENT_NOT_FOUND(HttpStatus.NOT_FOUND),
+    TICKET_NOT_FOUND(HttpStatus.NOT_FOUND),
 
     // 400 Bad Request
     INVALID_EVENT_SCHEDULE(HttpStatus.BAD_REQUEST),
@@ -22,6 +23,7 @@ public enum ErrorCode {
     INVALID_ZONE_CAPACITY(HttpStatus.BAD_REQUEST),
     VALIDATION_ERROR(HttpStatus.BAD_REQUEST),
     MALFORMED_REQUEST(HttpStatus.BAD_REQUEST),
+    UNKNOWN_OPERATOR(HttpStatus.BAD_REQUEST),
 
     // 409 Conflict
     INVALID_EVENT_STATUS_TRANSITION(HttpStatus.CONFLICT),

@@ -1,3 +1,4 @@
+import { useDocumentTitle } from '../../lib/useDocumentTitle.js'
 import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Alert, Badge, Field, ResponsiveTable } from '../../components/ui.jsx'
@@ -13,6 +14,7 @@ const STATUSES = ['CREATED', 'PENDING', 'SUCCESS', 'FAILED', 'CANCELLED', 'EXPIR
 export default function AdminPaymentsPage() {
   useStore()
   const { t, locale, dateTime } = useLocale()
+  useDocumentTitle(t('payments'))
   const { user } = useAuth()
   const toast = useToast()
   const [params] = useSearchParams()

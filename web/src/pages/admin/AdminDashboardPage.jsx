@@ -1,3 +1,4 @@
+import { useDocumentTitle } from '../../lib/useDocumentTitle.js'
 import { Link } from 'react-router-dom'
 import Icon from '../../components/Icon.jsx'
 import { Alert, Badge, Money, ResponsiveTable, Stat } from '../../components/ui.jsx'
@@ -8,6 +9,7 @@ import { listPayments, platformStats, recentBookings, useStore } from '../../moc
 export default function AdminDashboardPage() {
   useStore()
   const { t, locale, dateTime } = useLocale()
+  useDocumentTitle(t('adminDashboard'))
 
   const stats = platformStats()
   const stuck = listPayments({ stuckOnly: true })

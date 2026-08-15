@@ -1,3 +1,4 @@
+import { useDocumentTitle } from '../lib/useDocumentTitle.js'
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import HoldBar from '../components/HoldBar.jsx'
@@ -21,6 +22,7 @@ import {
 export default function CheckoutPage() {
   useStore()
   const { t, locale, dateTime } = useLocale()
+  useDocumentTitle(t('checkout'))
   const { user } = useAuth()
   const toast = useToast()
   const navigate = useNavigate()
@@ -69,7 +71,13 @@ export default function CheckoutPage() {
   function submit(e) {
     e.preventDefault()
     if (submitting) return
-    if (!validate()) return
+    if (!validate()) {
+      // Move focus to the first problem so the error is announced and reachable.
+      requestAnimationFrame(() => {
+        e.target.querySelector('[aria-invalid="true"]')?.focus()
+      })
+      return
+    }
     setSubmitting(true) // stays disabled: the backend idempotency key is a backstop, not the only guard
     const result = createBooking({
       holdId: hold.id,

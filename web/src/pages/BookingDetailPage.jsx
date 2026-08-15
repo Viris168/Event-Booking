@@ -1,3 +1,4 @@
+import { useDocumentTitle } from '../lib/useDocumentTitle.js'
 import { Link, useParams } from 'react-router-dom'
 import HoldBar from '../components/HoldBar.jsx'
 import Icon from '../components/Icon.jsx'
@@ -86,6 +87,7 @@ export default function BookingDetailPage() {
   const toast = useToast()
 
   const booking = getBooking(id)
+  useDocumentTitle(booking?.booking_ref || null)
 
   if (!booking) {
     return (

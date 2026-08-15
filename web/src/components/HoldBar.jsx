@@ -1,6 +1,8 @@
+import { useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import Icon from './Icon.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
+import { useToast } from '../context/ToastContext.jsx'
 import { countdown } from '../lib/format.js'
 import { useStore } from '../mock/store.js'
 
@@ -10,11 +12,28 @@ import { useStore } from '../mock/store.js'
  * customer's.
  */
 export default function HoldBar({ hold, onExtend, onRelease, checkoutTo }) {
-  const { t } = useLocale()
+  const { t, locale } = useLocale()
+  const toast = useToast()
   useStore() // one-second re-render for the clock
+  const warned = useRef(null)
+
+  const msLeft = hold ? new Date(hold.expires_at).getTime() - Date.now() : 0
+
+  // One nudge as the hold enters its last minute — the countdown alone is easy
+  // to miss while filling in the checkout form.
+  useEffect(() => {
+    if (!hold || msLeft <= 0 || msLeft > 60000) return
+    if (warned.current === hold.id) return
+    warned.current = hold.id
+    toast(
+      locale === 'km'
+        ? 'កៅអីរបស់អ្នកនឹងលែងវិញក្នុងមួយនាទី។'
+        : 'Your seats are released in under a minute.',
+      'error',
+    )
+  }, [hold, msLeft, toast, locale])
 
   if (!hold) return null
-  const msLeft = new Date(hold.expires_at).getTime() - Date.now()
   if (msLeft <= 0) return null
   const warn = msLeft < 2 * 60 * 1000
 

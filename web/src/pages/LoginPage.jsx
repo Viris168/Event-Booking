@@ -1,3 +1,4 @@
+import { useDocumentTitle } from '../lib/useDocumentTitle.js'
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import AuthLayout, { PasswordField } from '../components/AuthLayout.jsx'
@@ -23,6 +24,7 @@ const ERRORS = {
 
 export default function LoginPage() {
   const { t, locale } = useLocale()
+  useDocumentTitle(t('login'))
   const { login } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()

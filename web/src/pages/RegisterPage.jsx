@@ -1,3 +1,4 @@
+import { useDocumentTitle } from '../lib/useDocumentTitle.js'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import AuthLayout, { PasswordField } from '../components/AuthLayout.jsx'
@@ -15,6 +16,7 @@ const ERRORS = {
 
 export default function RegisterPage() {
   const { t, locale, setLocale } = useLocale()
+  useDocumentTitle(t('register'))
   const { register } = useAuth()
   const navigate = useNavigate()
   const toast = useToast()
@@ -52,7 +54,13 @@ export default function RegisterPage() {
     e.preventDefault()
     if (busy) return
     setServerError(null)
-    if (!validate()) return
+    if (!validate()) {
+      // Move focus to the first problem so the error is announced and reachable.
+      requestAnimationFrame(() => {
+        e.target.querySelector('[aria-invalid="true"]')?.focus()
+      })
+      return
+    }
     setBusy(true)
     const result = register({
       display_name: form.display_name.trim(),
