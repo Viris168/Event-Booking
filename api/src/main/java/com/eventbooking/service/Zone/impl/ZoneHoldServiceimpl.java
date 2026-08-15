@@ -5,7 +5,6 @@ import com.eventbooking.Enumeration.HoldStatus;
 import com.eventbooking.catalog.error.EventNotFoundException;
 import com.eventbooking.catalog.error.EventNotOnSaleException;
 import com.eventbooking.catalog.error.EventZoneNotFoundException;
-import com.eventbooking.catalog.error.InvalidZoneCapacityException;
 import com.eventbooking.dto.hold.HeldZoneItem;
 import com.eventbooking.dto.hold.HoldResponse;
 import com.eventbooking.inventory.error.HoldNotActiveException;
@@ -20,9 +19,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
+import java.util.Map;
 
 @Service
 @Transactional
@@ -53,19 +53,22 @@ public class ZoneHoldServiceimpl implements ZoneHoldService {
                 throw new EventNotOnSaleException(eventId);
             }
 
+            expireActiveHoldsForZone(zoneId, now);
+
             EventZone zone = eventZoneRepository.findByIdAndEventIdForUpdate(zoneId, eventId).orElseThrow(() -> new EventZoneNotFoundException(zoneId));
             if (!Boolean.TRUE.equals(zone.getActive())) {
                 throw new InvalidHoldTargetException("Zone is inactive");
             }
 
-            // Mark old holds expired for this zone.
-            holdRepository.expireActiveHoldsForZone(zoneId, now, HoldStatus.ACTIVE, HoldStatus.EXPIRED);
-            long consumed = holdRepository.sumConsumedQuantityByZoneId(zoneId, now, HoldStatus.ACTIVE, HoldStatus.CONSUMED);
-            long remaining = (long) zone.getCapacity() - consumed;
+            long remaining = (long) zone.getCapacity()
+                    - zone.getHeldQty()
+                    - zone.getSoldQty();
 
             if (remaining < quantity) { throw new InsufficientZoneCapacityException(
                         "Not enough tickets remaining in this zone");
             }
+
+            zone.setHeldQty(Math.toIntExact((long) zone.getHeldQty() + quantity));
 
             AppUser user = appUserRepository.findById(userId)
                     .orElseThrow(() -> new InvalidHoldTargetException("User not found"));
@@ -107,6 +110,7 @@ public class ZoneHoldServiceimpl implements ZoneHoldService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public HoldResponse getHold(Long holdId, Long userId) {
         Hold hold = holdRepository.findByIdAndUser_Id(holdId, userId)
                 .orElseThrow(() -> new HoldNotFoundException(holdId));
@@ -153,6 +157,7 @@ public class ZoneHoldServiceimpl implements ZoneHoldService {
 
         if (hold.getStatus() == HoldStatus.ACTIVE
                 && !hold.getExpiresAt().isAfter(now)) {
+            releaseHeldZoneInventory(hold);
             hold.setStatus(HoldStatus.EXPIRED);
             return;
         }
@@ -161,26 +166,74 @@ public class ZoneHoldServiceimpl implements ZoneHoldService {
             throw new HoldNotActiveException("Only an active hold can be released");
         }
 
+        releaseHeldZoneInventory(hold);
         hold.setStatus(HoldStatus.RELEASED);
     }
 
     @Override
     public int expireActiveHolds(Instant currentTime) {
-        return holdRepository.expireAllActiveHolds(
-                currentTime,
-                HoldStatus.ACTIVE,
-                HoldStatus.EXPIRED
-        );
+        int expired = 0;
+        for (Long holdId : holdRepository.findExpiredActiveHoldIds(currentTime, HoldStatus.ACTIVE)) {
+            if (expireHoldIfStillExpired(holdId, currentTime)) {
+                expired++;
+            }
+        }
+        return expired;
     }
 
-    @Override
-    @Transactional
-    public void convertHold(Long holdId) {
-        Hold hold = holdRepository.findById(holdId).orElseThrow(() -> new InvalidHoldTargetException("Hold id not found"));
-        if (hold.getStatus() != HoldStatus.ACTIVE) {
-            throw new RuntimeException("Cannot checkout: This cart has expired or was already processed.");
+    private void expireActiveHoldsForZone(Long zoneId, Instant now) {
+        for (Long holdId : holdRepository.findExpiredActiveHoldIdsByZoneId(
+                zoneId, now, HoldStatus.ACTIVE)) {
+            expireHoldIfStillExpired(holdId, now);
         }
-        hold.setStatus(HoldStatus.CONSUMED);
-        holdRepository.save(hold);
+    }
+
+    private boolean expireHoldIfStillExpired(Long holdId, Instant now) {
+        Hold hold = holdRepository.findByIdForUpdate(holdId).orElse(null);
+
+        if (hold == null
+                || hold.getStatus() != HoldStatus.ACTIVE
+                || hold.getExpiresAt().isAfter(now)) {
+            return false;
+        }
+
+        releaseHeldZoneInventory(hold);
+        hold.setStatus(HoldStatus.EXPIRED);
+        return true;
+    }
+
+    private void releaseHeldZoneInventory(Hold hold) {
+        List<HoldZoneLine> zoneLines = holdZoneLineRepository.findByHoldId(hold.getId());
+        Map<Long, EventZone> lockedZones = lockZonesOf(zoneLines);
+
+        for (HoldZoneLine line : zoneLines) {
+            EventZone zone = lockedZones.get(line.getEventZone().getId());
+            int quantity = line.getQty();
+
+            if (zone.getHeldQty() < quantity) {
+                throw new IllegalStateException(
+                        "Zone " + zone.getId() + " has fewer held tickets than hold " + hold.getId());
+            }
+
+            zone.setHeldQty(zone.getHeldQty() - quantity);
+        }
+    }
+
+    private Map<Long, EventZone> lockZonesOf(List<HoldZoneLine> zoneLines) {
+        if (zoneLines.isEmpty()) {
+            return Map.of();
+        }
+
+        List<Long> zoneIds = zoneLines.stream()
+                .map(line -> line.getEventZone().getId())
+                .distinct()
+                .sorted(Comparator.naturalOrder())
+                .toList();
+
+        Map<Long, EventZone> zonesById = new HashMap<>();
+        for (EventZone zone : eventZoneRepository.findAllByIdForUpdate(zoneIds)) {
+            zonesById.put(zone.getId(), zone);
+        }
+        return zonesById;
     }
 }

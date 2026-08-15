@@ -61,8 +61,51 @@ public interface HoldRepository extends JpaRepository<Hold, Long> {
             @Param("consumedStatus") HoldStatus consumedStatus
     );
 
+    Optional<Hold> findByIdAndUser_Id(Long holdId, Long userId);
+
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+      SELECT h
+      FROM Hold h
+      WHERE h.id = :holdId
+        AND h.user.id = :userId
+      """)
+    Optional<Hold> findOwnedByIdForUpdate(
+            @Param("holdId") Long holdId,
+            @Param("userId") Long userId
+    );
+
+
     interface ZoneConsumed {
         Long getId();
         Long getConsumedQuantity();
     }
+
+    @Query("""
+        SELECT h.id
+        FROM Hold h
+        WHERE h.status = :activeStatus
+          AND h.expiresAt <= :now
+        ORDER BY h.id
+        """)
+    List<Long> findExpiredActiveHoldIds(
+            @Param("now") Instant now,
+            @Param("activeStatus") HoldStatus activeStatus
+    );
+
+    @Query("""
+        SELECT DISTINCT h.id
+        FROM Hold h
+        JOIN h.zoneLines line
+        WHERE line.eventZone.id = :zoneId
+          AND h.status = :activeStatus
+          AND h.expiresAt <= :now
+        ORDER BY h.id
+        """)
+    List<Long> findExpiredActiveHoldIdsByZoneId(
+            @Param("zoneId") Long zoneId,
+            @Param("now") Instant now,
+            @Param("activeStatus") HoldStatus activeStatus
+    );
 }

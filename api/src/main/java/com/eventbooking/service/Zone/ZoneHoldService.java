@@ -24,6 +24,4 @@ public interface ZoneHoldService {
     );
 
     int expireActiveHolds(Instant currentTime);
-
-    void convertHold(Long holdId);
 }
