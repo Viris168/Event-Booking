@@ -1,6 +1,5 @@
 package com.eventbooking.repository;
 
-import com.eventbooking.Enumeration.HoldStatus;
 import com.eventbooking.dto.eventzone.EventZoneResponse;
 import com.eventbooking.model.EventZone;
 import jakarta.persistence.LockModeType;
@@ -41,11 +40,6 @@ public interface EventZoneRepository extends JpaRepository<EventZone, Long> {
             @Param("version") Long version
     );
 
-
-
-
-
-
     /**
      * Row-locks the zones a checkout is about to move from held_qty to
      * sold_qty. EventZone carries an @Version, but optimistic locking would
@@ -59,4 +53,3 @@ public interface EventZoneRepository extends JpaRepository<EventZone, Long> {
     @Query("select z from EventZone z where z.id in :ids order by z.id")
     List<EventZone> findAllByIdForUpdate(@Param("ids") List<Long> ids);
 }
-

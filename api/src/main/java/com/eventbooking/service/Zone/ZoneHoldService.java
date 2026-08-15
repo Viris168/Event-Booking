@@ -9,18 +9,17 @@ public interface ZoneHoldService {
     HoldResponse createHold(
         Long eventId,
         Long zoneId,
-        String holderToken,
         int quantity
     );
 
     HoldResponse getHold(
         Long holdId,
-        String holderToken
+        Long userId
     );
 
     void releaseHold(
         Long holdId,
-        String holderToken
+        Long userId
     );
 
     int expireActiveHolds(Instant currentTime);
