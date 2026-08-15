@@ -1479,11 +1479,26 @@
   }
   .section-label {
     @apply text-[10px] font-bold uppercase tracking-[0.1em];
-    fill: var(--color-muted);
+    fill: var(--color-ink-2);
+  }
+  html[lang='km'] .section-label {
+    @apply tracking-normal;
   }
   .row-label {
     @apply text-[9px] font-bold;
     fill: var(--color-muted);
+  }
+  /* Seat number printed inside bookable seats. */
+  .seat-num {
+    @apply pointer-events-none text-[9px] font-bold;
+    fill: #fff;
+  }
+  /* A selected seat is filled with --color-ink, so its number inverts. */
+  .seat-num.on {
+    fill: var(--color-surface);
+  }
+  .seatmap-hint {
+    @apply text-[0.78rem] text-muted;
   }
   .seat {
     stroke: color-mix(in oklab, var(--color-ink) 14%, transparent);
@@ -1520,8 +1535,12 @@
   .seat-held {
     fill: color-mix(in oklab, var(--color-gold-500) 62%, var(--color-surface-2));
   }
+  /* Not for sale — deliberately reads as "inert", with a dashed outline so it
+     is never mistaken for a sold seat at a glance. */
   .seat-blocked {
-    fill: color-mix(in oklab, var(--color-line) 85%, var(--color-surface-2));
+    fill: color-mix(in oklab, var(--color-muted) 12%, var(--color-surface-2));
+    stroke: color-mix(in oklab, var(--color-muted) 55%, transparent);
+    stroke-dasharray: 2.5 2.5;
   }
   /* Legend swatches read the same mixes so map and key can never drift. */
   .swatch-sold {
@@ -1533,8 +1552,31 @@
   .swatch-held {
     background: color-mix(in oklab, var(--color-gold-500) 62%, var(--color-surface-2));
   }
+  .swatch-blocked {
+    background: color-mix(in oklab, var(--color-muted) 12%, var(--color-surface-2));
+    border-style: dashed;
+    border-color: color-mix(in oklab, var(--color-muted) 55%, transparent);
+  }
   .legend {
-    @apply flex flex-wrap gap-[0.9rem] text-[0.78rem] text-ink-2;
+    @apply flex flex-wrap items-center gap-x-5 gap-y-2 text-[0.78rem] text-ink-2;
+  }
+  /* Two groups: what you can book (by price tier) and what you cannot. */
+  .legend-group {
+    @apply inline-flex flex-wrap items-center gap-[0.9rem];
+  }
+  .legend-group + .legend-group {
+    @apply border-l border-line pl-5;
+  }
+  @media (max-width: 640px) {
+    .legend-group + .legend-group {
+      @apply border-l-0 pl-0;
+    }
+  }
+  .legend-cap {
+    @apply text-tiny font-bold uppercase tracking-[0.05em] text-muted;
+  }
+  html[lang='km'] .legend-cap {
+    @apply tracking-normal;
   }
   .legend span {
     @apply inline-flex items-center gap-[0.35rem];

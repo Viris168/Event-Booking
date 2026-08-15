@@ -2,6 +2,9 @@ import { useMemo } from 'react'
 import { useLocale } from '../context/LocaleContext.jsx'
 import { usd } from '../lib/format.js'
 
+/** Vertical clearance reserved for the stage banner and section headings. */
+const STAGE_BAND = 26
+
 // Seat classes are coloured by tier so price is readable straight off the map.
 const CLASS_COLORS = ['#4054c8', '#0d9488', '#c2410c', '#7e22ce', '#0f766e']
 
@@ -30,7 +33,7 @@ export default function SeatMap({ seats, seatClasses, selected, onToggle, disabl
     }
     return {
       width: maxX + 60,
-      height: maxY + 70,
+      height: maxY + 70 + STAGE_BAND,
       sections: [...bySection.entries()].map(([label, list]) => ({
         label,
         list,
@@ -83,10 +86,15 @@ export default function SeatMap({ seats, seatClasses, selected, onToggle, disabl
             Stage
           </text>
 
-          {sections.map((section) => (
+          <g transform={`translate(0, ${STAGE_BAND})`}>
+          {sections.map((section) => {
+            const cls = seatClasses.find((c) => c.section_label === section.label)
+            const name = cls ? (locale === 'km' ? cls.name_km : cls.name_en) : section.label
+            return (
             <g key={section.label}>
               <text className="section-label" x={section.minX - 8} y={section.minY - 12}>
-                {section.label}
+                {name}
+                {cls ? ` · ${usd(cls.price_usd_cents)}` : ''}
               </text>
               {section.rows.map((row) => {
                 const first = section.list.find((s) => s.row_label === row)
@@ -97,14 +105,18 @@ export default function SeatMap({ seats, seatClasses, selected, onToggle, disabl
                 )
               })}
             </g>
-          ))}
+            )
+          })}
 
           {seats.map((seat) => {
             const isSelectable = seat.status === 'AVAILABLE' && !disabled
             const isSelected = selected.includes(seat.id)
+            // Only the actionable seats carry a number; sold/held stay plain so
+            // the eye goes to what is still bookable.
+            const showNumber = seat.status === 'AVAILABLE' || isSelected
             return (
+              <g key={seat.id}>
               <rect
-                key={seat.id}
                 x={seat.pos_x - 11}
                 y={seat.pos_y - 11}
                 width="22"
@@ -132,29 +144,55 @@ export default function SeatMap({ seats, seatClasses, selected, onToggle, disabl
               >
                 <title>{labelFor(seat)}</title>
               </rect>
+              {showNumber && (
+                <text
+                  className={`seat-num ${isSelected ? 'on' : ''}`}
+                  x={seat.pos_x}
+                  y={seat.pos_y + 3.4}
+                  textAnchor="middle"
+                >
+                  {seat.seat_number}
+                </text>
+              )}
+              </g>
             )
           })}
+          </g>
         </svg>
       </div>
 
+      {!disabled && <p className="seatmap-hint">{t('seatHint')}</p>}
+
       <div className="legend">
-        {seatClasses.map((c, i) => (
-          <span key={c.id}>
-            <i className="swatch" style={{ background: CLASS_COLORS[i % CLASS_COLORS.length] }} />
-            {locale === 'km' ? c.name_km : c.name_en} · {usd(c.price_usd_cents)}
+        <span className="legend-group">
+          <b className="legend-cap">{t('available')}</b>
+          {seatClasses.map((c, i) => (
+            <span key={c.id}>
+              <i className="swatch" style={{ background: CLASS_COLORS[i % CLASS_COLORS.length] }} />
+              {locale === 'km' ? c.name_km : c.name_en} · {usd(c.price_usd_cents)}
+            </span>
+          ))}
+        </span>
+
+        <span className="legend-group">
+          <span>
+            <i className="swatch swatch-selected" />
+            {t('yourSelection')}
           </span>
-        ))}
-        <span>
-          <i className="swatch swatch-selected" />
-          {t('yourSelection')}
-        </span>
-        <span>
-          <i className="swatch swatch-held" />
-          {t('heldByOthers')}
-        </span>
-        <span>
-          <i className="swatch swatch-sold" />
-          {t('sold')}
+          <span>
+            <i className="swatch swatch-held" />
+            {t('heldByOthers')}
+          </span>
+          <span>
+            <i className="swatch swatch-sold" />
+            {t('sold')}
+          </span>
+          {seats.some((s) => s.status === 'BLOCKED') && (
+            <span>
+              <i className="swatch swatch-blocked" />
+              {t('blocked')}
+            </span>
+          )}
         </span>
       </div>
     </div>

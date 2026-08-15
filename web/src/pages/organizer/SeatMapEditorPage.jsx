@@ -19,7 +19,7 @@ function SeatMapPreview({ seats }) {
     if (!seats.length) return { width: 400, height: 120 }
     return {
       width: Math.max(...seats.map((s) => s.pos_x)) + 60,
-      height: Math.max(...seats.map((s) => s.pos_y)) + 50,
+      height: Math.max(...seats.map((s) => s.pos_y)) + 76,
     }
   }, [seats])
 
@@ -39,6 +39,7 @@ function SeatMapPreview({ seats }) {
         <text className="stage-text" x={width / 2} y="20" textAnchor="middle">
           Stage
         </text>
+        <g transform="translate(0, 26)">
         {sections.map(([label, list]) => (
           <g key={label}>
             <text
@@ -64,6 +65,7 @@ function SeatMapPreview({ seats }) {
             ))}
           </g>
         ))}
+        </g>
       </svg>
     </div>
   )
