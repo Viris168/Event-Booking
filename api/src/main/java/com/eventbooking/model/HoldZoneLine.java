@@ -3,6 +3,12 @@ package com.eventbooking.model;
 import jakarta.persistence.*;
 import lombok.*;
 
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
 @Entity
 @Table(name = "hold_zone_line",
        uniqueConstraints = @UniqueConstraint(columnNames = {"hold_id", "event_zone_id"}))

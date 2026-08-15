@@ -1,5 +1,6 @@
 package com.eventbooking.repository;
 
+import com.eventbooking.model.Hold;
 import com.eventbooking.model.HoldZoneLine;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -18,4 +19,6 @@ public interface HoldZoneLineRepository extends JpaRepository<HoldZoneLine, Long
      */
     @Query("select l from HoldZoneLine l where l.hold.id = :holdId")
     List<HoldZoneLine> findByHoldId(@Param("holdId") Long holdId);
+
+    HoldZoneLine findByHold(Hold hold);
 }
