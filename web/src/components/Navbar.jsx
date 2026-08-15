@@ -89,10 +89,8 @@ export default function Navbar() {
   return (
     <nav className="nav" ref={navRef}>
       <div className="nav-inner">
-        <Link to="/" className="nav-brand">
-          <span className="nav-mark" aria-hidden="true">
-            <Icon name="ticket" size={17} strokeWidth={2} />
-          </span>
+        <Link to="/" className="nav-brand" aria-label={t('brand')}>
+          <img className="nav-mark" src="/logo/EBC-logo.svg" alt="" width="1110" height="504" aria-hidden="true" />
           <span className="nav-brand-text">{t('brand')}</span>
         </Link>
 

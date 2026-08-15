@@ -2,10 +2,52 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#131a3a" />
-    <title>KH-Event Booking · Cambodia</title>
+
+    <!-- Icons. The SVG scales to any size and wins wherever it is supported;
+         the 32px PNG is the fallback for browsers that refuse SVG icons, and
+         apple-touch-icon must be a PNG at 180×180. -->
+    <link rel="icon" type="image/svg+xml" href="/logo/EBC-icon.svg" />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/logo/EBC-favicon-32.png"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/logo/EBC-icon-180.png"
+    />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <!-- The browser chrome follows the site's own light/dark palette. -->
+    <meta
+      name="theme-color"
+      media="(prefers-color-scheme: light)"
+      content="#131a3a"
+    />
+    <meta
+      name="theme-color"
+      media="(prefers-color-scheme: dark)"
+      content="#0d1222"
+    />
+    <meta name="color-scheme" content="light dark" />
+
+    <title>Event Booking Cambodia</title>
+    <meta
+      name="description"
+      content="Ticketing for events across the Kingdom of Cambodia — reserved seats or general admission, priced in USD and KHR, with a QR ticket at the door."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Event Booking Cambodia" />
+    <meta property="og:title" content="Event Booking Cambodia" />
+    <meta
+      property="og:description"
+      content="Reserved seats or general admission across all 8 provinces — pay with Bakong KHQR or ABA PayWay."
+    />
+    <meta property="og:image" content="/logo/icon-512.png" />
+    <meta name="twitter:card" content="summary" />
     <!-- Latin + Khmer faces: Khmer script needs its own family, not a fallback. -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

@@ -1,5 +1,6 @@
 import { Routes, Route } from 'react-router-dom'
 import Navbar from './components/Navbar.jsx'
+import ScrollToTop from './components/ScrollToTop.jsx'
 import Footer from './components/Footer.jsx'
 import ProtectedRoute from './routes/ProtectedRoute.jsx'
 
@@ -31,8 +32,13 @@ import AdminPaymentsPage from './pages/admin/AdminPaymentsPage.jsx'
 export default function App() {
   return (
     <>
+      {/* Keyboard users should not have to tab through the whole nav. */}
+      <a className="skip-link" href="#main">
+        Skip to content
+      </a>
+      <ScrollToTop />
       <Navbar />
-      <main>
+      <main id="main" tabIndex={-1}>
         <Routes>
           {/* ------------------------------------------------ public */}
           <Route path="/" element={<HomePage />} />

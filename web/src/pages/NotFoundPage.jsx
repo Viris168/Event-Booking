@@ -1,9 +1,11 @@
+import { useDocumentTitle } from '../lib/useDocumentTitle.js'
 import { Link } from 'react-router-dom'
 import Icon from '../components/Icon.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
 
 export default function NotFoundPage() {
   const { t } = useLocale()
+  useDocumentTitle(t('notFoundTitle'))
   return (
     <div className="container container-narrow">
       <div className="empty">

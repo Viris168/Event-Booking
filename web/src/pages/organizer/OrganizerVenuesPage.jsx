@@ -1,3 +1,4 @@
+import { useDocumentTitle } from '../../lib/useDocumentTitle.js'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import Icon from '../../components/Icon.jsx'
@@ -29,6 +30,7 @@ const BLANK = {
 export default function OrganizerVenuesPage() {
   useStore()
   const { t, locale } = useLocale()
+  useDocumentTitle(t('venues'))
   const { organizerProfile } = useAuth()
   const toast = useToast()
   const orgId = organizerProfile?.id || null

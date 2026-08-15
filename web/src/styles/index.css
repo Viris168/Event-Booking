@@ -1,5 +1,5 @@
 /* ==========================================================================
-   KH-Event Booking — Tailwind CSS 4 design system
+   Event Booking Cambodia — Tailwind CSS 4 design system
 
    Tailwind 4 is configured here, in CSS. There is no tailwind.config.js.
 
@@ -365,14 +365,15 @@
     @apply mx-auto flex max-w-shell items-center gap-4 px-page py-[0.7rem];
   }
   .nav-brand {
-    @apply flex items-center gap-2 text-[1.02rem] font-extrabold text-white tracking-[-0.01em];
+    @apply flex flex-none items-center gap-[0.55rem] text-[1rem] font-extrabold text-white tracking-[-0.01em];
   }
   .nav-brand:hover {
     @apply no-underline;
   }
+  /* The lockup is navy-on-white artwork, so it sits on a white plate against the
+     dark bar. Height drives the size; the width follows the logo's own ratio. */
   .nav-mark {
-    @apply grid size-[30px] flex-none place-items-center rounded-[9px] text-base;
-    background: linear-gradient(140deg, var(--color-gold-500), #e0672c);
+    @apply h-[34px] w-auto rounded-[9px] bg-white;
   }
   .nav-links {
     @apply ml-auto flex flex-wrap items-center gap-[0.15rem];
@@ -430,7 +431,7 @@
     @apply bg-white/15 text-white;
   }
 
-  /* The brand never wraps; below ~430px it drops to the mark alone. */
+  /* The title never wraps; on phones the lockup carries the name on its own. */
   .nav-brand-text {
     @apply whitespace-nowrap;
     /* Latin wordmark: keep it in Inter even when the UI switches to Khmer, so
@@ -450,9 +451,12 @@
       @apply flex;
     }
   }
-  @media (max-width: 420px) {
+  @media (max-width: 560px) {
     .nav-brand-text {
-      @apply text-[0.92rem];
+      @apply hidden;
+    }
+    .nav-mark {
+      @apply h-[30px];
     }
     .nav-inner {
       @apply gap-2;
@@ -1964,15 +1968,13 @@
   }
 
   .footer-brand {
-    @apply flex max-w-[46ch] items-start gap-[0.7rem];
+    @apply flex max-w-[46ch] flex-col items-start gap-[0.8rem];
   }
   .footer-mark {
-    @apply grid size-8 flex-none place-items-center rounded-[9px];
-    background: linear-gradient(140deg, var(--color-gold-500), #e0672c);
-    color: #3a2603;
+    @apply h-[38px] w-auto rounded-[10px] bg-white;
   }
   .footer-brand strong {
-    @apply block text-[0.98rem] tracking-[-0.01em] text-white;
+    @apply block text-[1rem] tracking-[-0.01em] text-white;
     font-family: var(--font-sans);
   }
   .footer-brand p {
@@ -2099,6 +2101,16 @@
   .event-hero .km-title {
     @apply text-[1.05rem] text-white/[0.88];
   }
+  /* Visible only once focused, so keyboard users can jump past the nav. */
+  .skip-link {
+    @apply fixed left-3 z-[70] rounded-ui bg-brand-600 px-4 py-2 text-[0.85rem] font-semibold text-white shadow-pop;
+    top: -100px;
+    transition: top 0.15s ease;
+  }
+  .skip-link:focus {
+    @apply top-3 no-underline;
+  }
+
 }
 
 /* ------------------------------------------------------------- keyframes */
@@ -2129,5 +2141,17 @@
   from {
     opacity: 0;
     transform: translateY(6px);
+  }
+}
+
+/* ------------------------------------------------------- reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

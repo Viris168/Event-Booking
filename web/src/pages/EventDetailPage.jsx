@@ -1,3 +1,4 @@
+import { useDocumentTitle } from '../lib/useDocumentTitle.js'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import HoldBar from '../components/HoldBar.jsx'
@@ -47,6 +48,7 @@ export default function EventDetailPage() {
   const seats = event ? eventSeatsOf(event.id) : []
   const hold = event && isAuthenticated ? getActiveHold(event.id, user.id) : null
   const summary = event ? inventorySummary(event.id) : null
+  useDocumentTitle(event ? (locale === 'km' ? event.title_km : event.title_en) : null)
 
   // A hold that vanishes while the page is open expired — say so, don't fail silently.
   const lastHoldId = useRef(hold?.id || null)

@@ -1,3 +1,4 @@
+import { useDocumentTitle } from '../../lib/useDocumentTitle.js'
 import { Fragment, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Badge, Field, Money, ResponsiveTable } from '../../components/ui.jsx'
@@ -10,6 +11,7 @@ const ROLES = ['CUSTOMER', 'ORGANIZER', 'PLATFORM_ADMIN']
 export default function AdminUsersPage() {
   useStore()
   const { t, locale, date } = useLocale()
+  useDocumentTitle(t('users'))
   const toast = useToast()
   const [q, setQ] = useState('')
   const [role, setRole] = useState('')

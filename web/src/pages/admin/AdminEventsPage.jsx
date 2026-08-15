@@ -1,3 +1,4 @@
+import { useDocumentTitle } from '../../lib/useDocumentTitle.js'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Badge, Field, Progress, ResponsiveTable } from '../../components/ui.jsx'
@@ -22,6 +23,7 @@ const STATUSES = ['DRAFT', 'PUBLISHED', 'TAKEN_DOWN']
 export default function AdminEventsPage() {
   useStore()
   const { t, locale, date } = useLocale()
+  useDocumentTitle(t('moderation'))
   const toast = useToast()
   const [q, setQ] = useState('')
   const [status, setStatus] = useState('ALL')
