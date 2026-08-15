@@ -42,6 +42,7 @@ The following schema tables currently have entities in `com.eventbooking.model`:
 - `hold` -> `Hold`
 - `booking` -> `Booking`, `booking_item` -> `BookingItem`, `booking_status_history` -> `BookingStatusHistory`
 - `payment_transaction` -> `PaymentTransaction`
+- `ticket` -> `Ticket`
 - `app_user` -> `AppUser`
 
 Entity mapping rules:
@@ -181,6 +182,19 @@ change what is owed.
   amount and currency come from the booking's snapshotted totals.
 - `PaymentResponse`
 
+### Ticket
+
+`dto/ticket` contains `TicketResponse`, `ScanTicketRequest`, and `ScanResponse`.
+
+There is no create request: tickets are issued by the system when a booking reaches
+CONFIRMED, never on demand. `ScanResponse` carries a deliberately smaller
+`ScannedTicket` rather than reusing `TicketResponse` — the latter includes `qrPayload`,
+and echoing a bearer secret back to whoever scanned it would let a scanner harvest
+working tickets.
+
+`ScanOutcome` lives in `ticket/`, not `Enumeration/`: that package is for enums backed by
+a database `CHECK`, and this one is an API concept.
+
 `PaymentResponse` deliberately carries more than the `payment_transaction` row.
 `bookingState` and `pollAfterMs` let a pay screen drive its whole wait from one response —
 render, poll on the interval the server asks for, stop when the booking reads `CONFIRMED` —
@@ -199,6 +213,10 @@ settled, so a closed attempt never keeps offering something scannable.
 | Hold | `POST /holds`, `GET /holds/{id}` |
 | Booking | `POST /bookings`, `GET /bookings/me`, `GET /bookings/{id}` — **implemented** |
 | Payment | `POST /bookings/{id}/payments`, `GET /bookings/{id}/payments`, `GET /payments/{id}`, `POST /payments/{id}/refresh` — **implemented** |
+| Ticket | `GET /bookings/{id}/tickets`, `GET /tickets/{id}`, `GET /tickets/{id}/qr.svg`, `POST /tickets/scan` — **implemented** |
+
+Tickets have no create endpoint on purpose: they are issued when a booking is confirmed,
+inside the payment transaction. A ticket that can be requested can be requested twice.
 
 Implemented controllers live under `/api` and are grouped by `@Tag` for Swagger
 (`/swagger-ui.html`). They take an `X-User-Id` header as a stand-in for the authenticated

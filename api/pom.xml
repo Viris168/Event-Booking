@@ -24,6 +24,7 @@
         <!-- springdoc 3.x is the Spring Boot 4 / Spring Framework 7 line.
              The 2.x releases target Boot 3 and will not start here. -->
         <springdoc.version>3.0.2</springdoc.version>
+        <zxing.version>3.5.3</zxing.version>
     <kotlin.version>2.3.10</kotlin.version>
     </properties>
 
@@ -62,6 +63,17 @@
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
             <version>${springdoc.version}</version>
+        </dependency>
+
+        <!-- QR encoding for tickets. `core` only, deliberately not `javase`:
+             that module renders through java.awt/ImageIO, which drags a headful
+             graphics stack into a server that has no business having one.
+             QrRenderer turns ZXing's BitMatrix into SVG instead - crisp at any
+             gate scanner's zoom, and a few hundred bytes. -->
+        <dependency>
+            <groupId>com.google.zxing</groupId>
+            <artifactId>core</artifactId>
+            <version>${zxing.version}</version>
         </dependency>
 
         <!-- Validation (@Valid, @NotNull, etc.) -->

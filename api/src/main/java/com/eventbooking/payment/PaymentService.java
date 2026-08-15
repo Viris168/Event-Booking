@@ -18,6 +18,7 @@ import com.eventbooking.payment.error.PaymentNotFoundException;
 import com.eventbooking.payment.error.UnsupportedPaymentProviderException;
 import com.eventbooking.repository.BookingRepository;
 import com.eventbooking.repository.PaymentTransactionRepository;
+import com.eventbooking.ticket.TicketService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
@@ -85,6 +86,7 @@ public class PaymentService {
     private final BookingStateMachine stateMachine;
     private final KhqrGenerator khqrGenerator;
     private final PaymentMapper mapper;
+    private final TicketService ticketService;
     private final PaymentProperties paymentProperties;
     private final BookingProperties bookingProperties;
 
@@ -93,6 +95,7 @@ public class PaymentService {
                           BookingStateMachine stateMachine,
                           KhqrGenerator khqrGenerator,
                           PaymentMapper mapper,
+                          TicketService ticketService,
                           PaymentProperties paymentProperties,
                           BookingProperties bookingProperties) {
         this.paymentRepository = paymentRepository;
@@ -100,6 +103,7 @@ public class PaymentService {
         this.stateMachine = stateMachine;
         this.khqrGenerator = khqrGenerator;
         this.mapper = mapper;
+        this.ticketService = ticketService;
         this.paymentProperties = paymentProperties;
         this.bookingProperties = bookingProperties;
     }
@@ -381,6 +385,16 @@ public class PaymentService {
                 chargedAmount(attempt), result.transactionHash());
 
         confirm(booking, attempt);
+
+        // Tickets are issued here rather than on a listener, and in this same
+        // transaction, because a customer whose payment succeeded but whose
+        // tickets quietly failed has no way of finding out until the gate turns
+        // them away. Either both land or neither does - and if neither, the
+        // attempt stays open and the next poll settles it again. Issuance is
+        // idempotent, so that retry cannot double-issue.
+        if (booking.getState() == BookingStatus.CONFIRMED) {
+            ticketService.issueForBooking(booking);
+        }
     }
 
     /**

@@ -113,6 +113,18 @@ app:
       min-refresh-interval: ${PAYMENT_MIN_REFRESH_INTERVAL:3s}
       # The timeout that returns seats to the pool.
       booking-sweep: ${BOOKING_SWEEP_INTERVAL:1m}
+  ticket:
+    # HMAC key for QR payloads. Rotating it invalidates every ticket already in
+    # a customer's hand, so it is long-lived - unlike the JWT secret, which can
+    # be rotated freely because access tokens last 15 minutes. Startup warns
+    # while this is still the placeholder.
+    signing-secret: ${TICKET_SIGNING_SECRET:change-this-ticket-secret-before-any-real-event}
+    # Default presentation size of the rendered SVG. It is vector, so this is
+    # not a resolution ceiling.
+    qr-size-px: ${TICKET_QR_SIZE_PX:256}
+    # The QR spec's quiet zone. Scanners genuinely fail without it - do not trim
+    # this to make the image look tidier.
+    qr-margin-modules: ${TICKET_QR_MARGIN:4}
   scheduling:
     enabled: ${SCHEDULING_ENABLED:true}
 

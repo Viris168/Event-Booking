@@ -2,6 +2,7 @@ package com.eventbooking.common.error;
 
 import com.eventbooking.catalog.error.*;
 import com.eventbooking.inventory.error.*;
+import com.eventbooking.ticket.error.UnknownOperatorException;
 import org.postgresql.util.PSQLException;
 import org.postgresql.util.ServerErrorMessage;
 import org.springframework.core.NestedExceptionUtils;
@@ -66,6 +67,12 @@ public class DatabaseExceptionTranslator {
         if (constraint == null) return original;
         if ("fk_event_seat_zone".equals(constraint)) {
             return new CrossEventReferenceException("Entities referenced across mismatching events.");
+        }
+        // Backstop behind TicketService's operator check. A gate identifying
+        // itself as a non-existent user would otherwise 500 at the moment of
+        // stamping a valid ticket.
+        if ("ticket_checked_in_by_fkey".equals(constraint)) {
+            return new UnknownOperatorException(null);
         }
         return original;
     }

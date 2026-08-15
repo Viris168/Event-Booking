@@ -39,6 +39,8 @@ api/src/main/java/com/eventbooking/
 ├── payment/                       service, reconciler, poller, mapper, properties
 │   ├── bakong/                    KHQR generator, provider client (live + mock)
 │   └── error/                     payment exceptions
+├── ticket/                        issuance, signed QR codec, SVG renderer, gate
+│   └── error/                     ticket exceptions
 ├── controller/                    REST controllers
 └── config/                        scheduling, security, OpenAPI
 ```
@@ -49,7 +51,7 @@ Lane ownership, so two people do not write the same class twice:
 |---|---|---|
 | Catalog (venues, events, seat classes, zones) | Vannara | `catalog/`, `dto/venue`, `dto/event`, `dto/seatclass`, `dto/eventzone` |
 | Inventory (seat maps, holds) | Viris | `inventory/`, `dto/eventseat`, `dto/hold` |
-| Booking & payments | Winner | `booking/`, `payment/`, `dto/booking`, `dto/payment` |
+| Booking, payments & tickets | Winner | `booking/`, `payment/`, `ticket/`, `dto/booking`, `dto/payment`, `dto/ticket` |
 
 ---
 
@@ -249,7 +251,87 @@ the whole flow — see `api/dev-seed.sql`.
 
 ---
 
-## 7. Errors
+## 7. Tickets (issue #33)
+
+No migration: V1's `ticket` table already had everything, including the
+`UNIQUE (booking_item_id, unit_seq)` that makes issuance safe to retry.
+
+### One ticket per admission unit
+
+The issue says "one per booking item"; the schema says one per **admission
+unit**, and the schema is right. A seat line is always `qty = 1` and yields one
+ticket. A zone line with `qty = 3` is three people who will arrive separately
+and yields three tickets, `unit_seq` 1..3. Issuing one QR per line would send a
+family of four a single code and leave a steward deciding how many people it
+admits.
+
+### Issued inside the payment transaction
+
+`PaymentService.settle` calls `TicketService.issueForBooking` right after the
+CONFIRMED transition, in the same transaction. A customer whose payment
+succeeded but whose tickets silently failed has no way to find out until the
+gate turns them away — so either both land or neither does, and if neither, the
+payment attempt stays open and the next poll settles it again. Issuance counts
+what each line already has and creates only the shortfall, so that retry cannot
+double-issue.
+
+### The QR payload
+
+```
+EBT1.42.ARaBt9WwSFCg1I2WcHYqLA.pfBnW1S8Y6h_qYyGDlP2LQ
+ │    │           │                      │
+ │    │           │                      └─ HMAC-SHA256 over the rest, 16 bytes
+ │    │           └─ the ticket's random token (ticket.qr_token)
+ │    └─ ticket id
+ └─ format version
+```
+
+Both halves earn their place:
+
+- The **token** is 122 bits from the database, and it is the authority — a scan
+  is only honoured when the presented token matches the stored one. It is what
+  makes a ticket unguessable.
+- The **signature** lets the gate reject garbage without a database hit, and
+  stops ticket ids being enumerated by feeding the scanner a counter.
+
+The useful consequence: a leaked signing key alone does **not** let anyone mint
+a working ticket, because they would still have to guess a token only the
+database holds. Rotating `TICKET_SIGNING_SECRET` invalidates every QR already in
+a customer's hand, so it is a real operation — keep it separate from the JWT
+secret, which rotates freely.
+
+### Single-use
+
+`scan` takes `findByIdForUpdate` **before** reading `checked_in_at`, so two
+turnstiles hitting one code at the same instant serialise: the first stamps it,
+the second reads it back as used. The read-then-write without that lock is
+exactly how a ticket gets admitted twice. A refused scan never consumes the
+ticket — `WRONG_EVENT` in particular has to still work at its own gate.
+
+### Scanning answers 200, always
+
+`POST /api/tickets/scan` returns a `ScanOutcome` rather than an RFC 7807 problem
+for every ticket verdict, including forged and already-used. "Is this ticket
+good?" has a valid answer of "no", and a gate app needs one shape to render
+green or red from. Read `admitted`.
+
+The one exception is `UNKNOWN_OPERATOR` (400): a gate identifying itself as a
+non-existent user says nothing about the ticket, and a misconfigured scanner
+must not be told "invalid ticket". Without that check it surfaced as a 500 from
+`ticket_checked_in_by_fkey` *after* validation — a red screen for a good ticket.
+
+### Rendering
+
+`GET /api/tickets/{id}/qr.svg` returns SVG, drawn from ZXing's `BitMatrix` by
+hand. Only `com.google.zxing:core` is on the classpath, deliberately: the
+`javase` module renders through `java.awt`/ImageIO and drags a headful graphics
+stack into the server. Horizontal runs are merged into one path, which is the
+difference between a ~3 KB document and a ~60 KB one. Responses are
+`Cache-Control: no-store, private` — a QR is a bearer credential.
+
+---
+
+## 8. Errors
 
 Throw a subclass of `ApiException` carrying an `ErrorCode`; `GlobalExceptionHandler` turns
 it into RFC 7807 `application/problem+json` with `errorCode`, `retryable`, `timestamp` and
@@ -263,10 +345,11 @@ it surfaces as a 500. Booking-lane entries:
 |---|---|
 | `uq_booking_item_seat_live` | `SeatUnavailableException` (409) |
 | `booking_hold_id_key` | `HoldNotActiveException` (409) |
+| `ticket_checked_in_by_fkey` | `UnknownOperatorException` (400) |
 
 ---
 
-## 8. Configuration
+## 9. Configuration
 
 `app.*` in `application.yml`, bound with `@ConfigurationProperties` and picked up by
 `@ConfigurationPropertiesScan` on the main class. Every value has an env-var override.
@@ -289,10 +372,13 @@ it surfaces as a 500. Booking-lane entries:
 | `app.payment.poll.min-refresh-interval` | `PAYMENT_MIN_REFRESH_INTERVAL` | `3s` | Per-attempt floor on `/refresh`, and the cadence the API tells clients to poll on |
 | `app.payment.poll.booking-sweep` | `BOOKING_SWEEP_INTERVAL` | `1m` | Gap between booking-expiry sweeps |
 | `app.scheduling.enabled` | `SCHEDULING_ENABLED` | `true` | Master switch for `@Scheduled` |
+| `app.ticket.signing-secret` | `TICKET_SIGNING_SECRET` | placeholder | HMAC key for QR payloads. **Rotating it invalidates every ticket already issued** — long-lived, unlike the JWT secret. Startup warns while it is the shipped placeholder |
+| `app.ticket.qr-size-px` | `TICKET_QR_SIZE_PX` | `256` | Default presentation size; the SVG is vector, so not a ceiling |
+| `app.ticket.qr-margin-modules` | `TICKET_QR_MARGIN` | `4` | The QR spec's quiet zone. Scanners fail without it |
 
 ---
 
-## 9. Testing
+## 10. Testing
 
 | Kind | Naming | Runs under | Needs Docker |
 |---|---|---|---|
@@ -317,6 +403,17 @@ provider:
   about which booking transitions do and do not happen, and a mocked machine would happily
   accept edges the real one refuses.
 
+The ticket lane's three follow the same rule — mock the database, never the thing under
+test:
+
+- `TicketTokenCodecTest` tampers with every field of the payload in turn, because "cannot
+  be forged" is a security claim and deserves to be tested as one.
+- `QrRendererTest` parses the emitted SVG back into a grid and hands it to ZXing's
+  **decoder**. That is the point: an off-by-one in the run-length merging produces a
+  picture that still looks like a QR code and scans as nothing.
+- `TicketServiceTest` uses the real codec and mapper — scan tests mean nothing if the
+  thing being scanned is not a genuinely signed payload.
+
 Two gaps to be aware of:
 
 - **Surefire only runs `*Test`.** `*IT` classes are excluded by its default includes and
@@ -336,7 +433,7 @@ Two gaps to be aware of:
 
 ---
 
-## 10. Running it, and what is not built yet
+## 11. Running it, and what is not built yet
 
 ### Trying the payment flow
 
@@ -361,6 +458,13 @@ The seed prints an `X-User-Id` and a `holdId`. Then, in Swagger or curl:
 | Poll | `GET /api/payments/{id}` — stop when `bookingState` is `CONFIRMED` |
 | Pay (MOCK) | `POST /api/dev/payments/{id}/pay` — call it twice; nothing should change |
 | Time out (MOCK) | `POST /api/dev/payments/{id}/expire` |
+| Tickets | `GET /api/bookings/{id}/tickets` — empty before payment, one per admission unit after |
+| The QR | `GET /api/tickets/{id}/qr.svg` — open it in a browser tab |
+| The gate | `POST /api/tickets/scan` `{"payload":"<qrPayload>","eventId":N}` — scan twice; the second is `ALREADY_CHECKED_IN` |
+
+`X-User-Id` on the scan is the gate operator and **must be a real user id** (the seed
+prints a customer; the organizer it also creates works as the operator) — a non-existent
+one is a 400, deliberately.
 
 `X-User-Id` is a placeholder for the authenticated principal on every endpoint that acts
 for a customer.
@@ -384,9 +488,13 @@ for a customer.
 - ABA PayWay. `PaymentProvider.ABA_PAYWAY` exists and answers `501`; the redirect flow and
   its return URL are unbuilt. `payment_webhook_event` is still unused — PayWay is the
   provider that will need it, since Bakong is polled.
-- Ticket issuance on `CONFIRMED` — one ticket per admission unit, so a zone line with
-  `qty = 3` yields three scannable tickets (`unit_seq` 1..3). This is the obvious next
-  step now that bookings actually reach `CONFIRMED`.
+- **Ticket delivery.** Issue #33 stops at "the ticket exists and the gate accepts it" —
+  nothing emails or Telegrams it to the buyer, which is @Vann06-2005's outbox issue. Today
+  a customer has to come back to `GET /api/bookings/{id}/tickets`.
+- **Gate authorisation.** `POST /api/tickets/scan` records `checked_in_by` but does not
+  check that the operator works for the event's organizer — `Event.organizerId` points at
+  `organizer_profile`, which has no entity yet, and there is no auth to hang a role off.
+  Anyone who can reach the API can currently check in anyone's ticket.
 - Refunds. `CONFIRMED → REFUND_REQUESTED → REFUNDED` is on the state machine, but nothing
   calls Bakong to move money back, and the reconciler flags two cases for a human today
   (money landing on a closed attempt, or on a booking that already died).

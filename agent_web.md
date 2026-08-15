@@ -367,6 +367,40 @@ booking to `PAYMENT_FAILED`, but the seats are still the customer's — calling
 existing "try again" buttons should do. The booking only really dies when its
 15-minute payment window lapses, at which point it reads `EXPIRED`.
 
+### Tickets are real too (issue #33)
+
+`GET /api/bookings/{id}/tickets` returns one entry **per admission unit**, not
+per line: a zone line of `qty: 3` comes back as three tickets with `unitSeq`
+1, 2, 3. `TicketCard.jsx` should render one card each — the mock's shape is
+close, but anything that assumes one ticket per booking item will show a family
+of three a single QR.
+
+For the QR itself there are two options, and the second is usually less work:
+
+1. `qrPayload` on the ticket, fed to a JS QR encoder — replaces `QrGlyph` and
+   keeps rendering client-side.
+2. `GET /api/tickets/{id}/qr.svg?size=320` straight into an `<img src>`. It is a
+   real SVG, so it prints and zooms cleanly, and no encoder ships to the browser.
+   The header is `Cache-Control: no-store` — a QR is a bearer credential, so do
+   not stash it in a service worker or a data store.
+
+`CheckInPage.jsx` now has a real backend: `POST /api/tickets/scan` with
+`{payload, eventId}` and the operator in `X-User-Id`. Three things to build
+around:
+
+- It **always answers 200**, even for a forged or already-used code. Branch on
+  `admitted` and show `outcome`/`message`; do not treat non-2xx as "invalid
+  ticket", because the only 4xx here means the scanner itself is misconfigured.
+- `previousCheckInAt` on `ALREADY_CHECKED_IN` is the field that matters most on
+  screen: "23 seconds ago" is a double-scan of one person, "two hours ago" is a
+  ticket being passed back out of the venue. Render it as a relative time.
+- **Always send `eventId`.** Without it a genuine ticket for another event
+  scans green.
+
+Scanning is single-use and irreversible — there is no un-check-in endpoint — so
+do not let the camera fire repeatedly at the same code while a result is on
+screen.
+
 ---
 
 ## 5. Known gaps (deliberate, per the brief)
