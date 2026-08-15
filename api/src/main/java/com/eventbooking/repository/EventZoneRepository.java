@@ -1,5 +1,6 @@
 package com.eventbooking.repository;
 
+import com.eventbooking.Enumeration.HoldStatus;
 import com.eventbooking.dto.eventzone.EventZoneResponse;
 import com.eventbooking.model.EventZone;
 import jakarta.persistence.LockModeType;

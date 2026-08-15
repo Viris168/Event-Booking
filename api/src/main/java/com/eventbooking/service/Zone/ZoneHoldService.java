@@ -9,6 +9,7 @@ public interface ZoneHoldService {
     HoldResponse createHold(
         Long eventId,
         Long zoneId,
+        Long userId,
         int quantity
     );
 

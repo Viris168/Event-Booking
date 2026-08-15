@@ -1,10 +1,12 @@
 package com.eventbooking.repository;
 
 import com.eventbooking.Enumeration.HoldStatus;
+import com.eventbooking.model.Event;
 import com.eventbooking.model.Hold;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -92,6 +94,7 @@ public interface HoldRepository extends JpaRepository<Hold, Long> {
             @Param("userId") Long userId
     );
 
+    Hold findByEvent(Event event);
 
     interface ZoneConsumed {
         Long getId();
@@ -123,5 +126,25 @@ public interface HoldRepository extends JpaRepository<Hold, Long> {
             @Param("zoneId") Long zoneId,
             @Param("now") Instant now,
             @Param("activeStatus") HoldStatus activeStatus
+    );
+
+    @Modifying(flushAutomatically = true)
+    @Query("""
+      UPDATE Hold h
+      SET h.status = :expiredStatus
+      WHERE h.status = :activeStatus
+        AND h.expiresAt <= :now
+        AND EXISTS (
+            SELECT 1
+            FROM HoldZoneLine hz
+            WHERE hz.hold = h
+              AND hz.eventZone.id = :zoneId
+        )
+      """)
+    int expireActiveHoldsForZone(
+            @Param("zoneId") Long zoneId,
+            @Param("now") Instant now,
+            @Param("activeStatus") HoldStatus activeStatus,
+            @Param("expiredStatus") HoldStatus expiredStatus
     );
 }

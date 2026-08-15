@@ -6,11 +6,11 @@ import com.eventbooking.catalog.error.EventNotFoundException;
 import com.eventbooking.catalog.error.EventNotOnSaleException;
 import com.eventbooking.catalog.error.EventZoneNotFoundException;
 import com.eventbooking.catalog.error.InvalidZoneCapacityException;
+import com.eventbooking.dto.hold.HeldZoneItem;
 import com.eventbooking.dto.hold.HoldResponse;
+import com.eventbooking.inventory.error.InsufficientZoneCapacityException;
 import com.eventbooking.inventory.error.InvalidHoldTargetException;
-import com.eventbooking.model.Event;
-import com.eventbooking.model.EventZone;
-import com.eventbooking.model.Hold;
+import com.eventbooking.model.*;
 import com.eventbooking.repository.EventRepository;
 import com.eventbooking.repository.EventZoneRepository;
 import com.eventbooking.repository.HoldRepository;
@@ -19,6 +19,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -36,30 +38,93 @@ public class ZoneHoldServiceimpl implements ZoneHoldService {
     }
 
     @Override
-    public HoldResponse createHold(Long eventId, Long zoneId, int quantity) {
-        if (quantity <= 0) {
-            throw new InvalidHoldTargetException("Hold quantity must be greater than zero");
-        }
-        Event event = eventRepository.findById(eventId).orElseThrow(() -> new EventNotFoundException(eventId));
-        Instant now = Instant.now();
-        if (event.getStatus() != EventStatus.PUBLISHED || now.isBefore(event.getSalesOpenAt()) || !now.isBefore(event.getSalesCloseAt())) {
-            throw new EventNotOnSaleException(eventId);
-        }
-        EventZone eventZone = eventZoneRepository.findById(zoneId).orElseThrow(() -> new EventZoneNotFoundException(zoneId));
-        if (!eventZone.getEvent().getId().equals(eventId)) {
-            throw new InvalidHoldTargetException("Zone does not belong to the requested event");
-        }
+    public HoldResponse createHold(Long eventId, Long zoneId,  Long userId, int quantity) {
+            if (quantity <= 0) {throw new InvalidHoldTargetException("Hold quantity must be greater than zero");}
+            Instant now = Instant.now();
+            Event event = eventRepository.findById(eventId).orElseThrow(() -> new EventNotFoundException(eventId));
+            if (event.getStatus() != EventStatus.PUBLISHED
+                    || now.isBefore(event.getSalesOpenAt())
+                    || !now.isBefore(event.getSalesCloseAt())) {
+                throw new EventNotOnSaleException(eventId);
+            }
 
-        Optional<EventZone> zone = eventZoneRepository.findByIdAndEventIdForUpdate(zoneId, eventId);
+            EventZone zone = eventZoneRepository.findByIdAndEventIdForUpdate(zoneId, eventId).orElseThrow(() -> new EventZoneNotFoundException(zoneId));
+            if (!Boolean.TRUE.equals(zone.getActive())) {
+                throw new InvalidHoldTargetException("Zone is inactive");
+            }
 
+            // Mark old holds expired for this zone.
+            holdRepository.expireActiveHoldsForZone(zoneId, now, HoldStatus.ACTIVE, HoldStatus.EXPIRED);
+            long consumed = holdRepository.sumConsumedQuantityByZoneId(zoneId, now, HoldStatus.ACTIVE, HoldStatus.CONSUMED);
+            long remaining = (long) zone.getCapacity() - consumed;
 
+            if (remaining < quantity) { throw new InsufficientZoneCapacityException(
+                        "Not enough tickets remaining in this zone");
+            }
 
-        return null;
+            AppUser user = appUserRepository.findById(userId)
+                    .orElseThrow(() -> new InvalidHoldTargetException("User not found"));
+
+            Hold hold = Hold.builder()
+                    .event(event)
+                    .user(user)
+                    .status(HoldStatus.ACTIVE)
+                    .expiresAt(now.plus(10, ChronoUnit.MINUTES))
+                    .build();
+
+            HoldZoneLine zoneLine = HoldZoneLine.builder()
+                    .hold(hold)
+                    .eventZone(zone)
+                    .qty(quantity)
+                    .build();
+
+            hold.getZoneLines().add(zoneLine);
+
+            Hold savedHold = holdRepository.save(hold);
+
+            return new HoldResponse(
+                    savedHold.getId(),
+                    eventId,
+                    userId,
+                    savedHold.getStatus(),
+                    savedHold.getExpiresAt(),
+                    savedHold.getCreatedAt(),
+                    savedHold.getExtended(),
+                    List.of(),
+                    List.of(new HeldZoneItem(
+                            zoneId,
+                            zone.getNameEn(),
+                            quantity,
+                            zone.getPriceUsdCents()
+                    )),
+                    Math.multiplyExact(zone.getPriceUsdCents(), quantity)
+            );
     }
 
     @Override
     public HoldResponse getHold(Long holdId, Long userId) {
-        return null;
+        AppUser user = appUserRepository.findById(userId)
+                .orElseThrow(() -> new InvalidHoldTargetException("User not found"));
+        Hold savedHold = holdRepository.findById(holdId).orElseThrow(() -> new EventNotFoundException(holdId));
+
+        return new HoldResponse(
+                savedHold.getId(),
+                savedHold.getEvent().getId(),
+                userId,
+                savedHold.getStatus(),
+                savedHold.getExpiresAt(),
+                savedHold.getCreatedAt(),
+                savedHold.getExtended(),
+                List.of(),
+                List.of(new HeldZoneItem(
+                        savedHold.getZoneLines().stream().map(EventZone::getId).toList(),
+                        zone.getNameEn(),
+                        quantity,
+                        zone.getPriceUsdCents()
+                )),
+                Math.multiplyExact(zone.getPriceUsdCents(), )
+        );
+
     }
 
     @Override
