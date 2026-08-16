@@ -111,10 +111,8 @@ Venue seats define a reusable physical seat layout for a venue. They are created
 `dto/event` contains:
 
 - `CreateEventRequest`
-- `PublishEventRequest`
-- `EventResponse`
-
-Do not add a general event update DTO. `PublishEventRequest` represents the explicit event-status workflow transition.
+- `UpdateEventRequest`: General event detail updates.
+Do not add a general event update DTO for status transitions; instead, use explicit endpoints like PATCH /events/{id}/publish.
 
 `CreateEventRequest` validates that:
 

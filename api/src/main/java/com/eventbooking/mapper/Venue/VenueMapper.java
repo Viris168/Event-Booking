@@ -13,7 +13,7 @@ public class VenueMapper {
     public static Venue toVenue(CreateVenueRequest createVenueRequest, Long organizerId) {
 
         return Venue.builder()
-                .id(organizerId)
+                .organizerId(organizerId)
                 .nameEn(createVenueRequest.nameEn())
                 .nameKm(createVenueRequest.nameKm())
                 .provinceCode(createVenueRequest.provinceCode())
@@ -38,7 +38,8 @@ public class VenueMapper {
                 venue.getStreetAddress(),
                 venue.getLat(),
                 venue.getLng(),
-                venue.getCreatedAt()
+                venue.getCreatedAt(),
+                venue.getIsDisabled()
         );
     }
 

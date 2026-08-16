@@ -8,6 +8,6 @@ public interface EventService {
     EventResponse createEvent(CreateEventRequest request);
     EventResponse getEvent(Long eventId);
     EventResponse updateEvent(Long eventId, UpdateEventRequest request);
-    void publishEvent(Long eventId);
+    EventResponse publishEvent(Long eventId);
     void verifyEventIsOnSale(Long eventId);
 }
