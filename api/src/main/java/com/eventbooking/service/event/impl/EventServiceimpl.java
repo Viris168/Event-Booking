@@ -66,27 +66,30 @@ public class EventServiceimpl implements EventService {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new EventNotFoundException(eventId));
 
-        if (event.getInventoryMode() != request.inventoryMode()
+        if (request.inventoryMode() != null
+                && request.inventoryMode() != event.getInventoryMode()
                 && (seatClassRepository.existsByEventId(eventId)
                 || eventZoneRepository.existsByEventId(eventId))) {
             throw new InventoryModeChangeBlockedException(
                     "Cannot change inventory mode after inventory has been created for event: " + eventId);
         }
 
-        Venue venue = venueRepository.findById(request.venueId())
-                .orElseThrow(() -> new VenueNotFoundException(request.venueId()));
+        if (request.venueId() != null) {
+            Venue venue = venueRepository.findById(request.venueId())
+                    .orElseThrow(() -> new VenueNotFoundException(request.venueId()));
+            event.setVenue(venue);
+        }
 
-        event.setVenue(venue);
-        event.setInventoryMode(request.inventoryMode());
-        event.setSlug(request.slug());
-        event.setTitleEn(request.titleEn());
-        event.setTitleKm(request.titleKm());
-        event.setDescriptionEn(request.descriptionEn());
-        event.setDescriptionKm(request.descriptionKm());
-        event.setStartsAt(request.startsAt());
-        event.setDoorsOpenAt(request.doorsOpenAt());
-        event.setSalesOpenAt(request.salesOpenAt());
-        event.setSalesCloseAt(request.salesCloseAt());
+        if (request.inventoryMode() != null) event.setInventoryMode(request.inventoryMode());
+        if (request.slug() != null) event.setSlug(request.slug());
+        if (request.titleEn() != null) event.setTitleEn(request.titleEn());
+        if (request.titleKm() != null) event.setTitleKm(request.titleKm());
+        if (request.descriptionEn() != null) event.setDescriptionEn(request.descriptionEn());
+        if (request.descriptionKm() != null) event.setDescriptionKm(request.descriptionKm());
+        if (request.startsAt() != null) event.setStartsAt(request.startsAt());
+        if (request.doorsOpenAt() != null) event.setDoorsOpenAt(request.doorsOpenAt());
+        if (request.salesOpenAt() != null) event.setSalesOpenAt(request.salesOpenAt());
+        if (request.salesCloseAt() != null) event.setSalesCloseAt(request.salesCloseAt());
         eventRepository.save(event);
 
         return toEventResponse(event);
@@ -94,7 +97,7 @@ public class EventServiceimpl implements EventService {
 
     @Override
     @Transactional
-    public void publishEvent(Long eventId) {
+    public EventResponse publishEvent(Long eventId) {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new EventNotFoundException(eventId));
 
@@ -104,6 +107,8 @@ public class EventServiceimpl implements EventService {
         }
 
         event.setStatus(EventStatus.PUBLISHED);
+        eventRepository.save(event);
+        return toEventResponse(event);
     }
 
     @Override

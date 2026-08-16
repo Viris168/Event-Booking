@@ -72,7 +72,6 @@ public class EventZoneServiceimpl implements EventZoneService {
             }
             eventZone.setCapacity(request.capacity());
         }
-
         return EventZoneMapper.toEventZoneResponse(eventZoneRepository.save(eventZone));
     }
 

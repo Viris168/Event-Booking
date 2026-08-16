@@ -15,6 +15,7 @@ public record VenueResponse(
         String streetAddress,
         BigDecimal lat,
         BigDecimal lng,
-        Instant createdAt
+        Instant createdAt,
+        Boolean isDisabled
 ) {
 }

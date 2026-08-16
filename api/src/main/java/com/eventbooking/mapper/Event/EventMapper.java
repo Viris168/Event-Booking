@@ -5,6 +5,7 @@ import com.eventbooking.dto.event.CreateEventRequest;
 import com.eventbooking.dto.event.EventResponse;
 import com.eventbooking.dto.eventzone.EventZoneResponse;
 import com.eventbooking.dto.seatclass.SeatClassResponse;
+import com.eventbooking.dto.venue.VenueResponse;
 import com.eventbooking.model.Event;
 import com.eventbooking.model.EventSeat;
 import com.eventbooking.model.SeatClass;
@@ -38,11 +39,36 @@ public class EventMapper {
 
     public static EventResponse  toEventResponse(Event event, List<SeatClassResponse> seatClasses, List<EventZoneResponse>  eventZones) {
 
+
+        VenueResponse v = new VenueResponse(
+            event.getVenue().getId(),
+            event.getVenue().getOrganizerId(),
+            event.getVenue().getNameEn(),
+            event.getVenue().getNameKm(),
+            event.getVenue().getProvinceCode(),
+            event.getVenue().getKhanDistrict(),
+            event.getVenue().getSangkatCommune(),
+            event.getVenue().getStreetAddress(),
+            event.getVenue().getLat(),
+            event.getVenue().getLng(),
+            event.getVenue().getCreatedAt(),
+            event.getVenue().getIsDisabled()
+        );
+
+        int totalCapacity = 0;
+        int totalSold = 0;
+        int totalHeld = 0;
+        
+        for(var z : eventZones){
+            totalCapacity += z.capacity();
+            totalSold += z.soldQty();
+            totalHeld += z.heldQty();
+        }
+
         return new EventResponse(
                 event.getId(),
                 event.getOrganizerId(),
-                event.getVenue().getId(),
-                event.getVenue().getNameEn(),
+                v,
                 event.getInventoryMode(),
                 event.getSlug(),
                 event.getTitleEn(),
@@ -56,7 +82,10 @@ public class EventMapper {
                 event.getSalesCloseAt(),
                 event.getCreatedAt(),
                 seatClasses,
-                eventZones
+                eventZones,
+                totalCapacity,
+                totalSold,
+                totalHeld
         );
     }
 
