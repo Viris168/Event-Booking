@@ -1,6 +1,7 @@
 package com.eventbooking.model;
 
 import com.eventbooking.Enumeration.Locale;
+import com.eventbooking.Enumeration.Provider;
 import com.eventbooking.Enumeration.Role;
 import jakarta.persistence.*;
 import lombok.*;
@@ -20,13 +21,13 @@ public class AppUser {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "phone_e164", nullable = false, unique = true)
+    @Column(name = "phone_e164", unique = true)
     private String phoneE164;
 
     @Column(unique = true)
     private String email;
 
-    @Column(name = "password_hash", nullable = false)
+    @Column(name = "password_hash")
     private String passwordHash;
 
     @Column(name = "display_name", nullable = false)
@@ -50,5 +51,11 @@ public class AppUser {
     @Builder.Default
     private Instant createdAt = Instant.now();
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    @Builder.Default
+    private Provider provider = Provider.LOCAL;
 
+    @Column(name = "provider_subject")
+    private String providerSubject;
 }
