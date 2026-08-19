@@ -1,14 +1,12 @@
 package com.eventbooking.dto.hold;
 
 import jakarta.validation.constraints.AssertTrue;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 
 import java.util.List;
 import java.util.Map;
 
 public record CreateHoldRequest(
-        @NotNull Long eventId,
         List<Long> seatIds,
         Map<Long, @Positive Integer> zoneQty
 ) {

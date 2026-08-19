@@ -6,6 +6,7 @@ public enum ErrorCode {
 
     // 404 Not Found
     VENUE_NOT_FOUND(HttpStatus.NOT_FOUND),
+    VENUE_SEAT_NOT_FOUND(HttpStatus.NOT_FOUND),
     EVENT_NOT_FOUND(HttpStatus.NOT_FOUND),
     SEAT_CLASS_NOT_FOUND(HttpStatus.NOT_FOUND),
     ZONE_NOT_FOUND(HttpStatus.NOT_FOUND),

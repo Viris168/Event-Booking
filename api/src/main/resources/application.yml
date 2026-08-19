@@ -49,6 +49,7 @@ spring:
 
   jackson:
     time-zone: UTC
+    property-naming-strategy: SNAKE_CASE
 
 # Custom app properties
 app:
