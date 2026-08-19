@@ -1,5 +1,6 @@
 package com.eventbooking.repository;
 
+import com.eventbooking.Enumeration.Provider;
 import com.eventbooking.model.AppUser;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -23,9 +24,10 @@ import java.util.Optional;
 public interface AppUserRepository extends JpaRepository<AppUser, Long> {
 
     /**
-     * Login lookup. Phone is the account identifier in this product, not email:
-     * {@code phone_e164} is NOT NULL UNIQUE while {@code email} is merely
-     * UNIQUE and may be absent.
+     * Login lookup for LOCAL accounts. Phone is the account identifier in this
+     * product rather than email - though since V5 it is nullable, because a
+     * GOOGLE account has no phone until the user supplies one. Only local
+     * signups are guaranteed to have it.
      */
     Optional<AppUser> findByPhoneE164(String phoneE164);
 
@@ -43,4 +45,16 @@ public interface AppUserRepository extends JpaRepository<AppUser, Long> {
     boolean existsByPhoneE164(String phoneE164);
 
     boolean existsByEmail(String email);
+
+    /**
+     * Google sign-in lookup. Matches on the provider's own subject claim
+     * ({@code sub}) rather than email: the subject is stable for the life of
+     * the Google account, while an email can be changed by its owner or
+     * reassigned by a workspace admin - matching on it would eventually hand
+     * one person's account to somebody else.
+     *
+     * <p>Both arguments are needed because {@code uq_provider_subject} is a
+     * composite UNIQUE: a subject is only unique within its provider.
+     */
+    Optional<AppUser> findByProviderAndProviderSubject(Provider provider, String providerSubject);
 }
