@@ -1,12 +1,9 @@
 package com.eventbooking.mapper.Venue;
 
-import com.eventbooking.catalog.error.VenueNotFoundException;
 import com.eventbooking.dto.VenueSeat.CreateVenueSeatsRequest;
+import com.eventbooking.dto.VenueSeat.VenueSeatResponse;
 import com.eventbooking.model.Venue;
 import com.eventbooking.model.VenueSeat;
-import com.eventbooking.repository.VenueRepository;
-import com.eventbooking.repository.VenueSeatRepository;
-import jakarta.validation.constraints.NotNull;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -15,7 +12,6 @@ import java.util.List;
 public class VenueSeatMapper {
 
     public static List<VenueSeat> toVenueSeat(CreateVenueSeatsRequest createVenueSeatsRequest, Venue venue) {
-
         return createVenueSeatsRequest.seats().stream()
                 .map(f -> VenueSeat.builder()
                         .venue(venue)
@@ -27,5 +23,17 @@ public class VenueSeatMapper {
                         .build()
                 )
                 .toList();
+    }
+
+    public static VenueSeatResponse toVenueSeatResponse(VenueSeat venueSeat) {
+        return new VenueSeatResponse(
+                venueSeat.getId(),
+                venueSeat.getVenue().getId(),
+                venueSeat.getSectionLabel(),
+                venueSeat.getRowLabel(),
+                venueSeat.getSeatNumber(),
+                venueSeat.getPosX(),
+                venueSeat.getPosY()
+        );
     }
 }

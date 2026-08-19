@@ -1,4 +1,4 @@
-package com.eventbooking.controller.event;
+package com.eventbooking.controller.Event;
 
 
 import com.eventbooking.dto.eventzone.CreateEventZoneRequest;

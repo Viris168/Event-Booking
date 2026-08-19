@@ -22,11 +22,7 @@ import java.util.List;
 @Component
 public class HoldMapper {
 
-
-    // Takes the AppUser rather than a raw id: Hold.user is a @ManyToOne now,
-    // so there is no userId to set. Currently has no callers.
     public static Hold toHold(CreateHoldRequest createHoldRequest, Event event, AppUser user) {
-
         return Hold.builder()
                 .event(event)
                 .user(user)

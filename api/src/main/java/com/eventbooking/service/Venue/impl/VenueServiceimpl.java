@@ -1,4 +1,4 @@
-package com.eventbooking.service.venue.impl;
+package com.eventbooking.service.Venue.impl;
 
 
 import com.eventbooking.catalog.error.VenueNotFoundException;
