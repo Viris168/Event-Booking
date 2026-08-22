@@ -1,4 +1,4 @@
-package com.eventbooking.controller.venue;
+package com.eventbooking.controller.Venue;
 
 import com.eventbooking.dto.venue.CreateVenueRequest;
 import com.eventbooking.dto.venue.UpdateVenueRequest;
