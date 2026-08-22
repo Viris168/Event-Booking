@@ -12,6 +12,8 @@ public interface HoldService {
 
     HoldResponse getHold(Long holdId, Long userId);
 
+    List<HoldResponse> getMyActiveHolds(Long userId);
+
     void releaseHold(Long holdId, Long userId);
 
     int expireActiveHolds(Instant currentTime);

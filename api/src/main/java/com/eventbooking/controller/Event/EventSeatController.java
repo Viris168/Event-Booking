@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @Slf4j
-@RequestMapping("/v1/events/{eventId}/seats")
 public class EventSeatController {
 
     private final EventSeatService eventSeatService;
@@ -20,7 +19,7 @@ public class EventSeatController {
         this.eventSeatService = eventSeatService;
     }
 
-    @PostMapping
+    @PostMapping("/v1/events/{eventId}/seats")
     public ResponseEntity<SeatMapResponse> generateEventSeats(
             @PathVariable Long eventId,
             @Valid @RequestBody GenerateEventSeatsRequest request
@@ -30,7 +29,7 @@ public class EventSeatController {
     }
 
 
-    @GetMapping
+    @GetMapping("/v1/event/{eventId}/seat-map")
     public ResponseEntity<SeatMapResponse> getSeatMap(
             @PathVariable Long eventId
     ) {

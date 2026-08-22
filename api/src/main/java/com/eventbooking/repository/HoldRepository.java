@@ -63,6 +63,22 @@ public interface HoldRepository extends JpaRepository<Hold, Long> {
 
     Optional<Hold> findByIdAndUser_Id(Long holdId, Long userId);
 
+    /**
+     * The caller's still-ACTIVE holds, newest first. The partial unique
+     * index uq_hold_one_active_per_user_event guarantees at most one row
+     * per event, but a user may hold seats for several events at once.
+     */
+    @Query("""
+          SELECT h
+          FROM Hold h
+          WHERE h.user.id = :userId
+            AND h.status = :activeStatus
+          ORDER BY h.createdAt DESC
+          """)
+    List<Hold> findActiveByUserId(
+            @Param("userId") Long userId,
+            @Param("activeStatus") HoldStatus activeStatus
+    );
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""

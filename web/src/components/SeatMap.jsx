@@ -2,57 +2,37 @@ import { useMemo } from 'react'
 import { useLocale } from '../context/LocaleContext.jsx'
 import { usd } from '../lib/format.js'
 
-/** Vertical clearance reserved for the stage banner and section headings. */
-const STAGE_BAND = 26
-
-// Seat classes are coloured by tier so price is readable straight off the map.
 const CLASS_COLORS = ['#4054c8', '#0d9488', '#c2410c', '#7e22ce', '#0f766e']
 
-/**
- * Interactive seat map driven by venue_seat pos_x/pos_y, grouped by section and
- * row. Seats held by another shopper or already sold are visibly dead.
- */
 export default function SeatMap({ seats, seatClasses, selected, onToggle, disabled = false }) {
   const { t, locale } = useLocale()
 
-  const colorByClass = useMemo(() => {
+  const classIndices = useMemo(() => {
     const map = {}
     seatClasses.forEach((c, i) => {
-      map[c.id] = CLASS_COLORS[i % CLASS_COLORS.length]
+      map[c.id] = i % 5
     })
     return map
   }, [seatClasses])
 
-  const { width, height, sections } = useMemo(() => {
-    const maxX = Math.max(120, ...seats.map((s) => s.pos_x))
-    const maxY = Math.max(120, ...seats.map((s) => s.pos_y))
-    const bySection = new Map()
+  const rows = useMemo(() => {
+    const byRow = new Map()
     for (const seat of seats) {
-      if (!bySection.has(seat.section_label)) bySection.set(seat.section_label, [])
-      bySection.get(seat.section_label).push(seat)
+      if (!byRow.has(seat.row_label)) byRow.set(seat.row_label, [])
+      byRow.get(seat.row_label).push(seat)
     }
-    return {
-      width: maxX + 60,
-      height: maxY + 70 + STAGE_BAND,
-      sections: [...bySection.entries()].map(([label, list]) => ({
-        label,
-        list,
-        minY: Math.min(...list.map((s) => s.pos_y)),
-        minX: Math.min(...list.map((s) => s.pos_x)),
-        rows: [...new Set(list.map((s) => s.row_label))].sort(),
-      })),
+    // Sort rows alphabetically, then seats numerically
+    const sortedRows = [...byRow.keys()].sort()
+    for (const row of sortedRows) {
+      byRow.get(row).sort((a, b) => {
+        return a.seat_number.localeCompare(b.seat_number, undefined, { numeric: true })
+      })
     }
+    return sortedRows.map(label => ({
+      label,
+      seats: byRow.get(label)
+    }))
   }, [seats])
-
-  /**
-   * Only AVAILABLE seats get a fill attribute (their price-tier colour). Every
-   * other state — sold, held, blocked, selected — is painted by the stylesheet
-   * so it can follow the light/dark tokens.
-   */
-  function fillFor(seat) {
-    if (seat.status !== 'AVAILABLE') return undefined
-    return colorByClass[seat.seat_class_id] || '#4054c8'
-  }
 
   function labelFor(seat) {
     const cls = seatClasses.find((c) => c.id === seat.seat_class_id)
@@ -71,97 +51,45 @@ export default function SeatMap({ seats, seatClasses, selected, onToggle, disabl
 
   return (
     <div className="stack-sm">
-      <div className="seatmap-wrap">
-        <svg
-          className="seatmap"
-          viewBox={`0 0 ${width} ${height}`}
-          width={width}
-          height={height}
-          role="group"
-          aria-label={t('pickSeats')}
-        >
-          {/* Stage marker so the map has an orientation. */}
-          <rect className="stage" x={width / 2 - 110} y="6" width="220" height="20" rx="6" />
-          <text className="stage-text" x={width / 2} y="21" textAnchor="middle">
-            Stage
-          </text>
+      <div className="seatmap-scroll">
+        <div className="rows" role="group" aria-label={t('pickSeats')}>
+          {rows.map((row) => (
+            <div key={row.label} className="row">
+              <span className="row-label">{row.label}</span>
+              <div className="seats">
+                {row.seats.map((seat) => {
+                  const isSelectable = seat.status === 'AVAILABLE' && !disabled
+                  const isSelected = selected.includes(seat.id)
+                  
+                  let clsName = 'seat'
+                  if (isSelected) clsName += ' selected'
+                  else if (seat.status === 'AVAILABLE') clsName += ` tier-${classIndices[seat.seat_class_id] || 0}`
+                  else clsName += ` ${seat.status.toLowerCase()}`
 
-          <g transform={`translate(0, ${STAGE_BAND})`}>
-          {sections.map((section) => {
-            const cls = seatClasses.find((c) => c.section_label === section.label)
-            const name = cls ? (locale === 'km' ? cls.name_km : cls.name_en) : section.label
-            return (
-            <g key={section.label}>
-              <text className="section-label" x={section.minX - 8} y={section.minY - 12}>
-                {name}
-                {cls ? ` · ${usd(cls.price_usd_cents)}` : ''}
-              </text>
-              {section.rows.map((row) => {
-                const first = section.list.find((s) => s.row_label === row)
-                return (
-                  <text key={row} className="row-label" x={section.minX - 22} y={first.pos_y + 4}>
-                    {row}
-                  </text>
-                )
-              })}
-            </g>
-            )
-          })}
-
-          {seats.map((seat) => {
-            const isSelectable = seat.status === 'AVAILABLE' && !disabled
-            const isSelected = selected.includes(seat.id)
-            // Only the actionable seats carry a number; sold/held stay plain so
-            // the eye goes to what is still bookable.
-            const showNumber = seat.status === 'AVAILABLE' || isSelected
-            return (
-              <g key={seat.id}>
-              <rect
-                x={seat.pos_x - 11}
-                y={seat.pos_y - 11}
-                width="22"
-                height="22"
-                rx="6"
-                className={`seat ${
-                  isSelected
-                    ? 'seat-selected'
-                    : seat.status === 'AVAILABLE'
-                      ? 'seat-available'
-                      : `seat-${seat.status.toLowerCase()}`
-                }`}
-                fill={fillFor(seat)}
-                onClick={isSelectable || isSelected ? () => onToggle(seat) : undefined}
-                tabIndex={isSelectable || isSelected ? 0 : -1}
-                role="checkbox"
-                aria-checked={isSelected}
-                aria-disabled={!isSelectable && !isSelected}
-                onKeyDown={(e) => {
-                  if ((isSelectable || isSelected) && (e.key === 'Enter' || e.key === ' ')) {
-                    e.preventDefault()
-                    onToggle(seat)
-                  }
-                }}
-              >
-                <title>{labelFor(seat)}</title>
-              </rect>
-              {showNumber && (
-                <text
-                  className={`seat-num ${isSelected ? 'on' : ''}`}
-                  x={seat.pos_x}
-                  y={seat.pos_y + 3.4}
-                  textAnchor="middle"
-                >
-                  {seat.seat_number}
-                </text>
-              )}
-              </g>
-            )
-          })}
-          </g>
-        </svg>
+                  const showNumber = seat.status === 'AVAILABLE' || isSelected
+                  
+                  return (
+                    <button
+                      key={seat.id}
+                      type="button"
+                      className={clsName}
+                      disabled={!isSelectable && !isSelected}
+                      onClick={() => onToggle(seat)}
+                      title={labelFor(seat)}
+                      aria-checked={isSelected}
+                      role="checkbox"
+                    >
+                      {showNumber ? seat.seat_number : ''}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {!disabled && <p className="seatmap-hint">{t('seatHint')}</p>}
+      {!disabled && <p className="hint mt-2">{t('seatHint')}</p>}
 
       <div className="legend">
         <span className="legend-group">

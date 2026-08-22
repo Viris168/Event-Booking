@@ -4,7 +4,6 @@ import Icon from './Icon.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useTheme } from '../context/ThemeContext.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
-import { activeHoldsForUser, useStore } from '../mock/store.js'
 import { countdown } from '../lib/format.js'
 
 const ROLE_LABEL = {
@@ -19,7 +18,6 @@ export default function Navbar() {
   const { isDark, toggle: toggleTheme } = useTheme()
   const navigate = useNavigate()
   const location = useLocation()
-  useStore() // keeps the hold pill counting down
   const [menuOpen, setMenuOpen] = useState(false)
   const navRef = useRef(null)
 
@@ -44,10 +42,34 @@ export default function Navbar() {
     }
   }, [menuOpen])
 
+  const [hold, setHold] = useState(null)
+  const [now, setNow] = useState(Date.now())
+
+  useEffect(() => {
+    const tick = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(tick)
+  }, [])
+
+  useEffect(() => {
+    if (!isAuthenticated || !user?.id) {
+      setHold(null)
+      return
+    }
+    import('../api/holds.js').then(({ getMyActiveHold }) => {
+      const fetchHold = () => {
+        getMyActiveHold(user.id)
+          .then((holds) => setHold(holds && holds.length > 0 ? holds[0] : null))
+          .catch(() => setHold(null))
+      }
+      fetchHold()
+      const poll = setInterval(fetchHold, 10000)
+      return () => clearInterval(poll)
+    })
+  }, [isAuthenticated, user?.id])
+
   // A live hold is the most time-critical thing on screen: surface it globally,
   // at every width — it stays outside the drawer so it is never hidden.
-  const hold = isAuthenticated ? activeHoldsForUser(user.id)[0] : null
-  const holdMsLeft = hold ? new Date(hold.expires_at).getTime() - Date.now() : 0
+  const holdMsLeft = hold ? new Date(hold.expires_at || hold.expiresAt).getTime() - now : 0
   const showHold = hold && holdMsLeft > 0
 
   const links = [
@@ -103,7 +125,7 @@ export default function Navbar() {
           ))}
 
           {showHold && (
-            <Link to={`/events/${hold.event_id}`} className="nav-link nav-hold">
+            <Link to={`/events/${hold.eventId || hold.event_id}`} className="nav-link nav-hold">
               <Icon name="clock" size={14} />
               {countdown(holdMsLeft)}
             </Link>
@@ -144,7 +166,7 @@ export default function Navbar() {
         {/* --------------------------------------------------- narrow screens */}
         <div className="nav-compact">
           {showHold && (
-            <Link to={`/events/${hold.event_id}`} className="nav-link nav-hold" aria-label={t('holdActive')}>
+            <Link to={`/events/${hold.eventId || hold.event_id}`} className="nav-link nav-hold" aria-label={t('holdActive')}>
               <Icon name="clock" size={14} />
               {countdown(holdMsLeft)}
             </Link>

@@ -316,7 +316,11 @@ export function listEvents({
   if (sort === 'priceLow') out.sort((a, b) => minPriceCents(a.id) - minPriceCents(b.id))
   else if (sort === 'priceHigh') out.sort((a, b) => minPriceCents(b.id) - minPriceCents(a.id))
   else out.sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at))
-  return out
+  return {
+    content: out,
+    totalPages: 1,
+    totalElements: out.length,
+  }
 }
 
 // ----------------------------------------------------------------- holds

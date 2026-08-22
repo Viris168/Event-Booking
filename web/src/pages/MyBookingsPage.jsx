@@ -1,12 +1,13 @@
 import { useDocumentTitle } from '../lib/useDocumentTitle.js'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Icon from '../components/Icon.jsx'
 import { Badge, Empty, Money } from '../components/ui.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
 import { countdown } from '../lib/format.js'
-import { getEvent, getHold, itemsOf, listBookings, ticketsOf, useStore } from '../mock/store.js'
+import { getEvent, getHold, itemsOf, listBookings as mockListBookings, ticketsOf, useStore } from '../mock/store.js'
+import { getMyBookings } from '../api/bookings.js'
 
 const STATES = [
   'PENDING_PAYMENT',
@@ -25,8 +26,21 @@ export default function MyBookingsPage() {
   useDocumentTitle(t('myBookings'))
   const { user } = useAuth()
   const [state, setState] = useState('')
+  const [apiBookings, setApiBookings] = useState(null)
 
-  const all = listBookings({ userId: user.id })
+  useEffect(() => {
+    let active = true
+    if (user?.id) {
+      getMyBookings()
+        .then((res) => {
+          if (active && Array.isArray(res)) setApiBookings(res)
+        })
+        .catch(() => {})
+    }
+    return () => { active = false }
+  }, [user?.id])
+
+  const all = apiBookings ?? mockListBookings({ userId: user.id })
   const bookings = state ? all.filter((b) => b.state === state) : all
   const counts = all.reduce((acc, b) => ({ ...acc, [b.state]: (acc[b.state] || 0) + 1 }), {})
 

@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { useDocumentTitle } from '../lib/useDocumentTitle.js'
 import { Link, useParams } from 'react-router-dom'
 import HoldBar from '../components/HoldBar.jsx'
@@ -79,6 +80,11 @@ const TONE = {
   CANCELLED: 'warn',
 }
 
+import { getBooking as getApiBooking } from '../api/bookings.js'
+import { mapBooking } from '../api/adapters.js'
+import { getEvent as getApiEvent } from '../api/events.js'
+import { mapEvent } from '../api/adapters.js'
+
 export default function BookingDetailPage() {
   const { id } = useParams()
   useStore()
@@ -86,8 +92,36 @@ export default function BookingDetailPage() {
   const { user } = useAuth()
   const toast = useToast()
 
-  const booking = getBooking(id)
+  const [apiBooking, setApiBooking] = useState(null)
+  const [apiEvent, setApiEvent] = useState(null)
+  const [bookingLoading, setBookingLoading] = useState(true)
+
+  useEffect(() => {
+    let active = true
+    getApiBooking(id)
+      .then((res) => {
+        if (active && res) {
+          const mapped = mapBooking(res)
+          setApiBooking(mapped)
+          return getApiEvent(mapped.event_id)
+        }
+      })
+      .then((res) => {
+        if (active && res) setApiEvent(mapEvent(res))
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (active) setBookingLoading(false)
+      })
+    return () => { active = false }
+  }, [id])
+
+  const booking = apiBooking ?? getBooking(id)
   useDocumentTitle(booking?.booking_ref || null)
+
+  if (bookingLoading) {
+    return <div className="p-12 text-center text-muted">Loading booking...</div>
+  }
 
   if (!booking) {
     return (
@@ -102,9 +136,9 @@ export default function BookingDetailPage() {
     )
   }
 
-  const event = getEvent(booking.event_id)
-  const venue = getVenue(event.venue_id)
-  const items = itemsOf(booking.id)
+  const event = apiEvent ?? getEvent(booking.event_id)
+  const venue = getVenue(event?.venue_id || 1)
+  const items = booking.items || itemsOf(booking.id)
   const tickets = ticketsOf(booking.id)
   const payments = paymentsForBooking(booking.id)
   const history = historyOf(booking.id)

@@ -1,10 +1,11 @@
 package com.eventbooking.dto.Zone;
 
 public record ZoneAvailabilityResponse(
-    Long zoneId,
-    String zoneName,
-    int unitPriceUsdCents,
+    Long id,
+    String nameEn,
+    String nameKm,
+    int priceUsdCents,
     int capacity,
-    int consumedQuantity,
-    int availableQuantity
+    int heldQty,
+    int soldQty
 ) {}

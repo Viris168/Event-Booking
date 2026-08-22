@@ -15,6 +15,8 @@ public record UpdateEventRequest(
         String titleKm,
         String descriptionEn,
         String descriptionKm,
+        String category,
+        Integer cover,
         @Future Instant startsAt,
         Instant doorsOpenAt,
         Instant salesOpenAt,

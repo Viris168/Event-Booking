@@ -66,6 +66,14 @@ public class Event {
     @Builder.Default
     private String descriptionKm = "";
 
+    @Column(name = "category")
+    @Builder.Default
+    private String category = "MUSIC";
+
+    @Column(name = "cover")
+    @Builder.Default
+    private Integer cover = 1;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default

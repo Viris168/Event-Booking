@@ -196,41 +196,15 @@ public class HoldServiceimpl implements HoldService {
     public HoldResponse getHold(Long holdId, Long userId) {
         Hold hold = holdRepository.findByIdAndUser_Id(holdId, userId)
                 .orElseThrow(() -> new HoldNotFoundException(holdId));
+        return toResponse(hold);
+    }
 
-        List<HeldSeatItem> seats = eventSeatRepository.findByHoldId(holdId).stream()
-                .map(seat -> new HeldSeatItem(
-                        seat.getId(),
-                        seat.getVenueSeat().getSectionLabel(),
-                        seat.getVenueSeat().getRowLabel(),
-                        seat.getVenueSeat().getSeatNumber(),
-                        seat.getSeatClass().getPriceUsdCents()
-                ))
+    @Override
+    @Transactional(readOnly = true)
+    public List<HoldResponse> getMyActiveHolds(Long userId) {
+        return holdRepository.findActiveByUserId(userId, HoldStatus.ACTIVE).stream()
+                .map(this::toResponse)
                 .toList();
-
-        List<HeldZoneItem> zones = holdZoneLineRepository.findByHoldId(holdId).stream()
-                .map(line -> new HeldZoneItem(
-                        line.getEventZone().getId(),
-                        line.getEventZone().getNameEn(),
-                        line.getQty(),
-                        line.getEventZone().getPriceUsdCents()
-                ))
-                .toList();
-
-        int totalCents = seats.stream().mapToInt(HeldSeatItem::priceUsdCents).sum()
-                + zones.stream().mapToInt(z -> z.unitPriceUsdCents() * z.qty()).sum();
-
-        return new HoldResponse(
-                hold.getId(),
-                hold.getEvent().getId(),
-                hold.getUser().getId(),
-                hold.getStatus(),
-                hold.getExpiresAt(),
-                hold.getCreatedAt(),
-                hold.getExtended(),
-                seats,
-                zones,
-                totalCents
-        );
     }
 
     @Override
@@ -274,6 +248,43 @@ public class HoldServiceimpl implements HoldService {
     // ------------------------------------------------------------------
     // Internals
     // ------------------------------------------------------------------
+
+    private HoldResponse toResponse(Hold hold) {
+        List<HeldSeatItem> seats = eventSeatRepository.findByHoldId(hold.getId()).stream()
+                .map(seat -> new HeldSeatItem(
+                        seat.getId(),
+                        seat.getVenueSeat().getSectionLabel(),
+                        seat.getVenueSeat().getRowLabel(),
+                        seat.getVenueSeat().getSeatNumber(),
+                        seat.getSeatClass().getPriceUsdCents()
+                ))
+                .toList();
+
+        List<HeldZoneItem> zones = holdZoneLineRepository.findByHoldId(hold.getId()).stream()
+                .map(line -> new HeldZoneItem(
+                        line.getEventZone().getId(),
+                        line.getEventZone().getNameEn(),
+                        line.getQty(),
+                        line.getEventZone().getPriceUsdCents()
+                ))
+                .toList();
+
+        int totalCents = seats.stream().mapToInt(HeldSeatItem::priceUsdCents).sum()
+                + zones.stream().mapToInt(z -> z.unitPriceUsdCents() * z.qty()).sum();
+
+        return new HoldResponse(
+                hold.getId(),
+                hold.getEvent().getId(),
+                hold.getUser().getId(),
+                hold.getStatus(),
+                hold.getExpiresAt(),
+                hold.getCreatedAt(),
+                hold.getExtended(),
+                seats,
+                zones,
+                totalCents
+        );
+    }
 
     private void requireOnSale(Event event, Instant now, Long eventId) {
         if (event.getStatus() != EventStatus.PUBLISHED

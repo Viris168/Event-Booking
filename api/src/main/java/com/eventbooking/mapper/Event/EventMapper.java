@@ -29,6 +29,8 @@ public class EventMapper {
                 .titleKm(createEventRequest.titleKm())
                 .descriptionEn(createEventRequest.descriptionEn() != null ? createEventRequest.descriptionEn() : "")
                 .descriptionKm(createEventRequest.descriptionKm() != null ? createEventRequest.descriptionKm() : "")
+                .category(createEventRequest.category() != null ? createEventRequest.category() : "MUSIC")
+                .cover(createEventRequest.cover() != null ? createEventRequest.cover() : 1)
                 .status(EventStatus.DRAFT)
                 .startsAt(createEventRequest.startsAt())
                 .doorsOpenAt(createEventRequest.doorsOpenAt())
@@ -75,6 +77,8 @@ public class EventMapper {
                 event.getTitleKm(),
                 event.getDescriptionEn(),
                 event.getDescriptionKm(),
+                event.getCategory(),
+                event.getCover(),
                 event.getStatus(),
                 event.getStartsAt(),
                 event.getDoorsOpenAt(),

@@ -1,11 +1,13 @@
 import { useDocumentTitle } from '../lib/useDocumentTitle.js'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import EventCard from '../components/EventCard.jsx'
 import Icon from '../components/Icon.jsx'
 import { ActiveFilters, Empty, Field, IconSelect, Pager, SearchInput } from '../components/ui.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
 import { PROVINCES, listEvents, provinceName, useStore } from '../mock/store.js'
+import { getEvents } from '../api/events.js'
+import { mapEvent } from '../api/adapters.js'
 
 const PAGE_SIZE = 8
 const EMPTY = { q: '', province: '', from: '', to: '', minUsd: '', maxUsd: '', sort: 'soonest' }
@@ -17,9 +19,24 @@ export default function EventsPage() {
   const [params, setParams] = useSearchParams()
   const [page, setPage] = useState(1)
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [apiResults, setApiResults] = useState(null)
 
   const filters = { ...EMPTY }
   for (const key of Object.keys(EMPTY)) filters[key] = params.get(key) ?? EMPTY[key]
+
+  useEffect(() => {
+    let active = true
+    getEvents(filters)
+      .then((data) => {
+        if (!active) return
+        const list = Array.isArray(data?.content) ? data.content : (Array.isArray(data) ? data : [])
+        setApiResults(list.map(mapEvent))
+      })
+      .catch(() => {
+        if (active) setApiResults(null)
+      })
+    return () => { active = false }
+  }, [params]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function update(patch) {
     const next = new URLSearchParams(params)
@@ -31,7 +48,7 @@ export default function EventsPage() {
     setPage(1)
   }
 
-  const results = useMemo(() => listEvents(filters), [params]) // eslint-disable-line react-hooks/exhaustive-deps
+  const results = apiResults ?? listEvents(filters).content
   const pages = Math.max(1, Math.ceil(results.length / PAGE_SIZE))
   const current = Math.min(page, pages)
   const visible = results.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE)

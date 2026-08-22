@@ -19,6 +19,8 @@ public record EventResponse(
         String titleKm,
         String descriptionEn,
         String descriptionKm,
+        String category,
+        Integer cover,
         EventStatus status,
         Instant startsAt,
         Instant doorsOpenAt,
