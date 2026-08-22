@@ -106,7 +106,7 @@ export default function MyBookingsPage() {
                       </div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                      <Money cents={booking.total_usd_cents} rate={booking.fx_rate_khr_per_usd} stacked />
+                      <Money cents={booking.total_usd_cents} stacked />
                       <div className="small muted">
                         {locale === 'km' ? 'កក់ថ្ងៃ' : 'booked'} {date(booking.created_at)}
                       </div>

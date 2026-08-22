@@ -159,7 +159,7 @@ export default function BookingDetailPage() {
   return (
     <div className="container">
       {act.hasTickets && (
-        <Steps current={3} labels={[t('pickSeats'), t('checkout'), t('paymentMethod'), t('yourTickets')]} />
+        <Steps current={2} labels={[t('pickSeats'), t('checkoutPay'), t('yourTickets')]} />
       )}
 
       {hold?.status === 'ACTIVE' && (
@@ -281,11 +281,7 @@ export default function BookingDetailPage() {
                         <Badge status={p.status} />
                       </td>
                       <td className="mono small">{p.provider_ref || '—'}</td>
-                      <td className="num">
-                        {p.currency_charged === 'KHR'
-                          ? `៛${p.amount_khr.toLocaleString('en-US')}`
-                          : usd(p.amount_usd_cents)}
-                      </td>
+                      <td className="num">{usd(p.amount_usd_cents)}</td>
                       <td className="small muted">{p.resolved_at ? dateTime(p.resolved_at) : '—'}</td>
                     </tr>
                   ))}
@@ -338,13 +334,7 @@ export default function BookingDetailPage() {
                   <span>{t('total')}</span>
                   <b>{usd(booking.total_usd_cents)}</b>
                 </div>
-                <div className="total-row">
-                  <span className="small muted">KHR</span>
-                  <span className="total-khr">៛{booking.total_khr.toLocaleString('en-US')}</span>
-                </div>
-                <p className="hint">
-                  {t('fxNote')}: 1 USD = {Number(booking.fx_rate_khr_per_usd).toLocaleString('en-US')} KHR
-                </p>
+                <p className="hint">{t('chargedInUsd')}</p>
               </div>
             </div>
           </div>
