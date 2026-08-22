@@ -23,6 +23,8 @@ import com.eventbooking.repository.VenueRepository;
 import com.eventbooking.service.event.EventService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 
 import java.time.Instant;
 import java.util.List;
@@ -40,6 +42,13 @@ public class EventServiceimpl implements EventService {
         this.eventRepository = eventRepository;
         this.seatClassRepository = seatClassRepository;
         this.eventZoneRepository = eventZoneRepository;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<EventResponse> listEvents(int page, int size) {
+        return eventRepository.findAll(PageRequest.of(page, size))
+                .map(this::toEventResponse);
     }
 
     @Override
@@ -86,6 +95,8 @@ public class EventServiceimpl implements EventService {
         if (request.titleKm() != null) event.setTitleKm(request.titleKm());
         if (request.descriptionEn() != null) event.setDescriptionEn(request.descriptionEn());
         if (request.descriptionKm() != null) event.setDescriptionKm(request.descriptionKm());
+        if (request.category() != null) event.setCategory(request.category());
+        if (request.cover() != null) event.setCover(request.cover());
         if (request.startsAt() != null) event.setStartsAt(request.startsAt());
         if (request.doorsOpenAt() != null) event.setDoorsOpenAt(request.doorsOpenAt());
         if (request.salesOpenAt() != null) event.setSalesOpenAt(request.salesOpenAt());
@@ -124,6 +135,7 @@ public class EventServiceimpl implements EventService {
             throw new EventNotOnSaleException(eventId);
         }
     }
+
 
     private EventResponse toEventResponse(Event event) {
         List<SeatClassResponse> seatClasses =

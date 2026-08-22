@@ -10,7 +10,7 @@ import { countdown, khr, usd } from '../lib/format.js'
 import {
   extendHold,
   getBooking,
-  getEvent,
+  getEvent as mockGetEvent,
   getHold,
   latestPayment,
   paymentsForBooking,
@@ -18,6 +18,11 @@ import {
   startPayment,
   useStore,
 } from '../mock/store.js'
+import { getEvent } from '../api/events.js'
+import { mapEvent } from '../api/adapters.js'
+
+import { getBooking as getApiBooking } from '../api/bookings.js'
+import { mapBooking } from '../api/adapters.js'
 
 // How each payment_transaction.status reads on screen.
 const STRIP = {
@@ -36,11 +41,35 @@ export default function PaymentPage() {
   const navigate = useNavigate()
   const [polls, setPolls] = useState(0)
   const [redirecting, setRedirecting] = useState(false)
+  const [apiEvent, setApiEvent] = useState(null)
+  const [apiBooking, setApiBooking] = useState(null)
+  const [bookingLoading, setBookingLoading] = useState(true)
 
-  const booking = getBooking(bookingId)
+  useEffect(() => {
+    let active = true
+    getApiBooking(bookingId)
+      .then((res) => {
+        if (active && res) {
+          const mapped = mapBooking(res)
+          setApiBooking(mapped)
+          return getEvent(mapped.event_id)
+        }
+      })
+      .then((res) => {
+        if (active && res) setApiEvent(mapEvent(res))
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (active) setBookingLoading(false)
+      })
+    return () => { active = false }
+  }, [bookingId])
+
+  const booking = apiBooking ?? getBooking(bookingId)
   const payment = booking ? latestPayment(booking.id) : null
   const attempts = booking ? paymentsForBooking(booking.id) : []
-  const event = booking ? getEvent(booking.event_id) : null
+
+  const event = apiEvent ?? (booking ? mockGetEvent(booking.event_id) : null)
   const hold = booking ? getHold(booking.hold_id) : null
   useDocumentTitle(booking ? `${t('checkout')} · ${booking.booking_ref}` : null)
 
@@ -57,6 +86,10 @@ export default function PaymentPage() {
     const timer = setTimeout(() => navigate(`/bookings/${booking.id}`), 1400)
     return () => clearTimeout(timer)
   }, [payment?.status, booking?.id, navigate])
+
+  if (bookingLoading) {
+    return <div className="p-12 text-center text-muted">Loading checkout...</div>
+  }
 
   if (!booking) {
     return (
@@ -99,7 +132,7 @@ export default function PaymentPage() {
         <div>
           <h1>{isKhqr ? t('scanToPay') : t('payway')}</h1>
           <p>
-            {locale === 'km' ? event.title_km : event.title_en} · {t('bookingRef')}{' '}
+            {locale === 'km' ? (event.titleKm ?? event.title_km) : (event.titleEn ?? event.title_en)} · {t('bookingRef')}{' '}
             <span className="mono font-bold">{booking.booking_ref}</span>
           </p>
         </div>

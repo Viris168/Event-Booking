@@ -10,26 +10,13 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
 import { useToast } from '../context/ToastContext.jsx'
 import { seatLabel, usd } from '../lib/format.js'
-import {
-  createHold,
-  eventSeatsOf,
-  extendHold,
-  getActiveHold,
-  getEvent,
-  getHold,
-  getVenue,
-  holdContents,
-  inventorySummary,
-  provinceName,
-  releaseHold,
-  seatClassesOf,
-  useStore,
-  zonesOf,
-} from '../mock/store.js'
+import { getEvent } from '../api/events.js'
+import { getSeatMap, getZoneAvailability } from '../api/availability.js'
+import { createHold, releaseHold, getHold } from '../api/holds.js'
+import { mapEvent, mapSeatMap, mapZone, mapHoldResponse } from '../api/adapters.js'
 
 export default function EventDetailPage() {
   const { id } = useParams()
-  useStore()
   const { t, locale, dateTime, date, time } = useLocale()
   const { isAuthenticated, user } = useAuth()
   const toast = useToast()
@@ -41,35 +28,110 @@ export default function EventDetailPage() {
   const [expiredNotice, setExpiredNotice] = useState(false)
   const [conflictHoldId, setConflictHoldId] = useState(null)
 
-  const event = getEvent(id)
-  const venue = event ? getVenue(event.venue_id) : null
-  const classes = event ? seatClassesOf(event.id) : []
-  const zones = event ? zonesOf(event.id) : []
-  const seats = event ? eventSeatsOf(event.id) : []
-  const hold = event && isAuthenticated ? getActiveHold(event.id, user.id) : null
-  const summary = event ? inventorySummary(event.id) : null
+  const [apiEvent, setApiEvent] = useState(null)
+  const [apiSeats, setApiSeats] = useState([])
+  const [apiZones, setApiZones] = useState([])
+  const [apiHoldData, setApiHoldData] = useState(null)
+
+  useEffect(() => {
+    let active = true
+    if (!id) return
+    
+    // Fetch Event
+    getEvent(id)
+      .then((res) => {
+        if (active && res) setApiEvent(mapEvent(res))
+      })
+      .catch((e) => console.error(e))
+
+    // Fetch Seats
+    getSeatMap(id)
+      .then((res) => {
+        if (active && res) {
+          const mapped = mapSeatMap(res)
+          setApiSeats(mapped.seats)
+        }
+      })
+      .catch((e) => console.error(e))
+
+    // Fetch Zones
+    getZoneAvailability(id)
+      .then((res) => {
+        if (active && Array.isArray(res)) setApiZones(res.map(mapZone))
+      })
+      .catch((e) => console.error(e))
+      
+    // Fetch active hold if in session
+    const storedHoldId = sessionStorage.getItem(`activeHoldId_${id}`)
+    if (storedHoldId && user?.id) {
+      getHold(id, storedHoldId, user.id)
+        .then((res) => {
+          if (active && res) {
+            if (res.status === 'EXPIRED') {
+              sessionStorage.removeItem(`activeHoldId_${id}`)
+              setExpiredNotice(true)
+            } else {
+              setApiHoldData(mapHoldResponse(res))
+            }
+          }
+        })
+        .catch((e) => console.error(e))
+    }
+
+    return () => { active = false }
+  }, [id, user?.id])
+
+  const event = apiEvent
+  const venue = event?.venue
+  const classes = event?.seat_classes || []
+  const zones = apiZones || []
+  const seats = apiSeats || []
+  const hold = apiHoldData?.hold
+  const held = apiHoldData
+  
+  // Calculate inventory summary
+  const summary = event ? {
+    capacity: event.totalCapacity ?? 0,
+    sold: event.totalSold ?? 0,
+    held: event.totalHeld ?? 0,
+    remaining: (event.totalCapacity ?? 0) - (event.totalSold ?? 0) - (event.totalHeld ?? 0)
+  } : { capacity: 0, sold: 0, held: 0, remaining: 0 }
+
   useDocumentTitle(event ? (locale === 'km' ? event.title_km : event.title_en) : null)
 
-  // A hold that vanishes while the page is open expired — say so, don't fail silently.
-  const lastHoldId = useRef(hold?.id || null)
-  useEffect(() => {
-    if (hold?.id) {
-      lastHoldId.current = hold.id
-      setExpiredNotice(false)
-      return
+  const unifiedZones = useMemo(() => {
+    const list = []
+    if (classes) {
+      classes.forEach(c => list.push({
+        id: `class-${c.id}`,
+        key: locale === 'km' ? c.name_km : c.name_en,
+        kind: 'seated',
+        price_usd_cents: c.price_usd_cents,
+        refId: c.id
+      }))
     }
-    if (lastHoldId.current) {
-      const previous = getHold(lastHoldId.current)
-      if (previous?.status === 'EXPIRED') {
-        setExpiredNotice(true)
-        setSelectedSeats([])
-        setZoneQty({})
-      }
-      lastHoldId.current = null
+    if (zones) {
+      zones.forEach(z => list.push({
+        id: `zone-${z.id}`,
+        key: locale === 'km' ? z.name_km : z.name_en,
+        kind: 'ga',
+        price_usd_cents: z.price_usd_cents,
+        refId: z.id
+      }))
     }
-  }, [hold?.id])
+    return list
+  }, [classes, zones, locale])
 
-  const held = hold ? holdContents(hold.id) : null
+  const [activeZoneId, setActiveZoneId] = useState(unifiedZones.length > 0 ? unifiedZones[0].id : null)
+
+  useEffect(() => {
+    if (unifiedZones.length > 0 && !unifiedZones.find(z => z.id === activeZoneId)) {
+      setActiveZoneId(unifiedZones[0].id)
+    }
+  }, [unifiedZones, activeZoneId])
+
+  // Optional: A hold might vanish while page is open if we were using WebSockets.
+  // For now, it only updates on refresh or extension.
 
   const selectionTotal = useMemo(() => {
     const seatTotal = selectedSeats.reduce((sum, seatId) => {
@@ -114,58 +176,68 @@ export default function EventDetailPage() {
       return
     }
     if (reserving) return
-    setReserving(true) // disabled immediately: never allow a double submit
-    const result = createHold({
-      eventId: event.id,
-      userId: user.id,
-      seatIds: selectedSeats,
-      zoneQty,
-    })
-    setReserving(false)
+    setReserving(true)
 
-    if (result.error === 'HOLD_ALREADY_ACTIVE') {
-      setConflictHoldId(result.hold.id)
-      return
-    }
-    if (result.error === 'SEAT_UNAVAILABLE') {
-      toast(
-        locale === 'km'
-          ? 'កៅអីមួយចំនួនត្រូវបានកក់ដោយអ្នកផ្សេងទៅហើយ។'
-          : 'Someone took one of those seats first — your selection was cleared.',
-        'error',
-      )
-      setSelectedSeats([])
-      return
-    }
-    if (result.error === 'ZONE_CAPACITY') {
-      toast(
-        locale === 'km' ? 'កន្លែងនៅសល់មិនគ្រប់គ្រាន់ទេ។' : 'Not enough GA capacity left for that quantity.',
-        'error',
-      )
-      return
-    }
-    if (result.error) {
-      toast(`Could not reserve (${result.error})`, 'error')
-      return
-    }
-    setSelectedSeats([])
-    setZoneQty({})
-    toast(locale === 'km' ? 'កៅអីត្រូវបានកក់ទុក ១០ នាទី។' : 'Held for 10 minutes — finish checkout to keep them.', 'success')
+    createHold(event.id, { 
+      seat_ids: selectedSeats, 
+      seatIds: selectedSeats, 
+      zone_qty: zoneQty, 
+      zoneQty: zoneQty 
+    }, user.id)
+      .then((res) => {
+        sessionStorage.setItem(`activeHoldId_${event.id}`, res.id)
+        setApiHoldData(mapHoldResponse(res))
+        setSelectedSeats([])
+        setZoneQty({})
+        toast(locale === 'km' ? 'កៅអីត្រូវបានកក់ទុក។' : 'Held successfully — finish checkout to keep them.', 'success')
+      })
+      .catch((err) => {
+        const error = err.response?.data?.message || err.message
+        if (err.response?.status === 409) {
+          toast(
+            locale === 'km'
+              ? 'កៅអីមួយចំនួនត្រូវបានកក់ដោយអ្នកផ្សេងទៅហើយ។'
+              : 'Someone took one of those seats first — your selection was cleared.',
+            'error',
+          )
+          setSelectedSeats([])
+        } else {
+          toast(`Could not reserve (${error})`, 'error')
+        }
+      })
+      .finally(() => {
+        setReserving(false)
+      })
   }
 
   function onExtend() {
-    const result = extendHold(hold.id)
-    if (result.error) toast(t('extended'), 'info')
+    // Optional: Call real extend endpoint here if it existed.
+    toast(t('extended'), 'info')
   }
 
   function onRelease() {
-    releaseHold(hold.id)
-    toast(locale === 'km' ? 'បានលែងកៅអីវិញ។' : 'Hold released.', 'info')
+    if (!hold) return
+    releaseHold(event.id, hold.id, user.id).then(() => {
+      sessionStorage.removeItem(`activeHoldId_${event.id}`)
+      setApiHoldData(null)
+      toast(locale === 'km' ? 'បានលែងកៅអីវិញ។' : 'Hold released.', 'info')
+    }).catch((err) => {
+      toast(`Could not release hold`, 'error')
+    })
   }
 
   // Seats belonging to our own hold read as "selected", not as "held by others".
   const ownHeldSeatIds = hold ? seats.filter((s) => s.hold_id === hold.id).map((s) => s.id) : []
   const mapSelected = hold ? ownHeldSeatIds : selectedSeats
+
+  function countForUnifiedZone(zone) {
+    if (zone.kind === 'ga') return zoneQty[zone.refId] || 0
+    const selectedInClass = selectedSeats.filter(seatId => {
+      const s = seats.find(s => s.id === seatId)
+      return s?.seat_class_id === zone.refId
+    })
+    return selectedInClass.length
+  }
 
   return (
     <div className="container container-wide">
@@ -173,7 +245,7 @@ export default function EventDetailPage() {
         <Link to="/events">{t('events')}</Link> / {locale === 'km' ? event.title_km : event.title_en}
       </div>
 
-      <div className={`event-hero cover-${event.cover}`}>
+      <div className={`event-hero cover-${event.cover || 1}`}>
         <Icon
           name={CATEGORY_ICON[event.category] || 'ticket'}
           size={76}
@@ -191,9 +263,9 @@ export default function EventDetailPage() {
         <div className="small with-icon" style={{ color: 'rgba(255,255,255,0.9)' }}>
           <Icon name="mapPin" size={15} />
           <span>
-            {locale === 'km' ? venue?.name_km : venue?.name_en} · {venue?.street_address},{' '}
-            {venue?.sangkat_commune}, {venue?.khan_district},{' '}
-            {provinceName(venue?.province_code, locale)}
+            {locale === 'km' ? venue?.nameKm : venue?.nameEn} · {venue?.streetAddress},{' '}
+            {venue?.sangkatCommune}, {venue?.khanDistrict},{' '}
+            {venue?.provinceCode}
           </span>
         </div>
       </div>
@@ -249,15 +321,15 @@ export default function EventDetailPage() {
             hold={hold}
             onExtend={onExtend}
             onRelease={onRelease}
-            checkoutTo={`/checkout?hold=${hold.id}`}
+            checkoutTo={`/checkout?event=${event.id}&hold=${hold.id}`}
           />
         </div>
       )}
 
       <div className="split" style={{ marginTop: '1.4rem' }}>
         <div className="stack">
-          <div className="panel">
-            <div className="panel-body">
+          <div className="card">
+            <div className="card-body">
               <div className="event-facts">
                 <div className="fact">
                   <div className="tiny">{t('doorsOpen')}</div>
@@ -287,11 +359,11 @@ export default function EventDetailPage() {
             </div>
           </div>
 
-          <div className="panel">
-            <div className="panel-head">
+          <div className="card">
+            <div className="card-head">
               <h2>{t('about')}</h2>
             </div>
-            <div className="panel-body stack-sm">
+            <div className="card-body stack-sm">
               <p>{locale === 'km' ? event.description_km : event.description_en}</p>
               <p className={locale === 'km' ? 'small muted' : 'small muted km'}>
                 {locale === 'km' ? event.description_en : event.description_km}
@@ -299,24 +371,77 @@ export default function EventDetailPage() {
             </div>
           </div>
 
-          {showSeats && (
-            <div className="panel">
-              <div className="panel-head">
+          {(showSeats || showZones) && (
+            <div className="card">
+              <div className="card-head">
                 <h2>{t('pickSeats')}</h2>
-                <span className="small muted">
+                <span className="sub">
                   {summary.remaining} / {summary.capacity} {t('available').toLowerCase()}
                 </span>
               </div>
-              <div className="panel-body">
-                <SeatMap
-                  seats={seats}
-                  seatClasses={classes}
-                  selected={mapSelected}
-                  onToggle={toggleSeat}
-                  disabled={!!hold}
-                />
+              <div className="card-body">
+                <div className="zone-radios">
+                  {unifiedZones.map(z => {
+                    const count = countForUnifiedZone(z)
+                    const kind = z.kind === 'ga' ? (locale === 'km' ? 'ទីលានឈរ' : 'General admission') : (locale === 'km' ? 'កៅអីអង្គុយ' : 'Assigned seats')
+                    return (
+                      <label key={z.id} className={`zone-radio ${activeZoneId === z.id ? 'active' : ''}`}>
+                        <input 
+                          type="radio" 
+                          name="zone" 
+                          value={z.id} 
+                          checked={activeZoneId === z.id} 
+                          onChange={() => setActiveZoneId(z.id)} 
+                        />
+                        <span className="zr-body">
+                          <span className="zr-name">{z.key}</span>
+                          <span className="zr-meta">{kind} · {usd(z.price_usd_cents)} {t('each')}</span>
+                        </span>
+                        <span className={`z-count ${count === 0 ? 'zero' : ''}`}>{count}</span>
+                      </label>
+                    )
+                  })}
+                </div>
+                
+                {(() => {
+                  const activeZone = unifiedZones.find(z => z.id === activeZoneId)
+                  if (!activeZone) return null
+                  
+                  if (activeZone.kind === 'ga') {
+                    const gaZone = zones.find(z => z.id === activeZone.refId)
+                    return (
+                      <div className="mt-4 border-t border-line-2 pt-4">
+                        <ZonePicker
+                          zones={[gaZone]}
+                          qty={hold ? Object.fromEntries((held?.zoneLines || []).map((l) => [l.event_zone_id, l.qty])) : zoneQty}
+                          onChange={(zoneId, qty) => setZoneQty((prev) => ({ ...prev, [zoneId]: qty }))}
+                          disabled={!!hold}
+                        />
+                      </div>
+                    )
+                  } else {
+                    const activeSeats = seats.filter(s => s.seat_class_id === activeZone.refId)
+                    return (
+                      <div className="mt-4 border-t border-line-2 pt-4">
+                        <div className="mb-4 text-[13px] text-muted">
+                          {locale === 'km' 
+                            ? 'លេខកៅអីចាប់ផ្តើមពីលេខ 1 ក្នុងគ្រប់តំបន់ — ជ្រើសរើសក្នុងតំបន់នេះ បន្ទាប់មកប្តូរតំបន់ដោយប្រើប៊ូតុងខាងលើ។'
+                            : 'Seat numbers restart at 1 in every zone — pick within this zone, then switch zones with the radio buttons.'}
+                        </div>
+                        <SeatMap
+                          seats={activeSeats}
+                          seatClasses={classes}
+                          selected={mapSelected}
+                          onToggle={toggleSeat}
+                          disabled={!!hold}
+                        />
+                      </div>
+                    )
+                  }
+                })()}
+
                 {hold && (
-                  <p className="hint" style={{ marginTop: '0.7rem' }}>
+                  <p className="hint mt-[0.7rem]">
                     {locale === 'km'
                       ? 'ការជ្រើសរើសត្រូវបានចាក់សោនៅពេលកក់។ សូមលែងវិញ ដើម្បីជ្រើសម្តងទៀត។'
                       : 'Your selection is locked while the hold is live. Release it to pick different seats.'}
@@ -326,30 +451,15 @@ export default function EventDetailPage() {
             </div>
           )}
 
-          {showZones && (
-            <div className="panel">
-              <div className="panel-head">
-                <h2>{t('pickZones')}</h2>
-              </div>
-              <div className="panel-body">
-                <ZonePicker
-                  zones={zones}
-                  qty={hold ? Object.fromEntries((held?.zoneLines || []).map((l) => [l.event_zone_id, l.qty])) : zoneQty}
-                  onChange={(zoneId, qty) => setZoneQty((prev) => ({ ...prev, [zoneId]: qty }))}
-                  disabled={!!hold}
-                />
-              </div>
-            </div>
-          )}
         </div>
 
         {/* ------------------------------------------------- selection panel */}
         <div className="summary" id="hold-summary">
-          <div className="panel">
-            <div className="panel-head">
+          <div className="card">
+            <div className="card-head">
               <h3>{hold ? t('holdActive') : t('yourSelection')}</h3>
             </div>
-            <div className="panel-body">
+            <div className="card-body">
               {hold ? (
                 <>
                   <div className="stack-sm">
@@ -390,7 +500,7 @@ export default function EventDetailPage() {
                   </div>
                   <Link
                     className="btn btn-accent btn-lg btn-block"
-                    to={`/checkout?hold=${hold.id}`}
+                    to={`/checkout?event=${event.id}&hold=${hold.id}`}
                     style={{ marginTop: '0.9rem' }}
                   >
                     {t('goToCheckout')}
@@ -469,8 +579,8 @@ export default function EventDetailPage() {
             </div>
           </div>
 
-          <div className="panel" style={{ marginTop: '1rem' }}>
-            <div className="panel-body stack-sm">
+          <div className="card" style={{ marginTop: '1rem' }}>
+            <div className="card-body stack-sm">
               <div className="spread">
                 <span className="tiny">{t('capacity')}</span>
                 <span className="small font-bold">

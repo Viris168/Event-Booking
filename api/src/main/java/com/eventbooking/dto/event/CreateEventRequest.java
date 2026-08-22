@@ -18,6 +18,8 @@ public record CreateEventRequest(
         @NotBlank String titleKm,
         String descriptionEn,
         String descriptionKm,
+        String category,
+        Integer cover,
         @NotNull @Future Instant startsAt,
         @NotNull Instant doorsOpenAt,
         @NotNull Instant salesOpenAt,

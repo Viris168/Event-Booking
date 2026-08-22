@@ -29,7 +29,7 @@ export default function AdminEventsPage() {
   const [status, setStatus] = useState('ALL')
   const [province, setProvince] = useState('')
 
-  const events = listEvents({ q, status, province, sort: 'soonest' })
+  const events = listEvents({ q, status, province, sort: 'soonest' }).content
 
   function organizerName(organizerId) {
     const profile = db.organizerProfiles.find((p) => p.id === organizerId)

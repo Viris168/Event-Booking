@@ -600,6 +600,16 @@
   .card-body {
     @apply p-[1.1rem];
   }
+  .card-head {
+    @apply flex items-center justify-between gap-[10px] border-b border-line-2 px-[18px] py-[15px];
+  }
+  .card-head h2,
+  .card-head h3 {
+    @apply m-0 text-[16px] font-bold tracking-[-0.01em];
+  }
+  .card-head .sub {
+    @apply text-[12.5px] text-muted;
+  }
   /* Cards that are themselves links (booking rows). */
   a.card {
     @apply block text-inherit;
@@ -2111,6 +2121,68 @@
     @apply top-3 no-underline;
   }
 
+  /* ------------------------------------------------------------- zone & seat */
+  .zone-radios { @apply flex flex-wrap gap-[10px] mb-4; }
+  .zone-radio {
+    @apply flex flex-1 basis-[150px] cursor-pointer items-center gap-[10px] rounded-ui border border-line bg-surface px-3 py-[10px];
+    transition: border-color 0.1s ease, background 0.1s ease;
+  }
+  .zone-radio:hover { @apply border-brand-100; }
+  .zone-radio.active {
+    @apply bg-brand-50 border-brand-500;
+    box-shadow: inset 0 0 0 1px var(--color-brand-500);
+  }
+  .zone-radio input[type="radio"] { @apply m-0 size-4 flex-none cursor-pointer accent-brand-500; }
+  .zr-body { @apply min-w-0 flex-1; }
+  .zr-name { @apply block text-[13.5px] font-bold; }
+  .zr-meta { @apply block text-[12px] text-muted; }
+  .z-count {
+    @apply inline-flex min-w-[20px] h-[20px] flex-none items-center justify-center rounded-full bg-brand-500 px-1 text-[11px] font-bold text-white;
+  }
+  .z-count.zero { @apply bg-line-2 text-muted; }
+
+  .seatmap-scroll { @apply overflow-x-auto; }
+  .rows { @apply flex flex-col gap-[10px]; }
+  .row { @apply flex items-center gap-[10px]; }
+  .row-label { @apply w-[18px] text-center text-[12px] font-semibold text-muted; }
+  .seats { @apply flex flex-nowrap gap-2; }
+  .seat {
+    @apply relative grid size-[34px] cursor-pointer place-items-center rounded-tiny text-[12.5px] font-bold;
+    color: #fff;
+    border: 1px solid color-mix(in oklab, var(--color-ink) 14%, transparent);
+    transition: transform 0.06s ease, box-shadow 0.1s ease;
+  }
+  .seat:hover:not(:disabled) { @apply -translate-y-[2px]; }
+  .seat:focus-visible { @apply outline-none shadow-focus; }
+  .seat.tier-0 { background: #4054c8; }
+  .seat.tier-1 { background: #0d9488; }
+  .seat.tier-2 { background: #c2410c; }
+  .seat.tier-3 { background: #7e22ce; }
+  .seat.tier-4 { background: #0f766e; }
+  .seat.sold {
+    @apply cursor-not-allowed line-through;
+    background: color-mix(in oklab, var(--color-muted) 40%, var(--color-surface-2));
+    color: color-mix(in oklab, var(--color-muted) 70%, var(--color-surface));
+  }
+  .seat.held {
+    @apply cursor-not-allowed text-white;
+    background: color-mix(in oklab, var(--color-gold-500) 62%, var(--color-surface-2));
+  }
+  .seat.blocked {
+    @apply cursor-not-allowed text-white;
+    background: color-mix(in oklab, var(--color-muted) 12%, var(--color-surface-2));
+    border-style: dashed;
+    border-color: color-mix(in oklab, var(--color-muted) 55%, transparent);
+  }
+  .seat.selected {
+    background: var(--color-ink);
+    color: var(--color-surface);
+    border-color: var(--color-brand-900);
+    border-width: 2px;
+  }
+  [data-theme='dark'] .seat.selected {
+    border-color: var(--color-surface);
+  }
 }
 
 /* ------------------------------------------------------------- keyframes */

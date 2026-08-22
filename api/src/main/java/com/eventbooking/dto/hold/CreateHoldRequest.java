@@ -5,10 +5,11 @@ import jakarta.validation.constraints.Positive;
 
 import java.util.List;
 import java.util.Map;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 public record CreateHoldRequest(
-        List<Long> seatIds,
-        Map<Long, @Positive Integer> zoneQty
+        @JsonProperty("seat_ids") List<Long> seatIds,
+        @JsonProperty("zone_qty") Map<Long, @Positive Integer> zoneQty
 ) {
     @AssertTrue(message = "cart must contain at least one seat or zone item")
     private boolean isNotEmpty() {

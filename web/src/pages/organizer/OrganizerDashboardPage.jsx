@@ -21,7 +21,7 @@ export default function OrganizerDashboardPage() {
   const { organizerProfile } = useAuth()
   const orgId = organizerProfile?.id || null
 
-  const events = listEvents({ status: 'ALL', organizerId: orgId, sort: 'soonest' })
+  const events = listEvents({ status: 'ALL', organizerId: orgId, sort: 'soonest' }).content
   const totals = events.reduce(
     (acc, e) => {
       const s = salesSummary(e.id)

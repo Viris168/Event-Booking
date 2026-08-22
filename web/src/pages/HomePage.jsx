@@ -1,18 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import EventCard from '../components/EventCard.jsx'
 import Icon, { CATEGORY_ICON } from '../components/Icon.jsx'
 import { Empty, IconSelect, Money, SearchInput } from '../components/ui.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
-import {
-  PROVINCES,
-  getVenue,
-  listEvents,
-  minPriceCents,
-  platformStats,
-  scarcity,
-  useStore,
-} from '../mock/store.js'
+import { PROVINCES, platformStats, useStore } from '../mock/store.js'
+import { getEvents } from '../api/events.js'
 
 // One tap into the searches people actually run.
 const QUICK_SEARCHES = [
@@ -28,16 +21,37 @@ function daysUntil(iso) {
   return Math.max(0, Math.ceil((new Date(iso).getTime() - Date.now()) / 86400000))
 }
 
+function getScarcity(event) {
+  const capacity = event.totalCapacity ?? event.total_capacity ?? 0
+  if (!capacity) return { level: 'none' }
+  const remaining = capacity - (event.totalSold ?? event.total_sold ?? 0) - (event.totalHeld ?? event.total_held ?? 0)
+  if (remaining <= 0) return { level: 'sold-out' }
+  const pct = remaining / capacity
+  if (remaining <= 12) return { level: 'almost-full' }
+  if (pct <= 0.2) return { level: 'filling', remaining }
+  return { level: 'ok', remaining }
+}
+
+function getMinPriceCents(event) {
+  let min = Infinity
+  const classes = event.seatClasses ?? event.seat_classes ?? []
+  classes.forEach((c) => (min = Math.min(min, c.priceUsdCents ?? c.price_usd_cents ?? 0)))
+  const zones = event.zones ?? []
+  zones.forEach((z) => (min = Math.min(min, z.priceUsdCents ?? z.price_usd_cents ?? 0)))
+  return min === Infinity ? 0 : min
+}
+
 /**
  * "Next up" card in the hero. Fills the empty half of the banner with the
  * soonest event on sale, and gives the page a single obvious first action.
  */
 function Spotlight({ event }) {
   const { t, locale, date, time } = useLocale()
-  const venue = getVenue(event.venue_id)
-  const price = minPriceCents(event.id)
-  const left = daysUntil(event.starts_at)
-  const scarce = scarcity(event.id)
+  const venue = event.venue
+  const price = getMinPriceCents(event)
+  const start = event.startsAt ?? event.starts_at
+  const left = daysUntil(start)
+  const scarce = getScarcity(event)
 
   const countdown =
     left === 0
@@ -61,7 +75,7 @@ function Spotlight({ event }) {
         <span className="spot-when">{countdown}</span>
       </div>
 
-      <Link to={`/events/${event.id}`} className={`spot-art cover-${event.cover}`}>
+      <Link to={`/events/${event.id}`} className={`spot-art cover-${event.cover || 1}`}>
         <Icon
           name={CATEGORY_ICON[event.category] || 'ticket'}
           size={48}
@@ -79,17 +93,17 @@ function Spotlight({ event }) {
       </Link>
 
       <div className="spot-body">
-        <strong>{locale === 'km' ? event.title_km : event.title_en}</strong>
+        <strong>{locale === 'km' ? (event.titleKm ?? event.title_km) : (event.titleEn ?? event.title_en)}</strong>
         <span className={locale === 'km' ? 'spot-alt' : 'spot-alt km'}>
-          {locale === 'km' ? event.title_en : event.title_km}
+          {locale === 'km' ? (event.titleEn ?? event.title_en) : (event.titleKm ?? event.title_km)}
         </span>
         <span className="spot-meta">
           <Icon name="mapPin" size={14} />
-          {locale === 'km' ? venue?.name_km : venue?.name_en}
+          {locale === 'km' ? venue?.nameKm : venue?.nameEn}
         </span>
         <span className="spot-meta">
           <Icon name="calendar" size={14} />
-          {date(event.starts_at)} · {time(event.doors_open_at)} {t('doorsOpen').toLowerCase()}
+          {date(event.startsAt ?? event.starts_at)} · {time(event.doorsOpenAt ?? event.doors_open_at)} {t('doorsOpen').toLowerCase()}
         </span>
       </div>
 
@@ -114,7 +128,16 @@ export default function HomePage() {
   const [q, setQ] = useState('')
   const [province, setProvince] = useState('')
 
-  const published = listEvents({ sort: 'soonest' })
+  const [published, setPublished] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    getEvents({ size: 12, sort: 'startsAt,asc' })
+      .then((page) => setPublished(page.content || []))
+      .catch((e) => console.error(e))
+      .finally(() => setLoading(false))
+  }, [])
+
   const spotlight = published[0]
   const featured = published.slice(0, 4)
   const upcoming = published.slice(4, 12)
@@ -218,7 +241,9 @@ export default function HomePage() {
               <Icon name="arrowRight" size={15} />
             </Link>
           </div>
-          {featured.length ? (
+          {loading ? (
+            <div className="p-12 text-center text-muted">Loading events from Spring Boot...</div>
+          ) : featured.length ? (
             <div className="grid grid-cards">
               {featured.map((e) => (
                 <EventCard key={e.id} event={e} />
@@ -237,11 +262,15 @@ export default function HomePage() {
               <Icon name="arrowRight" size={15} />
             </Link>
           </div>
-          <div className="grid grid-cards">
-            {upcoming.map((e) => (
-              <EventCard key={e.id} event={e} />
-            ))}
-          </div>
+          {loading ? (
+            <div className="p-12 text-center text-muted">Loading...</div>
+          ) : (
+            <div className="grid grid-cards">
+              {upcoming.map((e) => (
+                <EventCard key={e.id} event={e} />
+              ))}
+            </div>
+          )}
         </section>
 
         <section style={{ marginTop: '2.5rem' }}>

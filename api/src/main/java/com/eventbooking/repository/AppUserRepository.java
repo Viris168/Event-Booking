@@ -1,5 +1,6 @@
 package com.eventbooking.repository;
 
+import com.eventbooking.Enumeration.Role;
 import com.eventbooking.model.AppUser;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -43,4 +44,10 @@ public interface AppUserRepository extends JpaRepository<AppUser, Long> {
     boolean existsByPhoneE164(String phoneE164);
 
     boolean existsByEmail(String email);
+
+    /**
+     * DatabaseSeeder: the demo organizer (V6__seed_demo_users.sql) that owns
+     * the seeded venues and events.
+     */
+    Optional<AppUser> findFirstByRoleOrderByIdAsc(Role role);
 }

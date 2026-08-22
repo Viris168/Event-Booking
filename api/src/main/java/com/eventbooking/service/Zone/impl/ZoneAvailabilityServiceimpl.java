@@ -31,16 +31,14 @@ public class ZoneAvailabilityServiceimpl implements ZoneAvailabilityService {
     public ZoneAvailabilityResponse getAvailability(Long zoneId) {
         EventZone eventZone = eventZoneRepository.findById(zoneId)
                 .orElseThrow(() -> new EventZoneNotFoundException(zoneId));
-        int consumedQuantity = eventZone.getHeldQty() + eventZone.getSoldQty();
-
-        int availableQuantity = eventZone.getCapacity() - consumedQuantity;
         return new ZoneAvailabilityResponse(
                 eventZone.getId(),
                 eventZone.getNameEn(),
+                eventZone.getNameKm(),
                 eventZone.getPriceUsdCents(),
                 eventZone.getCapacity(),
-                consumedQuantity,
-                availableQuantity
+                eventZone.getHeldQty(),
+                eventZone.getSoldQty()
         );
     }
 
@@ -53,17 +51,15 @@ public class ZoneAvailabilityServiceimpl implements ZoneAvailabilityService {
 
         List<EventZone> eventZones = eventZoneRepository.findAllByEventId(eventId);
         return eventZones.stream()
-                .map(f -> {
-                    int consumedQuantity = f.getHeldQty() + f.getSoldQty();
-                    return new ZoneAvailabilityResponse(
-                            f.getId(),
-                            f.getNameEn(),
-                            f.getPriceUsdCents(),
-                            f.getCapacity(),
-                            consumedQuantity,
-                            f.getCapacity() - consumedQuantity
-                    );
-                })
+                .map(f -> new ZoneAvailabilityResponse(
+                        f.getId(),
+                        f.getNameEn(),
+                        f.getNameKm(),
+                        f.getPriceUsdCents(),
+                        f.getCapacity(),
+                        f.getHeldQty(),
+                        f.getSoldQty()
+                ))
                 .toList();
     }
 }

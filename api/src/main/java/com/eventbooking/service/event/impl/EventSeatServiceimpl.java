@@ -17,6 +17,7 @@ import com.eventbooking.repository.VenueSeatRepository;
 import com.eventbooking.service.event.EventSeatService;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
@@ -40,7 +41,8 @@ public class EventSeatServiceimpl implements EventSeatService {
     }
 
 
-    @Override   
+    @Override
+    @Transactional
     public SeatMapResponse generateEventSeats(Long eventId, GenerateEventSeatsRequest request) {
         Event event = eventRepository.findById(eventId).orElseThrow( () -> new EventNotFoundException(eventId));
 
@@ -62,6 +64,7 @@ public class EventSeatServiceimpl implements EventSeatService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public SeatMapResponse getSeatMap(Long eventId) {
         if (!eventRepository.existsById(eventId)) {
             throw new EventNotFoundException(eventId);

@@ -39,6 +39,9 @@ public class SeatAvailabilityServiceimpl implements SeatAvailabilityService {
                         f.getVenueSeat().getSectionLabel(),
                         f.getVenueSeat().getRowLabel(),
                         f.getVenueSeat().getSeatNumber(),
+                        f.getSeatClass().getId(),
+                        f.getSeatClass().getNameEn(),
+                        f.getSeatClass().getPriceUsdCents(),
                         f.getStatus().name()
                 ))
                 .toList();

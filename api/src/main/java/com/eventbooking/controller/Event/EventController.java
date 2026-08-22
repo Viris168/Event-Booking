@@ -4,6 +4,7 @@ import com.eventbooking.dto.event.CreateEventRequest;
 import com.eventbooking.dto.event.EventResponse;
 import com.eventbooking.dto.event.UpdateEventRequest;
 import com.eventbooking.service.event.EventService;
+import org.springframework.data.domain.Page;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -27,6 +28,14 @@ public class EventController {
     public ResponseEntity<EventResponse> createEvent(@Valid @RequestBody CreateEventRequest eventRequest) {
         EventResponse eventResponse = eventService.createEvent(eventRequest);
         return new ResponseEntity<>(eventResponse,HttpStatus.CREATED);
+    }
+
+    @GetMapping
+    public ResponseEntity<Page<EventResponse>> listEvents(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Page<EventResponse> events = eventService.listEvents(page, size);
+        return new ResponseEntity<>(events, HttpStatus.OK);
     }
 
     @GetMapping("/{id}")

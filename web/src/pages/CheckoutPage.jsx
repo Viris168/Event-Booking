@@ -1,5 +1,5 @@
 import { useDocumentTitle } from '../lib/useDocumentTitle.js'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import HoldBar from '../components/HoldBar.jsx'
 import Icon from '../components/Icon.jsx'
@@ -8,32 +8,61 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
 import { useToast } from '../context/ToastContext.jsx'
 import { FX_RATE_KHR_PER_USD, isValidPhone, khr, khrFromUsdCents, seatLabel, usd } from '../lib/format.js'
-import {
-  activeHoldsForUser,
-  createBooking,
-  extendHold,
-  getEvent,
-  getVenue,
-  holdContents,
-  releaseHold,
-  useStore,
-} from '../mock/store.js'
+import { getHold } from '../api/holds.js'
+import { getEvent } from '../api/events.js'
+import { createBooking } from '../api/bookings.js'
+import { mapHoldResponse, mapEvent } from '../api/adapters.js'
 
 export default function CheckoutPage() {
-  useStore()
   const { t, locale, dateTime } = useLocale()
   useDocumentTitle(t('checkout'))
   const { user } = useAuth()
   const toast = useToast()
   const navigate = useNavigate()
   const [params] = useSearchParams()
-
   const holdId = params.get('hold')
-  const holds = activeHoldsForUser(user.id)
-  const hold = holdId ? holds.find((h) => String(h.id) === String(holdId)) : holds[0]
+  const eventIdParam = params.get('event')
 
-  const [name, setName] = useState(user.display_name)
-  const [phone, setPhone] = useState(user.phone_e164)
+  const [apiHoldData, setApiHoldData] = useState(null)
+  const [apiEvent, setApiEvent] = useState(null)
+
+  useEffect(() => {
+    let active = true
+    if (!holdId || !user?.id) return
+    
+    let foundEventId = eventIdParam
+    
+    if (!foundEventId) {
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const key = sessionStorage.key(i)
+        if (key.startsWith('activeHoldId_') && sessionStorage.getItem(key) === holdId) {
+          foundEventId = key.split('_')[1]
+          break
+        }
+      }
+    }
+
+    if (foundEventId) {
+      getHold(foundEventId, holdId, user.id)
+        .then((res) => {
+          if (active && res) setApiHoldData(mapHoldResponse(res))
+        })
+        .catch((e) => console.error(e))
+
+      getEvent(foundEventId)
+        .then((res) => {
+          if (active && res) setApiEvent(mapEvent(res))
+        })
+        .catch((e) => console.error(e))
+    }
+    return () => { active = false }
+  }, [holdId, eventIdParam, user?.id])
+
+  const hold = apiHoldData?.hold
+  const { seats = [], zoneLines = [], subtotalUsdCents = 0 } = apiHoldData || {}
+
+  const [name, setName] = useState(user?.display_name || '')
+  const [phone, setPhone] = useState(user?.phone_e164 || '')
   const [email, setEmail] = useState(user.email || '')
   const [provider, setProvider] = useState('BAKONG_KHQR')
   const [errors, setErrors] = useState({})
@@ -53,9 +82,8 @@ export default function CheckoutPage() {
     )
   }
 
-  const event = getEvent(hold.event_id)
-  const venue = getVenue(event.venue_id)
-  const { seats, zoneLines, subtotalUsdCents } = holdContents(hold.id)
+  const event = apiEvent
+  const venue = event?.venue
 
   function validate() {
     const next = {}
@@ -78,26 +106,37 @@ export default function CheckoutPage() {
       })
       return
     }
-    setSubmitting(true) // stays disabled: the backend idempotency key is a backstop, not the only guard
-    const result = createBooking({
+    setSubmitting(true)
+
+    // Using snake_case for the API request based on Jackson configuration
+    createBooking({
+      hold_id: hold.id,
       holdId: hold.id,
-      userId: user.id,
-      buyer: { name: name.trim(), phone: phone.trim(), email: email.trim() },
-      provider,
+      buyer_name: name.trim(),
+      buyerName: name.trim(),
+      buyer_phone_e164: phone.trim(),
+      buyerPhoneE164: phone.trim(),
+      buyer_email: email.trim() || null,
+      buyerEmail: email.trim() || null,
     })
-    if (result.error) {
-      setSubmitting(false)
-      toast(`${result.error}`, 'error')
-      return
-    }
-    navigate(`/checkout/${result.booking.id}/pay`)
+      .then((res) => {
+        sessionStorage.removeItem(`activeHoldId_${event.id}`) // Clear hold now that it's booked
+        navigate(`/checkout/${res.id}/pay`) // API returns booking ID as `id`
+      })
+      .catch((err) => {
+        setSubmitting(false)
+        const error = err.response?.data?.message || err.message
+        toast(`Checkout failed: ${error}`, 'error')
+      })
   }
+
+  if (!event || !venue) return <div className="p-12 text-center text-muted">Loading checkout...</div>
 
   return (
     <div className="container">
       <Steps current={1} labels={[t('pickSeats'), t('checkout'), t('paymentMethod'), t('yourTickets')]} />
 
-      <HoldBar hold={hold} onExtend={() => extendHold(hold.id)} onRelease={() => { releaseHold(hold.id); navigate(`/events/${event.id}`) }} />
+      <HoldBar hold={hold} onExtend={() => {}} onRelease={() => navigate(`/events/${event?.id}`)} />
 
       <div className="split" style={{ marginTop: '1.3rem' }}>
         <form className="stack" onSubmit={submit} noValidate>
@@ -214,7 +253,7 @@ export default function CheckoutPage() {
                 </span>
                 <span className="meta-row">
                   <Icon name="mapPin" size={14} />
-                  <span>{locale === 'km' ? venue.name_km : venue.name_en}</span>
+                  <span>{locale === 'km' ? venue.nameKm : venue.nameEn}</span>
                 </span>
               </div>
 

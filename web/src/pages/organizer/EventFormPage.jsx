@@ -17,6 +17,7 @@ import {
   useStore,
   venueSeatsOf,
   zonesOf,
+  eventSeatsOf,
 } from '../../mock/store.js'
 
 const COVERS = ['sunset', 'river', 'gold', 'teal', 'plum', 'indigo', 'lime', 'cyan', 'rose']
@@ -99,12 +100,20 @@ export default function EventFormPage() {
 
   const [classes, setClasses] = useState(() => {
     const current = existing ? seatClassesOf(existing.id) : []
-    return current.map((c) => ({
-      section_label: c.section_label,
-      name_en: c.name_en,
-      name_km: c.name_km,
-      price: (c.price_usd_cents / 100).toFixed(2),
-    }))
+    const seats = existing ? eventSeatsOf(existing.id) : []
+    return current.map((c) => {
+      let sectionLabel = c.section_label
+      if (!sectionLabel) {
+        const seat = seats.find((s) => s.seat_class_id === c.id)
+        if (seat) sectionLabel = seat.section_label
+      }
+      return {
+        section_label: sectionLabel,
+        name_en: c.name_en,
+        name_km: c.name_km,
+        price: (c.price_usd_cents / 100).toFixed(2),
+      }
+    })
   })
 
   const [zones, setZones] = useState(() => {

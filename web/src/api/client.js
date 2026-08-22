@@ -6,12 +6,19 @@ const client = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
-// Attach JWT token (if present) to every request.
+// Attach JWT token or user identity (if present) to every request.
 client.interceptors.request.use((config) => {
   const token = localStorage.getItem('token')
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
+
+  // Short term user identity alignment for Spring Boot @RequestHeader("X-User-Id")
+  const mockUserId = localStorage.getItem('mockUserId')
+  if (mockUserId && !config.headers['X-User-Id']) {
+    config.headers['X-User-Id'] = mockUserId
+  }
+
   return config
 })
 
