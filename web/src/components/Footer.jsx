@@ -1,7 +1,6 @@
 import { Link } from "react-router-dom";
 import Icon from "./Icon.jsx";
 import { useLocale } from "../context/LocaleContext.jsx";
-import { FX_RATE_KHR_PER_USD } from "../lib/format.js";
 import { PROVINCES } from "../mock/store.js";
 
 export default function Footer() {
@@ -61,20 +60,15 @@ export default function Footer() {
           <div className="footer-col">
             <h4>{km ? "ការទូទាត់" : "Payments"}</h4>
             <span className="footer-pay">
-              <Icon name="qr" size={14} />
-              {t("khqr")}
-            </span>
-            <span className="footer-pay">
               <Icon name="bank" size={14} />
               {t("payway")}
             </span>
+            <span className="footer-pay">
+              <Icon name="qr" size={14} />
+              ABA PAY / KHQR
+            </span>
             <span className="footer-fx">
-              1 USD = {FX_RATE_KHR_PER_USD.toLocaleString("en-US")} KHR
-              <em>
-                {km
-                  ? "តម្លៃបង្ហាញជា USD និង KHR"
-                  : "Every price shown in USD and KHR"}
-              </em>
+              <em>{km ? "តម្លៃទាំងអស់ជា USD" : "Every price shown in USD"}</em>
             </span>
           </div>
         </div>

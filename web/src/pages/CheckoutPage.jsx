@@ -7,11 +7,12 @@ import { Alert, Field, Money, Steps } from '../components/ui.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
 import { useToast } from '../context/ToastContext.jsx'
-import { FX_RATE_KHR_PER_USD, isValidPhone, khr, khrFromUsdCents, seatLabel, usd } from '../lib/format.js'
+import { isValidPhone, seatLabel, usd } from '../lib/format.js'
 import { getHold } from '../api/holds.js'
 import { getEvent } from '../api/events.js'
 import { createBooking } from '../api/bookings.js'
 import { mapHoldResponse, mapEvent } from '../api/adapters.js'
+import { DEFAULT_OPTION, PAYMENT_OPTIONS, optionSub, optionTitle } from '../lib/payway.js'
 
 export default function CheckoutPage() {
   const { t, locale, dateTime } = useLocale()
@@ -61,10 +62,16 @@ export default function CheckoutPage() {
   const hold = apiHoldData?.hold
   const { seats = [], zoneLines = [], subtotalUsdCents = 0 } = apiHoldData || {}
 
-  const [name, setName] = useState(user?.display_name || '')
+  // PayWay's purchase call takes firstname/lastname/email/phone separately, so
+  // the form collects them that way rather than as one display name.
+  const [firstName, setFirstName] = useState(() => (user?.display_name || '').split(' ')[0] || '')
+  const [lastName, setLastName] = useState(
+    () => (user?.display_name || '').split(' ').slice(1).join(' '),
+  )
   const [phone, setPhone] = useState(user?.phone_e164 || '')
   const [email, setEmail] = useState(user.email || '')
-  const [provider, setProvider] = useState('BAKONG_KHQR')
+  const [option, setOption] = useState(DEFAULT_OPTION)
+  const [viewType, setViewType] = useState('popup')
   const [errors, setErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
 
@@ -87,10 +94,14 @@ export default function CheckoutPage() {
 
   function validate() {
     const next = {}
-    if (!name.trim()) next.name = locale === 'km' ? 'ត្រូវការឈ្មោះ' : 'Name is required'
+    if (!firstName.trim())
+      next.firstName = locale === 'km' ? 'ត្រូវការនាមខ្លួន' : 'First name is required'
+    if (!lastName.trim())
+      next.lastName = locale === 'km' ? 'ត្រូវការនាមត្រកូល' : 'Last name is required'
     if (!isValidPhone(phone))
       next.phone = locale === 'km' ? 'ទម្រង់៖ +855 និងលេខ ៨–៩ តួ' : 'Format: +855 followed by 8–9 digits'
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+    // PayWay requires an email on purchase — it is where the receipt goes.
+    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
       next.email = locale === 'km' ? 'អ៊ីមែលមិនត្រឹមត្រូវ' : 'Enter a valid email'
     setErrors(next)
     return Object.keys(next).length === 0
@@ -107,13 +118,14 @@ export default function CheckoutPage() {
       return
     }
     setSubmitting(true)
+    const buyerName = `${firstName.trim()} ${lastName.trim()}`.trim()
 
     // Using snake_case for the API request based on Jackson configuration
     createBooking({
       hold_id: hold.id,
       holdId: hold.id,
-      buyer_name: name.trim(),
-      buyerName: name.trim(),
+      buyer_name: buyerName,
+      buyerName,
       buyer_phone_e164: phone.trim(),
       buyerPhoneE164: phone.trim(),
       buyer_email: email.trim() || null,
@@ -121,7 +133,9 @@ export default function CheckoutPage() {
     })
       .then((res) => {
         sessionStorage.removeItem(`activeHoldId_${event.id}`) // Clear hold now that it's booked
-        navigate(`/checkout/${res.id}/pay`) // API returns booking ID as `id`
+        // The pay page stands in for the merchant page that calls Create
+        // Transaction and then opens PayWay's checkout in the chosen view.
+        navigate(`/checkout/${res.id}/pay?option=${option}&view=${viewType}`)
       })
       .catch((err) => {
         setSubmitting(false)
@@ -134,7 +148,7 @@ export default function CheckoutPage() {
 
   return (
     <div className="container">
-      <Steps current={1} labels={[t('pickSeats'), t('checkout'), t('paymentMethod'), t('yourTickets')]} />
+      <Steps current={1} labels={[t('pickSeats'), t('checkoutPay'), t('yourTickets')]} />
 
       <HoldBar hold={hold} onExtend={() => {}} onRelease={() => navigate(`/events/${event?.id}`)} />
 
@@ -146,13 +160,24 @@ export default function CheckoutPage() {
             </div>
             <div className="panel-body">
               <div className="form-grid">
-                <Field label={t('fullName')} error={errors.name} className="span-2">
+                <Field label={t('firstName')} error={errors.firstName}>
                   <input
                     className="input"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    aria-invalid={!!errors.name}
-                    autoComplete="name"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    aria-invalid={!!errors.firstName}
+                    autoComplete="given-name"
+                    maxLength={100}
+                  />
+                </Field>
+                <Field label={t('lastName')} error={errors.lastName}>
+                  <input
+                    className="input"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    aria-invalid={!!errors.lastName}
+                    autoComplete="family-name"
+                    maxLength={100}
                   />
                 </Field>
                 <Field
@@ -167,9 +192,10 @@ export default function CheckoutPage() {
                     aria-invalid={!!errors.phone}
                     inputMode="tel"
                     autoComplete="tel"
+                    maxLength={20}
                   />
                 </Field>
-                <Field label={t('email')} optional error={errors.email}>
+                <Field label={t('email')} error={errors.email}>
                   <input
                     className="input"
                     type="email"
@@ -177,13 +203,14 @@ export default function CheckoutPage() {
                     onChange={(e) => setEmail(e.target.value)}
                     aria-invalid={!!errors.email}
                     autoComplete="email"
+                    maxLength={50}
                   />
                 </Field>
               </div>
               <p className="hint" style={{ marginTop: '0.7rem' }}>
                 {locale === 'km'
-                  ? 'យើងផ្ញើសំបុត្រ និងព័ត៌មានទៅលេខទូរស័ព្ទនេះ។'
-                  : 'Tickets and updates go to this phone number.'}
+                  ? 'យើងផ្ញើសំបុត្រទៅលេខទូរស័ព្ទនេះ ហើយបង្កាន់ដៃ ABA PayWay ទៅអ៊ីមែលនេះ។'
+                  : 'Tickets go to this phone number; the ABA PayWay receipt goes to this email.'}
               </p>
             </div>
           </div>
@@ -191,51 +218,68 @@ export default function CheckoutPage() {
           <div className="panel">
             <div className="panel-head">
               <h2>{t('paymentMethod')}</h2>
+              <span className="pw-badge">
+                <Icon name="lock" size={13} />
+                ABA PayWay
+              </span>
             </div>
             <div className="panel-body">
               <div className="radio-cards">
-                <label className={`radio-card ${provider === 'BAKONG_KHQR' ? 'selected' : ''}`}>
-                  <input
-                    type="radio"
-                    name="provider"
-                    value="BAKONG_KHQR"
-                    checked={provider === 'BAKONG_KHQR'}
-                    onChange={() => setProvider('BAKONG_KHQR')}
-                  />
-                  <span className="rc-logo" aria-hidden="true">
-                    <Icon name="qr" size={19} />
-                  </span>
-                  <span className="flex-auto min-w-0">
-                    <span className="rc-title">{t('khqr')}</span>
-                    <span className="rc-sub">{t('khqrHint')}</span>
-                  </span>
-                  <span className="badge badge-cool">KHR</span>
-                </label>
+                {PAYMENT_OPTIONS.map((o) => (
+                  <label
+                    key={o.id}
+                    className={`radio-card ${option === o.id ? 'selected' : ''}`}
+                  >
+                    <input
+                      type="radio"
+                      name="payment_option"
+                      value={o.id}
+                      checked={option === o.id}
+                      onChange={() => setOption(o.id)}
+                    />
+                    <span className="rc-logo" aria-hidden="true">
+                      <Icon name={o.icon} size={19} />
+                    </span>
+                    <span className="flex-auto min-w-0">
+                      <span className="rc-title">{optionTitle(o.id, locale)}</span>
+                      <span className="rc-sub">{optionSub(o.id, locale)}</span>
+                    </span>
+                    <span className="badge badge-cool">{o.currency}</span>
+                  </label>
+                ))}
+              </div>
 
-                <label className={`radio-card ${provider === 'ABA_PAYWAY' ? 'selected' : ''}`}>
-                  <input
-                    type="radio"
-                    name="provider"
-                    value="ABA_PAYWAY"
-                    checked={provider === 'ABA_PAYWAY'}
-                    onChange={() => setProvider('ABA_PAYWAY')}
-                  />
-                  <span className="rc-logo" aria-hidden="true">
-                    <Icon name="bank" size={19} />
-                  </span>
-                  <span className="flex-auto min-w-0">
-                    <span className="rc-title">{t('payway')}</span>
-                    <span className="rc-sub">{t('paywayHint')}</span>
-                  </span>
-                  <span className="badge badge-cool">USD</span>
-                </label>
+              {/* PayWay's view_type: a popup/bottom sheet over this page, or its
+                  hosted page opened in place. */}
+              <div className="pw-view-toggle">
+                <span className="tiny">{t('checkoutView')}</span>
+                <div className="seg">
+                  <button
+                    type="button"
+                    className={viewType === 'popup' ? 'active' : ''}
+                    onClick={() => setViewType('popup')}
+                  >
+                    {t('viewPopup')}
+                  </button>
+                  <button
+                    type="button"
+                    className={viewType === 'hosted_view' ? 'active' : ''}
+                    onClick={() => setViewType('hosted_view')}
+                  >
+                    {t('viewHosted')}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
 
           <button className="btn btn-accent btn-lg btn-block" type="submit" disabled={submitting}>
-            {submitting ? `${t('loading')}` : `${t('placeOrder')} · ${usd(subtotalUsdCents)}`}
+            {submitting ? `${t('loading')}` : `${t('pay')} · ${usd(subtotalUsdCents)}`}
           </button>
+          <p className="hint text-center with-icon" style={{ justifyContent: 'center' }}>
+            <Icon name="lock" size={13} />
+            {t('paywayHandoff')}
+          </p>
         </form>
 
         {/* ----------------------------------------------------- order summary */}
@@ -289,13 +333,7 @@ export default function CheckoutPage() {
                   <span>{t('total')}</span>
                   <b>{usd(subtotalUsdCents)}</b>
                 </div>
-                <div className="total-row">
-                  <span className="small muted">KHR</span>
-                  <span className="total-khr">{khr(khrFromUsdCents(subtotalUsdCents))}</span>
-                </div>
-                <p className="hint">
-                  {t('fxNote')}: 1 USD = {FX_RATE_KHR_PER_USD.toLocaleString('en-US')} KHR
-                </p>
+                <p className="hint">{t('chargedInUsd')}</p>
               </div>
             </div>
           </div>

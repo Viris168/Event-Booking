@@ -1237,7 +1237,7 @@
   /* Surfaces that stay light in both themes — a QR must keep its contrast to
      scan, and the date chip sits on cover art. Re-declaring the neutral tokens
      locally re-themes every descendant utility in one place. */
-  [data-theme='dark'] :is(.qr-frame, .ev-media .ev-date) {
+  [data-theme='dark'] :is(.qr-frame, .pw-qr, .ev-media .ev-date) {
     /* Re-declaring the tokens fixes descendants that apply a colour utility… */
     --color-ink: #131a2b;
     --color-ink-2: #3c4661;
@@ -1247,7 +1247,7 @@
   }
   /* Cards need a visible edge against a dark page, and the toast needs to
      separate from it. */
-  [data-theme='dark'] :is(.toast, .qr-frame) {
+  [data-theme='dark'] :is(.toast, .qr-frame, .pw-qr) {
     @apply border border-line;
   }
   /* The pref group sits on the always-dark navbar, so it never inverts. */
@@ -1771,6 +1771,160 @@
   .spinner {
     @apply size-4 flex-none rounded-full border-2 border-current border-r-transparent;
     animation: spin 0.8s linear infinite;
+  }
+
+  /* ------------------------------------------------------- ABA PayWay checkout
+     The sheet PayWay returns from Create Transaction: a modal on desktop, a
+     bottom sheet on phones, and the same panel drawn inline for view_type=
+     hosted_view. ABA's own red heads it; the body follows the app's tokens so
+     it stays legible in dark mode. */
+  .pw-scrim {
+    @apply fixed inset-0 z-[120] flex items-center justify-center bg-black/55 p-4 backdrop-blur-[2px];
+    animation: pw-fade 0.18s ease-out;
+  }
+  @media (max-width: 620px) {
+    .pw-scrim {
+      @apply items-end p-0;
+    }
+  }
+  .pw-sheet {
+    @apply flex max-h-[92vh] w-full max-w-[420px] flex-col overflow-hidden rounded-card border border-line bg-surface shadow-float;
+    animation: pw-rise 0.22s ease-out;
+  }
+  @media (max-width: 620px) {
+    .pw-sheet {
+      @apply max-h-[90vh] max-w-none rounded-b-none;
+    }
+  }
+  .pw-sheet.pw-hosted {
+    @apply max-w-none animate-none;
+  }
+  .pw-head {
+    @apply flex flex-none items-center justify-between px-4 py-[0.7rem] text-white;
+    background: #e2231a;
+  }
+  .pw-mark {
+    @apply text-[1rem] font-extrabold tracking-[0.03em];
+  }
+  .pw-mark span {
+    @apply font-semibold opacity-90;
+  }
+  .pw-close {
+    @apply grid size-7 place-items-center rounded-full bg-white/15 text-white;
+  }
+  .pw-close:hover {
+    @apply bg-white/25;
+  }
+  .pw-amount {
+    @apply flex flex-none flex-col items-center gap-[0.15rem] border-b border-line px-4 py-[0.9rem] text-center;
+    background: var(--color-surface-2);
+  }
+  .pw-merchant {
+    @apply text-[0.72rem] font-bold uppercase tracking-[0.08em] text-muted;
+  }
+  .pw-amount b {
+    @apply text-[1.55rem] leading-tight;
+  }
+  .pw-tran {
+    @apply text-[0.72rem] text-muted;
+  }
+  .pw-body {
+    @apply flex flex-col gap-[0.7rem] overflow-y-auto p-4;
+  }
+  .pw-foot {
+    @apply flex flex-none items-center justify-between gap-3 border-t border-line px-4 py-[0.6rem] text-[0.75rem] text-muted;
+    background: var(--color-surface-2);
+  }
+  .pw-timer {
+    @apply inline-flex items-center gap-[0.3rem] tabular-nums;
+    font-weight: 650;
+  }
+  .pw-timer.urgent {
+    @apply text-danger;
+  }
+
+  .pw-qr {
+    @apply overflow-hidden rounded-card border border-line bg-white;
+  }
+  .pw-qr-top {
+    @apply flex items-center justify-between px-3 py-[0.45rem] text-[0.8rem] font-extrabold text-white;
+    background: #e2231a;
+  }
+  .pw-qr-body {
+    @apply grid place-items-center px-4 pb-2 pt-3;
+  }
+  .pw-qr-note {
+    @apply px-4 pb-3 text-center;
+  }
+  .pw-qr.is-dead {
+    @apply relative;
+  }
+  .pw-qr.is-dead::after {
+    content: '';
+    @apply absolute inset-0 bg-white/[0.72];
+  }
+  .pw-wait {
+    @apply flex items-center justify-center gap-[0.45rem];
+  }
+  .pw-processing {
+    @apply grid place-items-center gap-[0.5rem] px-4 py-9 text-center;
+  }
+  .pw-pay {
+    @apply text-white;
+    background: #e2231a;
+    border-color: #e2231a;
+  }
+  .pw-pay:hover:not(:disabled) {
+    background: #c31c14;
+  }
+  .pw-items {
+    @apply rounded-ui border border-line px-[0.7rem] py-[0.5rem] text-[0.82rem];
+  }
+  .pw-items summary {
+    @apply cursor-pointer text-muted;
+    font-weight: 650;
+  }
+  .pw-items ul {
+    @apply mt-[0.4rem] flex flex-col gap-[0.3rem];
+  }
+  .pw-items li {
+    @apply flex items-baseline gap-2;
+  }
+  .pw-demo {
+    @apply flex flex-col gap-[0.35rem] rounded-ui border border-dashed border-line px-[0.7rem] py-[0.5rem];
+  }
+
+  .pw-badge {
+    @apply inline-flex items-center gap-[0.3rem] rounded-full bg-danger-soft px-[0.55rem] py-[0.2rem] text-[0.72rem] text-danger;
+    font-weight: 700;
+  }
+  .pw-view-toggle {
+    @apply mt-[0.8rem] flex items-center justify-between gap-3 border-t border-line pt-[0.7rem];
+  }
+  .pw-view-toggle .seg {
+    @apply inline-flex overflow-hidden rounded-ui border border-line;
+  }
+  .pw-view-toggle .seg button {
+    @apply px-[0.7rem] py-[0.3rem] text-[0.8rem] text-muted;
+    font-weight: 650;
+  }
+  .pw-view-toggle .seg button.active {
+    @apply bg-brand-600 text-white;
+  }
+  .pw-launch .icon-chip.lg {
+    @apply text-danger;
+  }
+
+  @keyframes pw-fade {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes pw-rise {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+    }
   }
 
   .steps {

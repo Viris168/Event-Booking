@@ -30,8 +30,8 @@ const dict = {
   },
   heroTitleAccent: { en: "Cambodia", km: "កម្ពុជា" },
   heroSub: {
-    en: "Concerts, festivals and conferences — reserve your seat, pay with Bakong or ABA, show your QR at the door.",
-    km: "ការប្រគំតន្ត្រី ពិធីបុណ្យ និងសន្និសីទ — កក់កៅអី ទូទាត់ប្រាក់តាមរយៈបាគង ឬ ABA រួចបង្ហាញ QR កូដនៅច្រកចូល។",
+    en: "Concerts, festivals and conferences — reserve your seat, pay with ABA PayWay, show your QR at the door.",
+    km: "ការប្រគំតន្ត្រី ពិធីបុណ្យ និងសន្និសីទ — កក់កៅអី ទូទាត់ប្រាក់តាមរយៈ ABA PayWay រួចបង្ហាញ QR កូដនៅច្រកចូល។",
   },
   search: { en: "Search events", km: "ស្វែងរកព្រឹត្តិការណ៍" },
   searchLabel: { en: "Search", km: "ស្វែងរក" },
@@ -152,6 +152,55 @@ const dict = {
   simulate: { en: "Demo controls", km: "ការគ្រប់គ្រងសាកល្បង" },
   simulateSuccess: { en: "Simulate success", km: "សាកល្បង (ជោគជ័យ)" },
   simulateFail: { en: "Simulate failure", km: "សាកល្បង (បរាជ័យ)" },
+  simulateScanPaid: { en: "Simulate scan & pay", km: "សាកល្បង (ស្កេន និងបង់)" },
+
+  // ABA PayWay checkout — the flow at developer.payway.com.kh
+  checkoutPay: { en: "Checkout & pay", km: "ទូទាត់ប្រាក់" },
+  firstName: { en: "First name", km: "នាមខ្លួន" },
+  lastName: { en: "Last name", km: "នាមត្រកូល" },
+  pay: { en: "Pay", km: "ទូទាត់" },
+  close: { en: "Close", km: "បិទ" },
+  expired: { en: "Expired", km: "ផុតកំណត់" },
+  securedByAba: { en: "Secured by ABA Bank", km: "សុវត្ថិភាពដោយធនាគារ ABA" },
+  checkoutView: { en: "Checkout view", km: "ទម្រង់បង្ហាញការទូទាត់" },
+  viewPopup: { en: "Popup", km: "ផ្ទាំងលោត" },
+  viewHosted: { en: "Hosted page", km: "ទំព័ររបស់ ABA" },
+  paywayHandoff: {
+    en: "You pay inside ABA PayWay's secure checkout.",
+    km: "អ្នកទូទាត់នៅក្នុងផ្ទាំងសុវត្ថិភាពរបស់ ABA PayWay។",
+  },
+  openCheckout: { en: "Open PayWay checkout", km: "បើកការទូទាត់ PayWay" },
+  checkoutClosed: {
+    en: "This checkout session is closed.",
+    km: "ការទូទាត់នេះត្រូវបានបិទហើយ។",
+  },
+  completeWithin: { en: "Complete within", km: "សូមបញ្ចប់ក្នុងរយៈពេល" },
+  checkingTransaction: {
+    en: "Checking transaction with PayWay…",
+    km: "កំពុងពិនិត្យប្រតិបត្តិការជាមួយ PayWay…",
+  },
+  contactingBank: { en: "Contacting your bank…", km: "កំពុងភ្ជាប់ទៅធនាគាររបស់អ្នក…" },
+  completingPayment: { en: "Completing payment…", km: "កំពុងបញ្ចប់ការទូទាត់…" },
+  paymentCancelled: { en: "Payment cancelled", km: "ការទូទាត់ត្រូវបានបោះបង់" },
+  transactionExpired: {
+    en: "Transaction expired — start a new one",
+    km: "ប្រតិបត្តិការផុតកំណត់ — សូមចាប់ផ្តើមម្តងទៀត",
+  },
+  approvalCode: { en: "Approval code", km: "លេខកូដអនុម័ត" },
+  transaction: { en: "Transaction", km: "ប្រតិបត្តិការ" },
+  callback: { en: "Return callback", km: "ការឆ្លើយតបត្រឡប់" },
+  noCallbackYet: { en: "No callback received yet", km: "មិនទាន់មានការឆ្លើយតបទេ" },
+  openAbaMobile: { en: "Open ABA Mobile", km: "បើក ABA Mobile" },
+  returnAfterPaying: {
+    en: "Finish in the app — this page updates on your return.",
+    km: "បញ្ចប់ក្នុងកម្មវិធី — ទំព័រនេះនឹងធ្វើបច្ចុប្បន្នភាពនៅពេលត្រឡប់មកវិញ។",
+  },
+  chargedInUsd: {
+    en: "Charged in USD by ABA PayWay",
+    km: "គិតជាប្រាក់ដុល្លារ (USD) ដោយ ABA PayWay",
+  },
+  seatTicket: { en: "Seat ticket", km: "សំបុត្រកៅអី" },
+  generalAdmission: { en: "General admission", km: "សំបុត្រតំបន់ទូទៅ" },
 
   // bookings
   bookingRef: { en: "Booking reference", km: "លេខកូដយោងការកក់" },
