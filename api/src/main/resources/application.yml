@@ -139,3 +139,16 @@ springdoc:
     operations-sorter: method
   api-docs:
     path: /v3/api-docs
+
+# ABA PayWay checkout gateway. Deliberately at the root rather than under
+# app.payment (which is Bakong): PaymentServiceimpl binds merchant-id /
+# api-key / base-url with @Value and PaywayCloseStaleProperties binds
+# payway.close-stale, so keep those in sync if this ever moves.
+payway:
+  base-url: ${PAYWAY_BASE_URL:https://checkout-sandbox.payway.com.kh}
+  merchant-id: ${PAYWAY_MERCHANT_ID:ec477769}
+  # Merchant credential. Keep the real value in .env, not here.
+  api-key: ${PAYWAY_API_KEY:}
+  close-stale:
+    fixed-delay-ms: 60000
+    after-minutes: 1
