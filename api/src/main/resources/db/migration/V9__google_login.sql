@@ -20,7 +20,7 @@
 --
 -- provider/provider_subject identify the account at the provider.
 -- provider_subject is Google's "sub" claim: stable for the life of the
--- account and, unlike email, never reassigned or changed by the user, so
+-- account and, unlike email, never hold_zone_linereassigned or changed by the user, so
 -- it is the only safe key to match a returning user on. The UNIQUE is
 -- composite because subjects are only unique WITHIN a provider.
 -- ============================================================
