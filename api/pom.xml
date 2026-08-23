@@ -155,6 +155,12 @@
             <scope>test</scope>
         </dependency>
 
+        <dependency>
+            <groupId>com.squareup.okhttp3</groupId>
+            <artifactId>okhttp</artifactId>
+            <version>4.12.0</version>
+        </dependency>
+
         <!-- Testcontainers: spins up a real Postgres in Docker per test run,
              so plpgsql triggers, partial indexes and CHECK constraints from
              V1__schema.sql are actually exercised. H2 can't run any of those,
@@ -181,6 +187,8 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+
+
 
     <build>
         <plugins>

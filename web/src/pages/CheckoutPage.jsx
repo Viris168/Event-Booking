@@ -237,8 +237,15 @@ export default function CheckoutPage() {
                       checked={option === o.id}
                       onChange={() => setOption(o.id)}
                     />
-                    <span className="rc-logo" aria-hidden="true">
-                      <Icon name={o.icon} size={19} />
+                    <span className="rc-logo" aria-hidden="true" style={{ padding: o.id === 'abapay_khqr' ? 0 : '', border: o.id === 'abapay_khqr' ? 'none' : '', borderRadius: o.id === 'abapay_khqr' ? 0 : '' }}>
+                      {o.id === 'abapay_khqr' ? (
+                        <div className="aba-khqr-logo-icon">
+                          <div className="aba-top">ABA<span className="aba-quote">'</span></div>
+                          <div className="aba-bot">KHQR</div>
+                        </div>
+                      ) : (
+                        <Icon name={o.icon} size={19} />
+                      )}
                     </span>
                     <span className="flex-auto min-w-0">
                       <span className="rc-title">{optionTitle(o.id, locale)}</span>

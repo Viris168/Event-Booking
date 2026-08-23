@@ -7,14 +7,17 @@ import PaywayCheckout from '../components/PaywayCheckout.jsx'
 import { Alert, Badge, ResponsiveTable, Steps } from '../components/ui.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
 import { countdown, usd } from '../lib/format.js'
+import { mapHoldResponse, mapEvent, mapBooking } from '../api/adapters.js'
+import { createQr, checkStatus } from '../api/payment.js'
 import {
+  clearTransaction,
+  createTransaction,
+  loadTransaction,
   MERCHANT_ID,
   MERCHANT_NAME,
   PROVIDER,
-  createTransaction,
-  loadTransaction,
-  optionTitle,
   paymentOption,
+  optionTitle,
   settleTransaction,
 } from '../lib/payway.js'
 import {
@@ -28,7 +31,6 @@ import {
   useStore,
 } from '../mock/store.js'
 import { getEvent } from '../api/events.js'
-import { mapBooking, mapEvent } from '../api/adapters.js'
 import { getBooking as getApiBooking } from '../api/bookings.js'
 
 // How each PayWay payment_status reads on screen.
@@ -96,6 +98,7 @@ export default function PaymentPage() {
 
   const viewType = params.get('view') === 'hosted_view' ? 'hosted_view' : 'popup'
   const requestedOption = params.get('option')
+  const hosted = viewType === 'hosted_view'
 
   // With no attempt in hand the booking's own state says how the last one ended.
   const status =
@@ -105,23 +108,40 @@ export default function PaymentPage() {
 
   /** Create Transaction — one open purchase per booking. */
   const openTransaction = useCallback(
-    (option) => {
+    async (option) => {
       if (!booking) return
-      const next = createTransaction({
-        bookingId: booking.id,
-        bookingRef: booking.booking_ref,
-        option,
-        viewType,
-        amountUsdCents: booking.total_usd_cents,
-        returnUrl: `${window.location.origin}/checkout/${booking.id}/pay`,
-      })
-      // Mirror the attempt onto the booking so the rest of the prototype — the
-      // booking state machine, the admin payment views — sees it too.
-      if (mockBooking) startPayment(mockBooking.id, PROVIDER)
-      setTxn(next)
-      setPolls(0)
-      setChecking(false)
-      setSheetOpen(true)
+      
+      try {
+        const payload = {
+          firstname: booking.buyer_name ? booking.buyer_name.split(' ')[0] : 'Sina',
+          lastname: booking.buyer_name ? booking.buyer_name.split(' ').slice(1).join(' ') : 'Chhum',
+          amount: (booking.total_usd_cents / 100).toFixed(2),
+          currency: 'USD',
+          phone: booking.buyer_phone_e164 || '093939399'
+        };
+        const data = await createQr(payload);
+        
+        const tranId = data.status?.tranId || data.status?.tran_id || data.tran_id || 'unknown';
+        const next = {
+          tran_id: tranId,
+          payment_option: option,
+          amount_usd_cents: booking.total_usd_cents,
+          status: 'PENDING',
+          expires_at: new Date(Date.now() + 5 * 60000).toISOString(),
+          created_at: new Date().toISOString(),
+          qrImage: data.qrImage,
+          abapayDeeplink: data.abapayDeeplink || data.abapay_deeplink
+        };
+        
+        if (mockBooking) startPayment(mockBooking.id, PROVIDER)
+        setTxn(next)
+        setPolls(0)
+        setChecking(false)
+        setSheetOpen(true)
+      } catch (err) {
+        console.error("Failed to generate QR:", err)
+        alert("Failed to generate QR Code. See browser console for details: " + err.message)
+      }
     },
     [booking, mockBooking, viewType],
   )
@@ -139,16 +159,26 @@ export default function PaymentPage() {
     }
   }, [booking, txn, requestedOption, openTransaction])
 
+  // The purchase page should immediately show PayWay's popup once its pending
+  // transaction is ready. This also covers a pending transaction restored from
+  // session storage after a page refresh.
+  useEffect(() => {
+    if (txn?.status === 'PENDING' && !hosted) setSheetOpen(true)
+  }, [txn?.status, hosted])
+
   // Check Transaction: poll until the gateway gives a final answer.
   useEffect(() => {
-    if (!checking) return
-    const timer = setInterval(() => setPolls((n) => n + 1), 900)
-    const done = setTimeout(() => setChecking(false), 2200)
-    return () => {
-      clearInterval(timer)
-      clearTimeout(done)
-    }
-  }, [checking])
+    if (txn?.status !== 'PENDING' || !txn?.tran_id) return
+    const timer = setInterval(() => {
+      setPolls((count) => count + 1)
+      checkStatus(txn.tran_id).then(data => {
+        if (data && data.paid === true) {
+          onSettledRef.current('APPROVED')
+        }
+      }).catch(err => console.error(err))
+    }, 3000)
+    return () => clearInterval(timer)
+  }, [txn?.status, txn?.tran_id])
 
   // A purchase only lives for its `lifetime`; past that PayWay stops accepting it.
   useEffect(() => {
@@ -160,32 +190,39 @@ export default function PaymentPage() {
     return () => clearInterval(tick)
   }, [txn?.status, txn?.expires_at])
 
-  // Once the money lands, move on to the tickets.
-  useEffect(() => {
-    if (status !== 'APPROVED' || checking) return
-    const timer = setTimeout(() => navigate(`/bookings/${booking.id}`), 1600)
-    return () => clearTimeout(timer)
-  }, [status, checking, booking?.id, navigate])
+  // Once the money lands, we wait for the user to click "View Tickets" on the success screen.
+  // We used to auto-navigate here, but now PaywayCheckout handles it via onSuccess.
 
   /** The buyer finished inside the checkout — PayWay closes it and posts back. */
   const onSettled = useCallback(
     (status) => {
       if (!booking) return
-      const settled = settleTransaction(booking.id, status)
-      setTxn(settled)
-      setSheetOpen(false)
-      setChecking(true)
-      setPolls(0)
-      if (mockBooking) {
-        // EXPIRED closes the attempt but leaves the booking payable, so it maps
-        // straight through rather than onto a cancellation.
-        resolvePayment(
-          mockBooking.id,
-          { APPROVED: 'SUCCESS', DECLINED: 'FAILED', CANCELLED: 'CANCELLED', EXPIRED: 'EXPIRED' }[
-            status
-          ],
-        )
-      }
+      
+      setTxn((prev) => {
+        if (!prev) return null;
+        const settled = {
+          ...prev,
+          status,
+          status_code: { APPROVED: 0, PENDING: 2, DECLINED: 3, CANCELLED: 4, EXPIRED: 5 }[status] ?? 3,
+          resolved_at: new Date().toISOString()
+        };
+        
+        if (status !== 'APPROVED') setSheetOpen(false)
+        setChecking(true)
+        setPolls(0)
+        
+        if (mockBooking) {
+          resolvePayment(
+            mockBooking.id,
+            status === 'APPROVED',
+            settled.tran_id,
+          ).then(() => {
+            setChecking(false)
+          })
+        }
+        
+        return settled;
+      });
     },
     [booking, mockBooking],
   )
@@ -225,7 +262,6 @@ export default function PaymentPage() {
   const strip = STRIP[status] || STRIP.PENDING
   const isOpen = status === 'PENDING'
   const option = paymentOption(txn?.payment_option)
-  const hosted = viewType === 'hosted_view'
 
   const checkout = txn ? (
     <PaywayCheckout
@@ -235,6 +271,7 @@ export default function PaymentPage() {
       items={items}
       onSettled={onSettled}
       onClose={() => setSheetOpen(false)}
+      onSuccess={() => navigate(`/bookings/${booking.id}`)}
     />
   ) : null
 

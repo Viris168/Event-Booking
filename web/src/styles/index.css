@@ -1322,6 +1322,42 @@
   .radio-card .rc-logo {
     @apply grid size-[38px] flex-none place-items-center rounded-[10px] border border-line bg-surface-2 text-[1.1rem];
   }
+  .aba-khqr-logo-icon {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+    overflow: hidden;
+    font-family: Arial, sans-serif;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.05);
+  }
+  .aba-khqr-logo-icon .aba-top {
+    background: #005E7B;
+    color: white;
+    flex: 1.5;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: 800;
+    font-size: 13px;
+    letter-spacing: 0.2px;
+    padding-bottom: 1px;
+  }
+  .aba-khqr-logo-icon .aba-top .aba-quote {
+    color: #E1232E;
+    margin-left: 0.5px;
+  }
+  .aba-khqr-logo-icon .aba-bot {
+    background: #E1232E;
+    color: white;
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: 700;
+    font-size: 10px;
+  }
 
   /* --------------------------------------------------------------- filters */
   .filterbar {
@@ -2383,4 +2419,168 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* --- New KHQR Ticket Styles --- */
+.pw-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: 2.5rem 1rem 1rem;
+  overflow-y: auto;
+  background: rgba(5, 11, 30, 0.72);
+}
+.pw-scrim-logo {
+  position: absolute;
+  top: -35px;
+  right: 0px;
+  color: white;
+  font-weight: 700;
+  font-size: 1.2rem;
+  letter-spacing: 1px;
+  z-index: 130;
+}
+.pw-scrim-logo i {
+  font-weight: 900;
+  font-style: italic;
+}
+.pw-sheet {
+  @apply bg-white;
+  position: relative;
+  width: 100%;
+  max-height: calc(100vh - 3.5rem);
+  overflow-y: auto;
+  border-radius: 12px;
+}
+.pw-head-new {
+  @apply flex items-center justify-between px-6 py-5;
+}
+.pw-title-new {
+  @apply text-[#102b4e] text-[1.1rem];
+}
+.pw-close-new {
+  @apply text-[#00c5cd] bg-transparent;
+}
+.pw-close-new:hover {
+  @apply opacity-80;
+}
+.pw-body-new {
+  @apply px-4 pb-6 flex flex-col items-center;
+}
+.pw-ticket {
+  @apply w-full max-w-[320px] bg-white shadow-[0_4px_24px_rgba(0,0,0,0.12)] flex flex-col;
+  border-radius: 16px;
+  border: 1px solid rgba(0,0,0,0.04);
+  overflow: hidden;
+}
+.pw-ticket-red {
+  @apply bg-[#e2231a] text-white px-4 py-3 flex justify-center items-center;
+  border-bottom-right-radius: 24px;
+}
+.pw-ticket-amount {
+  @apply flex flex-col items-center px-4 pt-6 pb-4;
+}
+.pw-ticket-amount .pw-merchant {
+  @apply text-[0.65rem] font-bold text-gray-500 uppercase tracking-widest mb-1;
+}
+.pw-ticket-amount b {
+  @apply text-[1.7rem] font-bold text-black;
+}
+.pw-ticket-dash {
+  border-top: 2px dashed #d1d5db;
+  margin: 0 1rem;
+}
+.pw-qr-wrap {
+  @apply relative flex justify-center py-6 px-6;
+}
+.pw-qr-logo {
+  @apply absolute bg-black text-white rounded-full flex items-center justify-center;
+  width: 36px;
+  height: 36px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-weight: bold;
+  font-size: 1.1rem;
+  border: 3px solid white;
+}
+.pw-scan-note {
+  @apply text-center text-[0.7rem] text-gray-400 pb-5 px-4 leading-tight;
+}
+.pw-demo-wrap {
+  @apply border-t border-line mt-2 p-4 w-full;
+}
+
+/* --- Success Screen --- */
+.pw-success {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  background: white;
+  border-radius: 12px;
+}
+.pw-success-top {
+  width: 100%;
+  height: 160px;
+}
+.pw-success-body {
+  padding: 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.pw-success-title {
+  font-size: 1.5rem;
+  color: #0b1d35;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+.pw-success-desc {
+  font-size: 0.75rem;
+  color: #666;
+  line-height: 1.4;
+  margin-bottom: 24px;
+}
+.pw-success-desc b {
+  color: #999;
+  font-weight: normal;
+}
+.pw-success-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+.pw-btn-outline {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #48C58F;
+  color: #48C58F;
+  background: white;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.pw-btn-outline:hover {
+  opacity: 0.8;
+}
+.pw-btn-solid {
+  width: 100%;
+  padding: 12px;
+  background: #48C58F;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.pw-btn-solid:hover {
+  opacity: 0.8;
 }
