@@ -1,22 +1,16 @@
 package com.eventbooking.mapper.Hold;
 
 import com.eventbooking.Enumeration.HoldStatus;
-import com.eventbooking.catalog.error.EventNotFoundException;
 import com.eventbooking.dto.hold.CreateHoldRequest;
 import com.eventbooking.model.AppUser;
 import com.eventbooking.model.Event;
 import com.eventbooking.model.Hold;
 
-import com.eventbooking.repository.EventRepository;
-import com.eventbooking.repository.SeatClassRepository;
 
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.List;
 
 
 @Component

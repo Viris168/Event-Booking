@@ -5,10 +5,8 @@ import com.eventbooking.dto.seatclass.CreateSeatClassRequest;
 import com.eventbooking.dto.seatclass.SeatClassResponse;
 import com.eventbooking.model.Event;
 import com.eventbooking.model.SeatClass;
-import com.eventbooking.repository.EventRepository;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
 
 @Component
 
@@ -33,6 +31,9 @@ public class SeatClassMapper {
                 seatClass.getEventSeats().size(),
                 seatClass.getEventSeats().stream()
                         .filter(seat -> seat.getStatus() == SeatStatus.SOLD)
+                        .count(),
+                seatClass.getEventSeats().stream()
+                        .filter(seat -> seat.getStatus() == SeatStatus.HELD)
                         .count()
         );
     }

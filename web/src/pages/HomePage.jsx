@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import EventCard from '../components/EventCard.jsx'
 import Icon, { CATEGORY_ICON } from '../components/Icon.jsx'
+import { EventGridSkeleton, SpotlightSkeleton } from '../components/Skeleton.jsx'
 import { Empty, IconSelect, Money, SearchInput } from '../components/ui.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
 import { PROVINCES, platformStats, useStore } from '../mock/store.js'
@@ -228,7 +229,7 @@ export default function HomePage() {
 
           {/* The soonest event, sold from the hero itself rather than leaving
               half the banner empty. */}
-          {spotlight && <Spotlight event={spotlight} />}
+          {loading ? <SpotlightSkeleton /> : spotlight && <Spotlight event={spotlight} />}
         </div>
       </section>
 
@@ -242,7 +243,7 @@ export default function HomePage() {
             </Link>
           </div>
           {loading ? (
-            <div className="p-12 text-center text-muted">Loading events from Spring Boot...</div>
+            <EventGridSkeleton count={4} />
           ) : featured.length ? (
             <div className="grid grid-cards">
               {featured.map((e) => (
@@ -263,7 +264,7 @@ export default function HomePage() {
             </Link>
           </div>
           {loading ? (
-            <div className="p-12 text-center text-muted">Loading...</div>
+            <EventGridSkeleton count={8} />
           ) : (
             <div className="grid grid-cards">
               {upcoming.map((e) => (

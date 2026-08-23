@@ -44,6 +44,7 @@ web/src
 │   └── ToastContext.jsx      toast(message, 'info' | 'success' | 'error')
 ├── components/               Icon, Navbar, EventCard, SeatMap, ZonePicker,
 │                             HoldBar, QrGlyph, TicketCard, AuthLayout,
+│                             Skeleton.jsx (loading placeholders),
 │                             ui.jsx (shared bits)
 ├── routes/ProtectedRoute.jsx role guard
 └── pages/

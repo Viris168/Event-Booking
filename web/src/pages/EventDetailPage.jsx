@@ -1,10 +1,11 @@
 import { useDocumentTitle } from '../lib/useDocumentTitle.js'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import HoldBar from '../components/HoldBar.jsx'
 import Icon, { CATEGORY_ICON } from '../components/Icon.jsx'
 import SeatMap from '../components/SeatMap.jsx'
 import ZonePicker from '../components/ZonePicker.jsx'
+import { EventDetailSkeleton } from '../components/Skeleton.jsx'
 import { Alert, Badge, BiTitle, Money, Progress } from '../components/ui.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
@@ -32,17 +33,25 @@ export default function EventDetailPage() {
   const [apiSeats, setApiSeats] = useState([])
   const [apiZones, setApiZones] = useState([])
   const [apiHoldData, setApiHoldData] = useState(null)
+  // The event read decides what the page is: until it lands, "not found" would
+  // be a lie, so the page holds its shape instead.
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let active = true
     if (!id) return
-    
+
+    setLoading(true)
+
     // Fetch Event
     getEvent(id)
       .then((res) => {
         if (active && res) setApiEvent(mapEvent(res))
       })
       .catch((e) => console.error(e))
+      .finally(() => {
+        if (active) setLoading(false)
+      })
 
     // Fetch Seats
     getSeatMap(id)
@@ -89,13 +98,25 @@ export default function EventDetailPage() {
   const hold = apiHoldData?.hold
   const held = apiHoldData
   
-  // Calculate inventory summary
-  const summary = event ? {
-    capacity: event.totalCapacity ?? 0,
-    sold: event.totalSold ?? 0,
-    held: event.totalHeld ?? 0,
-    remaining: (event.totalCapacity ?? 0) - (event.totalSold ?? 0) - (event.totalHeld ?? 0)
-  } : { capacity: 0, sold: 0, held: 0, remaining: 0 }
+  // Event-wide inventory, seats and zones together. The field names are the
+  // mapped ones: the API serializes snake_case, so reading `totalCapacity` off
+  // the response gave undefined and the panel showed 0 / 0.
+  const summary = (() => {
+    if (!event) return { capacity: 0, sold: 0, held: 0, remaining: 0 }
+
+    const capacity = event.total_capacity ?? 0
+    const sold = event.total_sold ?? 0
+    const held = event.total_held ?? 0
+
+    return {
+      capacity,
+      sold,
+      held,
+      // Never negative: sold and held are read a moment apart from the totals,
+      // so a purchase landing between them must not render a bar past 100%.
+      remaining: Math.max(0, capacity - sold - held),
+    }
+  })()
 
   useDocumentTitle(event ? (locale === 'km' ? event.title_km : event.title_en) : null)
 
@@ -145,6 +166,10 @@ export default function EventDetailPage() {
     }, 0)
     return seatTotal + zoneTotal
   }, [selectedSeats, zoneQty, seats, classes, zones])
+
+  if (loading) {
+    return <EventDetailSkeleton />
+  }
 
   if (!event) {
     return (

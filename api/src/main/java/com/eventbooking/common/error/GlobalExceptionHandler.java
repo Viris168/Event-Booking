@@ -1,6 +1,5 @@
 package com.eventbooking.common.error;
 
-import com.eventbooking.inventory.error.InventoryContentionException;
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

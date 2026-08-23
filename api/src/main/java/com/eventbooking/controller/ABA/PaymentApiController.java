@@ -51,7 +51,12 @@ public class PaymentApiController {
         } catch (PaymentGatewayException e) {
             return ResponseEntity.status(502).body(Map.of("error", e.getMessage()));
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Invalid payment request"));
+            // The reason is carried through rather than flattened to "invalid":
+            // "Booking 9 is CONFIRMED and cannot take a payment" is something a
+            // pay screen can act on, and none of these messages say anything a
+            // caller does not already know about its own request.
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", e.getMessage() == null ? "Invalid payment request" : e.getMessage()));
         }
     }
 

@@ -149,6 +149,12 @@ payway:
   merchant-id: ${PAYWAY_MERCHANT_ID:ec477769}
   # Merchant credential. Keep the real value in .env, not here.
   api-key: ${PAYWAY_API_KEY:}
+  # MOCK registers /api/dev/payway/**, which settles a transaction without ABA
+  # having approved it - that is what the checkout's "simulate success" button
+  # calls. LIVE drops those endpoints entirely, so there is no build in which a
+  # caller can declare a real booking paid. Set PAYWAY_MODE=LIVE in any
+  # environment reachable by someone who should not be able to.
+  mode: ${PAYWAY_MODE:MOCK}
   close-stale:
     fixed-delay-ms: 60000
     after-minutes: 1

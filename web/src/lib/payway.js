@@ -2,9 +2,9 @@
 //
 // Mirrors developer.payway.com.kh's flow: the merchant creates a transaction
 // (POST /api/payment-gateway/v1/payments/purchase), PayWay answers with a
-// checkout it renders as a popup / bottom sheet / hosted page, the buyer pays
-// inside it, and the merchant then verifies with Check Transaction and receives
-// the same result again on its return_url.
+// checkout it renders as a popup on desktop and a bottom sheet on phones, the
+// buyer pays inside it, and the merchant then verifies with Check Transaction
+// and receives the same result again on its return_url.
 //
 // Nothing here talks to PayWay — there is no merchant profile behind this
 // prototype. It generates the fields the real gateway would (tran_id, req_time,
@@ -104,7 +104,6 @@ export function createTransaction({
   bookingId,
   bookingRef,
   option = DEFAULT_OPTION,
-  viewType = 'popup',
   amountUsdCents = 0,
   lifetimeMinutes = 15,
   returnUrl = '',
@@ -118,7 +117,7 @@ export function createTransaction({
     req_time: reqTime(new Date(now)),
     booking_id: String(bookingId),
     payment_option: opt.id,
-    view_type: viewType,
+    view_type: 'popup', // PayWay's modal / bottom sheet — this flow uses no other
     currency: opt.currency,
     amount: amountUsdCents / 100,
     amount_usd_cents: amountUsdCents,
