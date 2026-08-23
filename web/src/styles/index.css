@@ -2265,6 +2265,16 @@
 }
 
 /* --- New KHQR Ticket Styles --- */
+.pw-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: 2.5rem 1rem 1rem;
+  overflow-y: auto;
+  background: rgba(5, 11, 30, 0.72);
+}
 .pw-scrim-logo {
   position: absolute;
   top: -35px;
@@ -2281,6 +2291,10 @@
 }
 .pw-sheet {
   @apply bg-white;
+  position: relative;
+  width: 100%;
+  max-height: calc(100vh - 3.5rem);
+  overflow-y: auto;
   border-radius: 12px;
 }
 .pw-head-new {

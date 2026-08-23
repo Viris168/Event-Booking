@@ -98,6 +98,7 @@ export default function PaymentPage() {
 
   const viewType = params.get('view') === 'hosted_view' ? 'hosted_view' : 'popup'
   const requestedOption = params.get('option')
+  const hosted = viewType === 'hosted_view'
 
   // With no attempt in hand the booking's own state says how the last one ended.
   const status =
@@ -157,6 +158,13 @@ export default function PaymentPage() {
       openTransaction(requestedOption || undefined)
     }
   }, [booking, txn, requestedOption, openTransaction])
+
+  // The purchase page should immediately show PayWay's popup once its pending
+  // transaction is ready. This also covers a pending transaction restored from
+  // session storage after a page refresh.
+  useEffect(() => {
+    if (txn?.status === 'PENDING' && !hosted) setSheetOpen(true)
+  }, [txn?.status, hosted])
 
   // Check Transaction: poll until the gateway gives a final answer.
   useEffect(() => {
@@ -254,7 +262,6 @@ export default function PaymentPage() {
   const strip = STRIP[status] || STRIP.PENDING
   const isOpen = status === 'PENDING'
   const option = paymentOption(txn?.payment_option)
-  const hosted = viewType === 'hosted_view'
 
   const checkout = txn ? (
     <PaywayCheckout
