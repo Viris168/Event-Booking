@@ -1,10 +1,12 @@
 package com.eventbooking.repository;
 
 import com.eventbooking.Enumeration.HoldStatus;
+import com.eventbooking.model.Event;
 import com.eventbooking.model.Hold;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -24,6 +26,18 @@ public interface HoldRepository extends JpaRepository<Hold, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select h from Hold h where h.id = :id")
     Optional<Hold> findByIdForUpdate(@Param("id") Long id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        SELECT h
+        FROM Hold h
+        WHERE h.id = :holdId
+          AND h.user.id = :userId
+        """)
+    Optional<Hold> findOwnedByIdForUpdate(
+            @Param("holdId") Long holdId,
+            @Param("userId") Long userId
+    );
 
     @Query("""
           SELECT hz.eventZone.id AS id,
@@ -80,18 +94,7 @@ public interface HoldRepository extends JpaRepository<Hold, Long> {
             @Param("activeStatus") HoldStatus activeStatus
     );
 
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("""
-      SELECT h
-      FROM Hold h
-      WHERE h.id = :holdId
-        AND h.user.id = :userId
-      """)
-    Optional<Hold> findOwnedByIdForUpdate(
-            @Param("holdId") Long holdId,
-            @Param("userId") Long userId
-    );
-
+    Hold findByEvent(Event event);
 
     interface ZoneConsumed {
         Long getId();
@@ -124,4 +127,38 @@ public interface HoldRepository extends JpaRepository<Hold, Long> {
             @Param("now") Instant now,
             @Param("activeStatus") HoldStatus activeStatus
     );
+
+    @Modifying(flushAutomatically = true)
+    @Query("""
+      UPDATE Hold h
+      SET h.status = :expiredStatus
+      WHERE h.status = :activeStatus
+        AND h.expiresAt <= :now
+        AND EXISTS (
+            SELECT 1
+            FROM HoldZoneLine hz
+            WHERE hz.hold = h
+              AND hz.eventZone.id = :zoneId
+        )
+      """)
+    int expireActiveHoldsForZone(
+            @Param("zoneId") Long zoneId,
+            @Param("now") Instant now,
+            @Param("activeStatus") HoldStatus activeStatus,
+            @Param("expiredStatus") HoldStatus expiredStatus
+    );
+
+    @Modifying(flushAutomatically = true)
+    @Query("""
+        UPDATE Hold h
+        SET h.status = :expiredStatus
+        WHERE h.status = :activeStatus
+          AND h.expiresAt <= :now
+        """)
+    int expireAllActiveHolds(
+            @Param("now") Instant now,
+            @Param("activeStatus") HoldStatus activeStatus,
+            @Param("expiredStatus") HoldStatus expiredStatus
+    );
+
 }

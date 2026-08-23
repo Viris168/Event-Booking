@@ -493,10 +493,6 @@ export default function EventDetailPage() {
                       <span>{t('total')}</span>
                       <b>{usd(held.subtotalUsdCents)}</b>
                     </div>
-                    <div className="total-row">
-                      <span className="small muted">KHR</span>
-                      <Money cents={held.subtotalUsdCents} className="total-khr" />
-                    </div>
                   </div>
                   <Link
                     className="btn btn-accent btn-lg btn-block"
@@ -554,10 +550,6 @@ export default function EventDetailPage() {
                     <div className="total-row big">
                       <span>{t('subtotal')}</span>
                       <b>{usd(selectionTotal)}</b>
-                    </div>
-                    <div className="total-row">
-                      <span className="small muted">KHR</span>
-                      <Money cents={selectionTotal} className="total-khr" />
                     </div>
                   </div>
 

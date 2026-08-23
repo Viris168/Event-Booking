@@ -156,11 +156,7 @@ export default function AdminPaymentsPage() {
                       {p.stuck && <span className="badge badge-warm">⚠︎ {t('reconciliation')}</span>}
                     </div>
                   </td>
-                  <td className="num font-bold">
-                    {p.currency_charged === 'KHR'
-                      ? `៛${p.amount_khr.toLocaleString('en-US')}`
-                      : usd(p.amount_usd_cents)}
-                  </td>
+                  <td className="num font-bold">{usd(p.amount_usd_cents)}</td>
                   <td className="small muted" title={dateTime(p.created_at)}>
                     {timeAgo(p.created_at)}
                   </td>

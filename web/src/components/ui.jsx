@@ -3,7 +3,7 @@
 import { useLayoutEffect, useRef } from 'react'
 import Icon from './Icon.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
-import { khr, khrFromUsdCents, usd } from '../lib/format.js'
+import { usd } from '../lib/format.js'
 
 /** Booking / event / payment status pill. Every state gets its own colour. */
 export function Badge({ status, children, className = '' }) {
@@ -16,22 +16,16 @@ export function Badge({ status, children, className = '' }) {
   )
 }
 
-/** Dual-currency price. `stacked` puts KHR on its own line (card foot, totals). */
-export function Money({ cents, rate, stacked = false, className = '' }) {
-  const riel = khr(khrFromUsdCents(cents, rate))
+/** Prices are quoted and charged in USD only. */
+export function Money({ cents, stacked = false, className = '' }) {
   if (stacked) {
     return (
       <span className={className}>
         <b>{usd(cents)}</b>
-        <span className="khr">{riel}</span>
       </span>
     )
   }
-  return (
-    <span className={`whitespace-nowrap ${className}`}>
-      {usd(cents)} <span className="khr muted">· {riel}</span>
-    </span>
-  )
+  return <span className={`whitespace-nowrap ${className}`}>{usd(cents)}</span>
 }
 
 export function Alert({ tone = 'info', icon, title, children, actions }) {

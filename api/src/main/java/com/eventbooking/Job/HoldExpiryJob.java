@@ -1,4 +1,4 @@
-package com.eventbooking.job;
+package com.eventbooking.Job;
 
 import com.eventbooking.service.hold.HoldService;
 import org.springframework.scheduling.annotation.Scheduled;
