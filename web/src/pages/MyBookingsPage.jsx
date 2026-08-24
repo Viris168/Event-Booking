@@ -2,6 +2,7 @@ import { useDocumentTitle } from '../lib/useDocumentTitle.js'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Icon from '../components/Icon.jsx'
+import { BookingListSkeleton, Skeleton } from '../components/Skeleton.jsx'
 import { Badge, Empty, Money } from '../components/ui.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
@@ -27,16 +28,23 @@ export default function MyBookingsPage() {
   const { user } = useAuth()
   const [state, setState] = useState('')
   const [apiBookings, setApiBookings] = useState(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let active = true
-    if (user?.id) {
-      getMyBookings()
-        .then((res) => {
-          if (active && Array.isArray(res)) setApiBookings(res)
-        })
-        .catch(() => {})
+    if (!user?.id) {
+      setLoading(false)
+      return
     }
+    setLoading(true)
+    getMyBookings()
+      .then((res) => {
+        if (active && Array.isArray(res)) setApiBookings(res)
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (active) setLoading(false)
+      })
     return () => { active = false }
   }, [user?.id])
 
@@ -49,25 +57,34 @@ export default function MyBookingsPage() {
       <div className="page-head">
         <div>
           <h1>{t('myBookings')}</h1>
-          <p>
-            {all.length} {locale === 'km' ? 'ការកក់' : 'bookings'} ·{' '}
-            {all.filter((b) => b.state === 'CONFIRMED').length} {status('CONFIRMED').toLowerCase()}
-          </p>
+          {loading ? (
+            <Skeleton className="skel-line mt-2 w-48" />
+          ) : (
+            <p>
+              {all.length} {locale === 'km' ? 'ការកក់' : 'bookings'} ·{' '}
+              {all.filter((b) => b.state === 'CONFIRMED').length} {status('CONFIRMED').toLowerCase()}
+            </p>
+          )}
         </div>
       </div>
 
-      <div className="chips" style={{ marginBottom: '1.1rem' }}>
-        <button className={`chip ${!state ? 'active' : ''}`} onClick={() => setState('')}>
-          {t('allStatuses')} ({all.length})
-        </button>
-        {STATES.filter((s) => counts[s]).map((s) => (
-          <button key={s} className={`chip ${state === s ? 'active' : ''}`} onClick={() => setState(s)}>
-            {status(s)} ({counts[s]})
+      {/* The filter chips are built from the counts, so they wait for them. */}
+      {!loading && (
+        <div className="chips" style={{ marginBottom: '1.1rem' }}>
+          <button className={`chip ${!state ? 'active' : ''}`} onClick={() => setState('')}>
+            {t('allStatuses')} ({all.length})
           </button>
-        ))}
-      </div>
+          {STATES.filter((s) => counts[s]).map((s) => (
+            <button key={s} className={`chip ${state === s ? 'active' : ''}`} onClick={() => setState(s)}>
+              {status(s)} ({counts[s]})
+            </button>
+          ))}
+        </div>
+      )}
 
-      {bookings.length ? (
+      {loading ? (
+        <BookingListSkeleton count={3} />
+      ) : bookings.length ? (
         <div className="stack-sm">
           {bookings.map((booking) => {
             const event = getEvent(booking.event_id)

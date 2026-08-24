@@ -38,6 +38,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 @Testcontainers
 class HoldConcurrencyIT {
 
+    // The chained withX() calls hand back a different reference than the
+    // allocation, which reads as a leak to the compiler's resource analysis.
+    // @Testcontainers owns this container's lifecycle and stops it after the class.
+    @SuppressWarnings("resource")
     @Container
     static final PostgreSQLContainer<?> POSTGRES =
             new PostgreSQLContainer<>("postgres:16-alpine")

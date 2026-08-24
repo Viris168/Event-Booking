@@ -1,8 +1,6 @@
 package com.eventbooking.mapper.Venue;
 
-import com.eventbooking.dto.VenueSeat.CreateVenueSeatsRequest;
 import com.eventbooking.dto.venue.CreateVenueRequest;
-import com.eventbooking.dto.venue.UpdateVenueRequest;
 import com.eventbooking.dto.venue.VenueResponse;
 import com.eventbooking.model.Venue;
 import org.springframework.stereotype.Component;

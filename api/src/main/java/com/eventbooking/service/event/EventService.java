@@ -5,7 +5,6 @@ import com.eventbooking.dto.event.EventResponse;
 import com.eventbooking.dto.event.UpdateEventRequest;
 import org.springframework.data.domain.Page;
 
-import java.util.List;
 
 public interface EventService {
     Page<EventResponse> listEvents(int page, int size);

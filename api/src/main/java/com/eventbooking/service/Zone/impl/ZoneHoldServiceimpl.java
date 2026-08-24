@@ -5,7 +5,6 @@ import com.eventbooking.Enumeration.HoldStatus;
 import com.eventbooking.catalog.error.EventNotFoundException;
 import com.eventbooking.catalog.error.EventNotOnSaleException;
 import com.eventbooking.catalog.error.EventZoneNotFoundException;
-import com.eventbooking.catalog.error.InvalidZoneCapacityException;
 import com.eventbooking.dto.hold.HeldZoneItem;
 import com.eventbooking.dto.hold.HoldResponse;
 import com.eventbooking.inventory.error.HoldNotActiveException;
@@ -21,8 +20,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Service
 @Transactional

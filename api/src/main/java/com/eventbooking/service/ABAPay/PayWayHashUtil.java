@@ -7,7 +7,6 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
-import java.math.BigDecimal;
 
 public class PayWayHashUtil {
 

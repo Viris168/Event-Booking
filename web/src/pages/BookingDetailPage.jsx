@@ -4,7 +4,8 @@ import { Link, useParams } from 'react-router-dom'
 import HoldBar from '../components/HoldBar.jsx'
 import Icon from '../components/Icon.jsx'
 import TicketCard from '../components/TicketCard.jsx'
-import { Alert, Badge, Money, ResponsiveTable, Steps } from '../components/ui.jsx'
+import { BookingDetailSkeleton } from '../components/Skeleton.jsx'
+import { Alert, Badge, ResponsiveTable, Steps } from '../components/ui.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
 import { useToast } from '../context/ToastContext.jsx'
@@ -81,9 +82,10 @@ const TONE = {
 }
 
 import { getBooking as getApiBooking } from '../api/bookings.js'
-import { mapBooking } from '../api/adapters.js'
+import { mapBooking, mapTicket } from '../api/adapters.js'
 import { getEvent as getApiEvent } from '../api/events.js'
 import { mapEvent } from '../api/adapters.js'
+import { getBookingTickets } from '../api/tickets.js'
 
 export default function BookingDetailPage() {
   const { id } = useParams()
@@ -94,6 +96,7 @@ export default function BookingDetailPage() {
 
   const [apiBooking, setApiBooking] = useState(null)
   const [apiEvent, setApiEvent] = useState(null)
+  const [apiTickets, setApiTickets] = useState(null)
   const [bookingLoading, setBookingLoading] = useState(true)
 
   useEffect(() => {
@@ -116,11 +119,27 @@ export default function BookingDetailPage() {
     return () => { active = false }
   }, [id])
 
+  // Tickets are a separate read because they are issued at payment, not at
+  // checkout: the booking exists long before they do, and the list is simply
+  // empty until it is CONFIRMED.
+  useEffect(() => {
+    if (!apiBooking) return
+    let active = true
+    getBookingTickets(apiBooking.id)
+      .then((res) => {
+        if (active) setApiTickets((res || []).map(mapTicket))
+      })
+      .catch(() => {
+        if (active) setApiTickets([])
+      })
+    return () => { active = false }
+  }, [apiBooking?.id, apiBooking?.state])
+
   const booking = apiBooking ?? getBooking(id)
   useDocumentTitle(booking?.booking_ref || null)
 
   if (bookingLoading) {
-    return <div className="p-12 text-center text-muted">Loading booking...</div>
+    return <BookingDetailSkeleton />
   }
 
   if (!booking) {
@@ -137,9 +156,19 @@ export default function BookingDetailPage() {
   }
 
   const event = apiEvent ?? getEvent(booking.event_id)
-  const venue = getVenue(event?.venue_id || 1)
+  // An API event nests its venue (camelCase, like the rest of the API); the
+  // prototype store keys venues by id in snake_case. Normalise to the latter,
+  // which is what this page and TicketCard read.
+  const apiVenue = event?.venue
+  const venue = apiVenue
+    ? {
+        ...apiVenue,
+        name_en: apiVenue.nameEn ?? apiVenue.name_en,
+        name_km: apiVenue.nameKm ?? apiVenue.name_km,
+      }
+    : getVenue(event?.venue_id || 1)
   const items = booking.items || itemsOf(booking.id)
-  const tickets = ticketsOf(booking.id)
+  const tickets = apiBooking ? (apiTickets ?? []) : ticketsOf(booking.id)
   const payments = paymentsForBooking(booking.id)
   const history = historyOf(booking.id)
   const hold = getHold(booking.hold_id)
@@ -147,6 +176,10 @@ export default function BookingDetailPage() {
   const mine = booking.user_id === user?.id
 
   function labelForTicket(ticket) {
+    // An API ticket already carries its seat location and tier, and labels
+    // itself. Only the prototype store's tickets need this lookup.
+    if (!ticket.booking_item_id) return undefined
+
     const item = items.find((i) => i.id === ticket.booking_item_id)
     if (!item) return '—'
     if (item.kind === 'SEAT') {
@@ -304,27 +337,34 @@ export default function BookingDetailPage() {
               <h3>{t('orderSummary')}</h3>
             </div>
             <div className="panel-body">
-              {items.map((item) => (
-                <div className="line" key={item.id}>
-                  <span>
-                    <span className="line-title">
-                      {item.kind === 'SEAT'
-                        ? `${item.seat.section_label} · ${item.seat.row_label}${item.seat.seat_number}`
-                        : locale === 'km'
-                          ? item.zone.name_km
-                          : item.zone.name_en}
+              {items.map((item) => {
+                // An API line carries a ready-made `label` (its seat class or
+                // zone name); a prototype line carries the seat and zone objects
+                // this page was originally written against.
+                const title =
+                  item.label ??
+                  (item.kind === 'SEAT'
+                    ? `${item.seat.section_label} · ${item.seat.row_label}${item.seat.seat_number}`
+                    : locale === 'km'
+                      ? item.zone.name_km
+                      : item.zone.name_en)
+                const sub =
+                  item.kind === 'SEAT' && !item.label
+                    ? locale === 'km'
+                      ? item.seatClass?.name_km
+                      : item.seatClass?.name_en
+                    : `${item.qty} × ${usd(item.unit_price_usd_cents)}`
+
+                return (
+                  <div className="line" key={item.id}>
+                    <span>
+                      <span className="line-title">{title}</span>
+                      <div className="line-sub">{sub}</div>
                     </span>
-                    <div className="line-sub">
-                      {item.kind === 'SEAT'
-                        ? locale === 'km'
-                          ? item.seatClass?.name_km
-                          : item.seatClass?.name_en
-                        : `${item.qty} × ${usd(item.unit_price_usd_cents)}`}
-                    </div>
-                  </span>
-                  <span>{usd(item.unit_price_usd_cents * item.qty)}</span>
-                </div>
-              ))}
+                    <span>{usd(item.unit_price_usd_cents * item.qty)}</span>
+                  </div>
+                )
+              })}
               <div className="totals">
                 <div className="total-row">
                   <span>{t('subtotal')}</span>
@@ -357,7 +397,7 @@ export default function BookingDetailPage() {
                     {locale === 'km' ? 'ទីកន្លែង' : 'Venue'}
                   </span>
                 </dt>
-                <dd>{locale === 'km' ? venue.name_km : venue.name_en}</dd>
+                <dd>{(locale === 'km' ? venue?.name_km : venue?.name_en) || '—'}</dd>
               </dl>
             </div>
           </div>

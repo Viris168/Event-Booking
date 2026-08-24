@@ -123,21 +123,7 @@ const dict = {
   optional: { en: "optional", km: "ជាជម្រើស" },
   paymentMethod: { en: "Payment method", km: "វិធីសាស្ត្រទូទាត់ប្រាក់" },
   khqr: { en: "Bakong KHQR", km: "បាគង KHQR" },
-  khqrHint: {
-    en: "Scan with any Cambodian banking app",
-    km: "ស្កេនទូទាត់តាមរយៈកម្មវិធីធនាគារក្នុងស្រុកទាំងអស់",
-  },
   payway: { en: "ABA PayWay", km: "ABA PayWay" },
-  paywayHint: {
-    en: "Card or ABA account, opens ABA",
-    km: "កាត ឬគណនី ABA (ភ្ជាប់ទៅកាន់កម្មវិធី ABA ដោយផ្ទាល់)",
-  },
-  placeOrder: { en: "Continue to payment", km: "បន្តទៅទូទាត់ប្រាក់" },
-  fxNote: {
-    en: "Rate used for this booking",
-    km: "អត្រាប្តូរប្រាក់សម្រាប់ការកក់នេះ",
-  },
-  scanToPay: { en: "Scan to pay", km: "ស្កេនដើម្បីទូទាត់ប្រាក់" },
   waitingForPayment: {
     en: "Waiting for payment…",
     km: "កំពុងរង់ចាំការទូទាត់ប្រាក់…",
@@ -148,11 +134,9 @@ const dict = {
     km: "ការទូទាត់ប្រាក់បរាជ័យ។ សូមសាកល្បងម្ដងទៀត។",
   },
   tryAgain: { en: "Try again", km: "សាកល្បងម្ដងទៀត" },
-  openPayway: { en: "Open ABA PayWay", km: "បើក ABA PayWay" },
   simulate: { en: "Demo controls", km: "ការគ្រប់គ្រងសាកល្បង" },
   simulateSuccess: { en: "Simulate success", km: "សាកល្បង (ជោគជ័យ)" },
   simulateFail: { en: "Simulate failure", km: "សាកល្បង (បរាជ័យ)" },
-  simulateScanPaid: { en: "Simulate scan & pay", km: "សាកល្បង (ស្កេន និងបង់)" },
 
   // ABA PayWay checkout — the flow at developer.payway.com.kh
   checkoutPay: { en: "Checkout & pay", km: "ទូទាត់ប្រាក់" },
@@ -160,20 +144,11 @@ const dict = {
   lastName: { en: "Last name", km: "នាមត្រកូល" },
   pay: { en: "Pay", km: "ទូទាត់" },
   close: { en: "Close", km: "បិទ" },
-  expired: { en: "Expired", km: "ផុតកំណត់" },
-  securedByAba: { en: "Secured by ABA Bank", km: "សុវត្ថិភាពដោយធនាគារ ABA" },
-  checkoutView: { en: "Checkout view", km: "ទម្រង់បង្ហាញការទូទាត់" },
-  viewPopup: { en: "Popup", km: "ផ្ទាំងលោត" },
-  viewHosted: { en: "Hosted page", km: "ទំព័ររបស់ ABA" },
   paywayHandoff: {
     en: "You pay inside ABA PayWay's secure checkout.",
     km: "អ្នកទូទាត់នៅក្នុងផ្ទាំងសុវត្ថិភាពរបស់ ABA PayWay។",
   },
   openCheckout: { en: "Open PayWay checkout", km: "បើកការទូទាត់ PayWay" },
-  checkoutClosed: {
-    en: "This checkout session is closed.",
-    km: "ការទូទាត់នេះត្រូវបានបិទហើយ។",
-  },
   completeWithin: { en: "Complete within", km: "សូមបញ្ចប់ក្នុងរយៈពេល" },
   checkingTransaction: {
     en: "Checking transaction with PayWay…",
@@ -186,21 +161,10 @@ const dict = {
     en: "Transaction expired — start a new one",
     km: "ប្រតិបត្តិការផុតកំណត់ — សូមចាប់ផ្តើមម្តងទៀត",
   },
-  approvalCode: { en: "Approval code", km: "លេខកូដអនុម័ត" },
-  transaction: { en: "Transaction", km: "ប្រតិបត្តិការ" },
-  callback: { en: "Return callback", km: "ការឆ្លើយតបត្រឡប់" },
-  noCallbackYet: { en: "No callback received yet", km: "មិនទាន់មានការឆ្លើយតបទេ" },
-  openAbaMobile: { en: "Open ABA Mobile", km: "បើក ABA Mobile" },
-  returnAfterPaying: {
-    en: "Finish in the app — this page updates on your return.",
-    km: "បញ្ចប់ក្នុងកម្មវិធី — ទំព័រនេះនឹងធ្វើបច្ចុប្បន្នភាពនៅពេលត្រឡប់មកវិញ។",
-  },
   chargedInUsd: {
     en: "Charged in USD by ABA PayWay",
     km: "គិតជាប្រាក់ដុល្លារ (USD) ដោយ ABA PayWay",
   },
-  seatTicket: { en: "Seat ticket", km: "សំបុត្រកៅអី" },
-  generalAdmission: { en: "General admission", km: "សំបុត្រតំបន់ទូទៅ" },
 
   // bookings
   bookingRef: { en: "Booking reference", km: "លេខកូដយោងការកក់" },
@@ -292,7 +256,6 @@ const dict = {
 
   // misc
   loading: { en: "Loading…", km: "កំពុងដំណើរការ…" },
-  back: { en: "Back", km: "ត្រឡប់ក្រោយ" },
   notFoundTitle: { en: "Page not found", km: "រកមិនឃើញទំព័រ" },
   notFoundSub: {
     en: "The page you are looking for does not exist.",

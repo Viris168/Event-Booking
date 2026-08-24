@@ -1,5 +1,6 @@
 package com.eventbooking.dto.ticket;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 
@@ -21,8 +22,16 @@ public record ScanTicketRequest(
         @NotBlank(message = "payload is required")
         String payload,
 
+        /* The API serializes snake_case globally, so this field's wire name is
+           event_id. The alias exists because an unknown property is silently
+           dropped rather than refused: a scanner that sent the camelCase name
+           got eventId = null and admitted every event's tickets, which is the
+           one failure this field is here to prevent. Accept both spellings
+           rather than let that happen quietly again. */
         @Schema(description = "Strongly recommended: without it, a valid ticket for a "
-                + "different event is admitted.", example = "1")
+                + "different event is admitted. Wire name is event_id; eventId is "
+                + "accepted too.", example = "1")
+        @JsonAlias("eventId")
         Long eventId
 ) {
 }

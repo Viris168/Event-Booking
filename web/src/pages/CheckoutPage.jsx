@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import HoldBar from '../components/HoldBar.jsx'
 import Icon from '../components/Icon.jsx'
-import { Alert, Field, Money, Steps } from '../components/ui.jsx'
+import { CheckoutSkeleton } from '../components/Skeleton.jsx'
+import { Alert, Field, Steps } from '../components/ui.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
 import { useToast } from '../context/ToastContext.jsx'
@@ -26,13 +27,20 @@ export default function CheckoutPage() {
 
   const [apiHoldData, setApiHoldData] = useState(null)
   const [apiEvent, setApiEvent] = useState(null)
+  // The hold and the event both arrive over the network. Until they do the page
+  // has nothing to show but its shape — without this it would flash "no active
+  // hold" at everyone who reaches checkout legitimately.
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let active = true
-    if (!holdId || !user?.id) return
-    
+    if (!holdId || !user?.id) {
+      setLoading(false)
+      return
+    }
+
     let foundEventId = eventIdParam
-    
+
     if (!foundEventId) {
       for (let i = 0; i < sessionStorage.length; i++) {
         const key = sessionStorage.key(i)
@@ -43,19 +51,28 @@ export default function CheckoutPage() {
       }
     }
 
-    if (foundEventId) {
+    if (!foundEventId) {
+      setLoading(false)
+      return
+    }
+
+    setLoading(true)
+    Promise.allSettled([
       getHold(foundEventId, holdId, user.id)
         .then((res) => {
           if (active && res) setApiHoldData(mapHoldResponse(res))
         })
-        .catch((e) => console.error(e))
+        .catch((e) => console.error(e)),
 
       getEvent(foundEventId)
         .then((res) => {
           if (active && res) setApiEvent(mapEvent(res))
         })
-        .catch((e) => console.error(e))
-    }
+        .catch((e) => console.error(e)),
+    ]).finally(() => {
+      if (active) setLoading(false)
+    })
+
     return () => { active = false }
   }, [holdId, eventIdParam, user?.id])
 
@@ -71,9 +88,12 @@ export default function CheckoutPage() {
   const [phone, setPhone] = useState(user?.phone_e164 || '')
   const [email, setEmail] = useState(user.email || '')
   const [option, setOption] = useState(DEFAULT_OPTION)
-  const [viewType, setViewType] = useState('popup')
   const [errors, setErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
+
+  if (loading) {
+    return <CheckoutSkeleton />
+  }
 
   // Checkout is only reachable with a live hold.
   if (!hold) {
@@ -134,8 +154,8 @@ export default function CheckoutPage() {
       .then((res) => {
         sessionStorage.removeItem(`activeHoldId_${event.id}`) // Clear hold now that it's booked
         // The pay page stands in for the merchant page that calls Create
-        // Transaction and then opens PayWay's checkout in the chosen view.
-        navigate(`/checkout/${res.id}/pay?option=${option}&view=${viewType}`)
+        // Transaction and then opens PayWay's checkout popup over itself.
+        navigate(`/checkout/${res.id}/pay?option=${option}`)
       })
       .catch((err) => {
         setSubmitting(false)
@@ -144,7 +164,7 @@ export default function CheckoutPage() {
       })
   }
 
-  if (!event || !venue) return <div className="p-12 text-center text-muted">Loading checkout...</div>
+  if (!event || !venue) return <CheckoutSkeleton />
 
   return (
     <div className="container">
@@ -254,28 +274,6 @@ export default function CheckoutPage() {
                     <span className="badge badge-cool">{o.currency}</span>
                   </label>
                 ))}
-              </div>
-
-              {/* PayWay's view_type: a popup/bottom sheet over this page, or its
-                  hosted page opened in place. */}
-              <div className="pw-view-toggle">
-                <span className="tiny">{t('checkoutView')}</span>
-                <div className="seg">
-                  <button
-                    type="button"
-                    className={viewType === 'popup' ? 'active' : ''}
-                    onClick={() => setViewType('popup')}
-                  >
-                    {t('viewPopup')}
-                  </button>
-                  <button
-                    type="button"
-                    className={viewType === 'hosted_view' ? 'active' : ''}
-                    onClick={() => setViewType('hosted_view')}
-                  >
-                    {t('viewHosted')}
-                  </button>
-                </div>
               </div>
             </div>
           </div>

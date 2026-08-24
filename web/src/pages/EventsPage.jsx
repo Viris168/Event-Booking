@@ -1,8 +1,9 @@
 import { useDocumentTitle } from '../lib/useDocumentTitle.js'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import EventCard from '../components/EventCard.jsx'
 import Icon from '../components/Icon.jsx'
+import { EventGridSkeleton, Skeleton } from '../components/Skeleton.jsx'
 import { ActiveFilters, Empty, Field, IconSelect, Pager, SearchInput } from '../components/ui.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
 import { PROVINCES, listEvents, provinceName, useStore } from '../mock/store.js'
@@ -20,12 +21,16 @@ export default function EventsPage() {
   const [page, setPage] = useState(1)
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [apiResults, setApiResults] = useState(null)
+  // The seeded store can answer instantly, but showing it and then swapping in
+  // the API's answer makes the grid jump. Placeholders until the read settles.
+  const [loading, setLoading] = useState(true)
 
   const filters = { ...EMPTY }
   for (const key of Object.keys(EMPTY)) filters[key] = params.get(key) ?? EMPTY[key]
 
   useEffect(() => {
     let active = true
+    setLoading(true)
     getEvents(filters)
       .then((data) => {
         if (!active) return
@@ -34,6 +39,9 @@ export default function EventsPage() {
       })
       .catch(() => {
         if (active) setApiResults(null)
+      })
+      .finally(() => {
+        if (active) setLoading(false)
       })
     return () => { active = false }
   }, [params]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -100,12 +108,16 @@ export default function EventsPage() {
       <div className="page-head">
         <div>
           <h1>{t('events')}</h1>
-          <p>
-            {results.length}{' '}
-            {locale === 'km'
-              ? 'ព្រឹត្តិការណ៍កំពុងលក់សំបុត្រ'
-              : `${results.length === 1 ? 'event' : 'events'} currently on sale`}
-          </p>
+          {loading ? (
+            <Skeleton className="skel-line mt-2 w-52" />
+          ) : (
+            <p>
+              {results.length}{' '}
+              {locale === 'km'
+                ? 'ព្រឹត្តិការណ៍កំពុងលក់សំបុត្រ'
+                : `${results.length === 1 ? 'event' : 'events'} currently on sale`}
+            </p>
+          )}
         </div>
       </div>
 
@@ -214,7 +226,9 @@ export default function EventsPage() {
         </div>
       </div>
 
-      {visible.length ? (
+      {loading ? (
+        <EventGridSkeleton count={PAGE_SIZE} style={{ marginTop: '1.4rem' }} />
+      ) : visible.length ? (
         <>
           <div className="grid grid-cards" style={{ marginTop: '1.4rem' }}>
             {visible.map((e) => (

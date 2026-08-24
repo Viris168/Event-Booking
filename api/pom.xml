@@ -19,6 +19,16 @@
 
     <properties>
         <java.version>21</java.version>
+        <!-- Stated explicitly as well as on maven-compiler-plugin below. Maven
+             needs neither - it takes the level from java.version via the Spring
+             Boot parent - but m2e, inside the VS Code Java language server, reads
+             these properties when it cannot work the level out from a compiler
+             mojo execution, which this pom disables so kapt can run first.
+             Without them it silently assumes 1.8 and every record and text block
+             in the codebase lights up as a syntax error. -->
+        <maven.compiler.release>21</maven.compiler.release>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
         <jjwt.version>0.12.6</jjwt.version>
         <testcontainers.version>1.20.4</testcontainers.version>
         <!-- springdoc 3.x is the Spring Boot 4 / Spring Framework 7 line.
@@ -258,30 +268,27 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>default-compile</id>
-                        <phase>none</phase>
-                    </execution>
-                    <execution>
-                        <id>default-testCompile</id>
-                        <phase>none</phase>
-                    </execution>
-                    <execution>
-                        <id>compile</id>
-                        <phase>compile</phase>
-                        <goals>
-                            <goal>compile</goal>
-                        </goals>
-                    </execution>
-                    <execution>
-                        <id>testCompile</id>
-                        <phase>test-compile</phase>
-                        <goals>
-                            <goal>testCompile</goal>
-                        </goals>
-                    </execution>
-                </executions>
+                <!-- The stock default-compile / default-testCompile executions are
+                     left in place deliberately.
+
+                     They used to be disabled (<phase>none</phase>) with duplicates
+                     bound by hand, which is the arrangement a mixed Kotlin/Java
+                     build needs so kapt runs before javac. There are no Kotlin
+                     sources in this project - every kotlin-maven-plugin goal
+                     reports "No sources to compile" - so that bought nothing and
+                     cost a great deal: m2e, the Maven support inside the VS Code
+                     Java language server, reads the compliance level off the
+                     default-compile execution. With it disabled m2e fell back to
+                     its own default of 1.8, and at that level every record, text
+                     block and pattern-match here reads as a syntax error - errors
+                     in nearly every file, while Maven built perfectly.
+
+                     Restore the disabled form only alongside actual Kotlin
+                     sources, and expect the IDE to need java.configuration.runtimes
+                     and an explicit release again if you do. -->
+                <configuration>
+                    <release>${java.version}</release>
+                </configuration>
             </plugin>
         </plugins>
     </build>

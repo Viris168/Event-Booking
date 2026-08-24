@@ -7,8 +7,6 @@ import com.eventbooking.dto.eventzone.EventZoneResponse;
 import com.eventbooking.dto.seatclass.SeatClassResponse;
 import com.eventbooking.dto.venue.VenueResponse;
 import com.eventbooking.model.Event;
-import com.eventbooking.model.EventSeat;
-import com.eventbooking.model.SeatClass;
 import com.eventbooking.model.Venue;
 import org.springframework.stereotype.Component;
 
@@ -57,14 +55,24 @@ public class EventMapper {
             event.getVenue().getIsDisabled()
         );
 
+        // Every place at this event, whichever side of the inventory split it
+        // sits on. Zones alone would under-report a SEATED or MIXED event by its
+        // entire seat map - the capacity bar would show a sold-out tier against
+        // a total that never counted it.
         int totalCapacity = 0;
         int totalSold = 0;
         int totalHeld = 0;
-        
+
         for(var z : eventZones){
             totalCapacity += z.capacity();
             totalSold += z.soldQty();
             totalHeld += z.heldQty();
+        }
+
+        for(var c : seatClasses){
+            totalCapacity += (int) c.seatCount();
+            totalSold += (int) c.soldCount();
+            totalHeld += (int) c.heldCount();
         }
 
         return new EventResponse(

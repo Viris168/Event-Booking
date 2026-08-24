@@ -1,5 +1,5 @@
 -- ============================================================
--- V5 - Google sign-in support on app_user
+-- V9 - Google sign-in support on app_user
 --
 -- V1 assumed one way in: a +855 phone plus a password this service hashes
 -- and checks. Google sign-in breaks both halves of that assumption - the

@@ -15,6 +15,9 @@ export function mapSeatClass(c) {
     name_en: c.name_en ?? c.nameEn,
     name_km: c.name_km ?? c.nameKm,
     price_usd_cents: c.price_usd_cents ?? c.priceUsdCents,
+    seat_count: c.seat_count ?? c.seatCount ?? 0,
+    sold_count: c.sold_count ?? c.soldCount ?? 0,
+    held_count: c.held_count ?? c.heldCount ?? 0,
   }
 }
 
@@ -61,6 +64,11 @@ export function mapEvent(e) {
     updated_at: e.updated_at ?? e.updatedAt,
     seat_classes: (e.seat_classes ?? e.seatClasses ?? []).map(mapSeatClass),
     zones: (e.zones ?? []).map(mapZone),
+    // Event-wide inventory, seats and zones together. These were being dropped
+    // here, which is why the capacity panel read 0 / 0 on every event.
+    total_capacity: e.total_capacity ?? e.totalCapacity ?? 0,
+    total_sold: e.total_sold ?? e.totalSold ?? 0,
+    total_held: e.total_held ?? e.totalHeld ?? 0,
   }
 }
 
@@ -152,17 +160,52 @@ export function mapHoldResponse(res) {
 
 export function mapBookingItem(i) {
   if (!i) return null
+
+  // BookingItemResponse populates exactly one of eventSeatId / eventZoneId, and
+  // that is what says which kind of line this is — there is no `kind` field on
+  // the wire. `label` is the seat class or zone name, already resolved server
+  // side, so the UI does not need the seat or zone object to print a line.
+  const eventSeatId = i.eventSeatId ?? i.event_seat_id ?? null
+  const eventZoneId = i.eventZoneId ?? i.event_zone_id ?? null
+  const unitPrice = i.unitPriceUsdCents ?? i.unit_price_usd_cents ?? 0
+  const qty = i.qty ?? 1
+
   return {
     id: i.id,
-    booking_id: i.bookingId ?? i.booking_id,
-    kind: i.kind,
-    qty: i.qty,
-    unit_price_usd_cents: i.unitPriceUsdCents ?? i.unit_price_usd_cents,
-    // The backend hasn't fully implemented seat/zone objects in the item response yet,
-    // so we pass them through if they exist, or mock them empty for the UI to not crash.
-    seat: i.seat,
-    zone: i.zone,
-    seatClass: i.seatClass
+    kind: eventSeatId ? 'SEAT' : 'ZONE',
+    event_seat_id: eventSeatId,
+    event_zone_id: eventZoneId,
+    label: i.label,
+    qty,
+    unit_price_usd_cents: unitPrice,
+    line_total_usd_cents: i.lineTotalUsdCents ?? i.line_total_usd_cents ?? unitPrice * qty,
+  }
+}
+
+/**
+ * Maps TicketResponse. One of these is one admission unit — a zone line bought
+ * three at a time yields three, numbered by unit_seq.
+ */
+export function mapTicket(t) {
+  if (!t) return null
+  return {
+    id: t.id,
+    booking_id: t.bookingId ?? t.booking_id,
+    booking_ref: t.bookingRef ?? t.booking_ref,
+    event_id: t.eventId ?? t.event_id,
+    event_title_en: t.eventTitleEn ?? t.event_title_en,
+    event_title_km: t.eventTitleKm ?? t.event_title_km,
+    event_starts_at: t.eventStartsAt ?? t.event_starts_at,
+    tier_name: t.tierName ?? t.tier_name,
+    // Null for a zone ticket: standing admission has no seat, and the UI must
+    // not invent one.
+    seat_location: t.seatLocation ?? t.seat_location ?? null,
+    unit_seq: t.unitSeq ?? t.unit_seq,
+    units_in_line: t.unitsInLine ?? t.units_in_line,
+    qr_payload: t.qrPayload ?? t.qr_payload,
+    issued_at: t.issuedAt ?? t.issued_at,
+    checked_in: t.checkedIn ?? t.checked_in ?? false,
+    checked_in_at: t.checkedInAt ?? t.checked_in_at ?? null,
   }
 }
 

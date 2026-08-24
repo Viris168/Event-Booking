@@ -1,6 +1,5 @@
 package com.eventbooking.repository;
 
-import com.eventbooking.dto.hold.HeldSeatItem;
 import com.eventbooking.model.EventSeat;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;

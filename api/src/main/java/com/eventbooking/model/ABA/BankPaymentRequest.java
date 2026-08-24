@@ -2,8 +2,6 @@ package com.eventbooking.model.ABA;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Column;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
@@ -235,6 +233,13 @@ import java.time.Instant;
          * A CLOSED transaction was explicitly closed at PayWay and cannot be paid.
          */
         private String paymentStatus = "PENDING";
+        /**
+         * The booking this transaction pays for, or null for a bare gateway test
+         * that was started without one. It is what lets an approved payment be
+         * turned into a CONFIRMED booking and a set of tickets - see
+         * {@code PaywaySettlementService}.
+         */
+        private Long bookingId;
         /**
          * Type of the transaction, default value is `purchase`. Supported value:
          * - `pre-auth` : for pre purchase

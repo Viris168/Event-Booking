@@ -2,16 +2,14 @@ import { useEffect, useRef, useState } from 'react'
 import Icon from './Icon.jsx'
 import QrGlyph from './QrGlyph.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
-import { countdown, usd } from '../lib/format.js'
-import { MERCHANT_NAME, optionSub, paymentOption } from '../lib/payway.js'
+import { usd } from '../lib/format.js'
+import { MERCHANT_NAME } from '../lib/payway.js'
 
 /**
  * The checkout PayWay returns from Create Transaction, rendered locally.
  *
- * `mode="popup"` is the desktop modal / mobile bottom sheet the PayWay plugin
- * opens with AbaPayway.checkout(); `mode="hosted"` is the full-page view_type=
- * hosted_view variant, drawn inline instead of over a scrim. Both show the same
- * sheet, because that is what PayWay serves to both.
+ * Always the view_type=popup sheet the PayWay plugin opens with
+ * AbaPayway.checkout(): a modal on desktop, a bottom sheet on phones.
  *
  * The buyer never leaves this component: it ends by handing a settled status
  * back through onSettled, which is the point the merchant page picks up the
@@ -19,9 +17,7 @@ import { MERCHANT_NAME, optionSub, paymentOption } from '../lib/payway.js'
  */
 export default function PaywayCheckout({
   txn,
-  mode = 'popup',
   merchant = MERCHANT_NAME,
-  items = [],
   onSettled,
   onClose,
   onSuccess,
@@ -32,11 +28,10 @@ export default function PaywayCheckout({
   const sheetRef = useRef(null)
   const [now, setNow] = useState(() => Date.now())
 
-  const option = paymentOption(txn?.payment_option)
   const left = txn ? Date.parse(txn.expires_at) - now : 0
   const expired = left <= 0
 
-  // The lifetime countdown PayWay prints under its checkout.
+  // Ticks so the QR stops accepting input the moment its lifetime runs out.
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(id)
@@ -44,14 +39,13 @@ export default function PaywayCheckout({
 
   // Esc closes the popup the way the plugin's own overlay does.
   useEffect(() => {
-    if (mode !== 'popup') return
     function onKey(e) {
       if (e.key === 'Escape') onClose?.()
     }
     window.addEventListener('keydown', onKey)
     sheetRef.current?.focus()
     return () => window.removeEventListener('keydown', onKey)
-  }, [mode, onClose])
+  }, [onClose])
 
   useEffect(() => {
     setStep('method')
@@ -59,13 +53,20 @@ export default function PaywayCheckout({
 
   if (!txn) return null
 
-  /** Completing payment inside the sheet, then PayWay confirming it. */
+  /**
+   * Completing payment inside the sheet, then PayWay confirming it.
+   *
+   * Every outcome from in here is driven by the simulate buttons, not by ABA —
+   * flagged as such so the merchant page knows it has to settle the booking on
+   * the server itself rather than waiting for a check-transaction that will
+   * never come back approved.
+   */
   function complete(status) {
     setProcessing(status)
     setStep('processing')
     setTimeout(() => {
       setProcessing(null)
-      onSettled?.(status)
+      onSettled?.(status, { simulated: true })
     }, 1400)
   }
 
@@ -77,11 +78,9 @@ export default function PaywayCheckout({
     <>
       <div className="pw-head-new">
         <span className="pw-title-new">ABA KHQR</span>
-        {mode === 'popup' && (
-          <button className="pw-close-new" onClick={onClose} aria-label={t("close")}>
-            <Icon name="close" size={17} />
-          </button>
-        )}
+        <button className="pw-close-new" onClick={onClose} aria-label={t('close')}>
+          <Icon name="close" size={17} />
+        </button>
       </div>
 
       <div className="pw-body-new">
@@ -96,7 +95,7 @@ export default function PaywayCheckout({
             </div>
             
             <div className="pw-ticket-amount">
-              <span className="pw-merchant">EVENT BOOKING</span>
+              <span className="pw-merchant">{merchant}</span>
               <b>{amountLine.replace('USD', '').trim()}</b>
             </div>
             
@@ -140,9 +139,9 @@ export default function PaywayCheckout({
 
   const sheet = (
     <div
-      className={`pw-sheet ${mode === 'hosted' ? 'pw-hosted' : ''}`}
+      className="pw-sheet"
       role="dialog"
-      aria-modal={mode === 'popup'}
+      aria-modal="true"
       aria-label="ABA PayWay checkout"
       tabIndex={-1}
       ref={sheetRef}
@@ -152,7 +151,6 @@ export default function PaywayCheckout({
     </div>
   )
 
-  if (mode === 'hosted') return sheet
   return (
     <div className="pw-scrim" onClick={onClose}>
       <div className="relative w-full max-w-[320px] flex justify-center">
