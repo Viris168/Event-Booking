@@ -313,7 +313,7 @@ Table booking {
   id bigint [pk, increment]
   booking_ref text [not null, unique]
   event_id bigint [not null, ref: > event.id]
-  user_id bigint [not null, ref: > app_user.id]
+  user_id bigint [not null, ref: > app_user.i
   hold_id bigint [not null, unique, ref: - hold.id]
   state booking_state [not null, default: 'PENDING_PAYMENT']
   buyer_name text [not null]
