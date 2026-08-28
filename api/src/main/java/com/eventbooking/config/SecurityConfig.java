@@ -7,6 +7,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -65,6 +67,24 @@ public class SecurityConfig {
      * from {@code app.cors.allowed-origins}, which has been sitting in
      * application.yml unused - this is what finally reads it.
      */
+    /**
+     * How passwords are hashed and checked. BCrypt generates its own random salt
+     * per password and stores it inside the resulting hash, so two users who
+     * pick the same password still end up with different values in
+     * {@code app_user.password_hash} - a stolen dump cannot be cracked in bulk
+     * by hashing a candidate once and comparing it against every row.
+     *
+     * <p>It is also deliberately slow. That costs a few milliseconds on a real
+     * login and makes brute-forcing the whole table impractical.
+     *
+     * <p>Never store a password itself. Registration calls {@code encode()};
+     * login calls {@code matches(raw, storedHash)}. There is no decode step.
+     */
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
