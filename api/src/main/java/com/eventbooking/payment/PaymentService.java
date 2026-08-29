@@ -7,9 +7,13 @@ import com.eventbooking.Enumeration.PaymentStatus;
 import com.eventbooking.booking.BookingProperties;
 import com.eventbooking.booking.BookingStateMachine;
 import com.eventbooking.booking.error.BookingNotFoundException;
+import com.eventbooking.common.error.PaymentGatewayException;
 import com.eventbooking.dto.payment.PaymentResponse;
+import com.eventbooking.model.ABA.BankStatusResponse;
+import com.eventbooking.model.ABA.PaywayCheckoutForm;
 import com.eventbooking.model.Booking;
 import com.eventbooking.model.PaymentTransaction;
+import com.eventbooking.payment.AbaPayway.AbaPaywayGateway;
 import com.eventbooking.payment.bakong.BakongCheckResult;
 import com.eventbooking.payment.bakong.KhqrGenerator;
 import com.eventbooking.payment.error.BookingNotPayableException;
@@ -19,6 +23,8 @@ import com.eventbooking.payment.error.UnsupportedPaymentProviderException;
 import com.eventbooking.repository.BookingRepository;
 import com.eventbooking.repository.PaymentTransactionRepository;
 import com.eventbooking.ticket.TicketService;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
@@ -32,41 +38,13 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-/**
- * Payment attempts and what they do to a booking (issue #31).
- *
- * <p>Bakong's open API has no webhook for the accounts this platform uses, so
- * settlement is <em>discovered</em>, not delivered: {@code PaymentReconciler}
- * asks the provider about every open QR and hands the answer back here. That
- * inverts the usual worry. A webhook integration guards against a callback
- * arriving twice; a polling one is <em>built</em> on asking the same question
- * over and over, so "already applied" is the normal case rather than the edge
- * one, and every write below has to survive being attempted repeatedly.
- *
- * <p>Four layers keep a repeated answer from confirming a booking twice:
- *
- * <ol>
- *   <li>{@link #applyProviderResult} re-reads the attempt under a row lock and
- *       returns immediately unless it is still open. Two concurrent polls
- *       serialise on that lock and the second one finds a settled row.</li>
- *   <li>{@code BookingService.transition} and the state machine treat a
- *       repeat of the state a booking is already in as a no-op, so no second
- *       history row is written even if this class asks twice.</li>
- *   <li>{@code uq_payment_txn_one_success_per_booking} refuses a second
- *       SUCCESS row in the database, whatever the application believes.</li>
- *   <li>{@code uq_payment_txn_provider_ref} refuses two rows for one QR.</li>
- * </ol>
- *
- * <p><b>Lock order is booking, then payment</b> - in every method here, and it
- * has to stay that way. {@link #startPayment} naturally takes the booking
- * first and then writes payment rows; if the reconciler locked the payment
- * first and then reached for the booking, a customer pressing "pay" while the
- * poller settles their previous attempt would deadlock the two transactions.
- */
 @Service
 public class PaymentService {
 
     private static final Logger log = LoggerFactory.getLogger(PaymentService.class);
+
+    /** For the PayWay checkout form JSON kept on the transaction row. */
+    private static final ObjectMapper JSON = new ObjectMapper();
 
     /** Booking states that can still take money. */
     private static final Set<BookingStatus> PAYABLE = EnumSet.of(
@@ -74,11 +52,6 @@ public class PaymentService {
             BookingStatus.AWAITING_CONFIRMATION,
             BookingStatus.PAYMENT_FAILED);
 
-    /**
-     * A QR with less life than this is not worth issuing - the customer cannot
-     * realistically open a banking app and scan it, and it would only produce
-     * an attempt that expires before anyone touches it.
-     */
     private static final Duration MIN_QR_LIFE = Duration.ofSeconds(30);
 
     private final PaymentTransactionRepository paymentRepository;
@@ -89,6 +62,7 @@ public class PaymentService {
     private final TicketService ticketService;
     private final PaymentProperties paymentProperties;
     private final BookingProperties bookingProperties;
+    private final AbaPaywayGateway abaPaywayGateway;
 
     public PaymentService(PaymentTransactionRepository paymentRepository,
                           BookingRepository bookingRepository,
@@ -97,7 +71,8 @@ public class PaymentService {
                           PaymentMapper mapper,
                           TicketService ticketService,
                           PaymentProperties paymentProperties,
-                          BookingProperties bookingProperties) {
+                          BookingProperties bookingProperties,
+                          AbaPaywayGateway abaPaywayGateway) {
         this.paymentRepository = paymentRepository;
         this.bookingRepository = bookingRepository;
         this.stateMachine = stateMachine;
@@ -106,32 +81,12 @@ public class PaymentService {
         this.ticketService = ticketService;
         this.paymentProperties = paymentProperties;
         this.bookingProperties = bookingProperties;
+        this.abaPaywayGateway = abaPaywayGateway;
     }
 
-    // ------------------------------------------------------------------
-    // Opening an attempt
-    // ------------------------------------------------------------------
-
-    /**
-     * Issues a KHQR for a booking, or hands back the one already outstanding.
-     *
-     * <p>Idempotent by design, in the same spirit as checkout: a customer who
-     * refreshes the pay screen, or double-taps "pay", must see the <em>same</em>
-     * QR rather than a second one. Two open QRs for one booking would both be
-     * payable, and the second payment would have nowhere to go -
-     * {@code uq_payment_txn_one_success_per_booking} would refuse it and the
-     * money would need a manual refund.
-     *
-     * <p>The booking row lock taken on the first line is what makes that check
-     * hold under a genuine double-submit: without it, two requests could each
-     * find no open attempt and each mint a QR.
-     *
-     * @param actorUserId the authenticated caller; someone else's booking is
-     *                    reported as not found, never as forbidden
-     */
     @Transactional
     public PaymentResponse startPayment(Long bookingId, PaymentProvider provider, Long actorUserId) {
-        if (provider != PaymentProvider.BAKONG_KHQR) {
+        if (provider != PaymentProvider.BAKONG_KHQR && provider != PaymentProvider.ABA_PAYWAY) {
             throw new UnsupportedPaymentProviderException(provider);
         }
 
@@ -163,7 +118,11 @@ public class PaymentService {
                     : PaymentStatus.CANCELLED);
         }
 
-        PaymentTransaction attempt = openKhqrAttempt(booking, now);
+        PaymentTransaction attempt = switch (provider) {
+            case BAKONG_KHQR -> openKhqrAttempt(booking, now);
+            case ABA_PAYWAY -> openAbaAttempt(booking, now);
+        };
+
         advanceToAwaitingConfirmation(booking, attempt, actorUserId);
 
         log.info("Opened {} attempt {} for booking {} ({}): {} {}",
@@ -171,6 +130,36 @@ public class PaymentService {
                 attempt.getCurrencyCharged(), chargedAmount(attempt));
 
         return mapper.toResponse(attempt);
+    }
+
+    private PaymentTransaction openAbaAttempt(Booking booking, Instant now) {
+        String tranId = String.valueOf(System.currentTimeMillis());
+
+        String qrPayload = abaPaywayGateway.createQrPayload(booking, tranId);
+
+        long attemptNo = paymentRepository.countByBookingId(booking.getId()) + 1;
+
+        return paymentRepository.save(PaymentTransaction.builder()
+                .booking(booking)
+                .provider(PaymentProvider.ABA_PAYWAY)
+                .providerRef(tranId)
+                .idempotencyKey("ABA-" + booking.getBookingRef() + "-" + attemptNo)
+                .currencyCharged(PaymentCurrency.USD)
+                .amountUsdCents(booking.getTotalUsdCents())
+                .amountKhr(booking.getTotalKhr())
+                .status(PaymentStatus.PENDING)
+                .expiresAt(now.plus(Duration.ofMinutes(30)))
+                .createdAt(now)
+                .qrPayload(qrPayload)
+                .build());
+    }
+
+    private static String serializeCheckoutForm(PaywayCheckoutForm form) {
+        try {
+            return JSON.writeValueAsString(form);
+        } catch (JsonProcessingException e) {
+            throw new PaymentGatewayException("Unable to serialize the PayWay checkout form", e);
+        }
     }
 
     private PaymentTransaction openKhqrAttempt(Booking booking, Instant now) {
@@ -350,7 +339,7 @@ public class PaymentService {
         attempt.markPolled(now);
 
         switch (result.outcome()) {
-            case PAID -> settle(booking, attempt, result, now);
+            case PAID -> settle(booking, attempt, result.transactionHash(), now);
             case NOT_FOUND -> {
                 if (attempt.hasExpired(now)) {
                     expire(booking, attempt, now);
@@ -374,15 +363,65 @@ public class PaymentService {
         }
     }
 
-    private void settle(Booking booking, PaymentTransaction attempt, BakongCheckResult result, Instant now) {
+    @Transactional
+    public void applyAbaResult(Long paymentId, BankStatusResponse abaResponse) {
+        Long bookingId = paymentRepository.findBookingIdOf(paymentId).orElse(null);
+        if (bookingId == null) return;
+
+        Booking booking = bookingRepository.findByIdForUpdate(bookingId).orElseThrow();
+        PaymentTransaction attempt = paymentRepository.findByIdForUpdate(paymentId).orElseThrow();
+        Instant now = Instant.now();
+
+        if (!attempt.isOpen()) return;
+
+        attempt.markPolled(now);
+
+        boolean apiOk = abaResponse.getStatus() != null && "00".equals(abaResponse.getStatus().getCode());
+        String providerStatus = abaResponse.getData() == null ? null : abaResponse.getData().getPaymentStatus();
+        Long providerStatusCode = abaResponse.getData() == null ? null : abaResponse.getData().getPaymentStatusCode();
+
+        boolean approved = apiOk && abaResponse.getData() != null
+                && (Long.valueOf(0L).equals(providerStatusCode)
+                || (providerStatus != null
+                && ("APPROVED".equalsIgnoreCase(providerStatus.trim()) || "PAID".equalsIgnoreCase(providerStatus.trim()))));
+
+        if (approved) {
+            settle(booking, attempt, attempt.getProviderRef(), now);
+        } else if (attempt.hasExpired(now)) {
+            expire(booking, attempt, now);
+        }
+    }
+
+    /**
+     * MOCK mode only: pretends ABA approved the given attempt so the
+     * simulation controller can confirm bookings and issue tickets
+     * without any real gateway involvement.
+     */
+    @Transactional
+    public void simulateAbaApproval(Long paymentId) {
+        Long bookingId = paymentRepository.findBookingIdOf(paymentId).orElse(null);
+        if (bookingId == null) return;
+
+        Booking booking = bookingRepository.findByIdForUpdate(bookingId).orElseThrow(
+                () -> new BookingNotFoundException("Booking " + bookingId + " does not exist."));
+        PaymentTransaction attempt = paymentRepository.findByIdForUpdate(paymentId)
+                .orElseThrow(() -> new PaymentNotFoundException(paymentId));
+
+        if (!attempt.isOpen()) return;
+
+        Instant now = Instant.now();
+        settle(booking, attempt, attempt.getProviderRef(), now);
+    }
+
+    private void settle(Booking booking, PaymentTransaction attempt, String transactionHash, Instant now) {
         attempt.setStatus(PaymentStatus.SUCCESS);
         attempt.setResolvedAt(now);
-        attempt.setProviderTxnHash(result.transactionHash());
+        attempt.setProviderTxnHash(transactionHash);
         attempt.setNote(null);
 
         log.info("Payment {} for booking {} settled: {} {} (provider hash {})",
                 attempt.getId(), booking.getId(), attempt.getCurrencyCharged(),
-                chargedAmount(attempt), result.transactionHash());
+                chargedAmount(attempt), transactionHash);
 
         confirm(booking, attempt);
 

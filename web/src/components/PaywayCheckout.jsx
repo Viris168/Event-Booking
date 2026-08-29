@@ -4,6 +4,7 @@ import QrGlyph from './QrGlyph.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
 import { usd } from '../lib/format.js'
 import { MERCHANT_NAME } from '../lib/payway.js'
+import KhqrCard from './KhqrCard.jsx'
 
 /**
  * The checkout PayWay returns from Create Transaction, rendered locally.
@@ -72,7 +73,7 @@ export default function PaywayCheckout({
 
   const amountLine = usd(txn.amount_usd_cents)
 
-  const sheetContent = txn.status === 'APPROVED' && !processing ? (
+  const sheetContent = (txn.status === 'APPROVED' || txn.status === 'SUCCESS') && !processing ? (
     <SuccessScreen onSuccess={onSuccess} />
   ) : (
     <>
@@ -87,44 +88,57 @@ export default function PaywayCheckout({
         {step === 'processing' ? (
           <Processing status={processing} locale={locale} t={t} />
         ) : (
-          <div className="pw-ticket">
-            <div className="pw-ticket-red">
-               <span className="with-icon" style={{ fontWeight: 800 }}>
-                 <Icon name="qr" size={16} strokeWidth={2.5} /> KHQR
-               </span>
-            </div>
-            
-            <div className="pw-ticket-amount">
-              <span className="pw-merchant">{merchant}</span>
-              <b>{amountLine.replace('USD', '').trim()}</b>
-            </div>
-            
-            <div className="pw-ticket-dash" />
-
-            <div className="pw-qr-wrap">
-              {txn.qrImage ? (
-                <img src={txn.qrImage} alt="KHQR" style={{ width: '100%', height: '100%' }} />
-              ) : (
-                <QrGlyph token={txn.tran_id} label="KHQR" />
-              )}
-              {!txn.qrImage && (
-                <div className="pw-qr-logo">
-                   <span>$</span>
-                </div>
-              )}
-            </div>
-            
-            {txn.abapayDeeplink && (
-              <div style={{ textAlign: 'center', marginTop: '10px' }}>
-                <a href={txn.abapayDeeplink} className="pw-btn-outline" style={{ display: 'inline-block', padding: '8px', fontSize: '0.8rem', textDecoration: 'none' }}>
-                  Open ABA Mobile
-                </a>
+          <div className="pw-ticket" style={txn.qrImage ? { padding: 0, border: 'none', boxShadow: 'none', background: 'transparent' } : {}}>
+            {txn.qrImage ? (
+              <div style={{ background: '#fff', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 8px 30px rgba(0,0,0,0.14)', border: '1px solid rgba(0,0,0,0.06)' }}>
+                <img src={txn.qrImage} alt="KHQR" style={{ width: '100%', display: 'block', filter: 'contrast(1.22) saturate(1.35) brightness(0.98)', imageRendering: 'high-quality' }} />
+                
+                {txn.abapayDeeplink && (
+                  <div style={{ textAlign: 'center', marginTop: '12px', marginBottom: '12px' }}>
+                    <a href={txn.abapayDeeplink} className="pw-btn-outline" style={{ display: 'inline-block', padding: '8px 16px', fontSize: '0.9rem', textDecoration: 'none' }}>
+                      Open ABA Mobile
+                    </a>
+                  </div>
+                )}
+                
+                <p className="pw-scan-note" style={{ padding: '16px', margin: 0 }}>
+                  Scan with Bakong App or Mobile Banking app<br/>that support KHQR
+                </p>
               </div>
+            ) : (
+              <>
+                <div className="pw-ticket-red">
+                   <span className="with-icon" style={{ fontWeight: 800 }}>
+                     <Icon name="qr" size={16} strokeWidth={2.5} /> KHQR
+                   </span>
+                </div>
+                
+                <div className="pw-ticket-amount">
+                  <span className="pw-merchant">{merchant}</span>
+                  <b>{amountLine.replace('USD', '').trim()}</b>
+                </div>
+                
+                <div className="pw-ticket-dash" />
+                <div className="pw-qr-wrap">
+                  <QrGlyph token={txn.tran_id} label="KHQR" />
+                  <div className="pw-qr-logo">
+                     <span>$</span>
+                  </div>
+                </div>
+                
+                {txn.abapayDeeplink && (
+                  <div style={{ textAlign: 'center', marginTop: '10px' }}>
+                    <a href={txn.abapayDeeplink} className="pw-btn-outline" style={{ display: 'inline-block', padding: '8px', fontSize: '0.8rem', textDecoration: 'none' }}>
+                      Open ABA Mobile
+                    </a>
+                  </div>
+                )}
+                
+                <p className="pw-scan-note">
+                  Scan with Bakong App or Mobile Banking app<br/>that support KHQR
+                </p>
+              </>
             )}
-            
-            <p className="pw-scan-note">
-              Scan with Bakong App or Mobile Banking app<br/>that support KHQR
-            </p>
           </div>
         )}
       </div>
@@ -221,7 +235,7 @@ function SuccessScreen({ onSuccess }) {
         </p>
         <div className="pw-success-actions">
           <button type="button" className="pw-btn-outline">Download Receipt</button>
-          <button type="button" className="pw-btn-solid" onClick={onSuccess}>View Tickets</button>
+          <button type="button" className="pw-btn-solid" onClick={() => window.location.href = '/'}>Continue Shopping</button>
         </div>
       </div>
     </div>

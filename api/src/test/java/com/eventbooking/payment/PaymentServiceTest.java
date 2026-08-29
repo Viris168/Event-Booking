@@ -11,6 +11,7 @@ import com.eventbooking.dto.payment.PaymentResponse;
 import com.eventbooking.model.Booking;
 import com.eventbooking.model.BookingStatusHistory;
 import com.eventbooking.model.PaymentTransaction;
+import com.eventbooking.payment.AbaPayway.AbaPaywayGateway;
 import com.eventbooking.payment.bakong.BakongCheckResult;
 import com.eventbooking.payment.bakong.KhqrGenerator;
 import com.eventbooking.payment.error.BookingNotPayableException;
@@ -83,7 +84,8 @@ class PaymentServiceTest {
                 new PaymentMapper(properties),
                 ticketService,
                 properties,
-                new BookingProperties(new BigDecimal("4100.0000"), 15));
+                new BookingProperties(new BigDecimal("4100.0000"), 15),
+                mock(AbaPaywayGateway.class));
 
         when(paymentRepository.save(any(PaymentTransaction.class))).thenAnswer(invocation -> {
             PaymentTransaction attempt = invocation.getArgument(0);

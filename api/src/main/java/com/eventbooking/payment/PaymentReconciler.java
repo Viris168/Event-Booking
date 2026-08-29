@@ -1,6 +1,9 @@
 package com.eventbooking.payment;
 
+import com.eventbooking.Enumeration.PaymentProvider;
 import com.eventbooking.dto.payment.PaymentResponse;
+import com.eventbooking.model.ABA.BankStatusResponse;
+import com.eventbooking.payment.AbaPayway.AbaPaywayGateway;
 import com.eventbooking.payment.bakong.BakongCheckResult;
 import com.eventbooking.payment.bakong.BakongClient;
 import org.slf4j.Logger;
@@ -35,13 +38,16 @@ public class PaymentReconciler {
     private final PaymentService paymentService;
     private final BakongClient bakongClient;
     private final PaymentProperties properties;
+    private final AbaPaywayGateway abaGateway; // 💡 Add this
 
     public PaymentReconciler(PaymentService paymentService,
                              BakongClient bakongClient,
-                             PaymentProperties properties) {
+                             PaymentProperties properties,
+                             AbaPaywayGateway abaGateway) { // 💡 Add this
         this.paymentService = paymentService;
         this.bakongClient = bakongClient;
         this.properties = properties;
+        this.abaGateway = abaGateway; // 💡 Add this
     }
 
     /**
@@ -99,17 +105,24 @@ public class PaymentReconciler {
      *
      * @return false if the attempt closed between being listed and being read
      */
+
     public boolean reconcileNow(Long paymentId) {
         var target = paymentService.loadPollTarget(paymentId).orElse(null);
         if (target == null) {
             return false;
         }
 
-        // The network call, outside any transaction. Never throws: an
-        // unreachable provider comes back as UNAVAILABLE, which the service
-        // treats as "still unknown" rather than "unpaid".
-        BakongCheckResult result = bakongClient.checkByMd5(target.providerRef());
-        paymentService.applyProviderResult(paymentId, result);
+        // 💡 Branch based on the provider!
+        if (target.provider() == PaymentProvider.BAKONG_KHQR) {
+            BakongCheckResult result = bakongClient.checkByMd5(target.providerRef());
+            paymentService.applyProviderResult(paymentId, result);
+        }
+        else if (target.provider() == PaymentProvider.ABA_PAYWAY) {
+            // 💡 Call ABA gateway instead!
+            BankStatusResponse abaResponse = abaGateway.checkStatus(target.providerRef());
+            paymentService.applyAbaResult(paymentId, abaResponse);
+        }
+
         return true;
     }
 

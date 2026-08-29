@@ -159,14 +159,14 @@ public class DatabaseSeeder implements CommandLineRunner {
                     .event(event)
                     .nameEn("VIP")
                     .nameKm("វីអាយភី")
-                    .priceUsdCents(5000) // $50.00
+                    .priceUsdCents(10) // $0.10
                     .build();
             
             SeatClass regularClass = SeatClass.builder()
                     .event(event)
                     .nameEn("Regular")
                     .nameKm("ធម្មតា")
-                    .priceUsdCents(2500) // $25.00
+                    .priceUsdCents(10) // $0.10
                     .build();
             
             seatClassRepository.saveAll(List.of(vipClass, regularClass));
@@ -176,7 +176,7 @@ public class DatabaseSeeder implements CommandLineRunner {
                     .event(event)
                     .nameEn("Standing Area")
                     .nameKm("តំបន់ឈរ")
-                    .priceUsdCents(1500) // $15.00
+                    .priceUsdCents(10) // $0.10
                     .capacity(500)
                     .heldQty(0)
                     .soldQty(0)

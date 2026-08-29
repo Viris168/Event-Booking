@@ -18,28 +18,28 @@
  */
 export const PAYMENT_OPTIONS = [
   {
-    id: 'abapay_khqr',
+    id: 'ABA_PAYWAY',
+    icon: 'lock',
+    currency: 'USD',
+    kind: 'qr',
+    titleEn: 'ABA PayWay',
+    titleKm: 'ABA PayWay',
+    subEn: 'Pay securely with ABA PayWay checkout',
+    subKm: 'បង់ប្រាក់តាមរយៈ ABA PayWay',
+  },
+  {
+    id: 'BAKONG_KHQR',
     icon: 'qr',
     currency: 'USD',
     kind: 'qr',
-    titleEn: 'ABA PAY / KHQR',
-    titleKm: 'ABA PAY / KHQR',
-    subEn: 'Scan with ABA Mobile or any KHQR bank app',
-    subKm: 'ស្កេនដោយ ABA Mobile ឬកម្មវិធីធនាគារ KHQR ណាមួយ',
-  },
-  {
-    id: 'abapay_khqr_deeplink',
-    icon: 'phone',
-    currency: 'USD',
-    kind: 'deeplink',
-    titleEn: 'ABA PAY — open the app',
-    titleKm: 'ABA PAY — បើកកម្មវិធី',
-    subEn: 'Hands off to ABA Mobile and returns here',
-    subKm: 'បញ្ជូនទៅ ABA Mobile រួចត្រឡប់មកវិញ',
+    titleEn: 'Bakong KHQR',
+    titleKm: 'Bakong KHQR',
+    subEn: 'Scan with any KHQR supported app',
+    subKm: 'ស្កេនដោយកម្មវិធីធនាគារ KHQR ណាមួយ',
   },
 ]
 
-export const DEFAULT_OPTION = 'abapay_khqr'
+export const DEFAULT_OPTION = 'ABA_PAYWAY'
 
 export function paymentOption(id) {
   return PAYMENT_OPTIONS.find((o) => o.id === id) || PAYMENT_OPTIONS[0]

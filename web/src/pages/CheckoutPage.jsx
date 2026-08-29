@@ -4,6 +4,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import HoldBar from '../components/HoldBar.jsx'
 import Icon from '../components/Icon.jsx'
 import { CheckoutSkeleton } from '../components/Skeleton.jsx'
+import PaymentModal from '../components/PaymentModal.jsx'
 import { Alert, Field, Steps } from '../components/ui.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
@@ -25,6 +26,7 @@ export default function CheckoutPage() {
   const holdId = params.get('hold')
   const eventIdParam = params.get('event')
 
+  const [pendingPayment, setPendingPayment] = useState(null)
   const [apiHoldData, setApiHoldData] = useState(null)
   const [apiEvent, setApiEvent] = useState(null)
   // The hold and the event both arrive over the network. Until they do the page
@@ -153,9 +155,7 @@ export default function CheckoutPage() {
     })
       .then((res) => {
         sessionStorage.removeItem(`activeHoldId_${event.id}`) // Clear hold now that it's booked
-        // The pay page stands in for the merchant page that calls Create
-        // Transaction and then opens PayWay's checkout popup over itself.
-        navigate(`/checkout/${res.id}/pay?option=${option}`)
+        setPendingPayment({ bookingId: res.id, option })
       })
       .catch((err) => {
         setSubmitting(false)
@@ -257,11 +257,11 @@ export default function CheckoutPage() {
                       checked={option === o.id}
                       onChange={() => setOption(o.id)}
                     />
-                    <span className="rc-logo" aria-hidden="true" style={{ padding: o.id === 'abapay_khqr' ? 0 : '', border: o.id === 'abapay_khqr' ? 'none' : '', borderRadius: o.id === 'abapay_khqr' ? 0 : '' }}>
-                      {o.id === 'abapay_khqr' ? (
+                    <span className="rc-logo" aria-hidden="true" style={{ padding: o.id === 'ABA_PAYWAY' ? 0 : '', border: o.id === 'ABA_PAYWAY' ? 'none' : '', borderRadius: o.id === 'ABA_PAYWAY' ? 0 : '' }}>
+                      {o.id === 'ABA_PAYWAY' ? (
                         <div className="aba-khqr-logo-icon">
                           <div className="aba-top">ABA<span className="aba-quote">'</span></div>
-                          <div className="aba-bot">KHQR</div>
+                          <div className="aba-bot">PAY</div>
                         </div>
                       ) : (
                         <Icon name={o.icon} size={19} />
@@ -355,6 +355,14 @@ export default function CheckoutPage() {
 
         </div>
       </div>
+      {pendingPayment && (
+        <PaymentModal
+          bookingId={pendingPayment.bookingId}
+          option={pendingPayment.option}
+          onSuccess={() => navigate(`/bookings/${pendingPayment.bookingId}`)}
+          onClose={() => navigate(`/bookings/${pendingPayment.bookingId}`)}
+        />
+      )}
     </div>
   )
 }

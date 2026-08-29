@@ -28,6 +28,9 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
 
     Optional<PaymentTransaction> findByProviderRef(String providerRef);
 
+    Optional<PaymentTransaction> findByProviderAndProviderRef(
+            com.eventbooking.Enumeration.PaymentProvider provider, String providerRef);
+
     /** Defence in depth behind the booking's own CONFIRMED state: a booking with
      *  a SUCCESS row must never be handed a second QR. */
     boolean existsByBookingIdAndStatus(Long bookingId, PaymentStatus status);
