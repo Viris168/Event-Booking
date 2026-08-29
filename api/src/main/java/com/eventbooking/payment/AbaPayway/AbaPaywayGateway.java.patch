@@ -1,0 +1,55 @@
+--- AbaPaywayGateway.java
++++ AbaPaywayGateway.java
+@@ -25,6 +25,7 @@
+ import java.util.TimeZone;
+ import java.util.concurrent.TimeUnit;
++import java.util.Base64;
++import java.nio.charset.StandardCharsets;
+ 
+ @Component
+ public class AbaPaywayGateway {
+@@ -51,7 +52,8 @@
+         this.client = new OkHttpClient.Builder()
+                 .connectTimeout(10, TimeUnit.SECONDS)
+                 .readTimeout(30, TimeUnit.SECONDS)
+-                .writeTimeout(15, TimeUnit.SECONDS).build();
++                .writeTimeout(15, TimeUnit.SECONDS)
++                .followRedirects(false).build();
+         this.objectMapper = new ObjectMapper()
+                 .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+     }
+@@ -115,6 +117,35 @@
+         return new PaywayCheckoutForm(
+                 paywayBaseUrl + "/api/payment-gateway/v1/payments/purchase", fields);
+     }
++    
++    public String createQrPayload(Booking booking, String tranId) {
++        PaywayCheckoutForm form = createCheckoutForm(booking, tranId);
++        
++        okhttp3.FormBody.Builder formBuilder = new okhttp3.FormBody.Builder();
++        for (Map.Entry<String, String> entry : form.getFields().entrySet()) {
++            formBuilder.add(entry.getKey(), entry.getValue());
++        }
++        
++        Request request = new Request.Builder()
++                .url(form.getAction())
++                .post(formBuilder.build())
++                .build();
++                
++        try (Response response = client.newCall(request).execute()) {
++            String location = response.header("Location");
++            if (location != null && location.contains("/checkout/")) {
++                String base64 = location.substring(location.lastIndexOf('/') + 1);
++                String json = new String(Base64.getDecoder().decode(base64), StandardCharsets.UTF_8);
++                java.util.regex.Matcher m = java.util.regex.Pattern.compile("\"qr_string\"\\s*:\\s*\"([^\"]+)\"").matcher(json);
++                if (m.find()) {
++                    return m.group(1);
++                }
++            }
++            throw new PaymentGatewayException("Unable to extract QR string from PayWay redirect");
++        } catch (IOException e) {
++            throw new PaymentGatewayException("Unable to call the PayWay purchase API", e);
++        }
++    }
+ 
+     public BankStatusResponse checkStatus(String tranId) {

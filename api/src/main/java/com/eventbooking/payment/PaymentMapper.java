@@ -1,17 +1,21 @@
 package com.eventbooking.payment;
 
 import com.eventbooking.dto.payment.PaymentResponse;
+import com.eventbooking.model.ABA.PaywayCheckoutForm;
 import com.eventbooking.model.PaymentTransaction;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
-/**
- * Entity -> DTO for the payment lane. Like {@code BookingMapper}, it must be
- * called inside the transaction that loaded the attempt: open-in-view is off
- * and it walks the booking association to report the state a waiting client is
- * really after.
- */
+
 @Component
 public class PaymentMapper {
+
+    private static final Logger log = LoggerFactory.getLogger(PaymentMapper.class);
+
+    private static final ObjectMapper JSON = new ObjectMapper();
 
     private final PaymentProperties properties;
 
@@ -21,6 +25,7 @@ public class PaymentMapper {
 
     public PaymentResponse toResponse(PaymentTransaction attempt) {
         boolean open = attempt.isOpen();
+        PaywayCheckoutForm checkoutForm = open ? parseCheckoutForm(attempt.getCheckoutForm()) : null;
 
         return new PaymentResponse(
                 attempt.getId(),
@@ -33,10 +38,13 @@ public class PaymentMapper {
                 attempt.getAmountKhr(),
                 // A settled attempt stops handing out something scannable: the
                 // QR is spent, and rendering it again would invite a second
-                // payment that has nowhere to go.
+                // payment that has nowhere to go. The checkout form dies with
+                // the attempt for the same reason.
                 open ? attempt.getQrPayload() : null,
                 attempt.getProviderRef(),
                 attempt.getProviderTxnHash(),
+                checkoutForm == null ? null : checkoutForm.getAction(),
+                checkoutForm == null ? null : checkoutForm.getFields(),
                 attempt.getExpiresAt(),
                 attempt.getCreatedAt(),
                 attempt.getResolvedAt(),
@@ -49,5 +57,18 @@ public class PaymentMapper {
                 // once settled, meaning "stop asking".
                 open ? properties.poll().minRefreshInterval().toMillis() : 0L
         );
+    }
+
+    /** Reads the signed PayWay checkout form off the row; null when absent or unreadable. */
+    private static PaywayCheckoutForm parseCheckoutForm(String json) {
+        if (json == null || json.isBlank()) {
+            return null;
+        }
+        try {
+            return JSON.readValue(json, PaywayCheckoutForm.class);
+        } catch (JsonProcessingException e) {
+            log.warn("checkout_form column held unreadable JSON; hiding it from the client", e);
+            return null;
+        }
     }
 }

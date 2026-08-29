@@ -7,6 +7,7 @@ import com.eventbooking.Enumeration.PaymentStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.Instant;
+import java.util.Map;
 
 /**
  * One payment attempt, shaped for the screen that waits on it.
@@ -49,6 +50,15 @@ public record PaymentResponse(
         String qrPayload,
         String providerRef,
         String providerTxnHash,
+
+        @Schema(description = "ABA lane: where the browser posts the signed checkout form to "
+                + "open PayWay's hosted checkout. Null for Bakong, and null once the attempt is "
+                + "settled, like qrPayload.")
+        String checkoutAction,
+
+        @Schema(description = "ABA lane: the hidden form fields signed by the merchant server "
+                + "(req_time, tran_id, hash, ...). Keys match PayWay's form field names.")
+        Map<String, String> checkoutFields,
 
         Instant expiresAt,
         Instant createdAt,

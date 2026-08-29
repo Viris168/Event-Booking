@@ -1,35 +1,30 @@
 import { useDocumentTitle } from '../lib/useDocumentTitle.js'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { QRCodeSVG } from 'qrcode.react'
 import Icon from '../components/Icon.jsx'
+import KhqrCard from '../components/KhqrCard.jsx'
 import PaywayCheckout from '../components/PaywayCheckout.jsx'
+import BakongCheckout from '../components/BakongCheckout.jsx'
 import { CheckoutSkeleton } from '../components/Skeleton.jsx'
 import { Alert } from '../components/ui.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
 import { countdown } from '../lib/format.js'
 import { mapBooking } from '../api/adapters.js'
-import { createQr, checkStatus, simulatePayment } from '../api/payment.js'
+import { startPayment as startApiPayment, pollPayment, simulateAbaPayment, simulateBakongPayment } from '../api/payment.js'
 import { loadTransaction, MERCHANT_NAME, PROVIDER, paymentOption, optionTitle } from '../lib/payway.js'
-import { getBooking, resolvePayment, startPayment, useStore } from '../mock/store.js'
+import { getBooking, resolvePayment, startPayment as startMockPayment, useStore } from '../mock/store.js'
 import { getBooking as getApiBooking } from '../api/bookings.js'
 
-// How each PayWay payment_status reads on screen.
+// How each payment_status reads on screen.
 const STRIP = {
   PENDING: { tone: 'wait', key: 'waitingForPayment' },
-  APPROVED: { tone: 'ok', key: 'paymentReceived' },
-  DECLINED: { tone: 'bad', key: 'paymentFailedMsg' },
+  SUCCESS: { tone: 'ok', key: 'paymentReceived' },
+  FAILED: { tone: 'bad', key: 'paymentFailedMsg' },
   CANCELLED: { tone: 'neutral', key: 'paymentCancelled' },
   EXPIRED: { tone: 'neutral', key: 'transactionExpired' },
 }
 
-/**
- * The merchant side of PayWay's eCommerce checkout.
- *
- * It creates the transaction, opens PayWay's checkout over this page — a modal
- * on desktop, a bottom sheet on phones — then does what the merchant server
- * does once the buyer is done: run Check Transaction until the status is final,
- * and treat the return_url callback as the result of record.
- */
 export default function PaymentPage() {
   const { bookingId } = useParams()
   const [params] = useSearchParams()
@@ -59,71 +54,37 @@ export default function PaymentPage() {
     return () => { active = false }
   }, [bookingId])
 
-  // Only the pure-prototype path has a mock booking; an API booking id must
-  // never be used to write into the seeded store.
   const mockBooking = !bookingLoading && !apiBooking ? getBooking(bookingId) : null
   const booking = apiBooking ?? mockBooking
   useDocumentTitle(booking ? `${t('checkout')} · ${booking.booking_ref}` : null)
 
   const requestedOption = params.get('option')
 
-  // With no attempt in hand the booking's own state says how the last one ended.
   const status =
     txn?.status ||
-    { CONFIRMED: 'APPROVED', PAYMENT_FAILED: 'DECLINED', CANCELLED: 'CANCELLED' }[booking?.state] ||
+    { CONFIRMED: 'SUCCESS', PAYMENT_FAILED: 'FAILED', CANCELLED: 'CANCELLED' }[booking?.state] ||
     'PENDING'
 
-  /** Create Transaction — one open purchase per booking. */
+  /** Create Transaction */
   const openTransaction = useCallback(
-    async (option) => {
-      if (!booking) return
+    async (provider) => {
+      if (!booking || !apiBooking) return
       
       try {
-        const payload = {
-          firstname: booking.buyer_name ? booking.buyer_name.split(' ')[0] : 'Sina',
-          lastname: booking.buyer_name ? booking.buyer_name.split(' ').slice(1).join(' ') : 'Chhum',
-          amount: (booking.total_usd_cents / 100).toFixed(2),
-          currency: 'USD',
-          phone: booking.buyer_phone_e164 || '093939399',
-          // What the transaction is paying for. The server needs it to confirm
-          // the booking and issue its tickets when PayWay approves — without it
-          // the payment succeeds and nothing downstream ever happens. Sent only
-          // for a real booking: a prototype-store id names no row in the API's
-          // database.
-          ...(apiBooking ? { booking_id: apiBooking.id } : {}),
-        };
-        const data = await createQr(payload);
-        
-        const tranId = data.status?.tranId || data.status?.tran_id || data.tran_id || 'unknown';
-        const next = {
-          tran_id: tranId,
-          payment_option: option,
-          amount_usd_cents: booking.total_usd_cents,
-          status: 'PENDING',
-          expires_at: new Date(Date.now() + 5 * 60000).toISOString(),
-          created_at: new Date().toISOString(),
-          qrImage: data.qrImage,
-          abapayDeeplink: data.abapayDeeplink || data.abapay_deeplink
-        };
-        
-        if (mockBooking) startPayment(mockBooking.id, PROVIDER)
-        setTxn(next)
+        const data = await startApiPayment(apiBooking.id, provider);
+        setTxn(data)
         setChecking(false)
-        setSheetOpen(true)
+        if (provider === 'ABA_PAYWAY' || provider === 'BAKONG_KHQR') {
+          setSheetOpen(true)
+        }
       } catch (err) {
-        console.error("Failed to generate QR:", err)
-        alert("Failed to generate QR Code. See browser console for details: " + err.message)
+        console.error("Failed to generate payment:", err)
+        alert("Failed to generate payment. See browser console for details: " + err.message)
       }
     },
-    [booking, apiBooking, mockBooking],
+    [booking, apiBooking],
   )
 
-  /**
-   * Re-reads the booking after a settlement. The API confirms the booking and
-   * issues the tickets inside the same call that reports the payment as paid,
-   * so by the time this runs the state is already CONFIRMED — this is what puts
-   * that on screen instead of the stale PENDING_PAYMENT badge.
-   */
   const refreshBooking = useCallback(() => {
     if (!apiBooking) return
     getApiBooking(apiBooking.id)
@@ -133,105 +94,89 @@ export default function PaymentPage() {
       .catch(() => {})
   }, [apiBooking?.id])
 
-  // Pick up an attempt left open by an earlier visit, or start the one the
-  // checkout page asked for.
   useEffect(() => {
     if (!booking || txn) return
-    const existing = loadTransaction(booking.id)
-    if (existing) {
-      setTxn(existing)
-      setSheetOpen(existing.status === 'PENDING')
-    } else if (booking.state === 'PENDING_PAYMENT' || !booking.state) {
-      openTransaction(requestedOption || undefined)
+    // PAYMENT_FAILED is retryable: the backend lets a failed/expired booking
+    // open a fresh attempt, so "Try again" must do the same on this side.
+    if (booking.state === 'PENDING_PAYMENT' || booking.state === 'PAYMENT_FAILED' || booking.state === 'AWAITING_CONFIRMATION' || !booking.state) {
+      openTransaction(requestedOption || 'ABA_PAYWAY')
     }
   }, [booking, txn, requestedOption, openTransaction])
 
-  // The purchase page should immediately show PayWay's popup once its pending
-  // transaction is ready. This also covers a pending transaction restored from
-  // session storage after a page refresh.
   useEffect(() => {
-    if (txn?.status === 'PENDING') setSheetOpen(true)
-  }, [txn?.status])
+    if (txn?.status === 'PENDING' && txn?.provider === 'ABA_PAYWAY') setSheetOpen(true)
+  }, [txn?.status, txn?.provider])
 
-  // Check Transaction: poll until the gateway gives a final answer.
+  // Poll for completion
   useEffect(() => {
-    if (txn?.status !== 'PENDING' || !txn?.tran_id) return
+    if ((txn?.status !== 'PENDING' && txn?.status !== 'CREATED') || !txn?.id) return
     const timer = setInterval(() => {
-      checkStatus(txn.tran_id).then(data => {
-        if (data && data.paid === true) {
-          onSettledRef.current('APPROVED')
-          // The same response says what the booking became. Anything other than
-          // CONFIRMED means the money landed but the booking could not take it
-          // — an expired or cancelled booking — and the tickets will not exist.
+      pollPayment(txn.id).then(data => {
+        if (data && data.status === 'SUCCESS') {
+          onSettledRef.current('SUCCESS')
           if (data.bookingState && data.bookingState !== 'CONFIRMED') {
             console.error('Payment approved but booking is', data.bookingState)
           }
+          refreshBooking()
+        } else if (data && data.status === 'EXPIRED') {
+          onSettledRef.current('EXPIRED')
+          refreshBooking()
+        } else if (data && data.status === 'FAILED') {
+          onSettledRef.current('FAILED')
           refreshBooking()
         }
       }).catch(err => console.error(err))
     }, 3000)
     return () => clearInterval(timer)
-  }, [txn?.status, txn?.tran_id, refreshBooking])
+  }, [txn?.status, txn?.id, refreshBooking])
 
-  // A purchase only lives for its `lifetime`; past that PayWay stops accepting it.
+  // A purchase only lives for its `lifetime`
   useEffect(() => {
-    if (txn?.status !== 'PENDING') return
+    if (txn?.status !== 'PENDING' && txn?.status !== 'CREATED') return
+    const expiresAt = txn.expires_at ?? txn.expiresAt
     const tick = setInterval(() => {
       setNow(Date.now())
-      if (Date.parse(txn.expires_at) <= Date.now()) onSettledRef.current('EXPIRED')
+      if (Date.parse(expiresAt) <= Date.now()) onSettledRef.current('EXPIRED')
     }, 1000)
     return () => clearInterval(tick)
-  }, [txn?.status, txn?.expires_at])
+  }, [txn?.status, txn?.expires_at, txn?.expiresAt])
 
-  // Once the money lands, we wait for the user to click "View Tickets" on the success screen.
-  // We used to auto-navigate here, but now PaywayCheckout handles it via onSuccess.
-
-  /**
-   * The buyer finished inside the checkout — PayWay closes it and posts back.
-   *
-   * @param simulated true when the outcome came from the checkout's simulate
-   *   buttons rather than from ABA. A simulated approval has to be settled on
-   *   the server explicitly: no money moved, so check-transaction would go on
-   *   answering "not paid" and the booking would never confirm.
-   */
   const onSettled = useCallback(
     (status, { simulated = false } = {}) => {
       if (!booking) return
 
-      if (simulated && status === 'APPROVED' && apiBooking && txn?.tran_id) {
-        setChecking(true)
-        simulatePayment(txn.tran_id)
-          .then(refreshBooking)
-          .catch((err) => console.error('Simulated settlement failed', err))
-          .finally(() => setChecking(false))
+      if (status === 'SUCCESS') {
+        setSheetOpen(false)
+        setTxn((prev) =>
+          prev ? { ...prev, status, resolved_at: new Date().toISOString() } : null,
+        )
+        if (simulated && apiBooking && txn?.id) {
+          setChecking(true)
+          const simCall = txn.provider === 'BAKONG_KHQR'
+              ? simulateBakongPayment(txn.id)
+              : simulateAbaPayment(txn.providerRef ?? txn.provider_ref)
+
+          simCall
+            .then(refreshBooking)
+            .then(() => navigate(`/bookings/${booking.id}`))
+            .catch((err) => console.error('Simulated settlement failed', err))
+            .finally(() => setChecking(false))
+        } else {
+          // Real settlement came from polling check-transaction - straight to
+          // the tickets, the way PayWay's skip-success-page flow ends.
+          navigate(`/bookings/${booking.id}`)
+        }
+        return
       }
 
       setTxn((prev) =>
         prev
-          ? {
-              ...prev,
-              status,
-              status_code:
-                { APPROVED: 0, PENDING: 2, DECLINED: 3, CANCELLED: 4, EXPIRED: 5 }[status] ?? 3,
-              resolved_at: new Date().toISOString(),
-            }
+          ? { ...prev, status, resolved_at: new Date().toISOString() }
           : null,
       )
-      if (status !== 'APPROVED') setSheetOpen(false)
-
-      // The prototype store settles synchronously, on the outcome names its own
-      // state machine uses. EXPIRED closes the attempt but leaves the booking
-      // payable, so it maps straight through rather than onto a cancellation.
-      if (mockBooking) {
-        resolvePayment(
-          mockBooking.id,
-          { APPROVED: 'SUCCESS', DECLINED: 'FAILED', CANCELLED: 'CANCELLED', EXPIRED: 'EXPIRED' }[
-            status
-          ],
-        )
-      }
+      setSheetOpen(false)
     },
-    [booking, apiBooking, mockBooking, txn?.tran_id, refreshBooking],
+    [booking, apiBooking, txn?.id, txn?.provider, txn?.providerRef, txn?.provider_ref, refreshBooking, navigate],
   )
   onSettledRef.current = onSettled
 
@@ -253,18 +198,44 @@ export default function PaymentPage() {
   }
 
   const strip = STRIP[status] || STRIP.PENDING
-  const isOpen = status === 'PENDING'
-  const option = paymentOption(txn?.payment_option)
+  const isOpen = status === 'PENDING' || status === 'CREATED'
 
-  const checkout = txn ? (
-    <PaywayCheckout
-      txn={txn}
-      merchant={MERCHANT_NAME}
-      onSettled={onSettled}
-      onClose={() => setSheetOpen(false)}
-      onSuccess={() => navigate(`/bookings/${booking.id}`)}
-    />
-  ) : null
+  // Map the unified txn object to the shape PaywayCheckout expects. The API
+  // responds snake_case, so read both shapes until the client normalizes.
+  const checkoutTxn = txn && txn.provider === 'ABA_PAYWAY' ? {
+    ...txn,
+    tran_id: txn.providerRef ?? txn.provider_ref,
+    amount_usd_cents: booking.total_usd_cents,
+    qrImage: txn.qrPayload ?? txn.qr_payload,
+    checkoutAction: txn.checkoutAction ?? txn.checkout_action,
+    checkoutFields: txn.checkoutFields ?? txn.checkout_fields,
+    expires_at: txn.expiresAt ?? txn.expires_at
+  } : null
+
+  let checkout = null
+  if (checkoutTxn) {
+    checkout = (
+      <PaywayCheckout
+        txn={checkoutTxn}
+        merchant={MERCHANT_NAME}
+        onSettled={(abaStatus, opts) => {
+          // Map ABA's APPROVED back to unified SUCCESS
+          const mappedStatus = abaStatus === 'APPROVED' ? 'SUCCESS' : abaStatus
+          onSettled(mappedStatus, opts)
+        }}
+        onClose={() => setSheetOpen(false)}
+      />
+    )
+  } else if (txn && txn.provider === 'BAKONG_KHQR') {
+    checkout = (
+      <BakongCheckout
+        txn={txn}
+        booking={booking}
+        onSettled={onSettled}
+        onClose={() => setSheetOpen(false)}
+      />
+    )
+  }
 
   return (
     <>
@@ -274,17 +245,14 @@ export default function PaymentPage() {
           moment it answers. */}
       {!sheetOpen && !txn && isOpen && <CheckoutSkeleton />}
 
-      {/* PayWay's popup is the whole payment step. This is all that is left
-          behind it when the buyer dismisses it — enough to reopen the checkout
-          or start a fresh transaction, and nothing else. */}
       {!sheetOpen && (txn || !isOpen) && (
         <div className="container container-narrow">
           <div className="panel pw-launch">
             <div className="panel-body stack-sm text-center" style={{ alignItems: 'center' }}>
               <span className="icon-chip lg">
-                <Icon name={option.icon} size={22} />
+                <Icon name="qr" size={22} />
               </span>
-              <strong>{optionTitle(option.id, locale)}</strong>
+              <strong>{txn?.provider || 'Payment'}</strong>
               <p className="small muted">
                 {checking
                   ? t('checkingTransaction')
@@ -297,8 +265,7 @@ export default function PaymentPage() {
                   <Icon name="lock" size={15} />
                   {t('openCheckout')}
                 </button>
-              ) : status === 'APPROVED' ? (
-                // Paid already: the only thing left to do is collect the tickets.
+              ) : status === 'SUCCESS' ? (
                 <Link className="btn btn-primary btn-block" to={`/bookings/${booking.id}`}>
                   <Icon name="ticket" size={15} />
                   {t('yourTickets')}
@@ -306,7 +273,9 @@ export default function PaymentPage() {
               ) : (
                 <button
                   className="btn btn-primary btn-block"
-                  onClick={() => openTransaction(option.id)}
+                  onClick={() => {
+                    setTxn(null)
+                  }}
                 >
                   <Icon name="refresh" size={15} />
                   {t('tryAgain')}
@@ -315,7 +284,7 @@ export default function PaymentPage() {
               {isOpen && txn && (
                 <span className="small muted with-icon">
                   <Icon name="clock" size={13} />
-                  {t('completeWithin')} {countdown(Date.parse(txn.expires_at) - now)}
+                  {t('completeWithin')} {countdown(Date.parse(txn.expires_at ?? txn.expiresAt) - now)}
                 </span>
               )}
               <Link className="small with-icon" to={`/bookings/${booking.id}`}>

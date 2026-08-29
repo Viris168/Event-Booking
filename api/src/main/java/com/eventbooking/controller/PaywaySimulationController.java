@@ -1,9 +1,10 @@
 package com.eventbooking.controller;
 
-import com.eventbooking.Enumeration.BookingStatus;
-import com.eventbooking.model.ABA.BankPaymentRequest;
-import com.eventbooking.payment.PaywaySettlementService;
-import com.eventbooking.repository.ABARepository;
+import com.eventbooking.Enumeration.PaymentProvider;
+import com.eventbooking.Enumeration.PaymentStatus;
+import com.eventbooking.model.PaymentTransaction;
+import com.eventbooking.payment.PaymentService;
+import com.eventbooking.repository.PaymentTransactionRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -38,40 +39,55 @@ import java.util.Map;
         description = "MOCK mode only. Stands in for ABA approving a transaction.")
 public class PaywaySimulationController {
 
-    private final ABARepository paymentRepository;
-    private final PaywaySettlementService settlementService;
+    private final PaymentTransactionRepository paymentTransactionRepository;
+    private final PaymentService paymentService;
 
-    public PaywaySimulationController(ABARepository paymentRepository,
-                                      PaywaySettlementService settlementService) {
-        this.paymentRepository = paymentRepository;
-        this.settlementService = settlementService;
+    public PaywaySimulationController(PaymentTransactionRepository paymentTransactionRepository,
+                                      PaymentService paymentService) {
+        this.paymentTransactionRepository = paymentTransactionRepository;
+        this.paymentService = paymentService;
     }
 
     @PostMapping("/{tranId}/pay")
     @Operation(
             summary = "Pretend ABA approved this transaction",
             description = """
-                    Marks the local PayWay record PAID, confirms the booking it was opened
-                    for, and issues that booking's tickets.
+                    Finds the PaymentTransaction by its ABA tran_id (providerRef), then
+                    settles it through the unified PaymentService — confirming the booking
+                    and issuing tickets.
 
                     Idempotent, like the real path: calling it twice confirms once and
                     issues each ticket once.""")
     public ResponseEntity<?> pay(@PathVariable String tranId) {
-        BankPaymentRequest payment = paymentRepository.findById(tranId).orElse(null);
-        if (payment == null) {
+        PaymentTransaction attempt = paymentTransactionRepository
+                .findByProviderAndProviderRef(PaymentProvider.ABA_PAYWAY, tranId)
+                .orElse(null);
+
+        if (attempt == null) {
             return ResponseEntity.status(404).body(Map.of("paid", false, "message", "Unknown transaction"));
         }
 
-        BookingStatus state = settlementService.settle(payment.getBookingId(), tranId);
+        if (attempt.getStatus() == PaymentStatus.SUCCESS) {
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("paid", true);
+            body.put("message", "Already settled");
+            body.put("bookingId", attempt.getBooking().getId());
+            body.put("bookingState", attempt.getBooking().getState().name());
+            return ResponseEntity.ok(body);
+        }
 
-        payment.setPaymentStatus("PAID");
-        paymentRepository.save(payment);
+        // Simulate ABA approval by calling the shared settle path.
+        // This confirms the booking and issues tickets — same as the real flow.
+        paymentService.simulateAbaApproval(attempt.getId());
+
+        // Re-read after settlement
+        attempt = paymentTransactionRepository.findById(attempt.getId()).orElseThrow();
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("paid", true);
         body.put("message", "Simulated PayWay approval");
-        body.put("bookingId", payment.getBookingId());
-        body.put("bookingState", state == null ? null : state.name());
+        body.put("bookingId", attempt.getBooking().getId());
+        body.put("bookingState", attempt.getBooking().getState().name());
         return ResponseEntity.ok(body);
     }
 }

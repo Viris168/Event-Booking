@@ -1,25 +1,34 @@
 import client from './client.js'
 
-export async function createQr(payload) {
-  const { data } = await client.post('/payment/create-qr', payload)
+export async function startPayment(bookingId, provider = 'ABA_PAYWAY') {
+  const { data } = await client.post(`/bookings/${bookingId}/payments`, {
+    provider
+  })
   return data
 }
 
-export async function checkStatus(tranId) {
-  const { data } = await client.get(`/payment/check-status/${encodeURIComponent(tranId)}`)
+export async function pollPayment(paymentId) {
+  const { data } = await client.get(`/payments/${paymentId}`)
+  return data
+}
+
+export async function getBookingPayments(bookingId) {
+  const { data } = await client.get(`/bookings/${bookingId}/payments`)
   return data
 }
 
 /**
- * Stands in for ABA approving the transaction, so the checkout's "simulate
- * success" button confirms the booking and issues real tickets instead of only
- * showing a green screen.
- *
- * Exists only while the API runs with PAYWAY_MODE=MOCK; in LIVE the endpoint is
- * not registered and this 404s, which is the intended behaviour — there must be
- * no build where a caller can declare a real booking paid.
+ * Stands in for ABA approving the transaction
  */
-export async function simulatePayment(tranId) {
+export async function simulateAbaPayment(tranId) {
   const { data } = await client.post(`/dev/payway/${encodeURIComponent(tranId)}/pay`)
+  return data
+}
+
+/**
+ * Stands in for Bakong KHQR being paid
+ */
+export async function simulateBakongPayment(paymentId) {
+  const { data } = await client.post(`/dev/payments/${paymentId}/pay`)
   return data
 }

@@ -116,6 +116,14 @@ public class PaymentTransaction {
     @Column(name = "qr_payload", updatable = false)
     private String qrPayload;
 
+    /**
+     * ABA lane: the signed checkout form ({@code action} + hidden fields, as
+     * JSON) the browser posts to PayWay to open its hosted checkout. Null for
+     * Bakong, whose {@link #qrPayload} plays the equivalent role.
+     */
+    @Column(name = "checkout_form", updatable = false)
+    private String checkoutForm;
+
     /** Bakong's settled transaction hash - not the md5 in {@link #providerRef}. */
     @Column(name = "provider_txn_hash")
     private String providerTxnHash;

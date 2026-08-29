@@ -82,6 +82,7 @@ const TONE = {
 }
 
 import { getBooking as getApiBooking } from '../api/bookings.js'
+import { getBookingPayments } from '../api/payment.js'
 import { mapBooking, mapTicket } from '../api/adapters.js'
 import { getEvent as getApiEvent } from '../api/events.js'
 import { mapEvent } from '../api/adapters.js'
@@ -98,6 +99,7 @@ export default function BookingDetailPage() {
   const [apiEvent, setApiEvent] = useState(null)
   const [apiTickets, setApiTickets] = useState(null)
   const [bookingLoading, setBookingLoading] = useState(true)
+  const [apiPayments, setApiPayments] = useState(null)
 
   useEffect(() => {
     let active = true
@@ -119,9 +121,7 @@ export default function BookingDetailPage() {
     return () => { active = false }
   }, [id])
 
-  // Tickets are a separate read because they are issued at payment, not at
-  // checkout: the booking exists long before they do, and the list is simply
-  // empty until it is CONFIRMED.
+  // Tickets and Payments are separate reads
   useEffect(() => {
     if (!apiBooking) return
     let active = true
@@ -131,6 +131,14 @@ export default function BookingDetailPage() {
       })
       .catch(() => {
         if (active) setApiTickets([])
+      })
+      
+    getBookingPayments(apiBooking.id)
+      .then((res) => {
+        if (active) setApiPayments(res || [])
+      })
+      .catch(() => {
+        if (active) setApiPayments([])
       })
     return () => { active = false }
   }, [apiBooking?.id, apiBooking?.state])
@@ -169,7 +177,7 @@ export default function BookingDetailPage() {
     : getVenue(event?.venue_id || 1)
   const items = booking.items || itemsOf(booking.id)
   const tickets = apiBooking ? (apiTickets ?? []) : ticketsOf(booking.id)
-  const payments = paymentsForBooking(booking.id)
+  const payments = apiBooking ? (apiPayments ?? []) : paymentsForBooking(booking.id)
   const history = historyOf(booking.id)
   const hold = getHold(booking.hold_id)
   const act = actionsFor(booking.state)

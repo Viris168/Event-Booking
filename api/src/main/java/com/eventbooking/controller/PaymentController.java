@@ -49,7 +49,7 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/api")
-@Tag(name = "Payments", description = "Bakong KHQR payment attempts and their reconciliation")
+@Tag(name = "Payments", description = "Payment attempts (Bakong KHQR and ABA PayWay) and their reconciliation")
 public class PaymentController {
 
     private final PaymentService paymentService;
@@ -63,7 +63,7 @@ public class PaymentController {
     @PostMapping("/bookings/{bookingId}/payments")
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(
-            summary = "Start a payment attempt (issue a KHQR)",
+            summary = "Start a payment attempt (BAKONG_KHQR or ABA_PAYWAY)",
             description = """
                     Idempotent: while an attempt is still open and unexpired, this returns
                     that same attempt and the same QR rather than issuing a second one.
@@ -74,8 +74,7 @@ public class PaymentController {
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "Attempt open; render qrPayload"),
             @ApiResponse(responseCode = "404", description = "No such booking, or it is not yours", content = @io.swagger.v3.oas.annotations.media.Content),
-            @ApiResponse(responseCode = "409", description = "Already paid, or the booking cannot take money", content = @io.swagger.v3.oas.annotations.media.Content),
-            @ApiResponse(responseCode = "501", description = "Provider not implemented (ABA_PAYWAY)", content = @io.swagger.v3.oas.annotations.media.Content)
+            @ApiResponse(responseCode = "409", description = "Already paid, or the booking cannot take money", content = @io.swagger.v3.oas.annotations.media.Content)
     })
     public PaymentResponse startPayment(
             @PathVariable Long bookingId,
