@@ -9,6 +9,12 @@ import { useLocale } from '../context/LocaleContext.jsx'
 import { countdown } from '../lib/format.js'
 import { getEvent, getHold, itemsOf, listBookings as mockListBookings, ticketsOf, useStore } from '../mock/store.js'
 import { getMyBookings } from '../api/bookings.js'
+import { getEvent as getApiEvent } from '../api/events.js'
+import { getBookingTickets } from '../api/tickets.js'
+import { mapBooking, mapEvent } from '../api/adapters.js'
+
+/** States in which a booking has tickets worth counting. */
+const TICKETED = ['CONFIRMED', 'REFUND_REQUESTED', 'REFUNDED']
 
 const STATES = [
   'PENDING_PAYMENT',
@@ -28,6 +34,8 @@ export default function MyBookingsPage() {
   const { user } = useAuth()
   const [state, setState] = useState('')
   const [apiBookings, setApiBookings] = useState(null)
+  const [apiEvents, setApiEvents] = useState({})
+  const [ticketCounts, setTicketCounts] = useState({})
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -39,7 +47,7 @@ export default function MyBookingsPage() {
     setLoading(true)
     getMyBookings()
       .then((res) => {
-        if (active && Array.isArray(res)) setApiBookings(res)
+        if (active && Array.isArray(res)) setApiBookings(res.map(mapBooking))
       })
       .catch(() => {})
       .finally(() => {
@@ -47,6 +55,39 @@ export default function MyBookingsPage() {
       })
     return () => { active = false }
   }, [user?.id])
+
+  // The list needs each booking's event for its title and date. The bookings
+  // endpoint carries only event_id, so the events are fetched alongside -
+  // deduplicated, because several bookings for one event are the normal case.
+  useEffect(() => {
+    if (!apiBookings?.length) return
+    let active = true
+
+    const ids = [...new Set(apiBookings.map((b) => b.event_id).filter(Boolean))]
+    Promise.all(ids.map((id) => getApiEvent(id).then(mapEvent).catch(() => null)))
+      .then((list) => {
+        if (!active) return
+        const byId = {}
+        list.forEach((e) => { if (e) byId[e.id] = e })
+        setApiEvents(byId)
+      })
+
+    // Ticket counts drive the "· N QR" badge. Only asked for where tickets can
+    // exist: they are issued at payment, so an unpaid booking would just cost a
+    // round trip to be told nothing.
+    const ticketed = apiBookings.filter((b) => TICKETED.includes(b.state))
+    Promise.all(
+      ticketed.map((b) =>
+        getBookingTickets(b.id)
+          .then((ts) => [b.id, (ts || []).length])
+          .catch(() => [b.id, 0]),
+      ),
+    ).then((pairs) => {
+      if (active) setTicketCounts(Object.fromEntries(pairs))
+    })
+
+    return () => { active = false }
+  }, [apiBookings])
 
   const all = apiBookings ?? mockListBookings({ userId: user.id })
   const bookings = state ? all.filter((b) => b.state === state) : all
@@ -87,13 +128,24 @@ export default function MyBookingsPage() {
       ) : bookings.length ? (
         <div className="stack-sm">
           {bookings.map((booking) => {
-            const event = getEvent(booking.event_id)
-            const items = itemsOf(booking.id)
-            const tickets = ticketsOf(booking.id)
-            const hold = getHold(booking.hold_id)
+            // An API booking must never be looked up in the prototype store:
+            // the ids belong to different databases, so a mock hit would show
+            // another event's title and a miss would crash on event.title_km.
+            const isApi = Boolean(apiBookings)
+
+            const event = isApi ? apiEvents[booking.event_id] : getEvent(booking.event_id)
+            const items = booking.items ?? itemsOf(booking.id)
+            const ticketCount = isApi
+              ? (ticketCounts[booking.id] ?? 0)
+              : ticketsOf(booking.id).length
+
+            // Only the prototype tracks a live hold clock here. On a real
+            // booking the hold is already CONSUMED - what is ticking is the
+            // payment window, which is not this badge.
+            const hold = isApi ? null : getHold(booking.hold_id)
             const holdMsLeft =
               hold?.status === 'ACTIVE' ? new Date(hold.expires_at).getTime() - Date.now() : 0
-            const units = items.reduce((a, i) => a + i.qty, 0)
+            const units = items.reduce((a, i) => a + (i.qty ?? 0), 0)
 
             return (
               <Link key={booking.id} to={`/bookings/${booking.id}`} className="card">
@@ -111,14 +163,17 @@ export default function MyBookingsPage() {
                         )}
                       </div>
                       <div className="font-bold" style={{ marginTop: '0.35rem' }}>
-                        {locale === 'km' ? event.title_km : event.title_en}
+                        {/* The event read can still be in flight, or have
+                            failed; the booking ref above already identifies the
+                            row, so an em dash beats blanking the card. */}
+                        {(locale === 'km' ? event?.title_km : event?.title_en) ?? '—'}
                       </div>
                       <div className="meta-row">
                         <Icon name="calendar" size={14} />
                         <span>
-                          {dateTime(event.starts_at)} · {units}{' '}
+                          {event?.starts_at ? `${dateTime(event.starts_at)} · ` : ''}{units}{' '}
                           {locale === 'km' ? 'ឯកតា' : units === 1 ? 'ticket' : 'tickets'}
-                          {tickets.length ? ` · ${tickets.length} QR` : ''}
+                          {ticketCount ? ` · ${ticketCount} QR` : ''}
                         </span>
                       </div>
                     </div>

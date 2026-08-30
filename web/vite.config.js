@@ -9,6 +9,12 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     port: 5173,
+    // Fail loudly if 5173 is taken instead of quietly moving to 5174. The API
+    // allows a fixed list of origins, so a dev server that drifts to another
+    // port is not an allowed origin any more: every POST comes back as a bare
+    // "403 Invalid CORS request" while GETs still work, which looks like a
+    // broken feature rather than a second copy of the dev server still running.
+    strictPort: true,
     // Proxy API calls to the Spring Boot backend during development
     proxy: {
       '/api/v1': {

@@ -178,9 +178,22 @@ export default function BookingDetailPage() {
   const items = booking.items || itemsOf(booking.id)
   const tickets = apiBooking ? (apiTickets ?? []) : ticketsOf(booking.id)
   const payments = apiBooking ? (apiPayments ?? []) : paymentsForBooking(booking.id)
-  const history = historyOf(booking.id)
-  const hold = getHold(booking.hold_id)
-  const act = actionsFor(booking.state)
+  // Both of these are keyed by id in the prototype store, and a real booking's
+  // id can collide with a prototype one - which would show another booking's
+  // timeline, or a hold bar counting down against a hold that is not yours.
+  // The API has no endpoint for either yet, so a real booking simply shows
+  // neither rather than something invented.
+  const history = apiBooking ? [] : historyOf(booking.id)
+  const hold = apiBooking ? null : getHold(booking.hold_id)
+  // Cancel and refund still only exist in the prototype store: the API has no
+  // endpoint for either, so on a real booking those buttons would mutate mock
+  // data and toast "Booking cancelled" while the actual booking sat untouched.
+  // Offering nothing is honest; offering a button that lies is not. Remove this
+  // override once the booking API grows the transition endpoints.
+  const act = (() => {
+    const a = actionsFor(booking.state)
+    return apiBooking ? { ...a, canCancel: false, canRefund: false } : a
+  })()
   const mine = booking.user_id === user?.id
 
   function labelForTicket(ticket) {
