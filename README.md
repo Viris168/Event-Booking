@@ -54,7 +54,7 @@ cp .env.example .env      # then fill in your JWT secret; DB defaults already ma
 
 Runs on http://localhost:8080.
 
-- Health check: http://localhost:8080/api/health
+- Health check: http://localhost:8080/api/v1/health
 - **Swagger UI: http://localhost:8080/swagger-ui.html** (OpenAPI spec at `/v3/api-docs`)
 
 > Requires Java 21 and the Postgres container from step 0 running. On startup, Flyway creates/updates the schema and Hibernate validates the JPA entities against it (`ddl-auto: validate` — the app won't silently alter tables).
@@ -65,7 +65,7 @@ Runs on http://localhost:8080.
 psql "postgresql://postgres:postgres@localhost:55432/event_booking" -f api/dev-seed.sql
 ```
 
-It prints an `X-User-Id` and a `holdId`. Pass that header to the endpoints in Swagger (it stands in for the authenticated user until JWT auth lands), then: check out → issue a KHQR → poll → `POST /api/dev/payments/{id}/pay` → `GET /api/bookings/{id}/tickets` → open `/api/tickets/{id}/qr.svg` → `POST /api/tickets/scan`. Bakong runs in MOCK mode by default, so no merchant credentials are needed; the QR strings are real, only settlement is simulated. See `agent_api.md` §6, §7 and §11.
+It prints an `X-User-Id` and a `holdId`. Pass that header to the endpoints in Swagger (it stands in for the authenticated user until JWT auth lands), then: check out → issue a KHQR → poll → `POST /api/v1/dev/payments/{id}/pay` → `GET /api/v1/bookings/{id}/tickets` → open `/api/v1/tickets/{id}/qr.svg` → `POST /api/v1/tickets/scan`. Bakong runs in MOCK mode by default, so no merchant credentials are needed; the QR strings are real, only settlement is simulated. See `agent_api.md` §6, §7 and §11.
 
 ### 2. Web (frontend)
 
@@ -76,7 +76,7 @@ npm install
 npm run dev
 ```
 
-Runs on http://localhost:5173. API calls to `/api/*` are proxied to the backend.
+Runs on http://localhost:5173. API calls to `/api/v1/*` are proxied to the backend.
 
 ## Environment variables
 

@@ -13,7 +13,7 @@ import java.util.List;
 
 @RestController
 @Slf4j
-@RequestMapping("/v1/holds")
+@RequestMapping("/api/v1/holds")
 public class MyHoldController {
 
     private final HoldService holdService;

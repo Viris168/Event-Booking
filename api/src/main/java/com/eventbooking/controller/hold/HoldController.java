@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @Slf4j
-@RequestMapping("/v1/events/{eventId}/holds")
+@RequestMapping("/api/v1/events/{eventId}/holds")
 public class HoldController {
 
     private final HoldService holdService;

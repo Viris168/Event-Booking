@@ -6,20 +6,20 @@ function headersWithUser(userId) {
 
 export const createHold = (eventId, { seat_ids, zone_qty }, userId) =>
   client
-    .post(`/v1/events/${eventId}/holds`, { seat_ids, zone_qty }, headersWithUser(userId))
+    .post(`/events/${eventId}/holds`, { seat_ids, zone_qty }, headersWithUser(userId))
     .then((r) => r.data)
 
 export const getHold = (eventId, holdId, userId) =>
   client
-    .get(`/v1/events/${eventId}/holds/${holdId}`, headersWithUser(userId))
+    .get(`/events/${eventId}/holds/${holdId}`, headersWithUser(userId))
     .then((r) => r.data)
 
 export const getMyActiveHold = (userId) =>
   client
-    .get(`/v1/holds/my-active-hold`, headersWithUser(userId))
+    .get(`/holds/my-active-hold`, headersWithUser(userId))
     .then((r) => r.data)
 
 export const releaseHold = (eventId, holdId, userId) =>
   client
-    .delete(`/v1/events/${eventId}/holds/${holdId}`, headersWithUser(userId))
+    .delete(`/events/${eventId}/holds/${holdId}`, headersWithUser(userId))
     .then((r) => r.data)

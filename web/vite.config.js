@@ -17,11 +17,7 @@ export default defineConfig({
     strictPort: true,
     // Proxy API calls to the Spring Boot backend during development
     proxy: {
-      '/api/v1': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/v1/, '/v1')
-      },
+      // The API serves everything under /api/v1, so this passes through as-is.
       '/api': {
         target: 'http://localhost:8080',
         changeOrigin: true,

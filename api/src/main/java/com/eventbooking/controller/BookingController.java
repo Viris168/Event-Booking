@@ -33,7 +33,7 @@ import java.util.List;
  * {@code api/dev-seed.sql} for a hold to start from.
  */
 @RestController
-@RequestMapping("/api/bookings")
+@RequestMapping("/api/v1/bookings")
 @Tag(name = "Bookings", description = "Turning a hold into a booking, and reading bookings back")
 public class BookingController {
 

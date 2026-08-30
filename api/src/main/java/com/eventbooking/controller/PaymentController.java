@@ -48,7 +48,7 @@ import java.util.List;
  * do not change when it does.
  */
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/api/v1")
 @Tag(name = "Payments", description = "Payment attempts (Bakong KHQR and ABA PayWay) and their reconciliation")
 public class PaymentController {
 

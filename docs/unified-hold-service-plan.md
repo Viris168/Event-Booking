@@ -89,9 +89,9 @@ HoldService (new, inventory lane only)
 - `controller/hold/HoldController.java` (replaces both hold controllers):
 
   ```
-  POST   /v1/events/{eventId}/holds   -> createHold   (body: { seatIds, zoneQty })
-  GET    /v1/holds/{holdId}            -> getHold      (X-User-Id header)
-  DELETE /v1/holds/{holdId}            -> releaseHold  (X-User-Id header)
+  POST   /api/v1/events/{eventId}/holds   -> createHold   (body: { seatIds, zoneQty })
+  GET    /api/v1/holds/{holdId}            -> getHold      (X-User-Id header)
+  DELETE /api/v1/holds/{holdId}            -> releaseHold  (X-User-Id header)
   ```
 
 ### Modified
@@ -149,7 +149,7 @@ HoldService (new, inventory lane only)
 
 1. **Package naming** — `service/Seat`, `service/Zone`, `service/Venue` are capitalized while
    `service/event` and `booking` are lowercase. New package: `service/hold` or `service/Hold`?
-2. **Controller routes** — consolidate to one `/v1/...` controller (proposed), or keep two thin
+2. **Controller routes** — consolidate to one `/api/v1/...` controller (proposed), or keep two thin
    `.../seats/holds` + `.../zones/holds` endpoints delegating to `HoldService`?
 3. **`convertHold` on the wire** — confirm the redundant
    `PATCH /api/events/{holdId}/seats/holds` is dead and safe to delete

@@ -17,7 +17,7 @@ import java.util.List;
 @Slf4j
 // TODO: restrict allowed origins/methods before production (currently wide open).
 @CrossOrigin
-@RequestMapping(value = "/v1")
+@RequestMapping(value = "/api/v1")
 public class EventZoneController {
 
     private final EventZoneService eventZoneService;

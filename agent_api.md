@@ -245,7 +245,7 @@ makes each QR unique — without it two attempts on one booking would collide on
 ### MOCK mode
 
 `BAKONG_MODE=MOCK` (the default) swaps one bean. The QR strings stay real and scannable;
-only the "was it paid" answer is simulated, and `/api/dev/payments/**` exposes it. Those
+only the "was it paid" answer is simulated, and `/api/v1/dev/payments/**` exposes it. Those
 endpoints do not exist when the mode is `LIVE`. Nobody needs merchant credentials to run
 the whole flow — see `api/dev-seed.sql`.
 
@@ -310,7 +310,7 @@ ticket — `WRONG_EVENT` in particular has to still work at its own gate.
 
 ### Scanning answers 200, always
 
-`POST /api/tickets/scan` returns a `ScanOutcome` rather than an RFC 7807 problem
+`POST /api/v1/tickets/scan` returns a `ScanOutcome` rather than an RFC 7807 problem
 for every ticket verdict, including forged and already-used. "Is this ticket
 good?" has a valid answer of "no", and a gate app needs one shape to render
 green or red from. Read `admitted`.
@@ -322,7 +322,7 @@ must not be told "invalid ticket". Without that check it surfaced as a 500 from
 
 ### Rendering
 
-`GET /api/tickets/{id}/qr.svg` returns SVG, drawn from ZXing's `BitMatrix` by
+`GET /api/v1/tickets/{id}/qr.svg` returns SVG, drawn from ZXing's `BitMatrix` by
 hand. Only `com.google.zxing:core` is on the classpath, deliberately: the
 `javase` module renders through `java.awt`/ImageIO and drags a headful graphics
 stack into the server. Horizontal runs are merged into one path, which is the
@@ -360,7 +360,7 @@ it surfaces as a 500. Booking-lane entries:
 | `app.booking.payment-window-minutes` | `BOOKING_PAYMENT_WINDOW_MINUTES` | `15` | How long a booking may sit unpaid |
 | `app.hold.ttl-minutes` | `HOLD_TTL_MINUTES` | `10` | Hold lifetime |
 | `app.jwt.*` | `JWT_*` | — | 15-min access token, 14-day refresh |
-| `app.payment.bakong.mode` | `BAKONG_MODE` | `MOCK` | `MOCK` simulates settlement and enables `/api/dev/payments/**`; `LIVE` calls the real API |
+| `app.payment.bakong.mode` | `BAKONG_MODE` | `MOCK` | `MOCK` simulates settlement and enables `/api/v1/dev/payments/**`; `LIVE` calls the real API |
 | `app.payment.bakong.bearer-token` | `BAKONG_BEARER_TOKEN` | — | Required in `LIVE`, or startup fails. Expires — renew it |
 | `app.payment.bakong.account-id` | `BAKONG_ACCOUNT_ID` | `event_booking@dev` | Where the money lands |
 | `app.payment.bakong.account-type` | `BAKONG_ACCOUNT_TYPE` | `INDIVIDUAL` | `MERCHANT` also needs merchant-id and acquiring-bank |
@@ -453,14 +453,14 @@ The seed prints an `X-User-Id` and a `holdId`. Then, in Swagger or curl:
 
 | Step | Call |
 |---|---|
-| Check out | `POST /api/bookings` `{"holdId":N,"buyerName":"…","buyerPhoneE164":"+855…"}` |
-| Issue a QR | `POST /api/bookings/{id}/payments` `{"provider":"BAKONG_KHQR"}` |
-| Poll | `GET /api/payments/{id}` — stop when `bookingState` is `CONFIRMED` |
-| Pay (MOCK) | `POST /api/dev/payments/{id}/pay` — call it twice; nothing should change |
-| Time out (MOCK) | `POST /api/dev/payments/{id}/expire` |
-| Tickets | `GET /api/bookings/{id}/tickets` — empty before payment, one per admission unit after |
-| The QR | `GET /api/tickets/{id}/qr.svg` — open it in a browser tab |
-| The gate | `POST /api/tickets/scan` `{"payload":"<qrPayload>","eventId":N}` — scan twice; the second is `ALREADY_CHECKED_IN` |
+| Check out | `POST /api/v1/bookings` `{"holdId":N,"buyerName":"…","buyerPhoneE164":"+855…"}` |
+| Issue a QR | `POST /api/v1/bookings/{id}/payments` `{"provider":"BAKONG_KHQR"}` |
+| Poll | `GET /api/v1/payments/{id}` — stop when `bookingState` is `CONFIRMED` |
+| Pay (MOCK) | `POST /api/v1/dev/payments/{id}/pay` — call it twice; nothing should change |
+| Time out (MOCK) | `POST /api/v1/dev/payments/{id}/expire` |
+| Tickets | `GET /api/v1/bookings/{id}/tickets` — empty before payment, one per admission unit after |
+| The QR | `GET /api/v1/tickets/{id}/qr.svg` — open it in a browser tab |
+| The gate | `POST /api/v1/tickets/scan` `{"payload":"<qrPayload>","eventId":N}` — scan twice; the second is `ALREADY_CHECKED_IN` |
 
 `X-User-Id` on the scan is the gate operator and **must be a real user id** (the seed
 prints a customer; the organizer it also creates works as the operator) — a non-existent
@@ -490,8 +490,8 @@ for a customer.
   provider that will need it, since Bakong is polled.
 - **Ticket delivery.** Issue #33 stops at "the ticket exists and the gate accepts it" —
   nothing emails or Telegrams it to the buyer, which is @Vann06-2005's outbox issue. Today
-  a customer has to come back to `GET /api/bookings/{id}/tickets`.
-- **Gate authorisation.** `POST /api/tickets/scan` records `checked_in_by` but does not
+  a customer has to come back to `GET /api/v1/bookings/{id}/tickets`.
+- **Gate authorisation.** `POST /api/v1/tickets/scan` records `checked_in_by` but does not
   check that the operator works for the event's organizer — `Event.organizerId` points at
   `organizer_profile`, which has no entity yet, and there is no auth to hang a role off.
   Anyone who can reach the API can currently check in anyone's ticket.

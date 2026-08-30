@@ -30,7 +30,7 @@ import org.springframework.web.bind.annotation.RestController;
  * flow tested here is a flow that works against the real provider.
  */
 @RestController
-@RequestMapping("/api/dev/payments")
+@RequestMapping("/api/v1/dev/payments")
 @ConditionalOnProperty(prefix = "app.payment.bakong", name = "mode", havingValue = "MOCK", matchIfMissing = true)
 @Tag(name = "Payments (simulation)",
         description = "MOCK mode only. Stands in for a customer scanning the QR, or walking away from it.")

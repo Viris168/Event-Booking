@@ -19,7 +19,7 @@ public class EventSeatController {
         this.eventSeatService = eventSeatService;
     }
 
-    @PostMapping("/v1/events/{eventId}/seats")
+    @PostMapping("/api/v1/events/{eventId}/seats")
     public ResponseEntity<SeatMapResponse> generateEventSeats(
             @PathVariable Long eventId,
             @Valid @RequestBody GenerateEventSeatsRequest request
@@ -29,7 +29,7 @@ public class EventSeatController {
     }
 
 
-    @GetMapping("/v1/event/{eventId}/seat-map")
+    @GetMapping("/api/v1/event/{eventId}/seat-map")
     public ResponseEntity<SeatMapResponse> getSeatMap(
             @PathVariable Long eventId
     ) {

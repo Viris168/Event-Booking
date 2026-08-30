@@ -39,14 +39,14 @@ public class OpenApiConfig {
                                 merchant account is needed. The QR strings are real and
                                 scannable - only the "has it been paid" answer is simulated.
 
-                                1. `POST /api/bookings/{id}/payments` with
+                                1. `POST /api/v1/bookings/{id}/payments` with
                                    `{"provider":"BAKONG_KHQR"}` - returns `qrPayload`, the
                                    KHQR string. Call it twice: you get the same attempt back.
-                                2. `GET /api/payments/{id}` - what a pay screen polls.
-                                3. `POST /api/dev/payments/{id}/pay` - the customer pays.
+                                2. `GET /api/v1/payments/{id}` - what a pay screen polls.
+                                3. `POST /api/v1/dev/payments/{id}/pay` - the customer pays.
                                    The booking should read CONFIRMED. Call it again; nothing
                                    should change, which is the point of the whole design.
-                                4. `POST /api/dev/payments/{id}/expire` - the other ending:
+                                4. `POST /api/v1/dev/payments/{id}/expire` - the other ending:
                                    attempt EXPIRED, booking back to PAYMENT_FAILED, seats
                                    still held, free to start a new QR.
 

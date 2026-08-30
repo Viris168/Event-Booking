@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @Slf4j
 @CrossOrigin
-@RequestMapping(value = "/v1/event")
+@RequestMapping(value = "/api/v1/event")
 public class EventController {
 
     private final EventService eventService;

@@ -33,7 +33,7 @@ import java.util.List;
  * be requested twice.
  */
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/api/v1")
 @Tag(name = "Tickets", description = "Issued QR tickets and gate check-in")
 public class TicketController {
 

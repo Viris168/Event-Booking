@@ -74,7 +74,7 @@ app:
   payment:
     bakong:
       # MOCK = real KHQR strings, simulated settlement, and the
-      # /api/dev/payments/** endpoints. LIVE talks to the real API and drops
+      # /api/v1/dev/payments/** endpoints. LIVE talks to the real API and drops
       # those endpoints entirely.
       mode: ${BAKONG_MODE:MOCK}
       base-url: ${BAKONG_BASE_URL:https://api-bakong.nbc.gov.kh}
@@ -149,7 +149,7 @@ payway:
   merchant-id: ${PAYWAY_MERCHANT_ID:ec477769}
   # Merchant credential. Keep the real value in .env, not here.
   api-key: ${PAYWAY_API_KEY:}
-  # MOCK registers /api/dev/payway/**, which settles a transaction without ABA
+  # MOCK registers /api/v1/dev/payway/**, which settles a transaction without ABA
   # having approved it - that is what the checkout's "simulate success" button
   # calls. LIVE drops those endpoints entirely, so there is no build in which a
   # caller can declare a real booking paid. Set PAYWAY_MODE=LIVE in any

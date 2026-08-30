@@ -341,12 +341,12 @@ shaped for this screen; the differences from the mock are small but specific:
 
 | Mock (`store.js`) | Real API |
 |---|---|
-| `createBooking(...)` | `POST /api/bookings` `{holdId, buyerName, buyerPhoneE164, buyerEmail}` |
-| `startPayment(bookingId, provider)` | `POST /api/bookings/{id}/payments` `{provider}` |
+| `createBooking(...)` | `POST /api/v1/bookings` `{holdId, buyerName, buyerPhoneE164, buyerEmail}` |
+| `startPayment(bookingId, provider)` | `POST /api/v1/bookings/{id}/payments` `{provider}` |
 | `latestPayment(bookingId)` | the same call — it returns the open attempt rather than opening a second |
-| `paymentsForBooking(bookingId)` | `GET /api/bookings/{id}/payments` |
-| the `setInterval` poll | `GET /api/payments/{id}` every `pollAfterMs` |
-| `resolvePayment(id, 'SUCCESS')` | `POST /api/dev/payments/{id}/pay` — **MOCK mode only**, and it disappears entirely in `LIVE` |
+| `paymentsForBooking(bookingId)` | `GET /api/v1/bookings/{id}/payments` |
+| the `setInterval` poll | `GET /api/v1/payments/{id}` every `pollAfterMs` |
+| `resolvePayment(id, 'SUCCESS')` | `POST /api/v1/dev/payments/{id}/pay` — **MOCK mode only**, and it disappears entirely in `LIVE` |
 
 Four things worth knowing before wiring it up:
 
@@ -370,7 +370,7 @@ existing "try again" buttons should do. The booking only really dies when its
 
 ### Tickets are real too (issue #33)
 
-`GET /api/bookings/{id}/tickets` returns one entry **per admission unit**, not
+`GET /api/v1/bookings/{id}/tickets` returns one entry **per admission unit**, not
 per line: a zone line of `qty: 3` comes back as three tickets with `unitSeq`
 1, 2, 3. `TicketCard.jsx` should render one card each — the mock's shape is
 close, but anything that assumes one ticket per booking item will show a family
@@ -380,12 +380,12 @@ For the QR itself there are two options, and the second is usually less work:
 
 1. `qrPayload` on the ticket, fed to a JS QR encoder — replaces `QrGlyph` and
    keeps rendering client-side.
-2. `GET /api/tickets/{id}/qr.svg?size=320` straight into an `<img src>`. It is a
+2. `GET /api/v1/tickets/{id}/qr.svg?size=320` straight into an `<img src>`. It is a
    real SVG, so it prints and zooms cleanly, and no encoder ships to the browser.
    The header is `Cache-Control: no-store` — a QR is a bearer credential, so do
    not stash it in a service worker or a data store.
 
-`CheckInPage.jsx` now has a real backend: `POST /api/tickets/scan` with
+`CheckInPage.jsx` now has a real backend: `POST /api/v1/tickets/scan` with
 `{payload, eventId}` and the operator in `X-User-Id`. Three things to build
 around:
 

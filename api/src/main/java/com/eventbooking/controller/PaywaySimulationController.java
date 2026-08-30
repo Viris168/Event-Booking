@@ -33,7 +33,7 @@ import java.util.Map;
  * against the real gateway.
  */
 @RestController
-@RequestMapping("/api/dev/payway")
+@RequestMapping("/api/v1/dev/payway")
 @ConditionalOnProperty(prefix = "payway", name = "mode", havingValue = "MOCK", matchIfMissing = true)
 @Tag(name = "Payments (PayWay simulation)",
         description = "MOCK mode only. Stands in for ABA approving a transaction.")

@@ -8,7 +8,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
       private String baseUrl;
       private String merchantId;
       private String apiKey;
-      /** MOCK or LIVE. MOCK is what registers the /api/dev/payway/** endpoints. */
+      /** MOCK or LIVE. MOCK is what registers the /api/v1/dev/payway/** endpoints. */
       private String mode = "MOCK";
 
       public String getMode() {
