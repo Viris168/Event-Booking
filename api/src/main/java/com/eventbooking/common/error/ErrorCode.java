@@ -31,10 +31,12 @@ public enum ErrorCode {
 
     // 403 Forbidden
     NOT_AN_ORGANIZER(HttpStatus.FORBIDDEN),
+    NOT_AN_ADMIN(HttpStatus.FORBIDDEN),
     NOT_RESOURCE_OWNER(HttpStatus.FORBIDDEN),
 
     // 409 Conflict
     INVALID_EVENT_STATUS_TRANSITION(HttpStatus.CONFLICT),
+    EVENT_NOT_EDITABLE(HttpStatus.CONFLICT),
     EVENT_NOT_ON_SALE(HttpStatus.CONFLICT),
     VENUE_DISABLED(HttpStatus.CONFLICT),
     NO_INVENTORY(HttpStatus.CONFLICT),

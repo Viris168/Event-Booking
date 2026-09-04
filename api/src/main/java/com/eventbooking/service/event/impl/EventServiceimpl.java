@@ -1,9 +1,12 @@
 package com.eventbooking.service.event.impl;
 
 import com.eventbooking.Enumeration.EventStatus;
+import com.eventbooking.Enumeration.EventTransition;
 import com.eventbooking.Enumeration.ImageRole;
+import com.eventbooking.catalog.EventStateMachine;
 import com.eventbooking.catalog.error.EventImageNotFoundException;
 import com.eventbooking.catalog.error.EventNotOnSaleException;
+import com.eventbooking.catalog.error.EventNotEditableException;
 import com.eventbooking.catalog.error.EventNotFoundException;
 import com.eventbooking.catalog.error.InvalidEventStatusTransitionException;
 import com.eventbooking.catalog.error.InventoryModeChangeBlockedException;
@@ -12,6 +15,10 @@ import com.eventbooking.catalog.error.InvalidSalesWindowException;
 import com.eventbooking.catalog.error.VenueDisabledException;
 import com.eventbooking.catalog.error.VenueNotFoundException;
 import com.eventbooking.dto.event.CreateEventRequest;
+import com.eventbooking.dto.event.EventReviewResponse;
+import com.eventbooking.repository.EventReviewRepository;
+import com.eventbooking.repository.AppUserRepository;
+import com.eventbooking.model.AppUser;
 import com.eventbooking.dto.event.EventResponse;
 import com.eventbooking.dto.event.UpdateEventRequest;
 import com.eventbooking.dto.eventzone.EventZoneResponse;
@@ -47,9 +54,15 @@ public class EventServiceimpl implements EventService {
     private final EventZoneRepository eventZoneRepository;
     private final CloudinaryService cloudinaryService;
     private final OrganizerResolver organizerResolver;
+    private final EventStateMachine stateMachine;
+    private final EventReviewRepository eventReviewRepository;
+    private final AppUserRepository appUserRepository;
 
-    public EventServiceimpl(VenueRepository venueRepository, EventRepository eventRepository, SeatClassRepository seatClassRepository, EventZoneRepository eventZoneRepository, CloudinaryService cloudinaryService, OrganizerResolver organizerResolver) {
+    public EventServiceimpl(VenueRepository venueRepository, EventRepository eventRepository, SeatClassRepository seatClassRepository, EventZoneRepository eventZoneRepository, CloudinaryService cloudinaryService, OrganizerResolver organizerResolver, EventStateMachine stateMachine, EventReviewRepository eventReviewRepository, AppUserRepository appUserRepository) {
         this.organizerResolver = organizerResolver;
+        this.stateMachine = stateMachine;
+        this.eventReviewRepository = eventReviewRepository;
+        this.appUserRepository = appUserRepository;
         this.venueRepository = venueRepository;
         this.eventRepository = eventRepository;
         this.seatClassRepository = seatClassRepository;
@@ -76,7 +89,14 @@ public class EventServiceimpl implements EventService {
         organizerResolver.requireOwner(organizerId, venue.getOrganizerId(), "venue", venue.getId());
 
         Event event = eventRepository.save(EventMapper.toEventEntity(request, venue, organizerId));
-        return EventMapper.toEventResponse(event, List.of(), List.of(), null, null);
+        // A freshly created event has no inventory, no images and no review
+        // history yet, so the empty collections are the truth rather than a
+        // shortcut - but its actions and editability still come from the state
+        // machine, so the form can render its footer immediately.
+        return EventMapper.toEventResponse(event, List.of(), List.of(), null, null,
+                List.copyOf(stateMachine.availableTransitions(event.getStatus())),
+                stateMachine.isEditable(event.getStatus()),
+                null);
     }
 
     @Override
@@ -91,6 +111,15 @@ public class EventServiceimpl implements EventService {
     @Transactional
     public EventResponse updateEvent(Long organizerId, Long eventId, UpdateEventRequest request) {
         Event event = requireOwnedEvent(organizerId, eventId);
+
+        // The organiser form greys its inputs out in these states, but a greyed
+        // input is a suggestion - nothing stopped the PATCH going through. Which
+        // matters most for APPROVED: an admin approves version A, the organiser
+        // edits, publishes version B, and review never saw what went on sale.
+        // Changing an approved event costs a WITHDRAW back to DRAFT.
+        if (!stateMachine.isEditable(event.getStatus())) {
+            throw new EventNotEditableException(event.getStatus());
+        }
 
         if (request.inventoryMode() != null
                 && request.inventoryMode() != event.getInventoryMode()
@@ -137,12 +166,12 @@ public class EventServiceimpl implements EventService {
     public EventResponse publishEvent(Long organizerId, Long eventId) {
         Event event = requireOwnedEvent(organizerId, eventId);
 
-        if (event.getStatus() != EventStatus.DRAFT) {
-            throw new InvalidEventStatusTransitionException(
-                    event.getStatus(), EventStatus.PUBLISHED);
-        }
-
-        event.setStatus(EventStatus.PUBLISHED);
+        // Was: any DRAFT could be published, which made the whole review step
+        // optional - an organiser could skip straight past it on their own
+        // event. The state machine allows PUBLISH only out of APPROVED, so
+        // review is now the only route to being on sale.
+        event.setStatus(stateMachine.requireTransition(
+                event.getStatus(), EventTransition.PUBLISH));
         eventRepository.save(event);
         return toEventResponse(event);
     }
@@ -173,12 +202,13 @@ public class EventServiceimpl implements EventService {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new EventNotFoundException(eventId));
 
-        if (event.getStatus() == EventStatus.TAKEN_DOWN) {
-            throw new InvalidEventStatusTransitionException(
-                    event.getStatus(), EventStatus.TAKEN_DOWN);
-        }
-
-        event.setStatus(EventStatus.TAKEN_DOWN);
+        // Was: anything that was not already TAKEN_DOWN, which included DRAFT
+        // and now would include PENDING_REVIEW - taking down an event that was
+        // never on sale, and pushing a queued one into a terminal state behind
+        // the reviewer's back. Takedown is a post-publication action, so
+        // PUBLISHED is its only legal source.
+        event.setStatus(stateMachine.requireTransition(
+                event.getStatus(), EventTransition.TAKE_DOWN));
         eventRepository.save(event);
         return toEventResponse(event);
     }
@@ -333,6 +363,31 @@ public class EventServiceimpl implements EventService {
                 seatClasses,
                 zones,
                 cloudinaryService.urlFor(event.getCloudinaryImageId()),
-                cloudinaryService.urlFor(event.getCloudinaryBannerId()));
+                cloudinaryService.urlFor(event.getCloudinaryBannerId()),
+                List.copyOf(stateMachine.availableTransitions(event.getStatus())),
+                stateMachine.isEditable(event.getStatus()),
+                latestReview(event.getId()));
+    }
+
+    /**
+     * The row the organiser's status banner renders, or null before any
+     * transition. Inlined into the event response so the form does not need a
+     * second request to draw its own header.
+     */
+    private EventReviewResponse latestReview(Long eventId) {
+        return eventReviewRepository.findFirstByEventIdOrderByCreatedAtDesc(eventId)
+                .map(review -> new EventReviewResponse(
+                        review.getId(),
+                        review.getAction(),
+                        review.getMessage(),
+                        review.getActorId(),
+                        appUserRepository.findById(review.getActorId())
+                                .map(AppUser::getDisplayName)
+                                .orElse(null),
+                        review.getFromStatus(),
+                        review.getToStatus(),
+                        review.getCreatedAt(),
+                        List.of()))
+                .orElse(null);
     }
 }

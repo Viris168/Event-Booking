@@ -5,7 +5,7 @@ import { useLocale } from '../../context/LocaleContext.jsx'
 import { Alert } from '../../components/ui.jsx'
 
 export default function OrganizerLayout() {
-  const { t } = useLocale()
+  const { t, locale } = useLocale()
   const { organizerProfile, isAdmin } = useAuth()
 
   return (
@@ -14,6 +14,7 @@ export default function OrganizerLayout() {
         links={[
           { to: '/organizer', label: t('myEvents'), end: true },
           { to: '/organizer/venues', label: t('venues') },
+          { to: '/organizer/transactions', label: locale === 'km' ? 'ប្រតិបត្តិការ' : 'Transactions' },
           { to: '/organizer/check-in', label: t('checkIn') },
         ]}
       />

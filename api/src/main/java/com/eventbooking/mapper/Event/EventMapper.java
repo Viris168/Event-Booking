@@ -2,7 +2,9 @@ package com.eventbooking.mapper.Event;
 
 import com.eventbooking.Enumeration.EventStatus;
 import com.eventbooking.dto.event.CreateEventRequest;
+import com.eventbooking.Enumeration.EventTransition;
 import com.eventbooking.dto.event.EventResponse;
+import com.eventbooking.dto.event.EventReviewResponse;
 import com.eventbooking.dto.eventzone.EventZoneResponse;
 import com.eventbooking.dto.seatclass.SeatClassResponse;
 import com.eventbooking.dto.venue.VenueResponse;
@@ -49,7 +51,9 @@ public class EventMapper {
      *                       the slot is empty.
      */
     public static EventResponse  toEventResponse(Event event, List<SeatClassResponse> seatClasses, List<EventZoneResponse>  eventZones,
-                                                 String coverImageUrl, String bannerImageUrl) {
+                                                 String coverImageUrl, String bannerImageUrl,
+                                                 List<EventTransition> availableActions, boolean editable,
+                                                 EventReviewResponse latestReview) {
 
 
         VenueResponse v = new VenueResponse(
@@ -107,6 +111,10 @@ public class EventMapper {
                 event.getSalesOpenAt(),
                 event.getSalesCloseAt(),
                 event.getCreatedAt(),
+                event.getSubmittedAt(),
+                availableActions,
+                editable,
+                latestReview,
                 seatClasses,
                 eventZones,
                 totalCapacity,

@@ -21,6 +21,7 @@ import OrganizerVenuesPage from './pages/organizer/OrganizerVenuesPage.jsx'
 import SeatMapEditorPage from './pages/organizer/SeatMapEditorPage.jsx'
 import EventFormPage from './pages/organizer/EventFormPage.jsx'
 import EventSalesPage from './pages/organizer/EventSalesPage.jsx'
+import OrganizerTransactionsPage from './pages/organizer/OrganizerTransactionsPage.jsx'
 import CheckInPage from './pages/organizer/CheckInPage.jsx'
 
 import AdminLayout from './pages/admin/AdminLayout.jsx'
@@ -64,6 +65,7 @@ export default function App() {
               <Route path="events/new" element={<EventFormPage />} />
               <Route path="events/:id/edit" element={<EventFormPage />} />
               <Route path="events/:id/sales" element={<EventSalesPage />} />
+              <Route path="transactions" element={<OrganizerTransactionsPage />} />
               <Route path="check-in" element={<CheckInPage />} />
             </Route>
           </Route>

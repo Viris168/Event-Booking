@@ -1119,6 +1119,30 @@
     background: linear-gradient(135deg, #f43f5e, #7f1d1d);
   }
 
+  /* --------------------------------------------------------- chart fills */
+  /* Categorical bar fills for the organizer / admin dashboards. Hues are taken
+     from the cover gradients above so a chart and an event card read as one
+     product rather than two palettes that happen to share a page.
+
+     Each runs mid-tone -> lighter along the bar's own direction, so the tip is
+     the brightest part and length stays the thing the eye measures. Saturation
+     is high enough to hold up on the dark page background as well as the light
+     one, which flat semantic colours (tuned for badges on soft fills) do not.
+
+     Numbered rather than named: they are assigned by position in a ranking,
+     and a name like `.bar-revenue` would imply a meaning the colour does not
+     carry. */
+  .bar-1 { background: linear-gradient(90deg, #3446b8 0%, #6d7ff0 100%); }
+  .bar-2 { background: linear-gradient(90deg, #0d9488 0%, #2fd4b4 100%); }
+  .bar-3 { background: linear-gradient(90deg, #e2960d 0%, #ffc75a 100%); }
+  .bar-4 { background: linear-gradient(90deg, #d62e70 0%, #ff77a8 100%); }
+  .bar-5 { background: linear-gradient(90deg, #7322c2 0%, #a855f7 100%); }
+
+  /* The month chart is one series, so it takes one colour - but vertically,
+     brightest at the top, so the bars read as growing rather than as blocks. */
+  .bar-month { background: linear-gradient(180deg, #6d7ff0 0%, #3446b8 100%); }
+  .bar-month:hover { background: linear-gradient(180deg, #8b9aff 0%, #4054c8 100%); }
+
   /* ---------------------------------------------------------------- badges */
   .badge {
     @apply inline-flex items-center gap-[0.32rem] whitespace-nowrap rounded-full
