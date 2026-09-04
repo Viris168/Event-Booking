@@ -1,0 +1,456 @@
+{
+  "__inputs": [],
+  "__requires": [
+    { "type": "grafana", "id": "grafana", "name": "Grafana", "version": "8.0.0" },
+    { "type": "datasource", "id": "prometheus", "name": "Prometheus", "version": "1.0.0" }
+  ],
+  "annotations": { "list": [] },
+  "description": "Spring Boot 3 / Micrometer metrics — HTTP, JVM, HikariCP, custom business counters",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+
+    {
+      "id": 1,
+      "type": "row",
+      "title": "🌐 HTTP",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "collapsed": false
+    },
+
+    {
+      "id": 2,
+      "title": "HTTP Request Rate (req/s)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 1 },
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "unit": "reqps"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(http_server_requests_seconds_count{application=\"event-booking-api\"}[1m])) by (uri, method, status)",
+          "legendFormat": "{{method}} {{uri}} [{{status}}]",
+          "refId": "A"
+        }
+      ],
+      "options": { "tooltip": { "mode": "multi" } }
+    },
+
+    {
+      "id": 3,
+      "title": "HTTP Response Time — p50 / p95 / p99",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 1 },
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "unit": "s"
+        }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(http_server_requests_seconds_bucket{application=\"event-booking-api\"}[1m])) by (le, uri))",
+          "legendFormat": "p50 {{uri}}",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{application=\"event-booking-api\"}[1m])) by (le, uri))",
+          "legendFormat": "p95 {{uri}}",
+          "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{application=\"event-booking-api\"}[1m])) by (le, uri))",
+          "legendFormat": "p99 {{uri}}",
+          "refId": "C"
+        }
+      ]
+    },
+
+    {
+      "id": 4,
+      "title": "HTTP Error Rate (4xx + 5xx)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 9 },
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "unit": "reqps"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(http_server_requests_seconds_count{application=\"event-booking-api\", status=~\"4..\"}[1m])) by (uri, status)",
+          "legendFormat": "4xx {{uri}} [{{status}}]",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(rate(http_server_requests_seconds_count{application=\"event-booking-api\", status=~\"5..\"}[1m])) by (uri, status)",
+          "legendFormat": "5xx {{uri}} [{{status}}]",
+          "refId": "B"
+        }
+      ]
+    },
+
+    {
+      "id": 5,
+      "title": "Total Requests (last 5m)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 9 },
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "steps": [{ "color": "green", "value": 0 }] },
+          "unit": "short"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(increase(http_server_requests_seconds_count{application=\"event-booking-api\"}[5m]))",
+          "legendFormat": "Requests",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 6,
+      "title": "Error % (last 5m)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 9 },
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 5 }
+            ]
+          },
+          "unit": "percent"
+        }
+      },
+      "targets": [
+        {
+          "expr": "100 * sum(rate(http_server_requests_seconds_count{application=\"event-booking-api\", status=~\"[45]..\"}[5m])) / sum(rate(http_server_requests_seconds_count{application=\"event-booking-api\"}[5m]))",
+          "legendFormat": "Error %",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 10,
+      "type": "row",
+      "title": "☕ JVM",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 17 },
+      "collapsed": false
+    },
+
+    {
+      "id": 11,
+      "title": "JVM Heap Memory",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 18 },
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "unit": "bytes"
+        }
+      },
+      "targets": [
+        {
+          "expr": "jvm_memory_used_bytes{application=\"event-booking-api\", area=\"heap\"}",
+          "legendFormat": "Used ({{id}})",
+          "refId": "A"
+        },
+        {
+          "expr": "jvm_memory_committed_bytes{application=\"event-booking-api\", area=\"heap\"}",
+          "legendFormat": "Committed ({{id}})",
+          "refId": "B"
+        },
+        {
+          "expr": "jvm_memory_max_bytes{application=\"event-booking-api\", area=\"heap\"}",
+          "legendFormat": "Max ({{id}})",
+          "refId": "C"
+        }
+      ]
+    },
+
+    {
+      "id": 12,
+      "title": "JVM Non-Heap Memory",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 18 },
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "unit": "bytes"
+        }
+      },
+      "targets": [
+        {
+          "expr": "jvm_memory_used_bytes{application=\"event-booking-api\", area=\"nonheap\"}",
+          "legendFormat": "Used ({{id}})",
+          "refId": "A"
+        },
+        {
+          "expr": "jvm_memory_committed_bytes{application=\"event-booking-api\", area=\"nonheap\"}",
+          "legendFormat": "Committed ({{id}})",
+          "refId": "B"
+        }
+      ]
+    },
+
+    {
+      "id": 13,
+      "title": "JVM GC Pause Duration",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 26 },
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "unit": "s"
+        }
+      },
+      "targets": [
+        {
+          "expr": "rate(jvm_gc_pause_seconds_sum{application=\"event-booking-api\"}[1m])",
+          "legendFormat": "GC Pause — {{action}} ({{cause}})",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 14,
+      "title": "JVM Threads",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 26 },
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "unit": "short"
+        }
+      },
+      "targets": [
+        {
+          "expr": "jvm_threads_live_threads{application=\"event-booking-api\"}",
+          "legendFormat": "Live",
+          "refId": "A"
+        },
+        {
+          "expr": "jvm_threads_peak_threads{application=\"event-booking-api\"}",
+          "legendFormat": "Peak",
+          "refId": "B"
+        },
+        {
+          "expr": "jvm_threads_daemon_threads{application=\"event-booking-api\"}",
+          "legendFormat": "Daemon",
+          "refId": "C"
+        }
+      ]
+    },
+
+    {
+      "id": 20,
+      "type": "row",
+      "title": "🗄️ HikariCP — Database Connection Pool",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 34 },
+      "collapsed": false
+    },
+
+    {
+      "id": 21,
+      "title": "HikariCP Active / Idle / Pending",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 35 },
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "unit": "short"
+        }
+      },
+      "targets": [
+        {
+          "expr": "hikaricp_connections_active{application=\"event-booking-api\"}",
+          "legendFormat": "Active",
+          "refId": "A"
+        },
+        {
+          "expr": "hikaricp_connections_idle{application=\"event-booking-api\"}",
+          "legendFormat": "Idle",
+          "refId": "B"
+        },
+        {
+          "expr": "hikaricp_connections_pending{application=\"event-booking-api\"}",
+          "legendFormat": "Pending (waiting for connection)",
+          "refId": "C"
+        }
+      ]
+    },
+
+    {
+      "id": 22,
+      "title": "HikariCP Connection Acquisition Time",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 35 },
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "unit": "s"
+        }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(hikaricp_connections_acquire_seconds_bucket{application=\"event-booking-api\"}[1m])) by (le, pool))",
+          "legendFormat": "p95 acquire — {{pool}}",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(hikaricp_connections_acquire_seconds_bucket{application=\"event-booking-api\"}[1m])) by (le, pool))",
+          "legendFormat": "p99 acquire — {{pool}}",
+          "refId": "B"
+        }
+      ]
+    },
+
+    {
+      "id": 23,
+      "title": "HikariCP Pool Size",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 43 },
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "steps": [{ "color": "blue", "value": 0 }] },
+          "unit": "short"
+        }
+      },
+      "targets": [
+        {
+          "expr": "hikaricp_connections{application=\"event-booking-api\"}",
+          "legendFormat": "Pool Size",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 24,
+      "title": "HikariCP Timeouts",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 43 },
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "red", "value": 1 }
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(increase(hikaricp_connections_timeout_total{application=\"event-booking-api\"}[5m]))",
+          "legendFormat": "Timeouts (5m)",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 30,
+      "type": "row",
+      "title": "💳 Business Metrics",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 47 },
+      "collapsed": false
+    },
+
+    {
+      "id": 31,
+      "title": "Payment Poll Duration (p95)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 48 },
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "unit": "s"
+        }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(payment_poll_duration_seconds_bucket{application=\"event-booking-api\"}[1m])) by (le))",
+          "legendFormat": "p95 poll duration",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 32,
+      "title": "Hold Expiry Job Duration",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 48 },
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "unit": "s"
+        }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(hold_expiry_duration_seconds_bucket{application=\"event-booking-api\"}[1m])) by (le))",
+          "legendFormat": "p95 hold expiry duration",
+          "refId": "A"
+        }
+      ]
+    }
+
+  ],
+  "refresh": "15s",
+  "schemaVersion": 38,
+  "tags": ["spring-boot", "java", "event-booking"],
+  "templating": { "list": [] },
+  "time": { "from": "now-30m", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Event Booking API",
+  "uid": "event-booking-api-v1",
+  "version": 1
+}

@@ -58,4 +58,8 @@ public class AppUser {
 
     @Column(name = "provider_subject")
     private String providerSubject;
+
+    // In AppUser.java
+    @Column(name = "cloudinary_image_id")
+    private String cloudinaryImageId;
 }

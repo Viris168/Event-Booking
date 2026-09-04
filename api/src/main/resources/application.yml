@@ -47,6 +47,15 @@ spring:
           time_zone: UTC
     open-in-view: false
 
+  servlet:
+    multipart:
+      # The container-level backstop, deliberately ABOVE FileUploadUtil's 2MB
+      # rule. Tomcat rejects a part over this before any controller runs, so
+      # matching the two exactly would mean the app's own message - which
+      # names the actual and allowed sizes - never got the chance to fire.
+      max-file-size: 4MB
+      max-request-size: 8MB
+
   jackson:
     time-zone: UTC
     property-naming-strategy: SNAKE_CASE
@@ -128,6 +137,22 @@ app:
     qr-margin-modules: ${TICKET_QR_MARGIN:4}
   scheduling:
     enabled: ${SCHEDULING_ENABLED:true}
+  cloudinary:
+    # Image hosting for events and avatars. All three come from the dashboard
+    # at https://console.cloudinary.com. Only cloud-name is public - it appears
+    # in every delivery URL - so the other two belong in .env and nowhere else.
+    # Defaulted to empty rather than omitted so the app still starts without
+    # them; CloudinaryConfig fails the startup itself with a readable message
+    # when any is blank, instead of letting every upload 401 at runtime.
+    cloud-name: ${CLOUDINARY_CLOUD_NAME:}
+    api-key: ${CLOUDINARY_API_KEY:}
+    api-secret: ${CLOUDINARY_API_SECRET:}
+    # https delivery URLs. No reason to ever turn this off.
+    secure: ${CLOUDINARY_SECURE:true}
+    # Folder every upload is filed under, as a public_id prefix. Point dev and
+    # production at different values or they share one asset namespace and a
+    # dev upload can overwrite a live poster.
+    folder: ${CLOUDINARY_FOLDER:event-booking/dev}
 
 # Swagger UI at http://localhost:8080/swagger-ui.html, spec at /v3/api-docs
 springdoc:
@@ -158,3 +183,21 @@ payway:
   close-stale:
     fixed-delay-ms: 60000
     after-minutes: 1
+
+# ── Observability (Actuator + Prometheus) ──────────────
+management:
+  endpoints:
+    web:
+      exposure:
+        # health → liveness/readiness probe
+        # prometheus → Prometheus scrape endpoint
+        # metrics → JSON view of all metrics (handy for manual inspection)
+        include: health, info, prometheus, metrics
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    tags:
+      # Tags every metric with the app name so Grafana can filter by
+      # application when multiple services share the same Prometheus.
+      application: ${spring.application.name}

@@ -12,6 +12,7 @@ import com.eventbooking.repository.EventRepository;
 import com.eventbooking.repository.SeatClassRepository;
 import com.eventbooking.service.Seatclass.SeatClassService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -27,6 +28,7 @@ public class SeatClassServiceimpl implements SeatClassService {
     }
 
     @Override
+    @Transactional
     public SeatClassResponse createSeatClass(Long eventId, CreateSeatClassRequest request) {
         Event event = eventRepository.findById(eventId).orElseThrow(()-> new EventNotFoundException(eventId));
         SeatClass seatClass = SeatClassMapper.toSeatClass(request,event);
@@ -35,12 +37,14 @@ public class SeatClassServiceimpl implements SeatClassService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public SeatClassResponse getSeatClass(Long seatClassId) {
         SeatClass seatClass = seatClassRepository.findById(seatClassId).orElseThrow(()-> new SeatClassNotFoundException(seatClassId));
         return SeatClassMapper.toSeatClassResponse(seatClass);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<SeatClassResponse> findByEvent(Long eventId) {
         List<SeatClass> seatClasses = seatClassRepository.findAllByEventId(eventId);
         return seatClasses.stream()
@@ -49,11 +53,12 @@ public class SeatClassServiceimpl implements SeatClassService {
     }
 
     @Override
+    @Transactional
     public SeatClassResponse updateSeatClass(Long seatClassId, UpdateSeatClassRequest request) {
         SeatClass seatClass = seatClassRepository.findById(seatClassId).orElseThrow(()-> new SeatClassNotFoundException(seatClassId));
-        seatClass.setNameEn(request.nameEn());
-        seatClass.setNameEn(request.nameKm());
-        seatClass.setPriceUsdCents(request.priceUsdCents());
+        if (request.nameEn() != null) seatClass.setNameEn(request.nameEn());
+        if (request.nameKm() != null) seatClass.setNameKm(request.nameKm());
+        if (request.priceUsdCents() != null) seatClass.setPriceUsdCents(request.priceUsdCents());
         SeatClass save =  seatClassRepository.save(seatClass);
         return SeatClassMapper.toSeatClassResponse(save);
     }

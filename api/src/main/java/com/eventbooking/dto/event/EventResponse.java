@@ -21,6 +21,8 @@ public record EventResponse(
         String descriptionKm,
         String category,
         Integer cover,
+        String coverImageUrl,
+        String bannerImageUrl,
         EventStatus status,
         Instant startsAt,
         Instant doorsOpenAt,
