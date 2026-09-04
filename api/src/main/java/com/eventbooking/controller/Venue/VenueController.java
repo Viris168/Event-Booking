@@ -3,6 +3,7 @@ package com.eventbooking.controller.Venue;
 import com.eventbooking.dto.venue.CreateVenueRequest;
 import com.eventbooking.dto.venue.UpdateVenueRequest;
 import com.eventbooking.dto.venue.VenueResponse;
+import com.eventbooking.security.OrganizerResolver;
 import com.eventbooking.service.Venue.VenueService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
@@ -18,14 +19,19 @@ import java.util.List;
 @RequestMapping(value = "/api/v1/venue")
 public class VenueController {
     private final VenueService venueService;
+    private final OrganizerResolver organizerResolver;
 
-    public VenueController(VenueService venueService) {
+    public VenueController(VenueService venueService, OrganizerResolver organizerResolver) {
         this.venueService = venueService;
+        this.organizerResolver = organizerResolver;
     }
 
     @PostMapping
-    public ResponseEntity<VenueResponse> createVenue(@Valid @RequestBody CreateVenueRequest venue) {
-        VenueResponse v = venueService.createVenue(venue);
+    public ResponseEntity<VenueResponse> createVenue(
+            @RequestHeader("X-User-Id") Long actorUserId,
+            @Valid @RequestBody CreateVenueRequest venue) {
+        Long organizerId = organizerResolver.requireOrganizerId(actorUserId);
+        VenueResponse v = venueService.createVenue(organizerId, venue);
         return new ResponseEntity<>(v, HttpStatus.CREATED);
     }
 
@@ -41,14 +47,21 @@ public class VenueController {
     }
 
     @PatchMapping("/{id}")
-    public ResponseEntity<VenueResponse> updateVenue(@PathVariable Long id, @Valid @RequestBody UpdateVenueRequest request) {
-        VenueResponse v = venueService.updateVenue(id, request);
+    public ResponseEntity<VenueResponse> updateVenue(
+            @RequestHeader("X-User-Id") Long actorUserId,
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateVenueRequest request) {
+        Long organizerId = organizerResolver.requireOrganizerId(actorUserId);
+        VenueResponse v = venueService.updateVenue(organizerId, id, request);
         return new ResponseEntity<>(v, HttpStatus.OK);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteVenue(@PathVariable Long id) {
-        venueService.deactivateVenue(id);
+    public ResponseEntity<Void> deleteVenue(
+            @RequestHeader("X-User-Id") Long actorUserId,
+            @PathVariable Long id) {
+        Long organizerId = organizerResolver.requireOrganizerId(actorUserId);
+        venueService.deactivateVenue(organizerId, id);
         return ResponseEntity.noContent().build();
     }
 

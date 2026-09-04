@@ -1,0 +1,17 @@
+global:
+  scrape_interval: 15s        # Pull metrics every 15 seconds
+  evaluation_interval: 15s    # Evaluate alerting rules every 15 seconds
+
+scrape_configs:
+  - job_name: 'event-booking-api'
+    # /actuator/prometheus is the Micrometer Prometheus registry endpoint.
+    # Spring Boot exposes it here by default when Actuator is on the classpath.
+    metrics_path: '/actuator/prometheus'
+    # host.docker.internal resolves to the host machine's IP from inside
+    # a Docker container — works on Docker Desktop (Linux, Mac, Windows).
+    # If you ever run this on a server, replace with the actual host IP.
+    static_configs:
+      - targets: ['host.docker.internal:8080']
+        labels:
+          application: 'event-booking-api'
+          env: 'local'

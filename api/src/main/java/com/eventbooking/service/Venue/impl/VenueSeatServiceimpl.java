@@ -14,12 +14,12 @@ import com.eventbooking.repository.VenueSeatRepository;
 
 import com.eventbooking.service.Venue.VenueSeatService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
-
-import java.util.List;
 
 
 @Service
@@ -34,22 +34,41 @@ public class VenueSeatServiceimpl implements VenueSeatService {
     }
 
     @Override
+    @Transactional
     public VenueSeatMapResponse createVenueSeats(CreateVenueSeatsRequest request) {
         Venue venue = venueRepository.findById(request.venueId())
                 .orElseThrow(() -> new VenueNotFoundException(request.venueId()));
                 
-        List<VenueSeat> venueSeats = VenueSeatMapper.toVenueSeat(request, venue);
+        // Re-posting a layout is how a second event gets run off the same
+        // venue, so seats already on file are skipped instead of colliding
+        // with UNIQUE (venue_id, section_label, row_label, seat_number) - an
+        // unnamed constraint the translator cannot match, so the collision
+        // surfaced as a raw 500. Duplicates *within* one request are already
+        // rejected by CreateVenueSeatsRequest's @AssertTrue.
+        Set<List<String>> existing = venueSeatRepository.findByVenueId(venue.getId()).stream()
+                .map(VenueSeatServiceimpl::locationKey)
+                .collect(Collectors.toSet());
+
+        List<VenueSeat> venueSeats = VenueSeatMapper.toVenueSeat(request, venue).stream()
+                .filter(seat -> !existing.contains(locationKey(seat)))
+                .toList();
+
         venueSeatRepository.saveAll(venueSeats);
 
         return buildSeatMap(request.venueId());
     }
 
     @Override
+    @Transactional(readOnly = true)
     public VenueSeatMapResponse getVenueSeatMap(Long venueId) {
         if (!venueRepository.existsById(venueId)) {
             throw new VenueNotFoundException(venueId);
         }
         return buildSeatMap(venueId);
+    }
+
+    private static List<String> locationKey(VenueSeat seat) {
+        return List.of(seat.getSectionLabel(), seat.getRowLabel(), seat.getSeatNumber());
     }
 
     private VenueSeatMapResponse buildSeatMap(Long venueId) {
@@ -66,7 +85,7 @@ public class VenueSeatServiceimpl implements VenueSeatService {
                     List<VenueSeatResponse> seatResponses = entry.getValue().stream()
                             .map(seat -> new VenueSeatResponse(
                                     seat.getId(),
-                                    seat.getVenue().getId(),
+                                    venueId,
                                     seat.getSectionLabel(),
                                     seat.getRowLabel(),
                                     seat.getSeatNumber(),

@@ -20,6 +20,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -91,7 +92,15 @@ public class Event {
     @Column(name = "sales_close_at", nullable = false)
     private Instant salesCloseAt;
 
-    @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
+    /**
+     * Written by Hibernate on insert, not by the column DEFAULT. The DEFAULT is
+     * still there for anything that writes the table outside JPA (Flyway seeds,
+     * psql), but relying on it here left this field null in the entity the
+     * INSERT was built from - and createEvent returns that same instance, so
+     * every POST /event answered with createdAt: null. Matches Venue.
+     */
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
     @OneToMany(mappedBy = "event", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -109,4 +118,10 @@ public class Event {
     @OneToMany(mappedBy = "event")
     @Builder.Default
     private List<Hold> holds = new ArrayList<>();
+
+    @Column(name = "cloudinary_image_id")
+    private String cloudinaryImageId;
+
+    @Column(name = "cloudinary_banner_id")
+    private String cloudinaryBannerId;
 }

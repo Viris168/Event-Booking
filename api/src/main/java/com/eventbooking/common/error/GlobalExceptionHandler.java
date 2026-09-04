@@ -10,9 +10,13 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.web.context.request.WebRequest;
 
 import java.util.HashMap;
@@ -89,6 +93,42 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ProblemDetail> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
         ProblemDetail problem = problemFactory.createProblemDetail(
                 ErrorCode.MALFORMED_REQUEST, "Invalid path or query parameter format.", false, null);
+        return createResponse(problem);
+    }
+
+    @ExceptionHandler(MissingRequestHeaderException.class)
+    public ResponseEntity<ProblemDetail> handleMissingRequestHeader(MissingRequestHeaderException ex) {
+        ProblemDetail problem = problemFactory.createProblemDetail(
+                ErrorCode.MALFORMED_REQUEST, "Missing required request header: " + ex.getHeaderName() + ".", false, null);
+        return createResponse(problem);
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ProblemDetail> handleMediaTypeNotSupported(HttpMediaTypeNotSupportedException ex) {
+        // Chiefly the image endpoints, which are the only ones that declare a
+        // consumes type: a client that posts JSON to them has sent a request
+        // the route cannot read, which is a 415 and not the 500 this fell
+        // through to before.
+        ProblemDetail problem = problemFactory.createProblemDetail(
+                ErrorCode.UNSUPPORTED_MEDIA_TYPE,
+                "Content-Type '" + ex.getContentType() + "' is not supported by this endpoint.", false, null);
+        return createResponse(problem);
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ProblemDetail> handleMaxUploadSizeExceeded(MaxUploadSizeExceededException ex) {
+        // Tomcat's spring.servlet.multipart ceiling, tripped before any
+        // controller runs. FileUploadUtil handles anything that gets past it;
+        // without this the client would see a bare 500 for an oversized file.
+        ProblemDetail problem = problemFactory.createProblemDetail(
+                ErrorCode.FILE_TOO_LARGE, "Uploaded file exceeds the maximum allowed size.", false, null);
+        return createResponse(problem);
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ProblemDetail> handleNoResourceFound(NoResourceFoundException ex) {
+        ProblemDetail problem = problemFactory.createProblemDetail(
+                ErrorCode.RESOURCE_NOT_FOUND, "No API route or static resource exists for this request.", false, null);
         return createResponse(problem);
     }
 

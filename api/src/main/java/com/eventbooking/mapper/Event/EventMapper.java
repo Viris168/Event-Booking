@@ -16,10 +16,14 @@ import java.util.List;
 public class EventMapper {
 
 
-    public static Event toEventEntity(CreateEventRequest createEventRequest, Venue venue) {
+    /**
+     * @param organizerId resolved from the caller by OrganizerResolver, not read
+     *                    off the request - the request no longer carries one.
+     */
+    public static Event toEventEntity(CreateEventRequest createEventRequest, Venue venue, Long organizerId) {
 
         return Event.builder()
-                .organizerId(createEventRequest.organizerId())
+                .organizerId(organizerId)
                 .venue(venue)
                 .inventoryMode(createEventRequest.inventoryMode())
                 .slug(createEventRequest.slug())
@@ -37,7 +41,15 @@ public class EventMapper {
                 .build();
     }
 
-    public static EventResponse  toEventResponse(Event event, List<SeatClassResponse> seatClasses, List<EventZoneResponse>  eventZones) {
+    /**
+     * @param coverImageUrl  derived from the stored public id by
+     *                       CloudinaryService.urlFor - the mapper is static and
+     *                       has no bean to call, so the caller resolves it.
+     * @param bannerImageUrl same, for the banner slot. Either may be null when
+     *                       the slot is empty.
+     */
+    public static EventResponse  toEventResponse(Event event, List<SeatClassResponse> seatClasses, List<EventZoneResponse>  eventZones,
+                                                 String coverImageUrl, String bannerImageUrl) {
 
 
         VenueResponse v = new VenueResponse(
@@ -87,6 +99,8 @@ public class EventMapper {
                 event.getDescriptionKm(),
                 event.getCategory(),
                 event.getCover(),
+                coverImageUrl,
+                bannerImageUrl,
                 event.getStatus(),
                 event.getStartsAt(),
                 event.getDoorsOpenAt(),

@@ -35,6 +35,9 @@
              The 2.x releases target Boot 3 and will not start here. -->
         <springdoc.version>3.0.2</springdoc.version>
         <zxing.version>3.5.3</zxing.version>
+        <cloudinary.version>2.3.0</cloudinary.version>
+        <!-- Not managed by the Boot BOM, so the version is pinned here. -->
+        <commons-io.version>2.22.0</commons-io.version>
     <kotlin.version>2.3.10</kotlin.version>
     </properties>
 
@@ -153,6 +156,25 @@
             <optional>true</optional>
         </dependency>
 
+        <!-- commons-io: FilenameUtils, for pulling the extension off an
+             uploaded filename before it is handed to Cloudinary. -->
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <version>${commons-io.version}</version>
+        </dependency>
+
+        <!-- Cloudinary: hosts the event and avatar images whose public ids are
+             stored in Event.cloudinaryImageId / AppUser.cloudinaryImageId.
+             The -http5 artifact is the one built on Apache HttpClient 5, which
+             is what Boot 4 manages; the older -http44 line drags in HttpClient
+             4 alongside it. -->
+        <dependency>
+            <groupId>com.cloudinary</groupId>
+            <artifactId>cloudinary-http5</artifactId>
+            <version>${cloudinary.version}</version>
+        </dependency>
+
         <!-- Tests -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -169,6 +191,20 @@
             <groupId>com.squareup.okhttp3</groupId>
             <artifactId>okhttp</artifactId>
             <version>4.12.0</version>
+        </dependency>
+
+        <!-- Actuator: exposes /actuator/health, /actuator/prometheus, etc. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
+        <!-- Micrometer → Prometheus bridge: formats all Spring Boot metrics
+             into Prometheus exposition format at /actuator/prometheus so
+             the Prometheus container can scrape them. -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
         </dependency>
 
         <!-- Testcontainers: spins up a real Postgres in Docker per test run,

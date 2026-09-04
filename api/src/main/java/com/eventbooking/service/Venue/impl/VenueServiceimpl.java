@@ -8,6 +8,7 @@ import com.eventbooking.dto.venue.VenueResponse;
 import com.eventbooking.mapper.Venue.VenueMapper;
 import com.eventbooking.model.Venue;
 import com.eventbooking.repository.VenueRepository;
+import com.eventbooking.security.OrganizerResolver;
 import com.eventbooking.service.Venue.VenueService;
 import org.springframework.stereotype.Service;
 import java.util.List;
@@ -17,14 +18,16 @@ import java.util.stream.Collectors;
 public class VenueServiceimpl implements VenueService {
 
     private final VenueRepository venueRepository;
+    private final OrganizerResolver organizerResolver;
 
-    public VenueServiceimpl(VenueRepository venueRepository) {
+    public VenueServiceimpl(VenueRepository venueRepository, OrganizerResolver organizerResolver) {
         this.venueRepository = venueRepository;
+        this.organizerResolver = organizerResolver;
     }
 
     @Override
-    public VenueResponse createVenue(CreateVenueRequest request) {
-        Venue venue = VenueMapper.toVenue(request, request.organizerId());
+    public VenueResponse createVenue(Long organizerId, CreateVenueRequest request) {
+        Venue venue = VenueMapper.toVenue(request, organizerId);
         venueRepository.save(venue);
         return VenueMapper.toVenueResponse(venue);
     }
@@ -37,15 +40,16 @@ public class VenueServiceimpl implements VenueService {
 
     @Override
     public List<VenueResponse> getAllVenues() {
-        return venueRepository.findAll()
+        return venueRepository.findAllByIsDisabledFalse()
                 .stream()
                 .map(VenueMapper::toVenueResponse)
                 .collect(Collectors.toList());
     }
 
     @Override
-    public VenueResponse updateVenue(Long venueId, UpdateVenueRequest request) {
+    public VenueResponse updateVenue(Long organizerId, Long venueId, UpdateVenueRequest request) {
         Venue v = venueRepository.findById(venueId).orElseThrow(() -> new VenueNotFoundException(venueId));
+        organizerResolver.requireOwner(organizerId, v.getOrganizerId(), "venue", venueId);
         if (request.nameEn() != null) v.setNameEn(request.nameEn());
         if (request.nameKm() != null) v.setNameKm(request.nameKm());
         if (request.provinceCode() != null) v.setProvinceCode(request.provinceCode());
@@ -59,8 +63,9 @@ public class VenueServiceimpl implements VenueService {
     }
 
     @Override
-    public void deactivateVenue(Long venueId) {
+    public void deactivateVenue(Long organizerId, Long venueId) {
         Venue v = venueRepository.findById(venueId).orElseThrow(() -> new VenueNotFoundException(venueId));
+        organizerResolver.requireOwner(organizerId, v.getOrganizerId(), "venue", venueId);
         v.setIsDisabled(true);
         venueRepository.save(v);
     }

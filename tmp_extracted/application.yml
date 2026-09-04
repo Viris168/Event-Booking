@@ -1,0 +1,14 @@
+spring:
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/ticketing}
+    username: ${DATABASE_USER:postgres}
+    password: ${DATABASE_PASSWORD:postgres}
+  jpa:
+    hibernate:
+      ddl-auto: validate   # schema.sql is the source of truth; JPA never auto-migrates
+    open-in-view: false    # locks must not outlive the @Transactional service method
+
+app:
+  security:
+    session-jwt-secret: ${SESSION_JWT_SECRET:change-me-in-prod}
+    qr-jwt-secret: ${QR_JWT_SECRET:change-me-in-prod-different-key}

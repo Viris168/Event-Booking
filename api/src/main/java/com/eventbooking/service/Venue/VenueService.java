@@ -6,9 +6,14 @@ import com.eventbooking.dto.venue.VenueResponse;
 import java.util.List;
 
 public interface VenueService {
-    VenueResponse createVenue(CreateVenueRequest request);
+
+    // Same split as EventService: anyone may read the venue catalogue, only
+    // the owning organiser may write.
+
     VenueResponse getVenue(Long venueId);
     List<VenueResponse> getAllVenues();
-    VenueResponse updateVenue(Long venueId, UpdateVenueRequest request);
-    void deactivateVenue(Long venueId);
+
+    VenueResponse createVenue(Long organizerId, CreateVenueRequest request);
+    VenueResponse updateVenue(Long organizerId, Long venueId, UpdateVenueRequest request);
+    void deactivateVenue(Long organizerId, Long venueId);
 }

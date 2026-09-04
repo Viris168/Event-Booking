@@ -9,8 +9,14 @@ import jakarta.validation.constraints.Size;
 
 import java.time.Instant;
 
+/**
+ * organizerId is deliberately absent. It used to be a field here, which meant
+ * the client picked the row's owner and the server believed it - anyone could
+ * create an event belonging to any organiser. The server now derives it from
+ * the caller (OrganizerResolver), so forging it is not merely rejected, it is
+ * unrepresentable.
+ */
 public record CreateEventRequest(
-        @NotNull Long organizerId,
         @NotNull Long venueId,
         @NotNull InventoryMode inventoryMode,
         @NotBlank @Size(max = 200) String slug,

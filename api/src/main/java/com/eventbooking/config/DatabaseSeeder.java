@@ -19,6 +19,7 @@ import java.util.List;
 public class DatabaseSeeder implements CommandLineRunner {
 
     private final AppUserRepository userRepository;
+    private final OrganizerProfileRepository organizerProfileRepository;
     private final VenueRepository venueRepository;
     private final VenueSeatRepository venueSeatRepository;
     private final EventRepository eventRepository;
@@ -29,6 +30,7 @@ public class DatabaseSeeder implements CommandLineRunner {
 
     public DatabaseSeeder(
             AppUserRepository userRepository,
+            OrganizerProfileRepository organizerProfileRepository,
             VenueRepository venueRepository,
             VenueSeatRepository venueSeatRepository,
             EventRepository eventRepository,
@@ -37,6 +39,7 @@ public class DatabaseSeeder implements CommandLineRunner {
             EventSeatRepository eventSeatRepository,
             JdbcTemplate jdbcTemplate) {
         this.userRepository = userRepository;
+        this.organizerProfileRepository = organizerProfileRepository;
         this.venueRepository = venueRepository;
         this.venueSeatRepository = venueSeatRepository;
         this.eventRepository = eventRepository;
@@ -72,19 +75,21 @@ public class DatabaseSeeder implements CommandLineRunner {
                         .isDisabled(false)
                         .build()));
 
-        // Seed Organizer Profile via JdbcTemplate (idempotent across restarts)
+        // The organizer_profile row that owns everything below. This was a raw
+        // JdbcTemplate upsert because nothing in Java mapped the table;
+        // OrganizerProfileRepository does now, so it reads like its neighbours.
+        // find-or-create preserves the old ON CONFLICT behaviour: the profile
+        // survives a restart where venues were cleared but the user was not.
         boolean demoOrganizer = "+85512987654".equals(organizerUser.getPhoneE164());
-        Long organizerId = jdbcTemplate.queryForObject(
-                "INSERT INTO organizer_profile (user_id, org_name_en, org_name_km, telegram_chat_id) " +
-                "VALUES (?, ?, ?, ?) " +
-                "ON CONFLICT (user_id) DO UPDATE SET user_id = EXCLUDED.user_id " +
-                "RETURNING id",
-                Long.class,
-                organizerUser.getId(),
-                demoOrganizer ? "Mekong Live Productions" : "Dev Promotions",
-                demoOrganizer ? "ផលិតកម្មមេគង្គឡាយវ៍" : "ដេវ ប្រូម៉ូសិន",
-                demoOrganizer ? "-1001234567" : null
-        );
+        final AppUser owner = organizerUser;
+        Long organizerId = organizerProfileRepository.findByUserId(owner.getId())
+                .orElseGet(() -> organizerProfileRepository.save(OrganizerProfile.builder()
+                        .userId(owner.getId())
+                        .orgNameEn(demoOrganizer ? "Mekong Live Productions" : "Dev Promotions")
+                        .orgNameKm(demoOrganizer ? "ផលិតកម្មមេគង្គឡាយវ៍" : "ដេវ ប្រូម៉ូសិន")
+                        .telegramChatId(demoOrganizer ? "-1001234567" : null)
+                        .build()))
+                .getId();
 
         // 3. Seed Venues
         String[] venueNames = {"Koh Pich Theatre", "Morodok Techo Stadium", "Aeon Mall Hall", "Olympic Stadium", "Chaktomuk Theatre", "Major Cineplex Aeon 2"};

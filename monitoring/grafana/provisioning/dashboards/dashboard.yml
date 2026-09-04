@@ -1,0 +1,13 @@
+apiVersion: 1
+
+providers:
+  - name: 'Event Booking Dashboards'
+    orgId: 1
+    # Grafana will look for dashboard JSON files in this folder inside the container.
+    # We mount ./monitoring/grafana/provisioning/dashboards → that path via docker-compose.
+    folder: 'Event Booking API'
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /etc/grafana/provisioning/dashboards

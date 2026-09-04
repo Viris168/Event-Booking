@@ -1,12 +1,11 @@
 package com.eventbooking.dto.venue;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 
 import java.math.BigDecimal;
 
+/** organizerId comes from the caller, not the body - see CreateEventRequest. */
 public record CreateVenueRequest(
-        @NotNull Long organizerId,
         @NotBlank String nameEn,
         @NotBlank String nameKm,
         @NotBlank String provinceCode,
