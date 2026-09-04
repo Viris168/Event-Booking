@@ -80,6 +80,14 @@ public class Event {
     @Builder.Default
     private EventStatus status = EventStatus.DRAFT;
 
+    /**
+     * When the event most recently entered PENDING_REVIEW. Cleared on withdraw,
+     * so a resubmitted event does not claim to have been queuing since its
+     * first attempt and push itself to the top of the reviewer's list.
+     */
+    @Column(name = "submitted_at")
+    private Instant submittedAt;
+
     @Column(name = "starts_at", nullable = false)
     private Instant startsAt;
 

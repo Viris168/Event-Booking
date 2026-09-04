@@ -48,6 +48,13 @@ const PATHS = {
   shield: 'M12 21s7-3.2 7-9V6l-7-3-7 3v6c0 5.8 7 9 7 9ZM9 12l2 2 4-4',
   settings:
     'M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4ZM12 3v2.4M12 18.6V21M4.2 7.5l2 1.2M17.8 15.3l2 1.2M4.2 16.5l2-1.2M17.8 8.7l2-1.2',
+  // Solid cog. Declared as an object because the rest of the set is stroked:
+  // a toothed gear drawn in outline turns to mush below about 18px, and this
+  // one has to stay legible as a 16px control in a table row.
+  settingsSolid: {
+    filled: true,
+    d: 'M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z',
+  },
   globe: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM3.5 9h17M3.5 15h17M12 3c2.5 2.4 3.8 5.4 3.8 9s-1.3 6.6-3.8 9c-2.5-2.4-3.8-5.4-3.8-9S9.5 5.4 12 3Z',
   phone: 'M7 3h3l1.5 4-2 1.5a11 11 0 0 0 5 5L16 11.5 20 13v3a2 2 0 0 1-2.2 2A15 15 0 0 1 5 5.2 2 2 0 0 1 7 3Z',
   mail: 'M3 6h18v12H3zM3 7l9 6 9-6',
@@ -77,17 +84,21 @@ const PATHS = {
 }
 
 export default function Icon({ name, size = 18, strokeWidth = 1.75, className = '', title }) {
-  const d = PATHS[name]
-  if (!d) return null
+  const entry = PATHS[name]
+  if (!entry) return null
+  // A string is the ordinary stroked icon. An object opts into a solid one,
+  // which needs the fill/stroke pair swapped rather than a second component.
+  const filled = typeof entry === 'object' && entry.filled
+  const d = filled ? entry.d : entry
   return (
     <svg
       className={`icon ${className}`}
       width={size}
       height={size}
       viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={strokeWidth}
+      fill={filled ? 'currentColor' : 'none'}
+      stroke={filled ? 'none' : 'currentColor'}
+      strokeWidth={filled ? undefined : strokeWidth}
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden={title ? undefined : 'true'}
@@ -95,9 +106,18 @@ export default function Icon({ name, size = 18, strokeWidth = 1.75, className = 
       focusable="false"
     >
       {title && <title>{title}</title>}
-      {d.split('M').filter(Boolean).map((seg, i) => (
-        <path key={i} d={`M${seg}`} />
-      ))}
+      {filled ? (
+        /* One path, not one per subpath. Splitting on 'M' is right for stroked
+           icons - each run gets its own round caps - but a filled icon needs its
+           subpaths in the same element for the winding rule to cut holes. Split
+           apart, the cog's centre circle becomes a second disc painted on top of
+           the gear instead of a hole through it. evenodd rather than the default
+           nonzero so the hole survives whichever direction the inner subpath
+           happens to be wound. */
+        <path d={d} fillRule="evenodd" />
+      ) : (
+        d.split('M').filter(Boolean).map((seg, i) => <path key={i} d={`M${seg}`} />)
+      )}
     </svg>
   )
 }
