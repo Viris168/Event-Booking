@@ -32,14 +32,32 @@ public class JwtService {
     private final SecretKey key;
     private final long accessExpirationMs;
 
+    /** HS256 needs 256 bits of key material, i.e. 32 bytes. */
+    static final int MIN_SECRET_LENGTH = 32;
+
     public JwtService(
             @Value("${app.jwt.secret}") String secret,
             @Value("${app.jwt.access-expiration-ms}") long accessExpirationMs) {
 
-        // HS256 requires at least 256 bits of key material. Keys.hmacShaKeyFor
-        // enforces that and throws on a short secret, which is the failure you
-        // want - a silently weak signing key is worse than a startup crash.
-        this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        // Checked before handing the bytes to jjwt so the message names the
+        // setting to fix. Left to Keys.hmacShaKeyFor, a blank secret surfaces as
+        // "The specified key byte array is 0 bits", buried under four layers of
+        // BeanCreationException - which is a miserable thing to hand a teammate
+        // whose only mistake was copying .env.example.
+        //
+        // Note an EMPTY value is not the same as an absent one: Spring only
+        // applies the ${...:default} fallback when the property is missing, so
+        // `JWT_SECRET=` in a .env overrides the default with "" and the app
+        // would refuse to start.
+        String trimmed = secret == null ? "" : secret.trim();
+        if (trimmed.length() < MIN_SECRET_LENGTH) {
+            throw new IllegalStateException(
+                    "app.jwt.secret (JWT_SECRET) must be at least " + MIN_SECRET_LENGTH
+                            + " characters; got " + trimmed.length() + ". Generate one with:"
+                            + " openssl rand -base64 48");
+        }
+
+        this.key = Keys.hmacShaKeyFor(trimmed.getBytes(StandardCharsets.UTF_8));
         this.accessExpirationMs = accessExpirationMs;
     }
 
