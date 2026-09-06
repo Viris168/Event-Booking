@@ -84,14 +84,26 @@ public class EventSnapshotter {
      * claiming every field is new would be a lie the reviewer has to check.
      */
     public List<FieldChange> diff(String previousSnapshotJson, Event current) {
-        if (previousSnapshotJson == null || previousSnapshotJson.isBlank()) {
+        return diff(previousSnapshotJson, capture(current));
+    }
+
+    /**
+     * Diff two stored snapshots.
+     *
+     * <p>The review history compares one saved decision against the one before
+     * it, where neither side is the live event - so the version above, which
+     * captures `current` first, cannot answer it.
+     */
+    public List<FieldChange> diff(String previousSnapshotJson, String currentSnapshotJson) {
+        if (previousSnapshotJson == null || previousSnapshotJson.isBlank()
+                || currentSnapshotJson == null || currentSnapshotJson.isBlank()) {
             return List.of();
         }
         Map<String, Object> before;
         Map<String, Object> after;
         try {
             before = objectMapper.readValue(previousSnapshotJson, new TypeReference<>() {});
-            after = objectMapper.readValue(capture(current), new TypeReference<>() {});
+            after = objectMapper.readValue(currentSnapshotJson, new TypeReference<>() {});
         } catch (Exception e) {
             return List.of();
         }

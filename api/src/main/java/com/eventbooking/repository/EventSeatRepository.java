@@ -19,4 +19,5 @@ public interface EventSeatRepository extends JpaRepository<EventSeat, Long> {
 
 
     List<EventSeat> findByHoldId(Long holdId);
+
 }

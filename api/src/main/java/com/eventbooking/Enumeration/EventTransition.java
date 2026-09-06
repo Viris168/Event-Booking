@@ -33,5 +33,22 @@ public enum EventTransition {
     PUBLISH,
 
     /** Admin: PUBLISHED -> TAKEN_DOWN. */
-    TAKE_DOWN
+    TAKE_DOWN;
+
+    /**
+     * Whose action this is.
+     *
+     * <p>availableTransitions answers "legal from this status", which is not the
+     * same question as "yours to perform" - APPROVE is legal from PENDING_REVIEW
+     * but is not the organiser's. Both clients were filtering the array with
+     * their own hardcoded allowlist, which meant the organiser dashboard and the
+     * admin queue would hold two copies of a rule the server already knows.
+     */
+    public boolean isAdminAction() {
+        return this == APPROVE || this == REJECT || this == REQUEST_CHANGES || this == TAKE_DOWN;
+    }
+
+    public boolean isOrganizerAction() {
+        return !isAdminAction();
+    }
 }

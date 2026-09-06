@@ -5,6 +5,7 @@ import com.eventbooking.Enumeration.Role;
 import com.eventbooking.model.AppUser;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -64,4 +65,14 @@ public interface AppUserRepository extends JpaRepository<AppUser, Long> {
      * the seeded venues and events.
      */
     Optional<AppUser> findFirstByRoleOrderByIdAsc(Role role);
+
+    /**
+     * Every user in a role, id order.
+     *
+     * <p>Added for the seeder, which used findFirstByRoleOrderByIdAsc and so
+     * gave every venue and event to one organiser - leaving the other demo
+     * logins on an empty dashboard, and every ownership check with nothing to
+     * prove.
+     */
+    List<AppUser> findAllByRoleOrderByIdAsc(Role role);
 }

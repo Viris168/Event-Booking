@@ -12,8 +12,8 @@ import { useLocale } from '../context/LocaleContext.jsx'
 import { countdown } from '../lib/format.js'
 import { mapBooking } from '../api/adapters.js'
 import { startPayment as startApiPayment, pollPayment, simulateAbaPayment, simulateBakongPayment } from '../api/payment.js'
-import { loadTransaction, MERCHANT_NAME, PROVIDER, paymentOption, optionTitle } from '../lib/payway.js'
-import { getBooking, resolvePayment, startPayment as startMockPayment, useStore } from '../mock/store.js'
+import { MERCHANT_NAME, PROVIDER } from '../lib/payway.js'
+import { getBooking, useStore } from '../mock/store.js'
 import { getBooking as getApiBooking } from '../api/bookings.js'
 
 // How each payment_status reads on screen.
@@ -29,7 +29,7 @@ export default function PaymentPage() {
   const { bookingId } = useParams()
   const [params] = useSearchParams()
   useStore()
-  const { t, locale } = useLocale()
+  const { t } = useLocale()
   const navigate = useNavigate()
 
   const [apiBooking, setApiBooking] = useState(null)

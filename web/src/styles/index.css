@@ -1191,6 +1191,25 @@
   .s-TAKEN_DOWN {
     @apply bg-danger-soft text-danger;
   }
+
+  /* Review lifecycle (V14). Hue carries who is holding the event:
+     info   = with the platform, waiting on us
+     warning = back with the organiser, action needed
+     success = cleared, but not yet on sale - PUBLISHED stays the only green
+               that means "customers can buy this"
+     danger  = terminal, same family as TAKEN_DOWN because both are dead ends */
+  .s-PENDING_REVIEW {
+    @apply bg-info-soft text-info;
+  }
+  .s-CHANGES_REQUESTED {
+    @apply bg-warning-soft text-warning;
+  }
+  .s-APPROVED {
+    @apply bg-settled-soft text-settled;
+  }
+  .s-REJECTED {
+    @apply bg-danger-soft text-danger;
+  }
   .s-CREATED {
     @apply bg-quiet-soft text-quiet;
   }

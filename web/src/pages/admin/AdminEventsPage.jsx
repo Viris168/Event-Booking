@@ -18,7 +18,17 @@ import {
 } from '../../mock/store.js'
 import db from '../../mock/store.js'
 
-const STATUSES = ['DRAFT', 'PUBLISHED', 'TAKEN_DOWN']
+// Declaration order is lifecycle order, so the filter dropdown reads as the
+// path an event actually takes rather than as an alphabetical list.
+const STATUSES = [
+  'DRAFT',
+  'PENDING_REVIEW',
+  'CHANGES_REQUESTED',
+  'APPROVED',
+  'REJECTED',
+  'PUBLISHED',
+  'TAKEN_DOWN',
+]
 
 export default function AdminEventsPage() {
   useStore()

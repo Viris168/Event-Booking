@@ -19,6 +19,25 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
     List<PaymentTransaction> findByBookingIdOrderByCreatedAtDesc(Long bookingId);
 
     /**
+     * The payment attempts for a whole page of bookings, newest first.
+     *
+     * <p>Exists to avoid the N+1 that findByBookingIdOrderByCreatedAtDesc would
+     * cause on a transactions table: twenty-five rows on screen would be
+     * twenty-five round trips just to print the provider name in one column.
+     *
+     * <p>Returns rows rather than entities because the caller wants two columns
+     * out of fifteen, and hydrating full PaymentTransaction objects to read the
+     * provider would be most of the cost this method exists to avoid.
+     */
+    @Query("""
+            select p.booking.id, p.provider
+              from PaymentTransaction p
+             where p.booking.id in :bookingIds
+             order by p.createdAt desc
+            """)
+    List<Object[]> findProviderByBookingIds(@Param("bookingIds") Collection<Long> bookingIds);
+
+    /**
      * The attempt the customer is currently looking at, if any. At most one row
      * can match: {@code startPayment} holds the booking row lock while it checks
      * for and opens attempts, so two open rows for one booking cannot be created.

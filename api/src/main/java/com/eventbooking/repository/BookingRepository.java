@@ -25,6 +25,57 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
      */
     Optional<Booking> findByHoldId(Long holdId);
 
+    /**
+     * Confirmed booking value per month for one organiser, aggregated in SQL.
+     *
+     * <p>Native rather than JPQL because date_trunc has no JPQL equivalent, and
+     * doing the bucketing in Java would mean transferring every booking row to
+     * add up twelve numbers - the exact thing this replaces.
+     *
+     * <p>Only CONFIRMED counts. A pending booking is an intention that lapses
+     * when its hold expires, and a revenue chart that folded those in would
+     * show money that can still evaporate.
+     */
+    @Query(value = """
+            select extract(year  from b.created_at)::int as yr,
+                   extract(month from b.created_at)::int as mo,
+                   coalesce(sum(b.total_usd_cents), 0)   as cents,
+                   count(*)                              as bookings
+              from booking b
+              join event e on e.id = b.event_id
+             where e.organizer_id = :organizerId
+               and b.state = 'CONFIRMED'
+               and b.created_at >= :since
+             group by 1, 2
+             order by 1, 2
+            """, nativeQuery = true)
+    List<Object[]> findMonthlyRevenue(@Param("organizerId") Long organizerId,
+                                      @Param("since") Instant since);
+
+    /**
+     * Every booking on an organiser's events, newest first.
+     *
+     * <p>Joined through event rather than filtered in Java: an organiser with
+     * forty events would otherwise mean loading every booking on the platform
+     * and discarding most of them, and the ownership rule would live in the
+     * caller where it can be forgotten.
+     *
+     * <p>The optional filters are null-checked in the query so one method serves
+     * the unfiltered list and every combination of the two, rather than four
+     * derived methods that drift apart.
+     */
+    @Query("""
+            select b from Booking b
+             where b.event.organizerId = :organizerId
+               and (:eventId is null or b.event.id = :eventId)
+               and (:state is null or b.state = :state)
+             order by b.createdAt desc
+            """)
+    Page<Booking> findForOrganizer(@Param("organizerId") Long organizerId,
+                                   @Param("eventId") Long eventId,
+                                   @Param("state") BookingStatus state,
+                                   Pageable pageable);
+
     /** Backs GET /me/bookings, served by idx_booking_user_state. */
     Page<Booking> findByUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
 

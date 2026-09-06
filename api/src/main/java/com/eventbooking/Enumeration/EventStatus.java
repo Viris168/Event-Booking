@@ -1,5 +1,9 @@
 package com.eventbooking.Enumeration;
 
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.Set;
+
 /**
  * Where an event sits in the review lifecycle.
  *
@@ -42,5 +46,29 @@ public enum EventStatus {
     PUBLISHED,
 
     /** Pulled after publication. Terminal, and a moderation action. */
-    TAKEN_DOWN
+    TAKEN_DOWN;
+
+    /**
+     * The statuses a customer is allowed to see.
+     *
+     * <p>Defined once, here, because the catalogue list and the event detail
+     * page both need the answer and had drifted into not asking at all - a
+     * plain findAll() and a plain findById(), which between them published
+     * every DRAFT the moment it was created.
+     *
+     * <p>TAKEN_DOWN is included deliberately. Removing it would 404 the event
+     * page for everyone already holding a ticket to it, turning a moderation
+     * decision into a broken link in someone's inbox. The event stays readable;
+     * verifyEventIsOnSale is what stops anyone buying more.
+     */
+    private static final Set<EventStatus> PUBLICLY_VISIBLE =
+            Collections.unmodifiableSet(EnumSet.of(PUBLISHED, TAKEN_DOWN));
+
+    public static Set<EventStatus> publiclyVisible() {
+        return PUBLICLY_VISIBLE;
+    }
+
+    public boolean isPubliclyVisible() {
+        return PUBLICLY_VISIBLE.contains(this);
+    }
 }

@@ -1,10 +1,14 @@
 package com.eventbooking.service.event;
 
+import com.eventbooking.Enumeration.EventStatus;
 import com.eventbooking.Enumeration.ImageRole;
 import com.eventbooking.dto.event.CreateEventRequest;
 import com.eventbooking.dto.event.EventResponse;
+import com.eventbooking.dto.event.EventReviewResponse;
 import com.eventbooking.dto.event.UpdateEventRequest;
 import org.springframework.data.domain.Page;
+
+import java.util.List;
 import org.springframework.web.multipart.MultipartFile;
 
 
@@ -26,4 +30,14 @@ public interface EventService {
     EventResponse deleteImage(Long organizerId, Long eventId, ImageRole role);
 
     EventResponse takeDownEvent(Long eventId);
+
+    EventResponse submitForReview(Long organizerId, Long eventId, Long actorUserId);
+    EventResponse withdrawFromReview(Long organizerId, Long eventId, Long actorUserId);
+    EventResponse approve(Long adminUserId, Long eventId);
+    EventResponse reject(Long adminUserId, Long eventId, String message);
+    EventResponse requestChanges(Long adminUserId, Long eventId, String message);
+
+    /** Every decision on this event, oldest first, each with what changed since the previous one. */
+    List<EventReviewResponse> getReviewHistory(Long eventId);
+    List<EventResponse> listForOrganizer(Long organizerId, EventStatus status);
 }

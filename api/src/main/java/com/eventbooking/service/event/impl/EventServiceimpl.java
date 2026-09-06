@@ -3,22 +3,13 @@ package com.eventbooking.service.event.impl;
 import com.eventbooking.Enumeration.EventStatus;
 import com.eventbooking.Enumeration.EventTransition;
 import com.eventbooking.Enumeration.ImageRole;
+import com.eventbooking.catalog.EventSnapshotter;
 import com.eventbooking.catalog.EventStateMachine;
-import com.eventbooking.catalog.error.EventImageNotFoundException;
-import com.eventbooking.catalog.error.EventNotOnSaleException;
-import com.eventbooking.catalog.error.EventNotEditableException;
-import com.eventbooking.catalog.error.EventNotFoundException;
-import com.eventbooking.catalog.error.InvalidEventStatusTransitionException;
-import com.eventbooking.catalog.error.InventoryModeChangeBlockedException;
-import com.eventbooking.catalog.error.InvalidEventScheduleException;
-import com.eventbooking.catalog.error.InvalidSalesWindowException;
-import com.eventbooking.catalog.error.VenueDisabledException;
-import com.eventbooking.catalog.error.VenueNotFoundException;
+import com.eventbooking.catalog.error.*;
 import com.eventbooking.dto.event.CreateEventRequest;
 import com.eventbooking.dto.event.EventReviewResponse;
-import com.eventbooking.repository.EventReviewRepository;
-import com.eventbooking.repository.AppUserRepository;
-import com.eventbooking.model.AppUser;
+import com.eventbooking.model.*;
+import com.eventbooking.repository.*;
 import com.eventbooking.dto.event.EventResponse;
 import com.eventbooking.dto.event.UpdateEventRequest;
 import com.eventbooking.dto.eventzone.EventZoneResponse;
@@ -26,12 +17,6 @@ import com.eventbooking.dto.seatclass.SeatClassResponse;
 import com.eventbooking.mapper.Event.EventMapper;
 import com.eventbooking.mapper.Event.EventZoneMapper;
 import com.eventbooking.mapper.SeatClass.SeatClassMapper;
-import com.eventbooking.model.Event;
-import com.eventbooking.model.Venue;
-import com.eventbooking.repository.EventRepository;
-import com.eventbooking.repository.EventZoneRepository;
-import com.eventbooking.repository.SeatClassRepository;
-import com.eventbooking.repository.VenueRepository;
 import com.eventbooking.service.Image.CloudinaryResponse;
 import com.eventbooking.service.Image.CloudinaryService;
 import com.eventbooking.security.OrganizerResolver;
@@ -43,7 +28,14 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import static com.eventbooking.Enumeration.EventTransition.SUBMIT;
 
 @Service
 public class EventServiceimpl implements EventService {
@@ -57,8 +49,10 @@ public class EventServiceimpl implements EventService {
     private final EventStateMachine stateMachine;
     private final EventReviewRepository eventReviewRepository;
     private final AppUserRepository appUserRepository;
+    private final EventSeatRepository eventSeatRepository;
+    private final EventSnapshotter eventSnapshotter;
 
-    public EventServiceimpl(VenueRepository venueRepository, EventRepository eventRepository, SeatClassRepository seatClassRepository, EventZoneRepository eventZoneRepository, CloudinaryService cloudinaryService, OrganizerResolver organizerResolver, EventStateMachine stateMachine, EventReviewRepository eventReviewRepository, AppUserRepository appUserRepository) {
+    public EventServiceimpl(VenueRepository venueRepository, EventRepository eventRepository, SeatClassRepository seatClassRepository, EventZoneRepository eventZoneRepository, CloudinaryService cloudinaryService, OrganizerResolver organizerResolver, EventStateMachine stateMachine, EventReviewRepository eventReviewRepository, AppUserRepository appUserRepository, EventSeatRepository eventSeatRepository, EventSnapshotter eventSnapshotter) {
         this.organizerResolver = organizerResolver;
         this.stateMachine = stateMachine;
         this.eventReviewRepository = eventReviewRepository;
@@ -68,12 +62,17 @@ public class EventServiceimpl implements EventService {
         this.seatClassRepository = seatClassRepository;
         this.eventZoneRepository = eventZoneRepository;
         this.cloudinaryService = cloudinaryService;
+        this.eventSeatRepository = eventSeatRepository;
+        this.eventSnapshotter = eventSnapshotter;
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<EventResponse> listEvents(int page, int size) {
-        return eventRepository.findAll(PageRequest.of(page, size))
+        // Was findAll(), which published every DRAFT to the home page and the
+        // events list the instant an organiser created one - title, slug,
+        // venue and prices, to any anonymous caller.
+        return eventRepository.findByStatusIn(EventStatus.publiclyVisible(), PageRequest.of(page, size))
                 .map(this::toEventResponse);
     }
 
@@ -94,7 +93,7 @@ public class EventServiceimpl implements EventService {
         // shortcut - but its actions and editability still come from the state
         // machine, so the form can render its footer immediately.
         return EventMapper.toEventResponse(event, List.of(), List.of(), null, null,
-                List.copyOf(stateMachine.availableTransitions(event.getStatus())),
+                organizerActions(event),
                 stateMachine.isEditable(event.getStatus()),
                 null);
     }
@@ -104,6 +103,17 @@ public class EventServiceimpl implements EventService {
     public EventResponse getEvent(Long eventId) {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new EventNotFoundException(eventId));
+
+        // Filtering the list alone would have been half a fix: ids are
+        // sequential, so anyone could walk /event/1, /event/2 and read the
+        // drafts the list no longer shows.
+        //
+        // 404 rather than 403 on purpose. A 403 confirms the row exists, which
+        // is the one bit of information a caller with no business knowing about
+        // an unpublished event should not get.
+        if (!event.getStatus().isPubliclyVisible()) {
+            throw new EventNotFoundException(eventId);
+        }
         return toEventResponse(event);
     }
 
@@ -149,12 +159,6 @@ public class EventServiceimpl implements EventService {
         if (request.salesOpenAt() != null) event.setSalesOpenAt(request.salesOpenAt());
         if (request.salesCloseAt() != null) event.setSalesCloseAt(request.salesCloseAt());
 
-        // The @AssertTrue checks on UpdateEventRequest can only compare fields
-        // that arrived together: send salesCloseAt alone and startsAt is null
-        // there, so the rule passes vacuously and the DB CHECK becomes the
-        // first thing to notice - as a raw 23514 the translator has no case
-        // for, i.e. a 500. Re-check against the merged entity, where every
-        // value is known.
         validateSchedule(event);
         eventRepository.save(event);
 
@@ -166,10 +170,6 @@ public class EventServiceimpl implements EventService {
     public EventResponse publishEvent(Long organizerId, Long eventId) {
         Event event = requireOwnedEvent(organizerId, eventId);
 
-        // Was: any DRAFT could be published, which made the whole review step
-        // optional - an organiser could skip straight past it on their own
-        // event. The state machine allows PUBLISH only out of APPROVED, so
-        // review is now the only route to being on sale.
         event.setStatus(stateMachine.requireTransition(
                 event.getStatus(), EventTransition.PUBLISH));
         eventRepository.save(event);
@@ -202,15 +202,197 @@ public class EventServiceimpl implements EventService {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new EventNotFoundException(eventId));
 
-        // Was: anything that was not already TAKEN_DOWN, which included DRAFT
-        // and now would include PENDING_REVIEW - taking down an event that was
-        // never on sale, and pushing a queued one into a terminal state behind
-        // the reviewer's back. Takedown is a post-publication action, so
-        // PUBLISHED is its only legal source.
+
         event.setStatus(stateMachine.requireTransition(
                 event.getStatus(), EventTransition.TAKE_DOWN));
         eventRepository.save(event);
         return toEventResponse(event);
+    }
+
+    @Override
+    @Transactional
+    public EventResponse submitForReview(Long organizerId, Long eventId, Long actorUserId) {
+        Event event = requireOwnedEvent(organizerId, eventId);
+
+        // Validate before touching anything: a refused submit has to leave the
+        // event exactly as it was, with no half-applied status or timestamp.
+        requireSomethingToSell(event);
+
+        event.setSubmittedAt(Instant.now());
+        return transitionAndLog(event, EventTransition.SUBMIT, actorUserId, null,
+                eventSnapshotter.capture(event));
+    }
+
+    @Override
+    @Transactional
+    public EventResponse withdrawFromReview(Long organizerId, Long eventId, Long actorUserId) {
+        Event event = requireOwnedEvent(organizerId, eventId);
+
+        // Cleared, not left behind: submitted_at is what the queue sorts on, so
+        // a resubmitted event that kept its first timestamp would claim to have
+        // been waiting since an attempt that was taken back.
+        event.setSubmittedAt(null);
+        return transitionAndLog(event, EventTransition.WITHDRAW, actorUserId, null, null);
+    }
+
+    @Override
+    @Transactional
+    public EventResponse approve(Long adminUserId, Long eventId) {
+        // Plain load, not requireOwnedEvent: an admin does not own the event, so
+        // the ownership helper would 403 the very person allowed to do this.
+        // Authorization happened in the controller, via AdminResolver.
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new EventNotFoundException(eventId));
+
+        // The snapshot matters most here: it is the baseline the next resubmit
+        // is diffed against, so a later re-review reads as "the title changed"
+        // rather than as a second full read-through.
+        return transitionAndLog(event, EventTransition.APPROVE, adminUserId, null,
+                eventSnapshotter.capture(event));
+    }
+
+    @Override
+    @Transactional
+    public EventResponse reject(Long adminUserId, Long eventId, String message) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new EventNotFoundException(eventId));
+
+        // Out of the queue, so the timestamp goes with it.
+        event.setSubmittedAt(null);
+        return transitionAndLog(event, EventTransition.REJECT, adminUserId, message, null);
+    }
+
+    @Override
+    @Transactional
+    public EventResponse requestChanges(Long adminUserId, Long eventId, String message) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new EventNotFoundException(eventId));
+
+        event.setSubmittedAt(null);
+        return transitionAndLog(event, EventTransition.REQUEST_CHANGES, adminUserId, message, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<EventReviewResponse> getReviewHistory(Long eventId) {
+        if (!eventRepository.existsById(eventId)) {
+            throw new EventNotFoundException(eventId);
+        }
+
+        // Oldest first: the history reads as a story, and each entry's diff is
+        // against the one before it, which only makes sense forwards.
+        List<EventReview> reviews = eventReviewRepository.findByEventIdOrderByCreatedAtDesc(eventId)
+                .stream()
+                .sorted(Comparator.comparing(EventReview::getCreatedAt))
+                .toList();
+
+        // Names in one query instead of one per row. A four-entry history would
+        // otherwise be four extra selects for two distinct people.
+        Map<Long, String> actorNames = appUserRepository
+                .findAllById(reviews.stream().map(EventReview::getActorId).collect(Collectors.toSet()))
+                .stream()
+                .collect(Collectors.toMap(AppUser::getId, AppUser::getDisplayName));
+
+        List<EventReviewResponse> out = new ArrayList<>(reviews.size());
+        String previousSnapshot = null;
+        for (EventReview review : reviews) {
+            // Diff against the last entry that carried a snapshot, not the last
+            // entry: REJECT and REQUEST_CHANGES store none, and treating their
+            // null as "everything changed" would put a full diff on the next
+            // resubmit for edits the organiser never made.
+            List<EventReviewResponse.FieldChange> changes = eventSnapshotter
+                    .diff(previousSnapshot, review.getSnapshot())
+                    .stream()
+                    .map(c -> new EventReviewResponse.FieldChange(c.field(), c.before(), c.after()))
+                    .toList();
+
+            out.add(new EventReviewResponse(
+                    review.getId(),
+                    review.getAction(),
+                    review.getMessage(),
+                    review.getActorId(),
+                    actorNames.get(review.getActorId()),
+                    review.getFromStatus(),
+                    review.getToStatus(),
+                    review.getCreatedAt(),
+                    changes));
+
+            if (review.getSnapshot() != null) {
+                previousSnapshot = review.getSnapshot();
+            }
+        }
+        return out;
+    }
+
+    /**
+     * Read-only transaction, not a bare query: toEventResponse walks
+     * event.getVenue(), which is a LAZY proxy. Without a session open across
+     * the whole loop the proxy is detached by the time the mapper touches it
+     * and every row throws LazyInitializationException.
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public List<EventResponse> listForOrganizer(Long organizerId, EventStatus status) {
+        return eventRepository.findForOrganizer(organizerId, status)
+                .stream()
+                .map(this::toEventResponse)
+                .toList();
+    }
+
+    /**
+     * Refuse to queue an event a customer could not buy anything from.
+     *
+     * <p>Without this an admin opens a review, finds an empty shell, and has to
+     * reject it - spending a human on something the server already knew.
+     */
+    private void requireSomethingToSell(Event event) {
+        switch (event.getInventoryMode()) {
+            case ZONED -> requireZones(event);
+            case SEATED -> requireSeats(event);
+            case MIXED -> {
+                requireZones(event);
+                requireSeats(event);
+            }
+        }
+    }
+
+    private void requireZones(Event event) {
+        if (!eventZoneRepository.existsByEventId(event.getId())) {
+            throw new NoInventoryException(
+                    "Event " + event.getId() + " is " + event.getInventoryMode()
+                            + " but has no zones, so there is nothing to sell");
+        }
+    }
+
+    /**
+     * A seat class is a price. A price with no seats behind it sells nothing, so
+     * "has seat classes" is not the check - "every seat class has seats" is.
+     */
+    private void requireSeats(Event event) {
+        List<SeatClass> seatClasses = seatClassRepository.findAllByEventId(event.getId());
+        if (seatClasses.isEmpty()) {
+            throw new NoInventoryException(
+                    "Event " + event.getId() + " is " + event.getInventoryMode()
+                            + " but has no seat classes, so there is nothing to sell");
+        }
+
+        // One query and a grouping rather than a count per tier: the keys are
+        // exactly the tiers that have seats, so any tier missing from the set is
+        // the empty one, and the message can name it.
+        Set<Long> tiersWithSeats = eventSeatRepository.findByEventId(event.getId()).stream()
+                .map(seat -> seat.getSeatClass().getId())
+                .collect(Collectors.toSet());
+
+        SeatClass empty = seatClasses.stream()
+                .filter(seatClass -> !tiersWithSeats.contains(seatClass.getId()))
+                .findFirst()
+                .orElse(null);
+
+        if (empty != null) {
+            throw new NoInventoryException(
+                    "Seat class \"" + empty.getNameEn() + "\" has no seats assigned, "
+                            + "so nothing can be sold at that price");
+        }
     }
 
     @Override
@@ -274,14 +456,6 @@ public class EventServiceimpl implements EventService {
     }
 
 
-    /**
-     * Put an image in one of the event's two slots, replacing whatever was
-     * there. The Cloudinary upload runs inside the transaction: it is a network
-     * call and does hold a connection for its duration, but the alternative -
-     * uploading first and saving after - detaches the event and breaks the lazy
-     * venue this method has to read back. Uploads are an organiser action, not
-     * a ticket-buyer one, so the connection is not on the hot path.
-     */
     @Override
     @Transactional
     public EventResponse uploadImage(Long organizerId, Long eventId, ImageRole role, MultipartFile file) {
@@ -335,12 +509,7 @@ public class EventServiceimpl implements EventService {
         }
     }
 
-    /**
-     * The bulk update above bypasses the persistence context and clears it, so
-     * the event loaded earlier is now both stale and detached. Read it again:
-     * the response has to carry whatever the other slot holds right now, which
-     * may have been written by a request running alongside this one.
-     */
+
     private EventResponse reloadResponse(Long eventId) {
         return toEventResponse(eventRepository.findById(eventId)
                 .orElseThrow(() -> new EventNotFoundException(eventId)));
@@ -364,9 +533,27 @@ public class EventServiceimpl implements EventService {
                 zones,
                 cloudinaryService.urlFor(event.getCloudinaryImageId()),
                 cloudinaryService.urlFor(event.getCloudinaryBannerId()),
-                List.copyOf(stateMachine.availableTransitions(event.getStatus())),
+                organizerActions(event),
                 stateMachine.isEditable(event.getStatus()),
                 latestReview(event.getId()));
+    }
+
+    /**
+     * The actions an organiser may take on this event.
+     *
+     * <p>availableTransitions answers "legal from this status", which includes
+     * APPROVE and TAKE_DOWN on a PENDING_REVIEW or PUBLISHED event - legal
+     * moves, but not this caller's to make. Filtering here rather than in the
+     * client means the rule lives beside the state machine instead of being
+     * copied into every screen that renders a menu.
+     *
+     * <p>The admin queue will need the complement of this; when it does, this
+     * takes the caller's role rather than assuming one.
+     */
+    private List<EventTransition> organizerActions(Event event) {
+        return stateMachine.availableTransitions(event.getStatus()).stream()
+                .filter(EventTransition::isOrganizerAction)
+                .toList();
     }
 
     /**
@@ -389,5 +576,28 @@ public class EventServiceimpl implements EventService {
                         review.getCreatedAt(),
                         List.of()))
                 .orElse(null);
+    }
+
+    private EventResponse transitionAndLog(
+            Event event,
+            EventTransition transition,
+            Long actorUserId,
+            String message,
+            String snapshot) {
+        EventStatus from = event.getStatus();
+        EventStatus to = stateMachine.requireTransition(from, transition);
+        event.setStatus(to);
+        eventRepository.save(event);
+        EventReview review = EventReview.builder()
+                .event(event)
+                .actorId(actorUserId)
+                .action(transition)
+                .message(message)
+                .fromStatus(from)
+                .toStatus(to)
+                .snapshot(snapshot)
+                .build();
+        eventReviewRepository.save(review);
+        return toEventResponse(event);
     }
 }

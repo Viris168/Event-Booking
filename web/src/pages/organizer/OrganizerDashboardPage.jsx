@@ -2,19 +2,18 @@ import { useEffect, useRef, useState } from 'react'
 import { useDocumentTitle } from '../../lib/useDocumentTitle.js'
 import { Link } from 'react-router-dom'
 import Icon from '../../components/Icon.jsx'
+import { useToast } from '../../context/ToastContext.jsx'
 import { Badge, Empty, Progress, ResponsiveTable } from '../../components/ui.jsx'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
 import { usd } from '../../lib/format.js'
 import {
-  getVenue,
-  inventorySummary,
-  listBookings,
-  listEvents,
-  salesSummary,
-  setEventStatus,
-  useStore,
-} from '../../mock/store.js'
+  getOrganizerEvents,
+  publishEvent,
+  submitEventForReview,
+  withdrawEventFromReview,
+} from '../../api/events.js'
+import { getMonthlyRevenue } from '../../api/bookings.js'
 
 const MONTH_LABEL = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
@@ -31,58 +30,88 @@ const MONTH_LABEL = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Se
  * page because they measure different things, and showing both as "revenue"
  * invites the reader to spot a discrepancy that is not one.
  */
-function monthlyBooked(eventIds) {
-  const now = new Date()
-  const months = []
-  for (let back = 11; back >= 0; back--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - back, 1)
-    months.push({ year: d.getFullYear(), month: d.getMonth(), label: MONTH_LABEL[d.getMonth()], cents: 0 })
-  }
-  const index = new Map(months.map((m, i) => [`${m.year}-${m.month}`, i]))
-
-  for (const b of listBookings({ state: 'CONFIRMED' })) {
-    if (!eventIds.has(b.event_id)) continue
-    const at = new Date(b.created_at)
-    const i = index.get(`${at.getFullYear()}-${at.getMonth()}`)
-    if (i !== undefined) months[i].cents += b.total_usd_cents
-  }
-  return months
+/**
+ * Revenue for one event, from the response itself.
+ *
+ * Sold seats times their tier price, plus sold zone capacity times its price -
+ * the same arithmetic the mock's salesSummary did, on data EventResponse
+ * already carries. That is why the dashboard needed no summary endpoint: the
+ * numbers were in the event payload the whole time.
+ */
+function revenueOf(event) {
+  const fromSeats = (event.seat_classes || []).reduce(
+    (a, c) => a + (c.sold_count || 0) * (c.price_usd_cents || 0), 0)
+  const fromZones = (event.zones || []).reduce(
+    (a, z) => a + (z.sold_qty || 0) * (z.price_usd_cents || 0), 0)
+  return fromSeats + fromZones
 }
 
 export default function OrganizerDashboardPage() {
-  useStore()
   const { t, locale, date } = useLocale()
   useDocumentTitle(t('organizerDashboard'))
   const { organizerProfile } = useAuth()
-  const orgId = organizerProfile?.id || null
 
-  const events = listEvents({ status: 'ALL', organizerId: orgId, sort: 'soonest' }).content
-  const eventIds = new Set(events.map((e) => e.id))
+  const [events, setEvents] = useState([])
+  const [months, setMonths] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
+  // Named so the row menu can re-run it after a transition: the status, the
+  // available actions and the totals all change together, and refetching is
+  // cheaper to reason about than patching one row in place.
+  const [reloadKey, setReloadKey] = useState(0)
+  const reload = () => setReloadKey((k) => k + 1)
+
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    Promise.all([getOrganizerEvents(), getMonthlyRevenue(12)])
+      .then(([evts, revenue]) => {
+        if (cancelled) return
+        setEvents(evts || [])
+        setMonths(revenue || [])
+        setError(null)
+      })
+      .catch((e) => {
+        if (cancelled) return
+        setError(e?.response?.status === 403 ? 'forbidden' : 'unreachable')
+        setEvents([])
+        setMonths([])
+      })
+      .finally(() => !cancelled && setLoading(false))
+    return () => {
+      cancelled = true
+    }
+  }, [reloadKey])
+
+  // capacity / sold / held come straight off EventResponse - the server already
+  // sums seat classes and zones, so the old inventorySummary() lookup against
+  // db.eventSeats has no job left.
   const totals = events.reduce(
-    (acc, e) => {
-      const s = salesSummary(e.id)
-      return {
-        revenue: acc.revenue + s.revenue_usd_cents,
-        sold: acc.sold + s.sold,
-        capacity: acc.capacity + s.capacity,
-        checkedIn: acc.checkedIn + s.checkedIn,
-      }
-    },
-    { revenue: 0, sold: 0, capacity: 0, checkedIn: 0 },
+    (acc, e) => ({
+      revenue: acc.revenue + revenueOf(e),
+      sold: acc.sold + (e.total_sold || 0),
+      capacity: acc.capacity + (e.total_capacity || 0),
+      held: acc.held + (e.total_held || 0),
+    }),
+    { revenue: 0, sold: 0, capacity: 0, held: 0 },
   )
 
-  const months = monthlyBooked(eventIds)
   const peak = Math.max(...months.map((m) => m.cents), 1)
   const booked12 = months.reduce((a, m) => a + m.cents, 0)
   const avgTicket = totals.sold ? Math.round(totals.revenue / totals.sold) : 0
 
-  // Ranked by money, not by ticket count. Those orders disagree whenever
-  // prices differ: a fun run selling 260 cheap tickets can sit above a summit
-  // selling 84 expensive ones on volume while earning a fraction as much, and
-  // an organiser reading "top events" is asking which ones pay.
+  // Ranked by money, not ticket count. Those orders disagree whenever prices
+  // differ: a fun run selling 260 cheap tickets outranks a summit selling 84
+  // expensive ones on volume while earning a fraction as much, and an organiser
+  // reading "top events" is asking which ones pay.
   const byRevenue = events
-    .map((e) => ({ event: e, ...inventorySummary(e.id), revenue: salesSummary(e.id).revenue_usd_cents }))
+    .map((e) => ({
+      event: e,
+      sold: e.total_sold || 0,
+      capacity: e.total_capacity || 0,
+      revenue: revenueOf(e),
+    }))
     .filter((r) => r.revenue > 0)
     .sort((a, b) => b.revenue - a.revenue)
     .slice(0, 5)
@@ -117,7 +146,29 @@ export default function OrganizerDashboardPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3 items-start">
+      {error && (
+        <div className="bg-surface border border-danger/30 rounded-card shadow-card p-6 text-center mb-4">
+          <Icon name="alert" size={26} className="text-danger" />
+          <p className="text-ink font-semibold mt-2 mb-1">
+            {error === 'forbidden'
+              ? km ? 'គណនីនេះមិនមែនជាអ្នករៀបចំ' : 'Not an organizer account'
+              : km ? 'មិនអាចទាក់ទងម៉ាស៊ីនបម្រើ' : 'Could not reach the server'}
+          </p>
+          <p className="text-small text-muted m-0">
+            {error === 'forbidden'
+              ? km ? 'គណនីនេះគ្មានទម្រង់អ្នករៀបចំ' : 'This account has no organizer profile.'
+              : km ? 'ពិនិត្យថា API កំពុងដំណើរការ' : 'Check that the API is running, then reload.'}
+          </p>
+        </div>
+      )}
+
+      {loading && !error && (
+        <p className="text-small text-muted text-center py-10">
+          {km ? 'កំពុងផ្ទុក…' : 'Loading…'}
+        </p>
+      )}
+
+      <div className={`grid gap-4 lg:grid-cols-3 items-start ${loading || error ? 'hidden' : ''}`}>
         {/* ------------------------------------------------ left, two columns */}
         <div className="lg:col-span-2 flex flex-col gap-4">
           {/* revenue over the year */}
@@ -143,7 +194,7 @@ export default function OrganizerDashboardPage() {
                       <div
                         className="w-full bar-month rounded-t-tiny transition-all"
                         style={{ height: `${Math.max((m.cents / peak) * 100, m.cents ? 4 : 1)}%` }}
-                        title={`${m.label} ${m.year} · ${usd(m.cents)}`}
+                        title={`${MONTH_LABEL[m.month - 1]} ${m.year} · ${usd(m.cents)}`}
                       />
                     </div>
                   ))}
@@ -151,7 +202,7 @@ export default function OrganizerDashboardPage() {
                 <div className="flex justify-between text-tiny text-muted font-medium mt-3">
                   {months.map((m, i) => (
                     <span key={i} className="flex-1 text-center">
-                      {m.label}
+                      {MONTH_LABEL[m.month - 1]}
                     </span>
                   ))}
                 </div>
@@ -188,9 +239,7 @@ export default function OrganizerDashboardPage() {
                   </thead>
                   <tbody>
                     {events.map((e) => {
-                      const inv = inventorySummary(e.id)
-                      const sales = salesSummary(e.id)
-                      const venue = getVenue(e.venue_id)
+                      const venue = e.venue
                       return (
                         <tr key={e.id}>
                           <td>
@@ -207,14 +256,14 @@ export default function OrganizerDashboardPage() {
                           <td className="small">{date(e.starts_at)}</td>
                           <td>
                             <div className="small font-bold">
-                              {inv.sold} / {inv.capacity}
-                              {inv.held ? <span className="muted"> · {inv.held} held</span> : null}
+                              {e.total_sold} / {e.total_capacity}
+                              {e.total_held ? <span className="muted"> · {e.total_held} held</span> : null}
                             </div>
-                            <Progress sold={inv.sold} held={inv.held} capacity={inv.capacity} />
+                            <Progress sold={e.total_sold} held={e.total_held} capacity={e.total_capacity} />
                           </td>
-                          <td className="num font-bold">{usd(sales.revenue_usd_cents)}</td>
+                          <td className="num font-bold">{usd(revenueOf(e))}</td>
                           <td className="text-right">
-                            <RowMenu event={e} />
+                            <RowMenu event={e} onChanged={reload} />
                           </td>
                         </tr>
                       )
@@ -283,16 +332,48 @@ export default function OrganizerDashboardPage() {
               value={totals.sold.toLocaleString()}
               label={km ? 'សំបុត្រលក់រួច' : 'Tickets sold'}
             />
+            {/* Was "Checked in". Ticket scans live on the ticket tables and no
+                endpoint exposes them yet, and a tile reading 0 would look like a
+                quiet night rather than a missing feature. Held seats are real,
+                come from the same payload, and are worth watching. */}
             <MiniStat
-              icon="scan"
-              value={totals.checkedIn.toLocaleString()}
-              label={km ? 'បានស្កេន' : 'Checked in'}
+              icon="clock"
+              value={totals.held.toLocaleString()}
+              label={km ? 'កំពុងកក់ទុក' : 'Held now'}
             />
           </div>
         </div>
       </div>
     </div>
   )
+}
+
+/**
+ * How each action is presented. Keyed by the transition name the server sends
+ * in available_actions, so adding an edge server-side surfaces here as soon as
+ * it has a label - and an unlabelled one is skipped rather than rendered raw.
+ *
+ * `danger` marks the moves that take an event off sale, so they can be styled
+ * apart and pushed below a divider instead of sitting at the same weight as
+ * "Edit".
+ */
+/**
+ * Label and icon per transition. A presentation table, not a permission table -
+ * the server decides which actions reach this page.
+ */
+const ACTION_UI = {
+  SUBMIT: {
+    icon: 'arrowRight', en: 'Submit for review', km: 'ដាក់ស្នើត្រួតពិនិត្យ',
+    call: submitEventForReview,
+  },
+  WITHDRAW: {
+    icon: 'arrowLeft', en: 'Withdraw', km: 'ដកសំណើវិញ',
+    call: withdrawEventFromReview,
+  },
+  PUBLISH: {
+    icon: 'check', en: 'Publish', km: 'ផ្សព្វផ្សាយ',
+    call: publishEvent,
+  },
 }
 
 /**
@@ -304,11 +385,17 @@ export default function OrganizerDashboardPage() {
  * puts a deliberate second step in front of the one action that cannot be
  * undone from here.
  */
-function RowMenu({ event }) {
+function RowMenu({ event, onChanged }) {
   const { t, locale } = useLocale()
   const km = locale === 'km'
+  const toast = useToast()
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
+
+  // The server sends only what this caller may do, so there is no permission
+  // rule here - just a guard against an action that has no label yet, which
+  // renders nothing rather than a raw enum name.
+  const actions = (event.available_actions || []).filter((a) => ACTION_UI[a])
 
   useEffect(() => {
     if (!open) return
@@ -370,41 +457,39 @@ function RowMenu({ event }) {
             {km ? 'មើលទំព័រសាធារណៈ' : 'View public page'}
           </Link>
 
-          {/* TODO: drive these from event.available_actions once the review
-              endpoints land. A two-state guess offers "Publish" on a REJECTED
-              event, which the server now refuses. */}
-          {(event.status === 'PUBLISHED' || event.status === 'DRAFT') && (
-            <>
-              <div className="h-px bg-line-2 my-1" />
-              {event.status === 'PUBLISHED' ? (
-                <button
-                  role="menuitem"
-                  type="button"
-                  className="w-full flex items-center gap-2 px-3 py-2 text-small text-danger hover:bg-danger-soft text-left"
-                  onClick={() => {
-                    setEventStatus(event.id, 'TAKEN_DOWN')
-                    setOpen(false)
-                  }}
-                >
-                  <Icon name="minus" size={15} />
-                  {t('unpublish')}
-                </button>
-              ) : (
-                <button
-                  role="menuitem"
-                  type="button"
-                  className="w-full flex items-center gap-2 px-3 py-2 text-small text-ink hover:bg-surface-2 text-left"
-                  onClick={() => {
-                    setEventStatus(event.id, 'PUBLISHED')
-                    setOpen(false)
-                  }}
-                >
-                  <Icon name="check" size={15} className="text-success" />
-                  {t('publish')}
-                </button>
-              )}
-            </>
-          )}
+          {/* Rendered from the server's own answer rather than guessed from the
+              status. A two-state guess offered "Publish" on a REJECTED event,
+              which the API refuses - and could never learn about a new edge. */}
+          {actions.length > 0 && <div className="h-px bg-line-2 my-1" />}
+          {actions.map((action) => {
+            const ui = ACTION_UI[action]
+            return (
+              <button
+                key={action}
+                role="menuitem"
+                type="button"
+                className={`w-full flex items-center gap-2 px-3 py-2 text-small text-left ${
+                  ui.danger ? 'text-danger hover:bg-danger-soft' : 'text-ink hover:bg-surface-2'
+                }`}
+                onClick={async () => {
+                  setOpen(false)
+                  try {
+                    await ui.call(event.id)
+                    onChanged()
+                  } catch (e) {
+                    // The server refuses transitions this menu should never have
+                    // offered. Surfacing its message rather than a generic one
+                    // means a disagreement between the two is visible instead of
+                    // looking like a dead button.
+                    toast(e?.response?.data?.detail || 'Action failed', 'danger')
+                  }
+                }}
+              >
+                <Icon name={ui.icon} size={15} className={ui.danger ? '' : 'text-muted'} />
+                {km ? ui.km : ui.en}
+              </button>
+            )
+          })}
         </div>
       )}
     </div>
