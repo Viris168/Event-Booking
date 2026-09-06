@@ -13,6 +13,8 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.List;
 
 @Component
@@ -64,42 +66,63 @@ public class DatabaseSeeder implements CommandLineRunner {
 
         // 2. Demo identities are seeded by V6__seed_demo_users.sql (they mirror
         // the web prototype's mock store, whose ids arrive in the X-User-Id
-        // header). Reuse the demo organizer instead of inventing one; only fall
-        // back to a placeholder when the migration's users are somehow missing.
-        AppUser organizerUser = userRepository.findFirstByRoleOrderByIdAsc(Role.ORGANIZER)
-                .orElseGet(() -> userRepository.save(AppUser.builder()
-                        .phoneE164("+85599990001")
-                        .passwordHash("hashed-password")
-                        .displayName("Dev Organizer")
-                        .role(Role.ORGANIZER)
-                        .isDisabled(false)
-                        .build()));
+        // header).
+        //
+        // Every ORGANIZER gets a profile and a share of the data, not just the
+        // first one. Giving everything to a single organiser made three of the
+        // four demo logins land on an empty dashboard that looked broken - and,
+        // worse, made every ownership test vacuous: "does organiser A see
+        // organiser B's events" passes trivially when B has none.
+        List<AppUser> organizerUsers = new ArrayList<>(userRepository.findAllByRoleOrderByIdAsc(Role.ORGANIZER));
+        if (organizerUsers.isEmpty()) {
+            organizerUsers.add(userRepository.save(AppUser.builder()
+                    .phoneE164("+85599990001")
+                    .passwordHash("hashed-password")
+                    .displayName("Dev Organizer")
+                    .role(Role.ORGANIZER)
+                    .isDisabled(false)
+                    .build()));
+        }
 
-        // The organizer_profile row that owns everything below. This was a raw
-        // JdbcTemplate upsert because nothing in Java mapped the table;
-        // OrganizerProfileRepository does now, so it reads like its neighbours.
-        // find-or-create preserves the old ON CONFLICT behaviour: the profile
-        // survives a restart where venues were cleared but the user was not.
-        boolean demoOrganizer = "+85512987654".equals(organizerUser.getPhoneE164());
-        final AppUser owner = organizerUser;
-        Long organizerId = organizerProfileRepository.findByUserId(owner.getId())
-                .orElseGet(() -> organizerProfileRepository.save(OrganizerProfile.builder()
-                        .userId(owner.getId())
-                        .orgNameEn(demoOrganizer ? "Mekong Live Productions" : "Dev Promotions")
-                        .orgNameKm(demoOrganizer ? "ផលិតកម្មមេគង្គឡាយវ៍" : "ដេវ ប្រូម៉ូសិន")
-                        .telegramChatId(demoOrganizer ? "-1001234567" : null)
-                        .build()))
-                .getId();
+        // Names are per-organiser rather than one hardcoded pair. V15 fixes the
+        // profiles V13 backfilled from display_name; these are for a database
+        // seeded from empty, where no such row exists yet.
+        String[] orgNamesEn = {"Mekong Live Productions", "Angkor Events Co.",
+                               "Battambang Arts Collective", "Dev Promotions"};
+        String[] orgNamesKm = {"ផលិតកម្មមេគង្គឡាយវ៍", "អង្គរ អ៊ីវេន",
+                               "សមាគមសិល្បៈបាត់ដំបង", "ដេវ ប្រូម៉ូសិន"};
+
+        List<Long> organizerIds = new ArrayList<>();
+        for (int i = 0; i < organizerUsers.size(); i++) {
+            final AppUser owner = organizerUsers.get(i);
+            final int idx = i;
+            // find-or-create: the profile survives a restart where venues were
+            // cleared but the user was not.
+            organizerIds.add(organizerProfileRepository.findByUserId(owner.getId())
+                    .orElseGet(() -> organizerProfileRepository.save(OrganizerProfile.builder()
+                            .userId(owner.getId())
+                            .orgNameEn(orgNamesEn[idx % orgNamesEn.length])
+                            .orgNameKm(orgNamesKm[idx % orgNamesKm.length])
+                            .telegramChatId(idx == 0 ? "-1001234567" : null)
+                            .build()))
+                    .getId());
+        }
 
         // 3. Seed Venues
         String[] venueNames = {"Koh Pich Theatre", "Morodok Techo Stadium", "Aeon Mall Hall", "Olympic Stadium", "Chaktomuk Theatre", "Major Cineplex Aeon 2"};
         String[] venueNamesKm = {"រោងមហោស្រពកោះពេជ្រ", "ពហុកីឡដ្ឋានមរតកតេជោ", "សាលអុីអនម៉ល", "ពហុកីឡដ្ឋានជាតិអូឡាំពិក", "រោងមហោស្រពចតុមុខ", "រោងកុនមេជ័រអុីអន២"};
         List<Venue> venues = new ArrayList<>();
         List<List<VenueSeat>> allVenueSeats = new ArrayList<>();
-        
+        // Which venues each organiser owns. An event has to be hosted at a venue
+        // its own organiser owns - createEvent enforces that, and a seeder that
+        // ignored it would write rows the API itself would refuse to create.
+        Map<Long, List<Integer>> venueIdxByOrganizer = new LinkedHashMap<>();
+
         for (int i = 0; i < 6; i++) {
+            Long venueOwner = organizerIds.get(i % organizerIds.size());
+            venueIdxByOrganizer.computeIfAbsent(venueOwner, k -> new ArrayList<>()).add(i);
             Venue venue = Venue.builder()
-                    .organizerId(organizerId)
+                    .organizerId(venueOwner)
                     .nameEn(venueNames[i])
                     .nameKm(venueNamesKm[i])
                     .provinceCode("12")
@@ -138,12 +161,17 @@ public class DatabaseSeeder implements CommandLineRunner {
         Instant now = Instant.now();
 
         for (int i = 0; i < 4; i++) {
-            int venueIdx = i % venues.size();
+            // Round-robin over organisers, then pick one of that organiser's own
+            // venues - never simply venues.get(i), which would host an event at
+            // somebody else's building.
+            Long eventOwner = organizerIds.get(i % organizerIds.size());
+            List<Integer> owned = venueIdxByOrganizer.get(eventOwner);
+            int venueIdx = owned.get((i / organizerIds.size()) % owned.size());
             Venue eventVenue = venues.get(venueIdx);
             List<VenueSeat> currentVenueSeats = allVenueSeats.get(venueIdx);
-            
+
             Event event = Event.builder()
-                    .organizerId(organizerId)
+                    .organizerId(eventOwner)
                     .venue(eventVenue)
                     .inventoryMode(InventoryMode.MIXED)
                     .slug("event-" + (i + 1) + "-2026")

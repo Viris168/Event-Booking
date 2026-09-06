@@ -3,10 +3,10 @@ import { Link } from 'react-router-dom'
 import { useDocumentTitle } from '../../lib/useDocumentTitle.js'
 import Icon from '../../components/Icon.jsx'
 import { Badge } from '../../components/ui.jsx'
-import { useAuth } from '../../context/AuthContext.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
 import { usd } from '../../lib/format.js'
-import { getEvent, latestPayment, listBookings, listEvents, useStore } from '../../mock/store.js'
+import { getOrganizerTransactions } from '../../api/bookings.js'
+import { getOrganizerEvents } from '../../api/events.js'
 
 /** Money that actually landed. Everything else is an intention or a reversal. */
 const EARNING = new Set(['CONFIRMED'])
@@ -27,12 +27,9 @@ const STATES = [
 const PAGE_SIZES = [25, 50, 100]
 
 export default function OrganizerTransactionsPage() {
-  useStore()
   const { t, locale, date } = useLocale()
   const km = locale === 'km'
   useDocumentTitle(km ? 'ប្រតិបត្តិការ' : 'Transactions')
-  const { organizerProfile } = useAuth()
-  const orgId = organizerProfile?.id || null
 
   const [q, setQ] = useState('')
   const [state, setState] = useState('')
@@ -42,46 +39,84 @@ export default function OrganizerTransactionsPage() {
   const [pageSize, setPageSize] = useState(25)
   const [page, setPage] = useState(1)
 
-  const events = listEvents({ status: 'ALL', organizerId: orgId, sort: 'soonest' }).content
-  const myEventIds = useMemo(() => new Set(events.map((e) => e.id)), [events])
+  // Both halves of this page now come from the server. While the dropdown read
+  // the mock store, filtering by an event whose id existed only there returned
+  // nothing - the two sources disagreed about which events were yours.
+  const [events, setEvents] = useState([])
+  useEffect(() => {
+    getOrganizerEvents()
+      .then(setEvents)
+      .catch(() => setEvents([])) // the rows below report the failure already
+  }, [])
 
-  const rows = useMemo(() => {
-    const needle = q.trim().toLowerCase()
-    const list = listBookings({ state, eventId: eventId || null })
-      // listBookings has no organiser filter and returns every booking on the
-      // platform. Without this an organiser sees other organisers' customers,
-      // names and phone numbers. The server must repeat this check - a filter
-      // in the browser is not a permission.
-      .filter((b) => myEventIds.has(b.event_id))
-      .filter((b) => {
-        if (!needle) return true
-        return (
-          b.booking_ref.toLowerCase().includes(needle) ||
-          (b.buyer_name || '').toLowerCase().includes(needle) ||
-          (b.buyer_phone_e164 || '').includes(needle) ||
-          (b.buyer_email || '').toLowerCase().includes(needle)
-        )
+  const [rows, setRows] = useState([])
+  const [total, setTotal] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  // Paging and the state/event filters happen on the server. An organiser with
+  // ten thousand bookings should not ship all of them to the browser so it can
+  // display twenty-five - and the ownership rule belongs in the query anyway.
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    setError(null)
+    getOrganizerTransactions({
+      page: page - 1, // Spring pages count from 0; this UI counts from 1
+      size: pageSize,
+      ...(state ? { state } : {}),
+      ...(eventId ? { eventId } : {}),
+    })
+      .then((data) => {
+        if (cancelled) return
+        setRows(data.content || [])
+        setTotal(data.total_elements ?? 0)
       })
-      .map((b) => ({ booking: b, payment: latestPayment(b.id), event: getEvent(b.event_id) }))
+      .catch((e) => {
+        if (cancelled) return
+        setError(e?.response?.status === 403 ? 'forbidden' : 'unreachable')
+        setRows([])
+        setTotal(0)
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [page, pageSize, state, eventId])
 
+  // Sort and text search act on the page in hand, because the endpoint offers
+  // neither yet. That is a real limitation rather than a hidden one - the empty
+  // state says "on this page" so a miss does not read as "you have none".
+  const visible = useMemo(() => {
+    const needle = q.trim().toLowerCase()
+    const list = !needle
+      ? rows
+      : rows.filter((r) =>
+          [r.booking_ref, r.buyer_name, r.buyer_phone_e164]
+            .some((v) => (v || '').toLowerCase().includes(needle)),
+        )
     const dir = {
-      newest: (a, b) => new Date(b.booking.created_at) - new Date(a.booking.created_at),
-      oldest: (a, b) => new Date(a.booking.created_at) - new Date(b.booking.created_at),
-      highest: (a, b) => b.booking.total_usd_cents - a.booking.total_usd_cents,
-      lowest: (a, b) => a.booking.total_usd_cents - b.booking.total_usd_cents,
+      newest: (a, b) => new Date(b.created_at) - new Date(a.created_at),
+      oldest: (a, b) => new Date(a.created_at) - new Date(b.created_at),
+      highest: (a, b) => b.total_usd_cents - a.total_usd_cents,
+      lowest: (a, b) => a.total_usd_cents - b.total_usd_cents,
     }[sort]
     return [...list].sort(dir)
-  }, [q, state, eventId, sort, myEventIds])
+  }, [rows, q, sort])
 
-  const pageCount = Math.max(1, Math.ceil(rows.length / pageSize))
-  // Narrowing the filter can strand you on a page that no longer exists, which
-  // renders as an empty table rather than as "no results".
+  const pageCount = Math.max(1, Math.ceil(total / pageSize))
+  // Narrowing a filter can strand you past the last page, which renders as an
+  // empty table rather than as "no results".
   useEffect(() => {
     if (page > pageCount) setPage(1)
   }, [page, pageCount])
-  const visible = rows.slice((page - 1) * pageSize, page * pageSize)
 
-  const settled = rows.reduce((a, r) => a + (EARNING.has(r.booking.state) ? r.booking.total_usd_cents : 0), 0)
+  const settled = rows
+    .filter((r) => EARNING.has(r.state))
+    .reduce((a, r) => a + r.total_usd_cents, 0)
+
   const filtered = Boolean(q || state || eventId)
 
   return (
@@ -209,7 +244,27 @@ export default function OrganizerTransactionsPage() {
         )}
 
         {/* ----------------------------------------------------------- table */}
-        {visible.length ? (
+        {loading ? (
+          <div className="px-5 py-16 text-center text-small text-muted">
+            {km ? 'កំពុងផ្ទុក…' : 'Loading transactions…'}
+          </div>
+        ) : error ? (
+          <div className="px-5 py-16 text-center">
+            <Icon name="alert" size={28} className="text-danger" />
+            <p className="text-ink font-semibold mt-3 mb-1">
+              {error === 'forbidden'
+                ? km ? 'អ្នកមិនមែនជាអ្នករៀបចំ' : 'Not an organizer account'
+                : km ? 'មិនអាចទាក់ទងម៉ាស៊ីនបម្រើ' : 'Could not reach the server'}
+            </p>
+            {/* Naming the cause beats a generic failure: one of these is fixed by
+                logging in as someone else, the other by starting the backend. */}
+            <p className="text-small text-muted m-0">
+              {error === 'forbidden'
+                ? km ? 'គណនីនេះគ្មានទម្រង់អ្នករៀបចំ' : 'This account has no organizer profile.'
+                : km ? 'សូមពិនិត្យថាម៉ាស៊ីនបម្រើកំពុងដំណើរការ' : 'Check that the API is running, then reload.'}
+            </p>
+          </div>
+        ) : visible.length ? (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
@@ -224,48 +279,49 @@ export default function OrganizerTransactionsPage() {
                 </tr>
               </thead>
               <tbody className="text-small text-ink">
-                {visible.map(({ booking, payment, event }, i) => {
-                  const outgoing = OUTGOING.has(booking.state)
-                  const earning = EARNING.has(booking.state)
+                {visible.map((r, i) => {
+                  const outgoing = OUTGOING.has(r.state)
+                  const earning = EARNING.has(r.state)
                   return (
                     <tr
-                      key={booking.id}
+                      key={r.booking_id}
                       /* Zebra from the surface token, so the stripe inverts with
-                         the theme instead of staying a light grey on dark. */
+                         the theme instead of staying light grey on dark. */
                       className={`border-b border-line-2 ${i % 2 ? 'bg-surface-2/40' : ''}`}
                     >
                       <td className="px-5 py-3">
-                        <Link className="font-semibold" to={`/organizer/events/${booking.event_id}/sales`}>
-                          {km ? event?.title_km : event?.title_en}
+                        <Link className="font-semibold" to={`/organizer/events/${r.event_id}/sales`}>
+                          {km ? r.event_title_km : r.event_title_en}
                         </Link>
                       </td>
                       <td className="px-5 py-3 whitespace-nowrap">
-                        <div className="font-medium text-ink">{date(booking.created_at)}</div>
+                        <div className="font-medium text-ink">{date(r.created_at)}</div>
                         <div className="text-tiny text-muted">
-                          {new Date(booking.created_at).toLocaleTimeString(km ? 'km-KH' : 'en-GB', {
+                          {new Date(r.created_at).toLocaleTimeString(km ? 'km-KH' : 'en-GB', {
                             hour: '2-digit',
                             minute: '2-digit',
                           })}
                         </div>
                       </td>
                       <td className="px-5 py-3">
-                        <div className="font-medium">{booking.buyer_name}</div>
-                        <div className="text-tiny text-muted">{booking.buyer_phone_e164}</div>
+                        <div className="font-medium">{r.buyer_name}</div>
+                        <div className="text-tiny text-muted">{r.buyer_phone_e164}</div>
                       </td>
                       <td className="px-5 py-3">
-                        {payment ? (
-                          <span className="badge badge-mode">{payment.provider}</span>
+                        {r.payment_provider ? (
+                          <span className="badge badge-mode">{r.payment_provider}</span>
                         ) : (
+                          /* No attempt started yet - not the same as a failed one. */
                           <span className="text-muted">—</span>
                         )}
                       </td>
                       <td className="px-5 py-3">
-                        <Link className="mono text-small" to={`/bookings/${booking.id}`}>
-                          {booking.booking_ref}
+                        <Link className="mono text-small" to={`/bookings/${r.booking_id}`}>
+                          {r.booking_ref}
                         </Link>
                       </td>
                       <td className="px-5 py-3">
-                        <Badge status={booking.state} />
+                        <Badge status={r.state} />
                       </td>
                       <td
                         className={`px-5 py-3 text-right font-bold tabular-nums whitespace-nowrap ${
@@ -273,7 +329,7 @@ export default function OrganizerTransactionsPage() {
                         }`}
                       >
                         {outgoing ? '− ' : earning ? '+ ' : ''}
-                        {usd(booking.total_usd_cents)}
+                        {usd(r.total_usd_cents)}
                       </td>
                     </tr>
                   )
@@ -287,22 +343,21 @@ export default function OrganizerTransactionsPage() {
             <p className="text-ink font-semibold mt-3 mb-1">
               {km ? 'គ្មានប្រតិបត្តិការ' : 'No transactions'}
             </p>
-            {/* A filtered-empty view and an empty account need different
-                answers: one is "clear the filter", the other is "sell a ticket". */}
+            {/* Three different situations, three different answers. Search only
+                narrows the page in hand, so saying so stops a miss reading as
+                "this account has nothing". */}
             <p className="text-small text-muted m-0">
-              {filtered
-                ? km
-                  ? 'សាកល្បងលុបតម្រង'
-                  : 'Try clearing the filters.'
-                : km
-                  ? 'នៅមិនទាន់មានការកក់'
-                  : 'Nothing has been booked yet.'}
+              {q
+                ? km ? 'គ្មានលទ្ធផលក្នុងទំព័រនេះ' : 'No match on this page.'
+                : state || eventId
+                  ? km ? 'សាកល្បងលុបតម្រង' : 'Try clearing the filters.'
+                  : km ? 'នៅមិនទាន់មានការកក់' : 'Nothing has been booked yet.'}
             </p>
           </div>
         )}
 
         {/* ------------------------------------------------------ pagination */}
-        {rows.length > 0 && (
+        {!loading && !error && total > 0 && (
           <div className="px-5 py-3 border-t border-line-2 bg-surface-2 flex items-center justify-between gap-4 flex-wrap">
             <div className="flex items-center gap-2">
               <div className="inline-flex rounded-ui border border-line overflow-hidden bg-surface">

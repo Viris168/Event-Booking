@@ -246,7 +246,7 @@ export default function EventDetailPage() {
       sessionStorage.removeItem(`activeHoldId_${event.id}`)
       setApiHoldData(null)
       toast(locale === 'km' ? 'បានលែងកៅអីវិញ។' : 'Hold released.', 'info')
-    }).catch((err) => {
+    }).catch(() => {
       toast(`Could not release hold`, 'error')
     })
   }

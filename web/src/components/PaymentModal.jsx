@@ -10,7 +10,9 @@ import { CheckoutSkeleton } from './Skeleton.jsx'
 export default function PaymentModal({ bookingId, option, onSuccess, onClose }) {
   const [apiBooking, setApiBooking] = useState(null)
   const [txn, setTxn] = useState(null)
-  const [checking, setChecking] = useState(false)
+  // Only the setter is used - the flag is written to guard a double submit
+  // and never read back, so naming the value would be a lie.
+  const [, setChecking] = useState(false)
   const onSettledRef = useRef(() => {})
 
   // 1. Fetch booking details when mounted

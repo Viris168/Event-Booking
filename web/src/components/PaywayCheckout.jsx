@@ -21,7 +21,6 @@ export default function PaywayCheckout({
   merchant = MERCHANT_NAME,
   onSettled,
   onClose,
-  onSuccess,
 }) {
   const { t, locale } = useLocale()
   const [step, setStep] = useState('method') // method | processing
@@ -74,7 +73,7 @@ export default function PaywayCheckout({
   const amountLine = usd(txn.amount_usd_cents)
 
   const sheetContent = (txn.status === 'APPROVED' || txn.status === 'SUCCESS') && !processing ? (
-    <SuccessScreen onSuccess={onSuccess} />
+    <SuccessScreen />
   ) : (
     <>
       <div className="pw-head-new">
@@ -193,7 +192,7 @@ function Processing({ status, locale, t }) {
   )
 }
 
-function SuccessScreen({ onSuccess }) {
+function SuccessScreen() {
   return (
     <div className="pw-success">
       <div className="pw-success-top">

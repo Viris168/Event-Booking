@@ -3,10 +3,13 @@ package com.eventbooking.controller.Event;
 import com.eventbooking.Enumeration.ImageRole;
 import com.eventbooking.dto.event.CreateEventRequest;
 import com.eventbooking.dto.event.EventResponse;
+import com.eventbooking.dto.event.EventReviewResponse;
 import com.eventbooking.dto.event.UpdateEventRequest;
 import com.eventbooking.security.OrganizerResolver;
 import com.eventbooking.service.event.EventService;
 import org.springframework.data.domain.Page;
+
+import java.util.List;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -68,6 +71,29 @@ public class EventController {
         return new ResponseEntity<>(eventResponse,HttpStatus.OK);
     }
 
+    /**
+     * Put the event in front of a platform admin. Organiser action: the resolver
+     * turns the caller into an organizer_profile id for the ownership check,
+     * while the raw app_user id is what signs the review log - two id spaces,
+     * both needed, which is why both are passed down.
+     */
+    @PatchMapping("/{id}/submit")
+    public ResponseEntity<EventResponse> submitForReview(
+            @RequestHeader("X-User-Id") Long actorUserId,
+            @PathVariable Long id) {
+        Long organizerId = organizerResolver.requireOrganizerId(actorUserId);
+        return new ResponseEntity<>(eventService.submitForReview(organizerId, id, actorUserId), HttpStatus.OK);
+    }
+
+    /** Take it back out of the queue - or out of APPROVED, to fix something. */
+    @PatchMapping("/{id}/withdraw")
+    public ResponseEntity<EventResponse> withdrawFromReview(
+            @RequestHeader("X-User-Id") Long actorUserId,
+            @PathVariable Long id) {
+        Long organizerId = organizerResolver.requireOrganizerId(actorUserId);
+        return new ResponseEntity<>(eventService.withdrawFromReview(organizerId, id, actorUserId), HttpStatus.OK);
+    }
+
     @PatchMapping("/{id}/publish")
     public ResponseEntity<EventResponse> publishEvent(
             @RequestHeader("X-User-Id") Long actorUserId,
@@ -75,18 +101,6 @@ public class EventController {
         Long organizerId = organizerResolver.requireOrganizerId(actorUserId);
         EventResponse updatedEvent = eventService.publishEvent(organizerId, id);
         return new ResponseEntity<>(updatedEvent, HttpStatus.OK);
-    }
-
-    /**
-     * Take an event off sale permanently. Separate from the publish endpoint
-     * rather than a status field on PATCH /{id}: this is a moderation action
-     * with a different audience and a different future authorization rule, and
-     * a one-way transition should not be reachable by a client that meant to
-     * rename the event.
-     */
-    @PatchMapping("/{id}/takedown")
-    public ResponseEntity<EventResponse> takeDownEvent(@PathVariable Long id) {
-        return new ResponseEntity<>(eventService.takeDownEvent(id), HttpStatus.OK);
     }
 
     /**
@@ -114,6 +128,16 @@ public class EventController {
             @RequestParam(defaultValue = "COVER") ImageRole role) {
         Long organizerId = organizerResolver.requireOrganizerId(actorUserId);
         return new ResponseEntity<>(eventService.deleteImage(organizerId, id, role), HttpStatus.OK);
+    }
+
+    /**
+     * The decision trail. Public to any caller who can see the event: the
+     * organiser needs it for their own history, and an admin reviewing a
+     * resubmission needs to know what was asked for last time.
+     */
+    @GetMapping("/{id}/review")
+    public ResponseEntity<List<EventReviewResponse>> getReviewHistory(@PathVariable Long id) {
+        return new ResponseEntity<>(eventService.getReviewHistory(id), HttpStatus.OK);
     }
 
     @GetMapping("/{id}/verify")

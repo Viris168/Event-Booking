@@ -3,8 +3,8 @@
 **From:** Viris (organizer side)
 **To:** whoever builds the admin page + auth
 **Branch:** `Dev-viris`
-**Status:** backend groundwork done, 156 tests green. The admin *endpoints* and
-the admin *page* are both open.
+**Status:** the review lifecycle is built and tested end to end (168 tests
+green). The admin *page* is open, and so is everything in §4.
 
 ---
 
@@ -102,45 +102,56 @@ on next app start.
 `event_review` has no `reviewed_at`/`reviewed_by` on the event by design: an
 event can be reviewed many times, and one column keeps only the last.
 
-### Snapshot diffs are ready but not yet wired
+### Snapshot diffs — wired
 
-`catalog/EventSnapshotter.java` captures the reviewable fields and diffs two
-captures, so a re-review shows only what changed rather than the whole event.
-The machinery and its 8 tests exist; **nothing writes a snapshot yet** because
-`approve` doesn't exist. Wire it there.
+`catalog/EventSnapshotter.java` captures the reviewable fields, and `submit` and
+`approve` both store one on their `event_review` row. `GET /event/{id}/review`
+diffs each entry against the previous snapshot, so a re-review reads as
+"title_en changed" rather than as a second full read-through.
+
+Two rules it follows, both worth not undoing: the venue is compared by **id**
+(a venue rename is the venue's history, not the event's) and artwork by
+**presence** (re-uploading the same picture mints a new Cloudinary id and would
+otherwise report a phantom change).
 
 ---
 
 ## 2. What is still open
 
-### 2a. The lifecycle endpoints (nobody has built these)
+### 2a. The lifecycle endpoints — BUILT
+
+All six exist and were driven end to end against Postgres:
 
 ```
 PATCH /api/v1/event/{id}/submit                   organizer
 PATCH /api/v1/event/{id}/withdraw                 organizer
-GET   /api/v1/event/{id}/review                   history
+GET   /api/v1/event/{id}/review                   history, with diffs
 
 PATCH /api/v1/admin/event/{id}/approve            admin
 PATCH /api/v1/admin/event/{id}/reject             admin + message
 PATCH /api/v1/admin/event/{id}/request-changes    admin + message
 ```
 
-Each one: load → authorize → `requireTransition` → set status → touch
-`submitted_at` → write an `event_review` row → save. All in one `@Transactional`
-so the status change and its log entry commit together.
+Admin actions live on a separate `AdminEventController` — different authorizer,
+and it will want its own `SecurityFilterChain` rule when your JWT lands. Swap
+`@RequestHeader("X-User-Id")` for the principal there and nothing below the
+controller moves.
 
-Suggested: put admin endpoints on a **new `AdminEventController`**, separate
-from `EventController`. Different authorizer, and it will want its own
-`SecurityFilterChain` rule. `takedown` should move there too — it is a
-moderation action currently sitting on the organizer's controller.
+Three guards worth knowing about, because they will refuse calls that used to
+work:
 
-`message` should be `@NotBlank` on the request DTO for reject and
-request-changes, matching the DB CHECK, so it fails as a 400 field error rather
-than a raw constraint violation.
+* `updateEvent` rejects edits while `PENDING_REVIEW` or `APPROVED`
+* `publishEvent` now requires `APPROVED` — a DRAFT can no longer be published
+* `takeDownEvent` now requires `PUBLISHED`
 
-**Submit must also refuse an event with nothing to sell:** ZONED needs ≥1 zone,
-SEATED needs ≥1 seat class each with ≥1 seat, MIXED needs both. Otherwise admin
-reviews an empty shell.
+`submit` also refuses an event with nothing to sell: ZONED needs ≥1 zone,
+SEATED needs ≥1 seat class each with ≥1 seat, MIXED needs both. The error names
+the empty tier rather than saying "nothing on sale".
+
+**`takedown` has not moved yet.** It is still on `EventController` and still
+has no authorization at all — anyone who can reach it can take down any event.
+Moving it to `AdminEventController` behind `AdminResolver` is a small job and
+it is in your lane.
 
 ### 2b. The admin queue needs a read endpoint
 
@@ -150,9 +161,14 @@ there for exactly that query.
 
 ### 2c. `AdminEventsPage.jsx` today
 
-It reads `mock/store.js`, not the API, and has only **Take down / Restore**.
-No approve, no reject, no queue. The status filter dropdown exists but the four
-new statuses aren't in `STATUSES`.
+It reads `mock/store.js`, not the API, and has only **Take down / Restore** —
+no approve, no reject, no queue. The status filter now lists all seven statuses,
+and `Badge` has styles and en/km labels for the four new ones, so the states
+render correctly the moment the page is wired.
+
+Worth considering: build the review queue as its own route (`/admin/review`)
+rather than growing this page. A queue you work through is a different screen
+from a directory you browse, and it avoids us both editing one file.
 
 ---
 
@@ -226,20 +242,69 @@ complementary, and JWT alone will not close this.
 
 ---
 
-## 5. Suggested order
+## 5. Mock and database organizer profiles were permuted — now fixed
 
-1. The four bug fixes above — small, and #1 corrupts data whenever it runs
-2. `VenueSeatController` + `SeatClassController` with the ownership checks
-3. The lifecycle endpoints (§2a), wiring `EventSnapshotter` into `approve`
-4. `GET /event?status=` for the queue
-5. `AdminEventsPage.jsx` off the mock store onto the API
+`app_user` ids already matched between `web/src/mock/seed.js` and the database.
+`organizer_profile` ids did not:
 
-Steps 1–2 unblock the seated path. Step 3 is what the organizer form is waiting
-on. Nothing in 3–5 touches `EventZone`, `EventSeat` or `SeatClass` authz.
+| profile | mock (before) | database |
+|---|---|---|
+| 1 | user 2 (Chantha Meas) | **user 5 (Dev Organizer)** |
+| 2 | user 4 (Sophea Nou) | **user 2 (Chantha Meas)** |
+| 3 | user 5 (Dev Organizer) | **user 4 (Sophea Nou)** |
+| 4 | user 15 (Sovann Chey) | user 15 (Sovann Chey) |
+
+A permutation of the same four people, which is the worst kind of mismatch:
+every id exists on both sides, so nothing 404s and nothing errors - the screen
+just shows one organiser another organiser's rows.
+
+### How it surfaced
+
+The transactions page reported **0 transactions** against a database holding 96.
+Logged in as Chantha Meas, the mock said `organizerProfile.id = 1` and filtered
+the event dropdown accordingly, while the API resolved user 2 to profile **2**
+and correctly answered with profile 2's bookings - of which there are none. Two
+halves of one screen disagreeing about whose data it was.
+
+### Fixed
+
+`organizerProfiles` in `mock/seed.js` is now ordered to match the database, and
+carries a comment saying why the order is load-bearing. `nextOrgId()` assigns
+1..4 down that list, so reordering the entries is what fixes the mapping.
+
+The 32 `organizer_id` references in the mock events and venues were left alone -
+they still say "profile 1", which now means Dev Organizer rather than Chantha
+Meas. That reassigns demo events between demo organisers and is self-consistent
+either way.
+
+### The general point, which still applies
+
+Any page that mixes mock data with API data will disagree with itself wherever
+the two seeds differ, and it will do so silently. The transactions page is
+already half-and-half: real rows, mock event dropdown. Worth a look whenever a
+screen is moved onto the API and something "shows nothing" - the identity is a
+likelier cause than the query.
+
+The real fix is to stop maintaining two seed files: log in against the API
+(`web/src/api/auth.js` exists) and drop the mock user list entirely. That lands
+naturally with the JWT work.
 
 ---
 
-## 6. Running it
+## 6. Suggested order
+
+1. The four bug fixes above — small, and #1 corrupts data whenever it runs
+2. `VenueSeatController` + `SeatClassController` with the ownership checks
+3. ~~Move `takedown` behind `AdminResolver`~~ — done
+4. `GET /event?status=` for the queue
+5. `AdminEventsPage.jsx` off the mock store onto the API
+
+Steps 1–2 unblock the seated path — still the biggest gap. Nothing in 3–5
+touches `EventZone`, `EventSeat` or `SeatClass` authz.
+
+---
+
+## 7. Running it
 
 ```bash
 cd api && ./mvnw -o test          # 156 tests

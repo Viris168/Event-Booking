@@ -100,13 +100,22 @@ export function buildSeed() {
       created_at: days(-200),
       password: 'password',
     },
+    // Ids 5 and 6 mirror app_user rows 5 and 6 in the database, and are the only
+    // two that ever disagreed. api/client.js sends this id as the X-User-Id
+    // header, so a mismatch here does not fail - it silently answers with a
+    // different person's data. Logging in as the old id 5 ("Ly Hour", a
+    // customer) returned Dev Organizer's events and their customers' phone
+    // numbers, with no error anywhere.
+    //
+    // Everything from id 7 down already lined up. Keep these two in step with
+    // V6__seed_demo_users.sql whenever either side changes.
     {
       id: nextUserId(),
       phone_e164: '+85596112233',
-      email: 'lyhour@example.com',
-      display_name: 'Ly Hour',
-      locale: 'km',
-      role: 'CUSTOMER',
+      email: 'dev.organizer@example.com',
+      display_name: 'Dev Organizer',
+      locale: 'en',
+      role: 'ORGANIZER',
       is_disabled: false,
       created_at: days(-45),
       password: 'password',
@@ -114,8 +123,8 @@ export function buildSeed() {
     {
       id: nextUserId(),
       phone_e164: '+85588554477',
-      email: null,
-      display_name: 'Srey Mom',
+      email: 'dev.customer@example.com',
+      display_name: 'Dev Customer',
       locale: 'km',
       role: 'CUSTOMER',
       is_disabled: false,
@@ -224,7 +233,22 @@ export function buildSeed() {
     },
   ]
 
-  const organizerProfiles = [
+  // Order matters: nextOrgId() assigns 1..4 down this list, and those ids are
+// organizer_profile ids that the API also uses. They are kept in the database's
+// order - profile 1 is Dev Organizer, not Chantha Meas - because a page that
+// filters mock data by organizerProfile.id while also calling an API scoped by
+// the server's own resolution would otherwise disagree with itself about which
+// events are yours. Every id exists on both sides, so a mismatch here never
+// errors; it just shows one organiser another organiser's rows.
+const organizerProfiles = [
+    {
+      id: nextOrgId(),
+      user_id: 5,
+      org_name_en: 'Dev Productions',
+      org_name_km: 'ផលិតកម្មអភិវឌ្ឍន៍',
+      telegram_chat_id: null,
+      created_at: days(-45),
+    },
     {
       id: nextOrgId(),
       user_id: 2,

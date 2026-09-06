@@ -7,8 +7,13 @@ import { Alert, Field } from '../components/ui.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
 
+// Dev Organizer is listed because they are the organiser the backend seeder
+// gives data to. Without them the only organiser button here was Chantha Meas,
+// who owns nothing in an existing database - so the obvious way in landed on an
+// empty dashboard that looked broken rather than accurate.
 const DEMO = [
   { label: 'Dara Sok', role: 'Customer', icon: 'user', id: 'dara@example.com' },
+  { label: 'Dev Organizer', role: 'Organizer · has data', icon: 'building', id: 'dev.organizer@example.com' },
   { label: 'Chantha Meas', role: 'Organizer', icon: 'building', id: 'organizer@example.com' },
   { label: 'Platform Admin', role: 'Platform admin', icon: 'shield', id: 'admin@example.com' },
 ]
@@ -49,7 +54,7 @@ export default function LoginPage() {
   }
 
   /** One tap to fill a demo account — the prototype has no real accounts. */
-  function useDemo(id) {
+  function fillFromDemo(id) {
     setIdentifier(id)
     setPassword('password')
     setError(null)
@@ -69,7 +74,7 @@ export default function LoginPage() {
       </span>
       <div className="demo-list">
         {DEMO.map((d) => (
-          <button key={d.id} type="button" className="demo-row" onClick={() => useDemo(d.id)}>
+          <button key={d.id} type="button" className="demo-row" onClick={() => fillFromDemo(d.id)}>
             <Icon name={d.icon} size={15} />
             <span>
               <b>{d.label}</b>

@@ -883,6 +883,75 @@ function applyInventory(event, classes, zones) {
   }
 }
 
+// ---------------------------------------------------------------- lifecycle
+//
+// This table is the mock server's copy of EventStateMachine. It lives here, not
+// in a component, on purpose: store.js is standing in for the backend, so
+// knowing the rules is its job. The same table inside JSX would be a second
+// source of truth that drifts the first time an edge changes.
+//
+const TRANSITIONS = {
+  DRAFT: { SUBMIT: 'PENDING_REVIEW' },
+  CHANGES_REQUESTED: { SUBMIT: 'PENDING_REVIEW' },
+  PENDING_REVIEW: {
+    WITHDRAW: 'DRAFT',
+    APPROVE: 'APPROVED',
+    REJECT: 'REJECTED',
+    REQUEST_CHANGES: 'CHANGES_REQUESTED',
+  },
+  APPROVED: {
+    PUBLISH: 'PUBLISHED',
+    // The way back out of an approval, so a typo spotted after review does not
+    // force a choice between publishing it wrong and abandoning the event.
+    WITHDRAW: 'DRAFT',
+  },
+  PUBLISHED: { TAKE_DOWN: 'TAKEN_DOWN' },
+  // REJECTED and TAKEN_DOWN are absent, not empty: terminal states have no
+  // outgoing edges, and absence is how that is expressed on the Java side too.
+}
+
+/**
+ * Every action legal from this status, in table order.
+ *
+ * Mirrors EventStateMachine.availableTransitions, and is what the real API
+ * already sends as EventResponse.available_actions - so a component reading
+ * this reads the same shape before and after the API swap.
+ */
+export function availableActions(status) {
+  return Object.keys(TRANSITIONS[status] || {})
+}
+
+/** Mirrors EventStateMachine.isEditable. PUBLISHED stays editable, as it is today. */
+export function isEditableStatus(status) {
+  return status === 'DRAFT' || status === 'CHANGES_REQUESTED' || status === 'PUBLISHED'
+}
+
+/**
+ * Move an event along a legal edge, or refuse.
+ *
+ * The old setEventStatus took any status from any status, so the UI could go
+ * DRAFT -> PUBLISHED and skip review entirely - a flow the server answers with
+ * 409. A mock that is more permissive than production is the worst direction to
+ * diverge in: everything looks fine in the demo and breaks on the real API.
+ */
+export function applyTransition(eventId, transition) {
+  const event = getEvent(eventId)
+  if (!event) return { error: 'NOT_FOUND' }
+
+  const to = (TRANSITIONS[event.status] || {})[transition]
+  if (!to) {
+    return { error: 'INVALID_TRANSITION', message: `Cannot ${transition} an event that is ${event.status}` }
+  }
+
+  // submitted_at is what a review queue sorts on. Cleared on the way out so a
+  // resubmitted event does not claim to have been waiting since an attempt that
+  // was taken back.
+  if (transition === 'SUBMIT') event.submitted_at = new Date().toISOString()
+  if (['WITHDRAW', 'REJECT', 'REQUEST_CHANGES'].includes(transition)) event.submitted_at = null
+
+  return setEventStatus(eventId, to)
+}
+
 export function setEventStatus(eventId, status) {
   const event = getEvent(eventId)
   if (!event) return { error: 'NOT_FOUND' }
