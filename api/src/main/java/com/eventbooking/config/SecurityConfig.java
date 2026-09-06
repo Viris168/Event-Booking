@@ -64,7 +64,14 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+                // Still permitAll everywhere, so the inventory and booking lanes
+                // keep working through X-User-Id. /auth/** is listed explicitly
+                // anyway: it has to stay public when the rest is tightened in
+                // #20, and writing it now means that change is one line rather
+                // than a puzzle about which paths login needs.
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/api/v1/auth/**").permitAll()
+                        .anyRequest().permitAll())
                 // Ahead of UsernamePasswordAuthenticationFilter, which is where form
                 // login would sit. That slot has no meaning for a token API, but it
                 // is the conventional anchor point and guarantees the context is
