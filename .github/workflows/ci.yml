@@ -30,6 +30,19 @@ jobs:
       # daemon at /var/run/docker.sock, so nothing else is needed.
       - name: Build and test
         working-directory: api
+        # Placeholders, not secrets. CloudinaryConfig deliberately fails startup
+        # when these are blank - which is right for a deployment and fatal for a
+        # test run: with no api/.env on the runner, the Cloudinary bean cannot be
+        # built, so CloudinaryService fails, so EventServiceimpl fails, and every
+        # @SpringBootTest context dies before a single assertion runs.
+        #
+        # Any non-blank value satisfies it. Nothing here uploads, and the client
+        # makes no network call while being constructed, so real credentials
+        # would buy nothing and put secrets in a log for no reason.
+        env:
+          CLOUDINARY_CLOUD_NAME: ci-placeholder
+          CLOUDINARY_API_KEY: ci-placeholder
+          CLOUDINARY_API_SECRET: ci-placeholder
         run: ./mvnw -B --no-transfer-progress verify
 
       - name: Publish test reports
