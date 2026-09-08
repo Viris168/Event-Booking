@@ -62,14 +62,32 @@ class HoldConcurrencyIT {
         try (Connection c = newConnection()) {
             c.setAutoCommit(true);
 
+            /*
+             * ON CONFLICT because Flyway has already run above, and a migration
+             * may seed this row - an INSERT that assumes an empty table breaks
+             * the first time someone adds one.
+             */
             try (PreparedStatement ps = c.prepareStatement(
-                    "INSERT INTO province_ref (code, name_en, name_km) VALUES ('PP', 'Phnom Penh', 'ភ្នំពេញ')")) {
+                    "INSERT INTO province_ref (code, name_en, name_km) VALUES ('PP', 'Phnom Penh', 'ភ្នំពេញ') "
+                            + "ON CONFLICT (code) DO NOTHING")) {
                 ps.executeUpdate();
             }
 
+            /*
+             * A phone and email no migration uses.
+             *
+             * This used to insert '+85512345678', which V6__seed_demo_users.sql
+             * also seeds - so the INSERT hit app_user_phone_e164_key on a
+             * completely fresh database and the whole class errored before its
+             * first assertion. It went unnoticed because nothing ran this test:
+             * surefire's default includes never matched *IT.java, so it only
+             * surfaced once failsafe was added and CI ran it for the first time.
+             *
+             * The 9xx range is deliberately outside the block V6 occupies.
+             */
             long organizerUserId = insertReturningId(c,
                     "INSERT INTO app_user (phone_e164, email, password_hash, display_name, role) " +
-                            "VALUES ('+85512345678', 'organizer@example.com', 'x', 'Organizer', 'ORGANIZER') RETURNING id");
+                            "VALUES ('+85590000001', 'hold-concurrency-it@example.test', 'x', 'Organizer', 'ORGANIZER') RETURNING id");
 
             long organizerProfileId = insertReturningId(c,
                     "INSERT INTO organizer_profile (user_id, org_name_en, org_name_km) " +
