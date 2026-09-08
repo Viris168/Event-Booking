@@ -11,7 +11,13 @@ import { Alert } from '../components/ui.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
 import { countdown } from '../lib/format.js'
 import { mapBooking } from '../api/adapters.js'
-import { startPayment as startApiPayment, pollPayment, simulateAbaPayment, simulateBakongPayment } from '../api/payment.js'
+import {
+  startPayment as startApiPayment,
+  pollPayment,
+  getBookingPayments,
+  simulateAbaPayment,
+  simulateBakongPayment,
+} from '../api/payment.js'
 import { MERCHANT_NAME, PROVIDER } from '../lib/payway.js'
 import { getBooking, useStore } from '../mock/store.js'
 import { getBooking as getApiBooking } from '../api/bookings.js'
@@ -99,9 +105,39 @@ export default function PaymentPage() {
     // PAYMENT_FAILED is retryable: the backend lets a failed/expired booking
     // open a fresh attempt, so "Try again" must do the same on this side.
     if (booking.state === 'PENDING_PAYMENT' || booking.state === 'PAYMENT_FAILED' || booking.state === 'AWAITING_CONFIRMATION' || !booking.state) {
-      openTransaction(requestedOption || 'ABA_PAYWAY')
+      if (requestedOption) {
+        openTransaction(requestedOption)
+        return
+      }
+
+      /*
+       * No provider named, so resume whatever is already open rather than
+       * defaulting to ABA.
+       *
+       * The default was not merely cosmetic. The server closes an open attempt
+       * whenever a DIFFERENT provider is requested, so arriving here from
+       * "Reopen payment" on a pending Bakong booking cancelled the KHQR attempt
+       * and started an ABA one — a customer who had already scanned and was
+       * waiting on Bakong lost that attempt just by looking at the page.
+       *
+       * Asking for the same provider is safe: the server hands back the SAME
+       * QR and reference instead of creating anything.
+       */
+      let cancelled = false
+      getBookingPayments(apiBooking?.id ?? bookingId)
+        .then((list) => {
+          if (cancelled) return
+          const open = (list || []).find((p) =>
+            ['PENDING', 'CREATED'].includes(p.status ?? p.state),
+          )
+          openTransaction(open?.provider || 'ABA_PAYWAY')
+        })
+        .catch(() => !cancelled && openTransaction('ABA_PAYWAY'))
+      return () => {
+        cancelled = true
+      }
     }
-  }, [booking, txn, requestedOption, openTransaction])
+  }, [booking, txn, requestedOption, openTransaction, apiBooking?.id, bookingId])
 
   useEffect(() => {
     if (txn?.status === 'PENDING' && txn?.provider === 'ABA_PAYWAY') setSheetOpen(true)

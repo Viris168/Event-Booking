@@ -408,6 +408,10 @@ class PaymentServiceTest {
                         Duration.ofSeconds(3),
                         Duration.ofSeconds(5)),
                 new PaymentProperties.Poll(true, Duration.ofSeconds(5), 50,
-                        Duration.ofSeconds(3), Duration.ofMinutes(1)));
+                        Duration.ofSeconds(3),
+                        // Empty: these tests exercise the default floor, and the
+                        // per-provider override has its own coverage below.
+                        java.util.Map.of(),
+                        Duration.ofMinutes(1)));
     }
 }

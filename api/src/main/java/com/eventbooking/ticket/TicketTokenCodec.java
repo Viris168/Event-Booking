@@ -76,9 +76,12 @@ public class TicketTokenCodec {
                             + TicketProperties.MIN_SECRET_LENGTH + " characters.");
         }
         if (TicketProperties.PLACEHOLDER_SECRET.equals(properties.signingSecret())) {
-            log.warn("app.ticket.signing-secret is still the shipped placeholder. Anyone with this "
-                    + "repository can forge ticket signatures - set TICKET_SIGNING_SECRET before "
-                    + "any real event.");
+            // Kept as a warning HERE because this constructor also runs in tests
+            // and in the dev profile, where the placeholder is legitimate. The
+            // deployment-time refusal lives in TicketSecretGuard, which is
+            // @Profile("!dev") and throws.
+            log.warn("app.ticket.signing-secret is the shipped placeholder. Fine for local work; "
+                    + "TicketSecretGuard refuses to start on it under any other profile.");
         }
     }
 

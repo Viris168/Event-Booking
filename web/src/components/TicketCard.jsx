@@ -1,7 +1,9 @@
+import { useState } from 'react'
 import Icon from './Icon.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
 import QrGlyph from './QrGlyph.jsx'
 import TicketQr from './TicketQr.jsx'
+import QrLightbox from './QrLightbox.jsx'
 
 /**
  * One ticket = one admission unit. A seat line has exactly one; a GA line with
@@ -14,6 +16,7 @@ import TicketQr from './TicketQr.jsx'
  */
 export default function TicketCard({ ticket, label, event, venue }) {
   const { t, locale, dateTime } = useLocale()
+  const [zoomed, setZoomed] = useState(false)
   const used = ticket.checked_in ?? !!ticket.checked_in_at
   const isMock = Boolean(ticket.qr_token)
 
@@ -33,11 +36,45 @@ export default function TicketCard({ ticket, label, event, venue }) {
   return (
     <div className={`ticket ${used ? 'used' : ''}`}>
       <div className="ticket-stub">
-        {isMock ? (
-          <QrGlyph token={ticket.qr_token} label={`Ticket ${seatLabel}`} />
-        ) : (
-          <TicketQr ticketId={ticket.id} label={`Ticket ${seatLabel}`} />
-        )}
+        {/* A button, not a div with onClick: this is the control that makes a
+            ticket scannable, so it has to be reachable by keyboard and announce
+            itself. Disabled once used — enlarging a spent code helps nobody. */}
+        <button
+          type="button"
+          className="qr-zoom-trigger"
+          onClick={() => setZoomed(true)}
+          disabled={used}
+          aria-label={
+            locale === 'km' ? 'ពង្រីកកូដ QR' : 'Enlarge QR code for scanning'
+          }
+        >
+          {isMock ? (
+            <QrGlyph token={ticket.qr_token} label={`Ticket ${seatLabel}`} />
+          ) : (
+            <TicketQr ticketId={ticket.id} label={`Ticket ${seatLabel}`} />
+          )}
+          {!used && (
+            <span className="qr-zoom-badge" aria-hidden="true">
+              <Icon name="qr" size={13} />
+              {locale === 'km' ? 'ពង្រីក' : 'Tap to enlarge'}
+            </span>
+          )}
+        </button>
+
+        <QrLightbox
+          open={zoomed}
+          onClose={() => setZoomed(false)}
+          caption={seatLabel}
+          subtitle={title}
+        >
+          {/* Re-fetched at 512 rather than CSS-scaled: the SVG is vector, so a
+              second small request buys a genuinely sharp symbol. */}
+          {isMock ? (
+            <QrGlyph token={ticket.qr_token} label={`Ticket ${seatLabel}`} />
+          ) : (
+            <TicketQr ticketId={ticket.id} label={`Ticket ${seatLabel}`} size={512} />
+          )}
+        </QrLightbox>
         <span className="tiny with-icon">
           <Icon name={used ? 'xCircle' : 'checkCircle'} size={12} />
           {used ? t('alreadyUsed') : t('admitOne')}

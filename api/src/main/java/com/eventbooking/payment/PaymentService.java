@@ -273,7 +273,55 @@ public class PaymentService {
     /** The reconciler's work queue - see {@code PaymentTransactionRepository.findOpenIds}. */
     @Transactional(readOnly = true)
     public List<Long> findOpenAttemptIds(int limit) {
-        return paymentRepository.findOpenIds(PaymentStatus.openStates(), PageRequest.of(0, limit));
+        return paymentRepository.findOpenIds(
+                PaymentStatus.openStates(), Instant.now(), PageRequest.of(0, limit));
+    }
+
+    /**
+     * Closes attempts whose own clock has run out, <b>without calling the
+     * provider</b>.
+     *
+     * <p>The deadline is ours. A QR past {@code expires_at} cannot be paid
+     * whatever Bakong would say, so asking spends a request to learn something
+     * already known - and on an account capped at 100 requests a day that is
+     * the difference between a working gate and a dead one.
+     *
+     * <p>It also closes a leak. A lapsed attempt used to be expired only after
+     * the provider answered; if the provider answered UNAVAILABLE it stayed
+     * open and was polled again on the next sweep, and the next, indefinitely.
+     *
+     * @return how many were closed
+     */
+    @Transactional
+    public int expireLapsedAttempts(int limit) {
+        Instant now = Instant.now();
+        List<Long> lapsed = paymentRepository.findLapsedOpenIds(
+                PaymentStatus.openStates(), now, PageRequest.of(0, limit));
+        if (lapsed.isEmpty()) {
+            return 0;
+        }
+
+        int closed = 0;
+        for (Long paymentId : lapsed) {
+            PaymentTransaction attempt = paymentRepository.findByIdForUpdate(paymentId).orElse(null);
+            // Re-checked under the lock: the reconciler may have settled it
+            // between the query and here, and a paid QR must never be expired.
+            if (attempt == null || !attempt.isOpen() || !attempt.hasExpired(now)) {
+                continue;
+            }
+            Booking booking = bookingRepository.findByIdForUpdate(attempt.getBooking().getId())
+                    .orElse(null);
+            if (booking == null) {
+                continue;
+            }
+            expire(booking, attempt, now);
+            closed++;
+        }
+
+        if (closed > 0) {
+            log.info("Closed {} lapsed payment attempt(s) locally, without a provider call", closed);
+        }
+        return closed;
     }
 
     /**
@@ -284,7 +332,8 @@ public class PaymentService {
     public Optional<PollTarget> loadPollTarget(Long paymentId) {
         return paymentRepository.findById(paymentId)
                 .filter(PaymentTransaction::isOpen)
-                .map(p -> new PollTarget(p.getId(), p.getProvider(), p.getProviderRef()));
+                .map(p -> new PollTarget(p.getId(), p.getProvider(), p.getProviderRef(),
+                        p.getLastPolledAt()));
     }
 
     // ------------------------------------------------------------------
@@ -551,6 +600,12 @@ public class PaymentService {
     }
 
     /** Just enough of an attempt to ask the provider about it. */
-    public record PollTarget(Long paymentId, PaymentProvider provider, String providerRef) {
+    /**
+     * @param lastPolledAt when this attempt was last put to its provider. Carried
+     *                     so the reconciler can honour the per-provider floor
+     *                     before opening a socket, rather than after
+     */
+    public record PollTarget(Long paymentId, PaymentProvider provider, String providerRef,
+                             Instant lastPolledAt) {
     }
 }

@@ -121,13 +121,29 @@ app:
       # Floor between provider checks for one attempt; also the interval the API
       # tells clients to poll on.
       min-refresh-interval: ${PAYMENT_MIN_REFRESH_INTERVAL:3s}
+      # Per-provider floor between PROVIDER calls for one attempt. The two do
+      # not cost the same, and one dial for both had to be set to the slower.
+      #
+      # Bakong meters per token and an account can be capped at 100 requests a
+      # DAY. At the 5s sweep above, a single pending QR would spend the entire
+      # allowance in nine minutes, so this is deliberately minutes, not seconds:
+      # a 15-minute QR then costs ~15 checks instead of ~180. Raise it further
+      # if the cap is lower, and rely on the webhook for prompt settlement -
+      # polling is the fallback, not the mechanism.
+      #
+      # PayWay has no such ceiling, so it stays fast and an ABA payment still
+      # feels like it settles the moment it clears.
+      provider-floor:
+        BAKONG_KHQR: ${BAKONG_POLL_FLOOR:60s}
+        ABA_PAYWAY: ${PAYWAY_POLL_FLOOR:3s}
       # The timeout that returns seats to the pool.
       booking-sweep: ${BOOKING_SWEEP_INTERVAL:1m}
   ticket:
     # HMAC key for QR payloads. Rotating it invalidates every ticket already in
     # a customer's hand, so it is long-lived - unlike the JWT secret, which can
-    # be rotated freely because access tokens last 15 minutes. Startup warns
-    # while this is still the placeholder.
+    # be rotated freely because access tokens last 15 minutes. TicketSecretGuard
+    # refuses to start while this is still the placeholder, outside the dev
+    # profile - a forgeable gate key has to fail closed, not warn.
     signing-secret: ${TICKET_SIGNING_SECRET:change-this-ticket-secret-before-any-real-event}
     # Default presentation size of the rendered SVG. It is vector, so this is
     # not a resolution ceiling.

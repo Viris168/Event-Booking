@@ -3,13 +3,13 @@ import { useDocumentTitle } from '../lib/useDocumentTitle.js'
 import { Link, useParams } from 'react-router-dom'
 import HoldBar from '../components/HoldBar.jsx'
 import Icon from '../components/Icon.jsx'
-import TicketCard from '../components/TicketCard.jsx'
+import TicketWallet from '../components/TicketWallet.jsx'
 import { BookingDetailSkeleton } from '../components/Skeleton.jsx'
 import { Alert, Badge, ResponsiveTable, Steps } from '../components/ui.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
 import { useToast } from '../context/ToastContext.jsx'
-import { usd } from '../lib/format.js'
+import { countdown, usd } from '../lib/format.js'
 import {
   cancelBooking,
   extendHold,
@@ -28,7 +28,18 @@ import {
 /** Which actions each of the eight booking states allows. */
 function actionsFor(state) {
   return {
-    canPay: ['PENDING_PAYMENT', 'PAYMENT_FAILED'].includes(state),
+    // Mirrors PaymentService.PAYABLE on the server, which has always included
+    // AWAITING_CONFIRMATION. Leaving it out here stranded anyone whose app
+    // closed mid-payment: the booking was still payable, the button just was
+    // not there. Re-opening the same provider returns the SAME QR rather than
+    // charging twice, so offering it costs nothing.
+    canPay: ['PENDING_PAYMENT', 'AWAITING_CONFIRMATION', 'PAYMENT_FAILED'].includes(state),
+    // Only the LABEL differs there - not the weight. It was styled as a quiet
+    // outline at first, on the reasoning that a payment really is in flight and
+    // the poller may confirm it unaided. That reads backwards: anyone on this
+    // page after a failed payment is there because something went wrong, and a
+    // grey button is the one they scroll past.
+    payIsResume: state === 'AWAITING_CONFIRMATION',
     canCancel: ['PENDING_PAYMENT', 'AWAITING_CONFIRMATION', 'PAYMENT_FAILED'].includes(state),
     canRefund: state === 'CONFIRMED',
     hasTickets: ['CONFIRMED', 'REFUND_REQUESTED', 'REFUNDED'].includes(state),
@@ -41,8 +52,8 @@ const STATE_COPY = {
     km: 'កំពុងរង់ចាំការបង់ប្រាក់។ កៅអីត្រូវបានកាន់ទុក ប៉ុន្តែមិនទាន់ជារបស់អ្នកទេ។',
   },
   AWAITING_CONFIRMATION: {
-    en: 'Payment sent but the provider has not confirmed yet. We are checking; no action needed.',
-    km: 'បានផ្ញើការបង់ប្រាក់ ប៉ុន្តែអ្នកផ្តល់សេវាមិនទាន់បញ្ជាក់។ យើងកំពុងពិនិត្យ។',
+    en: 'Payment sent but the provider has not confirmed yet. We are still checking — or reopen it below to finish paying.',
+    km: 'បានផ្ញើការបង់ប្រាក់ ប៉ុន្តែអ្នកផ្តល់សេវាមិនទាន់បញ្ជាក់។ យើងកំពុងពិនិត្យ ឬបើកម្តងទៀតដើម្បីបញ្ចប់ការទូទាត់។',
   },
   PAYMENT_FAILED: {
     en: 'The payment did not go through. You can start a new attempt while the hold lasts.',
@@ -100,6 +111,32 @@ export default function BookingDetailPage() {
   const [apiTickets, setApiTickets] = useState(null)
   const [bookingLoading, setBookingLoading] = useState(true)
   const [apiPayments, setApiPayments] = useState(null)
+  const [now, setNow] = useState(() => Date.now())
+
+  /*
+   * The open attempt's deadline, and how long is left on it.
+   *
+   * Shown beside the pay button because the button alone does not say the offer
+   * is expiring: a customer who put their phone down mid-payment cannot tell
+   * whether reopening is still worth doing, and the seats go back on sale when
+   * it lapses.
+   *
+   * Derived here, above the loading early-returns, because the ticking effect
+   * below is a hook and hooks cannot run conditionally.
+   */
+  const openAttempt = (apiPayments ?? []).find((p) =>
+    ['PENDING', 'CREATED'].includes(p.status ?? p.state),
+  )
+  const expiresAt = openAttempt?.expires_at ?? openAttempt?.expiresAt
+  const msLeft = expiresAt ? Date.parse(expiresAt) - now : null
+
+  // Ticks only while there is a live deadline on screen. An interval running on
+  // a settled booking is a timer nothing reads.
+  useEffect(() => {
+    if (!expiresAt) return undefined
+    const timer = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(timer)
+  }, [expiresAt])
 
   useEffect(() => {
     let active = true
@@ -178,6 +215,7 @@ export default function BookingDetailPage() {
   const items = booking.items || itemsOf(booking.id)
   const tickets = apiBooking ? (apiTickets ?? []) : ticketsOf(booking.id)
   const payments = apiBooking ? (apiPayments ?? []) : paymentsForBooking(booking.id)
+
   // Both of these are keyed by id in the prototype store, and a real booking's
   // id can collide with a prototype one - which would show another booking's
   // timeline, or a hold bar counting down against a hold that is not yours.
@@ -209,6 +247,12 @@ export default function BookingDetailPage() {
     const zoneName = locale === 'km' ? item.zone.name_km : item.zone.name_en
     return `${zoneName} · #${ticket.unit_seq}`
   }
+
+  // The gate reads a *whole booking* from any one of its codes — that is what
+  // /tickets/scan/group/preview does — so the "group QR" is simply the first
+  // still-unused ticket in the party, shown large on its own. Nothing extra is
+  // minted for it, and a code that has already been through the scanner would
+  // preview a party with itself missing, hence the filter.
 
   return (
     <div className="container">
@@ -246,10 +290,21 @@ export default function BookingDetailPage() {
       {mine && (act.canPay || act.canCancel || act.canRefund) && (
         <div className="row" style={{ marginTop: '1rem' }}>
           {act.canPay && (
-            <Link className="btn btn-accent" to={`/checkout/${booking.id}/pay`}>
-              <Icon name="card" size={16} />
-              {t('payNow')} · {usd(booking.total_usd_cents)}
-            </Link>
+            <>
+              <Link className="btn btn-accent btn-lg" to={`/checkout/${booking.id}/pay`}>
+                <Icon name="card" size={16} />
+                {act.payIsResume ? t('resumePayment') : t('payNow')} ·{' '}
+                {usd(booking.total_usd_cents)}
+              </Link>
+              {msLeft != null && msLeft > 0 && (
+                /* Turns urgent under a minute — that is the point at which
+                   "later" stops being an option and the seats go back up. */
+                <span className={`pay-countdown ${msLeft < 60_000 ? 'urgent' : ''}`}>
+                  <Icon name="clock" size={14} />
+                  {t('completeWithin')} {countdown(msLeft)}
+                </span>
+              )}
+            </>
           )}
           {act.canCancel && (
             <button
@@ -284,9 +339,11 @@ export default function BookingDetailPage() {
           <div className="panel">
             <div className="panel-head">
               <h2>{t('yourTickets')}</h2>
-              <span className="small muted">
-                {tickets.length} {locale === 'km' ? 'សំបុត្រ' : 'tickets'}
-              </span>
+              <div className="row" style={{ alignItems: 'center', gap: '0.75rem' }}>
+                <span className="small muted">
+                  {tickets.length} {locale === 'km' ? 'សំបុត្រ' : 'tickets'}
+                </span>
+              </div>
             </div>
             <div className="panel-body">
               {act.hasTickets && tickets.length ? (
@@ -296,15 +353,17 @@ export default function BookingDetailPage() {
                       {locale === 'km' ? 'សំបុត្រលែងមានប្រសិទ្ធភាព។' : 'These tickets have been voided by the refund.'}
                     </Alert>
                   )}
-                  {tickets.map((ticket) => (
-                    <TicketCard
-                      key={ticket.id}
-                      ticket={ticket}
-                      label={labelForTicket(ticket)}
-                      event={event}
-                      venue={venue}
-                    />
-                  ))}
+                  {/* One code, made obvious. The gate resolves the whole
+                      booking from any ticket on it, so six equal cards is six
+                      things to thumb through at the one moment that is
+                      expensive. The rest are one tap away. */}
+                  <TicketWallet
+                    tickets={tickets}
+                    bookingRef={booking.booking_ref}
+                    event={event}
+                    venue={venue}
+                    labelFor={labelForTicket}
+                  />
                 </div>
               ) : (
                 <p className="muted small">{t('ticketsAfterPayment')}</p>

@@ -27,6 +27,7 @@ public enum ErrorCode {
     VALIDATION_ERROR(HttpStatus.BAD_REQUEST),
     MALFORMED_REQUEST(HttpStatus.BAD_REQUEST),
     UNKNOWN_OPERATOR(HttpStatus.BAD_REQUEST),
+    INVALID_ADMIT_COUNT(HttpStatus.BAD_REQUEST),
     EMPTY_UPLOAD(HttpStatus.BAD_REQUEST),
 
     // 403 Forbidden
@@ -52,6 +53,7 @@ public enum ErrorCode {
     DUPLICATE_ZONE_NAME(HttpStatus.CONFLICT),
     DUPLICATE_SEAT_LOCATION(HttpStatus.CONFLICT),
     BOOKING_NOT_PAYABLE(HttpStatus.CONFLICT),
+    TICKET_NOT_CHECKED_IN(HttpStatus.CONFLICT),
     PAYMENT_ALREADY_SETTLED(HttpStatus.CONFLICT),
 
     // 410 Gone

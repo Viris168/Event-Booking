@@ -56,6 +56,11 @@ public class PaymentReconciler {
      * @return how many were checked - not how many settled
      */
     public int sweep() {
+        // First, and before any HTTP: close whatever has already lapsed. Those
+        // need no provider call - the deadline is ours - and asking about them
+        // is the single easiest way to spend a rate-limited quota on nothing.
+        paymentService.expireLapsedAttempts(properties.poll().batchSize());
+
         List<Long> openIds = paymentService.findOpenAttemptIds(properties.poll().batchSize());
         if (openIds.isEmpty()) {
             return 0;
@@ -89,7 +94,7 @@ public class PaymentReconciler {
     public PaymentResponse refresh(Long paymentId, Long actorUserId) {
         PaymentResponse current = paymentService.getForUser(paymentId, actorUserId);
 
-        if (!current.open() || !isDueForCheck(current.lastPolledAt())) {
+        if (!current.open() || !isDueForCheck(current.lastPolledAt(), current.provider())) {
             return current;
         }
 
@@ -108,6 +113,16 @@ public class PaymentReconciler {
 
     public boolean reconcileNow(Long paymentId) {
         var target = paymentService.loadPollTarget(paymentId).orElse(null);
+        if (target != null && !isDueForCheck(target.lastPolledAt(), target.provider())) {
+            /*
+             * The floor used to guard only the /refresh endpoint, so the sweep -
+             * which runs every 5 seconds - walked straight past it and put every
+             * open attempt to its provider on every pass. One pending Bakong QR
+             * was therefore ~720 requests an hour against an allowance of 100 a
+             * DAY. Checking here makes the floor mean what it says.
+             */
+            return false;
+        }
         if (target == null) {
             return false;
         }
@@ -126,11 +141,20 @@ public class PaymentReconciler {
         return true;
     }
 
-    private boolean isDueForCheck(Instant lastPolledAt) {
+    /**
+     * Whether this attempt may be put to its provider again yet.
+     *
+     * <p>The floor is per provider, because they do not cost the same. A Bakong
+     * account can be capped at 100 requests a <em>day</em> - one pending QR
+     * checked every five seconds would spend the whole allowance in nine
+     * minutes - while PayWay has no such ceiling and a fast check is what makes
+     * an ABA payment feel like it settled instantly.
+     */
+    private boolean isDueForCheck(Instant lastPolledAt, PaymentProvider provider) {
         if (lastPolledAt == null) {
             return true;
         }
-        Duration floor = properties.poll().minRefreshInterval();
+        Duration floor = properties.poll().floorFor(provider);
         return lastPolledAt.plus(floor).isBefore(Instant.now());
     }
 }

@@ -31,3 +31,64 @@ export const withdrawEventFromReview = (id) =>
 
 export const getEventReviewHistory = (id) =>
   client.get(`/event/${id}/review`).then((r) => r.data)
+
+// --- seat classes ----------------------------------------------------------
+// What a section costs at THIS event. The seats themselves belong to the venue;
+// only the price is the event's business, which is why these hang off an event
+// id and never a venue id.
+
+export const getSeatClasses = (eventId) =>
+  client.get(`/event/${eventId}/seat-class`).then((r) => r.data)
+
+export const createSeatClass = (eventId, data) =>
+  client.post(`/event/${eventId}/seat-class`, { ...data, event_id: Number(eventId) }).then((r) => r.data)
+
+export const updateSeatClass = (eventId, seatClassId, data) =>
+  client.patch(`/event/${eventId}/seat-class/${seatClassId}`, data).then((r) => r.data)
+
+/** Assign venue seats to a class — this is what makes them sellable. */
+export const assignEventSeats = (eventId, seatClassId, venueSeatIds) =>
+  client
+    .post(`/events/${eventId}/seats`, {
+      seat_class_id: Number(seatClassId),
+      venue_seat_ids: venueSeatIds,
+    })
+    .then((r) => r.data)
+
+export const getEventSeatMap = (eventId) =>
+  client.get(`/event/${eventId}/seat-map`).then((r) => r.data)
+
+// --- zones -----------------------------------------------------------------
+
+export const getEventZones = (eventId) =>
+  client.get(`/event/${eventId}/zone`).then((r) => r.data)
+
+export const createEventZone = (eventId, data) =>
+  client.post(`/event/${eventId}/zone`, data).then((r) => r.data)
+
+export const updateEventZone = (zoneId, data) =>
+  client.patch(`/zone/${zoneId}`, data).then((r) => r.data)
+
+export const deleteEventZone = (zoneId) => client.delete(`/zone/${zoneId}`).then((r) => r.data)
+
+// --- images ----------------------------------------------------------------
+// Two slots, COVER and BANNER, uploaded AFTER the event exists — a file needs
+// multipart, and Cloudinary's returned id has to land on a row that is already
+// there. The response is the whole event, so a caller that just uploaded does
+// not need a second GET to render the result.
+
+export const uploadEventImage = (eventId, file, role = 'COVER') => {
+  const body = new FormData()
+  body.append('file', file)
+  return client
+    .post(`/event/${eventId}/image`, body, {
+      params: { role },
+      // Explicitly unset: the shared client sets application/json, and axios
+      // must be left to write its own multipart boundary.
+      headers: { 'Content-Type': undefined },
+    })
+    .then((r) => r.data)
+}
+
+export const deleteEventImage = (eventId, role = 'COVER') =>
+  client.delete(`/event/${eventId}/image`, { params: { role } }).then((r) => r.data)
