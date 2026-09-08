@@ -62,6 +62,22 @@ class BookingCheckoutIT {
         // Pinned so the KHR assertions below are arithmetic, not a guess at
         // whatever the environment happens to configure.
         registry.add("app.booking.fx-khr-per-usd", () -> "4100.0000");
+        /*
+         * A real signing secret, so TicketSecretGuard is exercised rather than
+         * switched off.
+         *
+         * This class is a @SpringBootTest with no dev profile, so the guard IS
+         * created - and with no .env present (CI, a fresh clone) the secret
+         * falls back to the placeholder the guard exists to reject. The context
+         * then fails to load and every test in the class errors, which is
+         * exactly how this broke on the first CI run.
+         *
+         * Set here rather than in the workflow so the test stands on its own:
+         * it passes for anyone who checks the repo out and runs it, with no
+         * environment to prepare first.
+         */
+        registry.add("app.ticket.signing-secret",
+                () -> "booking-checkout-it-signing-secret-32-chars");
     }
 
     private static final AtomicInteger SEQ = new AtomicInteger();
