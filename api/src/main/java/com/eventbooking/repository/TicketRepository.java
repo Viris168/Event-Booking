@@ -46,6 +46,21 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
     long countByBookingId(@Param("bookingId") Long bookingId);
 
     /**
+     * How many of a booking's tickets have already walked in.
+     *
+     * <p>Paired with {@link #countByBookingId} to answer the question a steward
+     * actually has while scanning the third of a family's four codes: is anyone
+     * else still coming? Without it every scan looks like a lone ticket and the
+     * gate cannot tell a finished party from a half-arrived one.
+     */
+    @Query("""
+            select count(t) from Ticket t
+            where t.bookingItem.booking.id = :bookingId
+              and t.checkedInAt is not null
+            """)
+    long countCheckedInByBookingId(@Param("bookingId") Long bookingId);
+
+    /**
      * Checked-in tickets per event, for a whole page of events in one query.
      *
      * <p>Walks ticket -> booking_item -> booking to reach the event, because a
@@ -62,4 +77,37 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
              group by b.event_id
             """, nativeQuery = true)
     List<Object[]> countCheckedInByEventIds(@Param("eventIds") Collection<Long> eventIds);
+
+    /** Everyone admitted at this event, most recent first. */
+    @Query("""
+            select t from Ticket t
+            where t.bookingItem.booking.event.id = :eventId
+              and t.checkedInAt is not null
+            order by t.checkedInAt desc
+            """)
+    org.springframework.data.domain.Page<Ticket> findCheckedInByEventId(
+            @Param("eventId") Long eventId, org.springframework.data.domain.Pageable pageable);
+
+    /** Tickets issued for an event, checked in or not. */
+    @Query("""
+            select count(t) from Ticket t
+            where t.bookingItem.booking.event.id = :eventId
+            """)
+    long countByEventId(@Param("eventId") Long eventId);
+
+    /** ...and how many of them have walked in. */
+    @Query("""
+            select count(t) from Ticket t
+            where t.bookingItem.booking.event.id = :eventId
+              and t.checkedInAt is not null
+            """)
+    long countCheckedInByEventId(@Param("eventId") Long eventId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        select t from Ticket t
+        where t.bookingItem.booking.id = :bookingId
+        order by t.bookingItem.id asc, t.unitSeq asc
+        """)
+    List<Ticket> findAllByBookingIdForUpdate(@Param("bookingId") Long bookingId);
 }

@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
+import KhqrWordmark from './KhqrWordmark.jsx'
 
 export default function KhqrCard({
   qrPayload,
@@ -22,11 +23,10 @@ export default function KhqrCard({
 
   return (
     <div className="mx-auto max-w-[360px] rounded-[16px] bg-white shadow-sm overflow-hidden text-gray-900 border border-gray-200">
-      {/* 1. KHQR Red Header Bar */}
+      {/* 1. KHQR Red Header Bar — the drawn mark, not a text label. The Q is a
+             miniature QR symbol, and that is the part a customer recognises. */}
       <div className="bg-[#E11D2A] h-[56px] flex items-center justify-center">
-        <span className="text-white text-xl font-bold tracking-widest font-sans">
-          KHQR
-        </span>
+        <KhqrWordmark height={24} className="text-white" />
       </div>
 
       {/* 2. Merchant Info & Dynamic Price Section */}

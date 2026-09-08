@@ -38,7 +38,27 @@ public enum ScanOutcome {
     BOOKING_NOT_CONFIRMED,
 
     /** A real, valid ticket - for a different event. The commonest honest mistake. */
-    WRONG_EVENT;
+    WRONG_EVENT,
+
+    /**
+     * Group scan only: the steward asked to admit more people than the booking
+     * has left. Never returned by the single-ticket endpoint.
+     *
+     * <p>Lives on this enum rather than a parallel {@code GroupScanOutcome} so
+     * a gate app keeps one mapping from outcome to the colour it paints. Two
+     * enums covering six identical values is two things to keep in step.
+     */
+    REQUESTED_MORE_THAN_REMAINING,
+
+    /**
+     * Group scan only: the gate named a ticket that is not on the scanned
+     * booking, or one that has already been used.
+     *
+     * <p>Refuses the whole call rather than admitting the rest. A steward who
+     * selected three people and silently got two will wave three through - the
+     * same reason {@link #REQUESTED_MORE_THAN_REMAINING} admits nobody.
+     */
+    TICKET_NOT_IN_PARTY;
 
     /** The single question the turnstile actually needs answered. */
     public boolean admitted() {

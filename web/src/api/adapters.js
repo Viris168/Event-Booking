@@ -69,6 +69,10 @@ export function mapEvent(e) {
     total_capacity: e.total_capacity ?? e.totalCapacity ?? 0,
     total_sold: e.total_sold ?? e.totalSold ?? 0,
     total_held: e.total_held ?? e.totalHeld ?? 0,
+    // Carried here as well as in eventImages(): the venue-layout panel and
+    // the listing cards both read a mapped event, not a raw response.
+    cover_image_url: e.coverImageUrl ?? e.cover_image_url ?? null,
+    banner_image_url: e.bannerImageUrl ?? e.banner_image_url ?? null,
   }
 }
 
@@ -228,5 +232,134 @@ export function mapBooking(b) {
     created_at: b.createdAt ?? b.created_at,
     state_changed_at: b.stateChangedAt ?? b.state_changed_at,
     items: (b.items || []).map(mapBookingItem)
+  }
+}
+
+/**
+ * The gate's verdict.
+ *
+ * `outcome` is the server's enum and is passed through untouched — the UI
+ * groups the seven values into three colours, but the raw value is what a
+ * steward's screen and any future log line should key on. `admitted` is the
+ * only field a turnstile needs.
+ *
+ * `ticket` is null when the code could not be tied to a ticket at all
+ * (MALFORMED, BAD_SIGNATURE, UNKNOWN_TICKET), so every read of it is guarded.
+ */
+export function mapScanResult(r) {
+  if (!r) return null
+  const ticket = r.ticket ?? null
+  const booking = r.booking ?? null
+  return {
+    admitted: r.admitted ?? false,
+    outcome: r.outcome,
+    message: r.message,
+    previous_check_in_at: r.previousCheckInAt ?? r.previous_check_in_at ?? null,
+    ticket: ticket && {
+      ticket_id: ticket.ticketId ?? ticket.ticket_id,
+      booking_ref: ticket.bookingRef ?? ticket.booking_ref,
+      buyer_name: ticket.buyerName ?? ticket.buyer_name,
+      event_title_en: ticket.eventTitleEn ?? ticket.event_title_en,
+      tier_name: ticket.tierName ?? ticket.tier_name,
+      seat_location: ticket.seatLocation ?? ticket.seat_location ?? null,
+      unit_seq: ticket.unitSeq ?? ticket.unit_seq,
+      units_in_line: ticket.unitsInLine ?? ticket.units_in_line,
+    },
+    // How much of the party is through. Null on codes that matched no ticket.
+    booking: booking && {
+      total: booking.total,
+      checked_in: booking.checkedIn ?? booking.checked_in,
+      remaining: booking.remaining,
+    },
+  }
+}
+
+/** One row of a group preview — carries its own check-in state. */
+function mapPreviewTicket(t) {
+  return {
+    ticket_id: t.ticketId ?? t.ticket_id,
+    booking_item_id: t.bookingItemId ?? t.booking_item_id,
+    // Seat vs zone. The whole group UI turns on this: seats are picked
+    // individually because each is a specific person; zone admissions are
+    // interchangeable, so a count is the honest control.
+    assigned: t.assigned ?? false,
+    tier_name: t.tierName ?? t.tier_name,
+    seat_location: t.seatLocation ?? t.seat_location ?? null,
+    unit_seq: t.unitSeq ?? t.unit_seq,
+    checked_in: t.checkedIn ?? t.checked_in ?? false,
+    checked_in_at: t.checkedInAt ?? t.checked_in_at ?? null,
+  }
+}
+
+function mapParty(p) {
+  if (!p) return null
+  return {
+    booking_id: p.bookingId ?? p.booking_id,
+    booking_ref: p.bookingRef ?? p.booking_ref,
+    buyer_name: p.buyerName ?? p.buyer_name,
+    event_title_en: p.eventTitleEn ?? p.event_title_en,
+  }
+}
+
+/**
+ * A group preview. `admissible` is the button's enabled state — true only when
+ * this is a real booking at this gate AND somebody is still outside. Note
+ * `outcome: VALID` here means "real booking, right gate", never "admitted".
+ */
+export function mapGroupPreview(r) {
+  if (!r) return null
+  return {
+    admissible: r.admissible ?? false,
+    outcome: r.outcome,
+    message: r.message,
+    booking: mapParty(r.booking),
+    tickets: (r.tickets || []).map(mapPreviewTicket),
+    total: r.total ?? 0,
+    checked_in: r.checkedIn ?? r.checked_in ?? 0,
+    remaining: r.remaining ?? 0,
+  }
+}
+
+/** A group confirm. `tickets` is only what THIS call admitted, not the party. */
+export function mapGroupConfirm(r) {
+  if (!r) return null
+  return {
+    admitted: r.admitted ?? false,
+    admitted_count: r.admittedCount ?? r.admitted_count ?? 0,
+    outcome: r.outcome,
+    message: r.message,
+    booking: mapParty(r.booking),
+    tickets: (r.tickets || []).map((t) => ({
+      ticket_id: t.ticketId ?? t.ticket_id,
+      tier_name: t.tierName ?? t.tier_name,
+      seat_location: t.seatLocation ?? t.seat_location ?? null,
+      unit_seq: t.unitSeq ?? t.unit_seq,
+    })),
+    total: r.total ?? 0,
+    remaining: r.remaining ?? 0,
+  }
+}
+
+/** A venue, as the organiser's forms read it. */
+/** Kept beside mapEvent: the two image slots the API returns. */
+export function eventImages(e) {
+  return {
+    cover_image_url: e?.coverImageUrl ?? e?.cover_image_url ?? null,
+    banner_image_url: e?.bannerImageUrl ?? e?.banner_image_url ?? null,
+  }
+}
+
+export function mapVenue(v) {
+  if (!v) return null
+  return {
+    id: v.id,
+    organizer_id: v.organizerId ?? v.organizer_id,
+    name_en: v.nameEn ?? v.name_en,
+    name_km: v.nameKm ?? v.name_km,
+    province_code: v.provinceCode ?? v.province_code,
+    khan_district: v.khanDistrict ?? v.khan_district,
+    sangkat_commune: v.sangkatCommune ?? v.sangkat_commune,
+    street_address: v.streetAddress ?? v.street_address,
+    is_disabled: v.isDisabled ?? v.is_disabled ?? false,
   }
 }

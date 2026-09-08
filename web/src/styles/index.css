@@ -1560,8 +1560,13 @@
     @apply max-h-[62vh] overflow-auto rounded-ui border border-line bg-surface-2 p-[0.6rem];
   }
   .seatmap {
-    @apply mx-auto block;
-    min-width: 520px;
+    @apply mx-auto block h-auto w-full;
+    /* 680px is the tightest place a seat map renders - the event form's seat
+       map drawer (46rem minus padding). The customer panel gives ~770px, so
+       capping here fits everywhere without a second breakpoint.
+       A cap rather than a fixed size: a six-seat venue should not render seats
+       the size of buttons. */
+    max-width: 680px;
   }
   .stage {
     fill: var(--color-brand-900);
@@ -2591,4 +2596,880 @@
 }
 .pw-btn-solid:hover {
   opacity: 0.8;
+}
+
+/* ---------------------------------------------------------------------------
+   QR lightbox — the code, full screen, for the moment it is actually scanned.
+
+   QrRenderer targets ~4 px per module for a reliable read and the 256px card
+   thumbnail sits near that floor. Under a dim gate light that is the difference
+   between one beep and a queue, so enlarging is a first-class action here, not
+   a flourish.
+   --------------------------------------------------------------------------- */
+
+.qr-zoom-trigger {
+  display: block;
+  position: relative;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+  border-radius: 0.6rem;
+}
+
+.qr-zoom-trigger:disabled {
+  cursor: default;
+}
+
+.qr-zoom-trigger:focus-visible {
+  outline: 2px solid var(--accent, #2563eb);
+  outline-offset: 3px;
+}
+
+.qr-zoom-badge {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0.35rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: #1f2937;
+  background: rgba(255, 255, 255, 0.86);
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.35rem;
+  pointer-events: none;
+}
+
+.qr-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  /* Near-opaque rather than a light scrim: a scanner reads contrast, and a
+     bright page bleeding through the backdrop is what washes the symbol out. */
+  background: rgba(9, 11, 16, 0.92);
+  backdrop-filter: blur(2px);
+}
+
+.qr-lightbox-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  width: min(94vw, 30rem);
+  padding: 1.4rem 1.2rem 1.1rem;
+  background: #fff;
+  border-radius: 1rem;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+}
+
+.qr-lightbox-close {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.55rem;
+  display: grid;
+  place-items: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.06);
+  color: #374151;
+  cursor: pointer;
+}
+
+.qr-lightbox-close:focus-visible {
+  outline: 2px solid var(--accent, #2563eb);
+  outline-offset: 2px;
+}
+
+/* The white ground is reasserted here on purpose. QrRenderer already paints one
+   inside the SVG, and it must survive whatever the panel is themed to — an
+   inverted QR does not scan. */
+.qr-lightbox-code {
+  display: grid;
+  place-items: center;
+  width: min(82vw, 22rem);
+  padding: 0.75rem;
+  background: #fff;
+  border-radius: 0.65rem;
+}
+
+.qr-lightbox-code svg,
+.qr-lightbox-code .qr-canvas {
+  width: 100%;
+  height: auto;
+}
+
+.qr-lightbox-caption {
+  margin: 0.3rem 0 0;
+  font-weight: 700;
+  font-size: 1rem;
+  color: #111827;
+  text-align: center;
+}
+
+.qr-lightbox-sub {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #4b5563;
+  text-align: center;
+}
+
+.qr-lightbox-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.75rem;
+  color: #6b7280;
+  text-align: center;
+}
+
+/* The camera placeholder, collapsed. `.scanner` is aspect-[4/3] — roughly 620px
+   at panel width — which is correct when a viewfinder is live and pure dead
+   space when it is not. Reserving it while the camera is off pushed the scan
+   verdict below the fold, so a successful scan read as "nothing happened". */
+.scanner-idle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.7rem;
+  border: 1px dashed rgba(148, 163, 184, 0.35);
+  border-radius: 0.6rem;
+  font-size: 0.78rem;
+  color: rgba(148, 163, 184, 0.85);
+}
+
+
+/* ---------------------------------------------------------------------------
+   Group pass modal.
+
+   Built from the app's own tokens so it reads as part of the product. The
+   layout follows the domain: one block per booking line, because whether its
+   tickets are interchangeable is what decides the control it gets.
+   --------------------------------------------------------------------------- */
+
+.gp-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(9, 11, 16, 0.72);
+}
+
+.gp-panel {
+  width: min(94vw, 30rem);
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.gp-head { align-items: flex-start; }
+.gp-title { display: flex; align-items: center; gap: 0.65rem; }
+.gp-title h2 { margin: 0; font-size: 1.02rem; line-height: 1.25; }
+
+/* Monospace so a steward reading a ref aloud does not lose their place. */
+.gp-ref {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.76rem;
+  color: var(--color-muted);
+  letter-spacing: 0.02em;
+}
+
+.gp-panel .panel-body { overflow-y: auto; }
+
+.gp-topline {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+  font-size: 0.92rem;
+}
+
+.gp-topline-counts { font-size: 0.78rem; color: var(--color-muted); }
+
+.gp-group {
+  border: 1px solid var(--color-line);
+  border-radius: 0.65rem;
+  overflow: hidden;
+}
+
+.gp-group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.55rem 0.7rem;
+  background: var(--color-surface-2);
+  border-bottom: 1px solid var(--color-line-2);
+}
+
+.gp-group-head b { font-size: 0.88rem; display: block; }
+
+.gp-group-kind {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-muted);
+}
+
+.gp-group-done {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-muted);
+}
+
+.gp-mini {
+  padding: 0.28rem 0.55rem;
+  border: 1px solid var(--color-line);
+  border-radius: 0.4rem;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.gp-stepper {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  border: 1px solid var(--color-line);
+  border-radius: 0.45rem;
+  overflow: hidden;
+  background: var(--color-surface);
+}
+
+.gp-stepper button {
+  width: 1.9rem;
+  height: 1.9rem;
+  border: 0;
+  background: none;
+  color: var(--color-ink);
+  font-size: 1.05rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.gp-stepper button:disabled { opacity: 0.35; cursor: default; }
+.gp-stepper span { min-width: 1.4rem; text-align: center; font-weight: 800; }
+
+.gp-rows { display: flex; flex-direction: column; }
+
+.gp-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  width: 100%;
+  padding: 0.42rem 0.7rem;
+  border: 0;
+  border-top: 1px solid var(--color-line-2);
+  background: none;
+  color: var(--color-ink);
+  font-size: 0.8rem;
+  text-align: left;
+}
+
+.gp-rows > .gp-row:first-child { border-top: 0; }
+
+/* Only seats are tappable — picking which interchangeable zone ticket goes in
+   is a decision with no content, so those rows are plain text. */
+.gp-row.seat { cursor: pointer; }
+.gp-row.seat:disabled { cursor: default; }
+.gp-row.seat:focus-visible { outline: 2px solid var(--color-brand-500); outline-offset: -2px; }
+
+.gp-row.on {
+  background: var(--color-tint);
+  color: var(--color-brand-600);
+  font-weight: 700;
+}
+
+.gp-row.in { color: var(--color-muted); }
+
+.gp-row-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gp-row-state {
+  flex: none;
+  font-size: 0.66rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-muted);
+}
+
+.gp-selectall {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.5rem;
+  border: 1px dashed var(--color-line);
+  border-radius: 0.55rem;
+  background: none;
+  color: var(--color-ink);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.gp-foot {
+  display: flex;
+  gap: 0.6rem;
+  padding: 0.85rem 1.15rem;
+  border-top: 1px solid var(--color-line-2);
+}
+
+.gp-foot .btn { flex: 1 1 0; justify-content: center; }
+
+.gp-error {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0 1.15rem 0.2rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid color-mix(in srgb, var(--color-warning) 45%, transparent);
+  border-radius: 0.55rem;
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+/* ---------------------------------------------------------------------------
+   Ticket wallet — one code made obvious, the rest one tap away.
+
+   The gate resolves a whole booking from ANY ticket on it, so six equal cards
+   were six things to thumb through at the one moment that is expensive. This
+   is presentation only: the same per-ticket QR the customer always had, at the
+   size the moment deserves. Nothing new is minted or signed.
+   --------------------------------------------------------------------------- */
+
+.wallet { display: flex; flex-direction: column; gap: 0.7rem; }
+
+.wallet-head { display: flex; justify-content: flex-end; }
+
+.wallet-count {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--color-muted);
+}
+
+.wallet-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 1.1rem 1rem 0.9rem;
+  border: 1px solid var(--color-line);
+  border-radius: 0.9rem;
+  background: var(--color-surface-2);
+}
+
+.wallet-hero-label {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.wallet-hero-qr {
+  padding: 0.75rem;
+  border: 0;
+  /* Always white behind the code, whatever the page theme is doing. An
+     inverted QR does not scan. */
+  background: #fff;
+  border-radius: 0.7rem;
+  cursor: zoom-in;
+  line-height: 0;
+}
+
+.wallet-hero-qr:focus-visible {
+  outline: 2px solid var(--color-brand-500);
+  outline-offset: 3px;
+}
+
+.wallet-hero-qr svg,
+.wallet-hero-qr .qr-canvas {
+  width: min(60vw, 15rem);
+  height: auto;
+}
+
+.wallet-ref {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+/* The line that stops someone hunting for five more codes. */
+.wallet-opens {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-brand-600);
+  text-align: center;
+}
+
+.wallet-tap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  font-size: 0.7rem;
+  color: var(--color-muted);
+}
+
+.wallet-done {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 1.4rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--color-success) 45%, transparent);
+  border-radius: 0.9rem;
+  background: var(--color-success-soft);
+  color: var(--color-success);
+  text-align: center;
+}
+
+.wallet-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  align-self: flex-start;
+  padding: 0.4rem 0.1rem;
+  border: 0;
+  background: none;
+  color: var(--color-ink);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.wallet-chev { transition: transform 0.15s ease; }
+.wallet-chev.open { transform: rotate(90deg); }
+
+.wallet-note { margin: 0; }
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.wallet-hint {
+  margin: 0.15rem 0 0;
+  max-width: 22rem;
+  font-size: 0.74rem;
+  line-height: 1.4;
+  color: var(--color-muted);
+  text-align: center;
+}
+
+/* Already-admitted rows fold away per tier. They are not a decision, and a
+   tier that is entirely inside otherwise spends three lines saying so. */
+.gp-used-toggle {
+  cursor: pointer;
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.gp-used-toggle:focus-visible {
+  outline: 2px solid var(--color-brand-500);
+  outline-offset: -2px;
+}
+
+.gp-chev { transition: transform 0.15s ease; }
+.gp-chev.open { transform: rotate(90deg); }
+
+/* The open attempt's deadline, beside the pay button. The button alone does not
+   say the offer is expiring — and when it lapses the seats go back on sale. */
+.pay-countdown {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0 0.2rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.pay-countdown.urgent {
+  color: var(--color-danger);
+  font-weight: 700;
+}
+
+/* A drawer for editing something that belongs to a DIFFERENT record than the
+   form behind it — the venue's seat map, from an event form. Deliberately not
+   folded into the form's own fields: it is shared by every event at that venue,
+   and it should not look like one of this event's settings. */
+.drawer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  justify-content: flex-end;
+  background: rgba(9, 11, 16, 0.6);
+}
+
+.drawer-panel {
+  display: flex;
+  flex-direction: column;
+  width: min(100vw, 46rem);
+  max-height: 100vh;
+  background: var(--color-page);
+  border-left: 1px solid var(--color-line);
+  box-shadow: -18px 0 50px rgba(0, 0, 0, 0.3);
+}
+
+.drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1.15rem;
+  border-bottom: 1px solid var(--color-line);
+  background: var(--color-surface);
+}
+
+.drawer-head h2 { margin: 0; font-size: 1rem; }
+
+.drawer-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 1rem 1.15rem 1.5rem;
+}
+
+/* A button that reads as the link it replaced. */
+.linkish {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: var(--color-brand-600);
+  font-weight: 600;
+  cursor: pointer;
+}
+.linkish:hover { text-decoration: underline; }
+
+/* Retiring a venue is reversible-ish and non-destructive, but it is still the
+   one action here nobody wants to hit by accident — pushed away from Edit and
+   Seat map, and only red once you are actually pointing at it. */
+.venue-retire {
+  margin-left: auto;
+  color: var(--color-muted);
+}
+
+.venue-retire:hover:not(:disabled) {
+  color: var(--color-danger);
+  background: var(--color-danger-soft);
+}
+
+/* An in-app confirmation, replacing window.confirm — which the browser lets a
+   user permanently suppress, silently turning the action it guards into a
+   no-op. */
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(9, 11, 16, 0.62);
+}
+
+.confirm-panel {
+  width: min(94vw, 26rem);
+  display: flex;
+  flex-direction: column;
+}
+
+.confirm-body {
+  display: flex;
+  gap: 0.8rem;
+  padding: 1.15rem 1.15rem 0.9rem;
+}
+
+.confirm-body h2 {
+  margin: 0 0 0.3rem;
+  font-size: 1rem;
+}
+
+.confirm-text {
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: var(--color-muted);
+}
+
+.confirm-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 50%;
+}
+
+.confirm-icon.danger {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+
+.confirm-icon.warn {
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
+}
+
+.confirm-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  padding: 0.85rem 1.15rem;
+  border-top: 1px solid var(--color-line-2);
+}
+
+/* The event's two image slots. Sized by aspect ratio rather than a fixed
+   height, so the box previews the shape the image will actually be used at. */
+/* Small and fixed, not fluid.
+   These are thumbnails for confirming the right file was picked - a check you
+   make in a glance. Sizing them to the column made them grow with the viewport
+   and dominate a panel whose actual subject is the event's title and category. */
+.img-grid {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.9rem;
+  margin-top: 0.75rem;
+}
+
+/* Both wide and the same size. A thumbnail here answers "did I pick the right
+   file", not "is this the exact crop" - and two boxes of different shapes read
+   as two different kinds of control. The cover is still used portrait on the
+   public page; that is the renderer's business, not this preview's. */
+.img-field .img-drop { width: 176px; }
+
+.img-field { display: flex; flex-direction: column; gap: 0.35rem; }
+
+/* Wraps under its thumbnail rather than stretching the row. */
+.img-field .hint { max-width: 13rem; }
+
+.img-field-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.img-field-clear {
+  border: 0;
+  background: none;
+  padding: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--color-muted);
+  cursor: pointer;
+}
+.img-field-clear:hover:not(:disabled) { color: var(--color-danger); }
+
+.img-drop {
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  overflow: hidden;
+  border: 1px dashed var(--color-line);
+  border-radius: 0.65rem;
+  background: var(--color-surface-2);
+  cursor: pointer;
+}
+
+.img-drop.has-image { border-style: solid; }
+.img-drop:disabled { cursor: default; opacity: 0.6; }
+.img-drop:focus-visible { outline: 2px solid var(--color-brand-500); outline-offset: 2px; }
+
+.img-drop img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.img-drop-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.3rem;
+  font-size: 0.68rem;
+  line-height: 1.25;
+  text-align: center;
+  color: var(--color-muted);
+}
+
+/* A picked-but-unsaved image otherwise looks identical to one already stored. */
+.img-pending {
+  position: absolute;
+  left: 0.25rem;
+  bottom: 0.25rem;
+  padding: 0.08rem 0.3rem;
+  border-radius: 0.3rem;
+  background: rgba(9, 11, 16, 0.78);
+  color: #fff;
+  font-size: 0.64rem;
+  font-weight: 700;
+}
+
+/* Crop one picked photo to a slot's shape before upload. The two slots want
+   different shapes, and asking an organiser to produce two pre-cropped files
+   is how you end up with a stretched logo. */
+.crop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(9, 11, 16, 0.78);
+}
+
+.crop-panel {
+  display: flex;
+  flex-direction: column;
+  width: min(94vw, 34rem);
+  max-height: 92vh;
+  overflow: hidden;
+}
+
+/* The cropper positions absolutely inside this, so it needs a real height. */
+.crop-stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 320px;
+  background: #0d1220;
+}
+
+.crop-zoom {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.7rem 1.15rem;
+  color: var(--color-muted);
+  border-top: 1px solid var(--color-line-2);
+}
+
+.crop-zoom input[type='range'] {
+  flex: 1 1 auto;
+  accent-color: var(--color-brand-500);
+}
+
+.crop-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  padding: 0.85rem 1.15rem;
+  border-top: 1px solid var(--color-line-2);
+}
+
+/* "Change" only while pointing at a thumbnail that already has an image. */
+.img-drop-hover {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(9, 11, 16, 0.55);
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.img-drop.has-image:hover .img-drop-hover,
+.img-drop.has-image:focus-visible .img-drop-hover {
+  opacity: 1;
+}
+
+/* The venue's layout on the event page. One fixed box, any chart shape inside:
+   a stadium bowl is near square and a hall is 2:1, so the box absorbs the
+   difference rather than the crop destroying it. */
+.venue-layout {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.1rem;
+  flex-wrap: wrap;
+}
+
+.venue-layout-img {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 380px;
+  max-width: 100%;
+  aspect-ratio: 4 / 3;
+  padding: 0;
+  border: 1px solid var(--color-line);
+  border-radius: 0.7rem;
+  background: #fff;
+  cursor: zoom-in;
+  overflow: hidden;
+}
+
+.venue-layout-img:focus-visible {
+  outline: 2px solid var(--color-brand-500);
+  outline-offset: 2px;
+}
+
+/* contain, never cover: a cut-off stand is a section nobody can find. */
+.venue-layout-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.venue-layout-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.venue-layout-tap { margin-top: 0.2rem; }
+
+.venue-layout-full {
+  width: 100%;
+  height: auto;
+  display: block;
+  background: #fff;
+  border-radius: 0.5rem;
 }

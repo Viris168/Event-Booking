@@ -238,6 +238,25 @@
 
     <build>
         <plugins>
+            <!-- Surefire's default includes are *Test / Test* / *Tests / *TestCase.
+                 They match none of our *IT.java files, so BookingCheckoutIT and
+                 HoldConcurrencyIT had never executed once - the concurrency test
+                 guarding against double-booking least of all. Failsafe binds them
+                 to integration-test/verify, which is why CI runs `verify` and not
+                 `test`. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>

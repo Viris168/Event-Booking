@@ -245,7 +245,7 @@ class KhqrGeneratorTest {
     private static PaymentProperties properties(BakongBuilder builder) {
         return new PaymentProperties(builder.build(),
                 new PaymentProperties.Poll(true, Duration.ofSeconds(5), 50,
-                        Duration.ofSeconds(3), Duration.ofMinutes(1)));
+                        Duration.ofSeconds(3), java.util.Map.of(), Duration.ofMinutes(1)));
     }
 
     private static BakongBuilder bakong() {

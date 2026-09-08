@@ -49,10 +49,17 @@ docker compose down -v          # stop and wipe both volumes
 ```bash
 cd api
 cp .env.example .env      # then fill in your JWT secret; DB defaults already match docker-compose.yml
-./mvnw spring-boot:run    # or: mvn spring-boot:run
+./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
 Runs on http://localhost:8080.
+
+> The `dev` profile is required locally. Without it `TicketSecretGuard` refuses
+> to start on the placeholder ticket-signing key that ships in this repo — so a
+> deployment that forgets to set `TICKET_SIGNING_SECRET` fails loudly instead of
+> signing real tickets with a key anyone can read. Set that variable (32+ random
+> characters) for any real environment, and keep it: rotating it invalidates
+> every QR already in a customer's hand.
 
 - Health check: http://localhost:8080/api/v1/health
 - **Swagger UI: http://localhost:8080/swagger-ui.html** (OpenAPI spec at `/v3/api-docs`)

@@ -1,0 +1,13 @@
+# Local development only.
+#
+# Exists so `TicketSecretGuard` can fail closed everywhere else: the guard is
+# @Profile("!dev"), so a deploy that forgets to set a profile breaks loudly
+# rather than quietly running on the placeholder key from the repository.
+#
+# Run with:  ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
+app:
+  ticket:
+    # Dev-only, and public by virtue of being in this file. Every QR signed with
+    # it is forgeable by anyone with the repo — which is fine for a laptop and
+    # is exactly why it must never be the value a deployment falls back to.
+    signing-secret: ${TICKET_SIGNING_SECRET:dev-only-ticket-secret-not-for-any-real-event}

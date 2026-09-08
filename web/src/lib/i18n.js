@@ -170,6 +170,12 @@ const dict = {
   bookingRef: { en: "Booking reference", km: "លេខកូដយោងការកក់" },
   status: { en: "Status", km: "ស្ថានភាព" },
   yourTickets: { en: "Your tickets", km: "សំបុត្ររបស់អ្នក" },
+  groupQr: { en: "Group QR", km: "កូដ QR ជាក្រុម" },
+  groupQrTitle: { en: "Group entry", km: "ចូលជាក្រុម" },
+  groupQrHint: {
+    en: "One code for the whole booking — the steward scans it once and admits your party.",
+    km: "កូដតែមួយសម្រាប់ការកក់ទាំងមូល — បុគ្គលិកស្កេនម្តង ហើយអនុញ្ញាតឱ្យក្រុមរបស់អ្នកចូល។",
+  },
   ticketsAfterPayment: {
     en: "Tickets appear here once payment is confirmed.",
     km: "សំបុត្រនឹងបង្ហាញនៅទីនេះ បន្ទាប់ពីការទូទាត់ប្រាក់ត្រូវបានបញ្ជាក់។",
@@ -177,6 +183,9 @@ const dict = {
   cancelBooking: { en: "Cancel booking", km: "បោះបង់ការកក់" },
   requestRefund: { en: "Request refund", km: "ស្នើសុំប្រាក់ត្រឡប់មកវិញ" },
   payNow: { en: "Pay now", km: "ទូទាត់ប្រាក់ឥឡូវនេះ" },
+  // Deliberately not "Pay again": re-opening the same provider hands back the
+  // SAME QR and reference, so nobody is charged twice.
+  resumePayment: { en: "Reopen payment", km: "បើកការទូទាត់ម្តងទៀត" },
   noBookings: {
     en: "You have no bookings yet",
     km: "អ្នកមិនទាន់មានប្រវត្តិការកក់សំបុត្រទេ",

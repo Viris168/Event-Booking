@@ -15,6 +15,7 @@ import { getEvent } from '../api/events.js'
 import { getSeatMap, getZoneAvailability } from '../api/availability.js'
 import { createHold, releaseHold, getHold } from '../api/holds.js'
 import { mapEvent, mapSeatMap, mapZone, mapHoldResponse } from '../api/adapters.js'
+import VenueLayoutPanel from '../components/VenueLayoutPanel.jsx'
 
 export default function EventDetailPage() {
   const { id } = useParams()
@@ -383,6 +384,10 @@ export default function EventDetailPage() {
               </div>
             </div>
           </div>
+
+          {/* Above the seat picker: orient yourself before choosing. Hides
+              itself when the event has no banner. */}
+          <VenueLayoutPanel imageUrl={event.banner_image_url} venue={venue} />
 
           <div className="card">
             <div className="card-head">

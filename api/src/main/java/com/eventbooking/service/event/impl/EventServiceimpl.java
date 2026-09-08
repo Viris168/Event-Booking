@@ -140,10 +140,29 @@ public class EventServiceimpl implements EventService {
         }
 
         if (request.venueId() != null) {
-            Venue venue = requireHostable(venueRepository.findById(request.venueId())
-                    .orElseThrow(() -> new VenueNotFoundException(request.venueId())));
+            Venue venue = venueRepository.findById(request.venueId())
+                    .orElseThrow(() -> new VenueNotFoundException(request.venueId()));
             organizerResolver.requireOwner(organizerId, venue.getOrganizerId(), "venue", venue.getId());
-            event.setVenue(venue);
+
+            /*
+             * Only a MOVE has to be hostable.
+             *
+             * This used to call requireHostable on any request carrying a
+             * venueId, changed or not - and a PATCH client that echoes the
+             * event's current venue back (as the organiser form does) then
+             * could not edit an event whose venue had since been retired. Not
+             * even its title: the save came back 409 VENUE_DISABLED over a
+             * field nobody had touched.
+             *
+             * The rule VenueDisabledException documents is "a disabled venue
+             * may not take on new work - binding a fresh event to it, or moving
+             * an existing one onto it". Re-sending the venue an event already
+             * sits in is neither.
+             */
+            if (!venue.getId().equals(event.getVenue().getId())) {
+                requireHostable(venue);
+                event.setVenue(venue);
+            }
         }
 
         if (request.inventoryMode() != null) event.setInventoryMode(request.inventoryMode());

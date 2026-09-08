@@ -1,6 +1,10 @@
-# Repo-root ignores. Module-level build output and secrets are handled by the
-# nested api/.gitignore - a .gitignore only applies to its own directory and
-# below, which is why the root-level IDE folders need this file too.
+# Repo-root ignores.
+#
+# A .gitignore only applies to its own directory and below. This file used to
+# say secrets were "handled by the nested api/.gitignore" - they were not, and
+# could not be: api/.gitignore cannot reach the root, so the root .env was
+# tracked with the database, Grafana and pgAdmin passwords in it until V16-era
+# cleanup. Anything at the root has to be listed HERE.
 
 ### IDE ###
 .idea/
@@ -15,3 +19,14 @@ Thumbs.db
 
 ### Logs ###
 *.log
+
+### Env ###
+# The root .env feeds docker-compose (DB_PASSWORD, GRAFANA_PASSWORD,
+# PGADMIN_PASSWORD). It is NOT the same file as api/.env and is not covered by
+# api/.gitignore.
+.env
+.env.*
+!.env.example
+
+### Stray build output at the root ###
+*.class

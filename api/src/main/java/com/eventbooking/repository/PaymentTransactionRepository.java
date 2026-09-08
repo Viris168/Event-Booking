@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -90,7 +91,34 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
     @Query("""
             select p.id from PaymentTransaction p
             where p.status in :statuses
+              and (p.expiresAt is null or p.expiresAt > :now)
             order by p.lastPolledAt asc nulls first, p.id asc
             """)
-    List<Long> findOpenIds(@Param("statuses") Collection<PaymentStatus> statuses, Pageable pageable);
+    List<Long> findOpenIds(@Param("statuses") Collection<PaymentStatus> statuses,
+                           @Param("now") Instant now,
+                           Pageable pageable);
+
+    /**
+     * Open attempts whose own clock has run out.
+     *
+     * <p>These are closed <b>without</b> asking the provider. The deadline is
+     * ours, not theirs: a QR past {@code expires_at} cannot be paid whatever
+     * Bakong says, so a round trip to confirm it would spend a request to learn
+     * something already known.
+     *
+     * <p>That is not a micro-optimisation on a Bakong account capped at 100
+     * requests a day. Before this, every lapsed QR cost one call to close - and
+     * if the provider answered UNAVAILABLE it stayed open and was charged
+     * again on the next sweep, every sweep, until it replied.
+     */
+    @Query("""
+            select p.id from PaymentTransaction p
+            where p.status in :statuses
+              and p.expiresAt is not null
+              and p.expiresAt <= :now
+            order by p.expiresAt asc
+            """)
+    List<Long> findLapsedOpenIds(@Param("statuses") Collection<PaymentStatus> statuses,
+                                 @Param("now") Instant now,
+                                 Pageable pageable);
 }

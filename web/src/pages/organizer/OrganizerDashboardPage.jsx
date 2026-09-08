@@ -427,7 +427,12 @@ function RowMenu({ event, onChanged }) {
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-full mt-1 z-20 min-w-44 rounded-ui border border-line bg-surface shadow-float py-1 text-left"
+          /* Opens to the LEFT of the gear and centred on it, rather than
+             dropping below. The gear sits at the right edge of a wide table, so
+             a downward menu on the last row is the one most likely to fall off
+             the bottom - and opening leftward moves it INWARD, away from the
+             container edge, instead of toward it. */
+          className="absolute right-full top-1/2 -translate-y-1/2 mr-2 z-20 min-w-44 rounded-ui border border-line bg-surface shadow-float py-1 text-left"
         >
           <Link
             role="menuitem"

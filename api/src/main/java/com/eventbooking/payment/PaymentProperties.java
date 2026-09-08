@@ -1,9 +1,11 @@
 package com.eventbooking.payment;
 
+import com.eventbooking.Enumeration.PaymentProvider;
 import com.eventbooking.Enumeration.PaymentCurrency;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import java.time.Duration;
+import java.util.Map;
 
 /**
  * The payment lane's knobs, bound from the {@code app.payment.*} block in
@@ -95,10 +97,19 @@ public record PaymentProperties(
      *                           this is the main dial if the API starts complaining
      * @param batchSize          most attempts settled per sweep. Caps both the provider
      *                           calls and the time one sweep can hold the executor
-     * @param minRefreshInterval floor between provider checks for a single attempt.
+     * @param minRefreshInterval default floor between provider checks for a single
+     *                           attempt, and what the API tells clients to poll on.
      *                           Stops a browser tab (or twenty) driving the refresh
-     *                           endpoint into Bakong's rate limit - a refresh inside
-     *                           this window returns what the database already knows
+     *                           endpoint into a provider's rate limit - a refresh
+     *                           inside this window returns what the database knows
+     * @param providerFloor      per-provider override of that floor. <b>The two
+     *                           providers do not cost the same.</b> A Bakong account
+     *                           can be capped at 100 requests a DAY, where a single
+     *                           pending QR polled every 5 seconds would spend the
+     *                           whole allowance in nine minutes; PayWay has no such
+     *                           ceiling and benefits from a fast check. One dial for
+     *                           both had to be set to the slower of the two, which
+     *                           made every ABA payment feel broken
      * @param bookingSweep       gap between booking-expiry sweeps, which is the
      *                           timeout that actually returns seats to the pool
      */
@@ -107,7 +118,19 @@ public record PaymentProperties(
             Duration interval,
             int batchSize,
             Duration minRefreshInterval,
+            Map<PaymentProvider, Duration> providerFloor,
             Duration bookingSweep
     ) {
+        /**
+         * How long this provider must be left alone between checks of one
+         * attempt. Falls back to {@code minRefreshInterval} for anything not
+         * listed, so adding a provider never silently gets no floor at all.
+         */
+        public Duration floorFor(PaymentProvider provider) {
+            if (providerFloor == null || provider == null) {
+                return minRefreshInterval;
+            }
+            return providerFloor.getOrDefault(provider, minRefreshInterval);
+        }
     }
 }
