@@ -62,7 +62,7 @@ export function optionSub(id, locale) {
 export const PROVIDER = 'ABA_PAYWAY'
 
 export const MERCHANT_ID = 'event_booking_kh'
-export const MERCHANT_NAME = 'Event Booking Cambodia'
+export const MERCHANT_NAME = 'CamboBook'
 
 /** PayWay's req_time format: yyyyMMddHHmmss, UTC. */
 export function reqTime(d = new Date()) {

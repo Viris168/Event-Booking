@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 
-const SUFFIX = 'Event Booking Cambodia'
+const SUFFIX = 'CamboBook'
 
 /**
  * Per-page browser title. Without it every tab, bookmark and history entry

@@ -15,7 +15,7 @@
     <artifactId>event-booking-api</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>event-booking-api</name>
-    <description>Event Booking System API (Cambodia)</description>
+    <description>CamboBook API (Cambodia)</description>
 
     <properties>
         <java.version>21</java.version>
