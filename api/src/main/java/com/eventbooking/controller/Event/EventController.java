@@ -20,7 +20,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 @Slf4j
 @CrossOrigin
-@RequestMapping(value = "/api/v1/event")
+@RequestMapping(value = "/api/v1/events")
 public class EventController {
 
     private final EventService eventService;

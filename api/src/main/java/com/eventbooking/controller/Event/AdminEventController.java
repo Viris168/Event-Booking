@@ -23,7 +23,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @Slf4j
 @CrossOrigin
-@RequestMapping("/api/v1/admin/event")
+@RequestMapping("/api/v1/admin/events")
 public class AdminEventController {
 
     private final EventService eventService;

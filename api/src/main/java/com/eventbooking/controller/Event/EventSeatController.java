@@ -48,7 +48,7 @@ public class EventSeatController {
     }
 
 
-    @GetMapping("/api/v1/event/{eventId}/seat-map")
+    @GetMapping("/api/v1/events/{eventId}/seat-map")
     public ResponseEntity<SeatMapResponse> getSeatMap(
             @PathVariable Long eventId
     ) {

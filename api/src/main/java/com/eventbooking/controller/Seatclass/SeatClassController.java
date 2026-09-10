@@ -35,7 +35,7 @@ import java.util.List;
  * never under a venue.
  */
 @RestController
-@RequestMapping("/api/v1/event/{eventId}/seat-class")
+@RequestMapping("/api/v1/events/{eventId}/seat-class")
 @Tag(name = "Seat classes", description = "Per-event pricing tiers for a venue's sections")
 public class SeatClassController {
 

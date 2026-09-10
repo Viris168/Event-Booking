@@ -431,7 +431,7 @@ export default function EventFormPage() {
             {t('save')}
           </button>
           {existing?.status === 'PUBLISHED' ? (
-            /* Taking a published event down is PATCH /admin/event/{id}/takedown -
+            /* Taking a published event down is PATCH /admin/events/{id}/takedown -
                an admin action, not an organiser one, because pulling a show that
                has sold tickets is a refund decision. The button used to flip the
                status in the prototype store, which looked like it worked and

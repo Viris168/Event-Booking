@@ -43,7 +43,7 @@ public class EventZoneController {
         this.organizerResolver = organizerResolver;
     }
 
-    @PostMapping("/event/{eventId}/zone")
+    @PostMapping("/events/{eventId}/zone")
     public ResponseEntity<EventZoneResponse> createEventZone(
             @RequestHeader("X-User-Id") Long actorUserId,
             @PathVariable Long eventId,
@@ -59,7 +59,7 @@ public class EventZoneController {
         return new ResponseEntity<>(eventZoneService.getZone(id), HttpStatus.OK);
     }
 
-    @GetMapping("/event/{eventId}/zone")
+    @GetMapping("/events/{eventId}/zone")
     public ResponseEntity<List<EventZoneResponse>> getAllEventZones(@PathVariable Long eventId){
         return new ResponseEntity<>(eventZoneService.findByEvent(eventId), HttpStatus.OK);
     }
