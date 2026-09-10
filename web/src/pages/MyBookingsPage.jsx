@@ -36,8 +36,114 @@ const STATES = [
   'CANCELLED',
 ]
 
+/**
+ * Both of these live at module scope, not inside MyBookingsPage. A component
+ * declared during render is a fresh type on every render, so React unmounts and
+ * remounts the whole subtree each time — losing DOM state and re-fetching the
+ * row images. The lookup maps come down as props instead of via closure.
+ */
+function Row({ booking, event, ticketCount }) {
+  const { locale, date, dateTime } = useLocale()
+  const items = booking.items ?? []
+  const units = items.reduce((a, i) => a + (i.qty ?? 0), 0)
+  const art = eventArt(event, 'cover')
+  const payable = PAYABLE.includes(booking.state)
+  const closed = CLOSED.includes(booking.state)
+
+  return (
+    <Link
+      to={`/bookings/${booking.id}`}
+      className={`bk-row${closed ? ' is-closed' : ''}${payable ? ' is-payable' : ''}`}
+    >
+      {/* Same artwork resolution as the event cards, so a booking is
+          recognisable by the picture you bought it from. */}
+      <span className={`bk-art ${art.className}${art.hasImage ? ' has-photo' : ''}`}>
+        {art.hasImage ? (
+          <img
+            className="ev-photo"
+            src={art.url}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            onError={(e) => { e.currentTarget.remove() }}
+          />
+        ) : (
+          <Icon
+            name={CATEGORY_ICON[event?.category] || 'ticket'}
+            size={22}
+            strokeWidth={1.5}
+            className="cat-icon"
+          />
+        )}
+      </span>
+
+      <span className="bk-main">
+        <span className="row row-tight">
+          <Badge status={booking.state} />
+          <span className="mono small muted">{booking.booking_ref}</span>
+        </span>
+
+        {/* The event read can still be in flight, or have failed; the ref
+            above already identifies the row, so an em dash beats blanking. */}
+        <span className="bk-title">
+          {(locale === 'km' ? event?.title_km : event?.title_en) ?? '—'}
+        </span>
+
+        <span className="bk-meta">
+          <span className="meta-row">
+            <Icon name="calendar" size={14} />
+            <span>{event?.starts_at ? dateTime(event.starts_at) : '—'}</span>
+          </span>
+          <span className="meta-row">
+            <Icon name="ticket" size={14} />
+            <span>
+              {units} {locale === 'km' ? 'ឯកតា' : units === 1 ? 'ticket' : 'tickets'}
+              {ticketCount ? ` · ${ticketCount} QR` : ''}
+            </span>
+          </span>
+        </span>
+      </span>
+
+      <span className="bk-side">
+        <Money cents={booking.total_usd_cents} stacked />
+        <span className="small muted">
+          {locale === 'km' ? 'កក់ថ្ងៃ' : 'booked'} {date(booking.created_at)}
+        </span>
+        {payable && (
+          <span className="btn btn-sm btn-accent bk-pay">
+            {locale === 'km' ? 'បង់ប្រាក់' : 'Pay now'}
+            <Icon name="arrowRight" size={13} />
+          </span>
+        )}
+      </span>
+    </Link>
+  )
+}
+
+function Group({ title, list, apiEvents, ticketCounts }) {
+  if (!list.length) return null
+  return (
+    <div className="bk-group">
+      <div className="bk-group-head">
+        <span>{title}</span>
+        <span className="bk-group-count">{list.length}</span>
+      </div>
+      <div className="stack-sm">
+        {list.map((b) => (
+          <Row
+            key={b.id}
+            booking={b}
+            event={apiEvents[b.event_id]}
+            ticketCount={ticketCounts[b.id] ?? 0}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function MyBookingsPage() {
-  const { t, locale, status, dateTime, date } = useLocale()
+  const { t, locale, status } = useLocale()
   useDocumentTitle(t('myBookings'))
   const { user } = useAuth()
   const [state, setState] = useState('')
@@ -136,100 +242,6 @@ export default function MyBookingsPage() {
     return { upcoming: up.map(([b]) => b), past: done.map(([b]) => b) }
   }, [filtered, apiEvents])
 
-  function Row({ booking }) {
-    const event = apiEvents[booking.event_id]
-    const items = booking.items ?? []
-    const ticketCount = ticketCounts[booking.id] ?? 0
-    const units = items.reduce((a, i) => a + (i.qty ?? 0), 0)
-    const art = eventArt(event, 'cover')
-    const payable = PAYABLE.includes(booking.state)
-    const closed = CLOSED.includes(booking.state)
-
-    return (
-      <Link
-        to={`/bookings/${booking.id}`}
-        className={`bk-row${closed ? ' is-closed' : ''}${payable ? ' is-payable' : ''}`}
-      >
-        {/* Same artwork resolution as the event cards, so a booking is
-            recognisable by the picture you bought it from. */}
-        <span className={`bk-art ${art.className}${art.hasImage ? ' has-photo' : ''}`}>
-          {art.hasImage ? (
-            <img
-              className="ev-photo"
-              src={art.url}
-              alt=""
-              loading="lazy"
-              decoding="async"
-              onError={(e) => { e.currentTarget.remove() }}
-            />
-          ) : (
-            <Icon
-              name={CATEGORY_ICON[event?.category] || 'ticket'}
-              size={22}
-              strokeWidth={1.5}
-              className="cat-icon"
-            />
-          )}
-        </span>
-
-        <span className="bk-main">
-          <span className="row row-tight">
-            <Badge status={booking.state} />
-            <span className="mono small muted">{booking.booking_ref}</span>
-          </span>
-
-          {/* The event read can still be in flight, or have failed; the ref
-              above already identifies the row, so an em dash beats blanking. */}
-          <span className="bk-title">
-            {(locale === 'km' ? event?.title_km : event?.title_en) ?? '—'}
-          </span>
-
-          <span className="bk-meta">
-            <span className="meta-row">
-              <Icon name="calendar" size={14} />
-              <span>{event?.starts_at ? dateTime(event.starts_at) : '—'}</span>
-            </span>
-            <span className="meta-row">
-              <Icon name="ticket" size={14} />
-              <span>
-                {units} {locale === 'km' ? 'ឯកតា' : units === 1 ? 'ticket' : 'tickets'}
-                {ticketCount ? ` · ${ticketCount} QR` : ''}
-              </span>
-            </span>
-          </span>
-        </span>
-
-        <span className="bk-side">
-          <Money cents={booking.total_usd_cents} stacked />
-          <span className="small muted">
-            {locale === 'km' ? 'កក់ថ្ងៃ' : 'booked'} {date(booking.created_at)}
-          </span>
-          {payable && (
-            <span className="btn btn-sm btn-accent bk-pay">
-              {locale === 'km' ? 'បង់ប្រាក់' : 'Pay now'}
-              <Icon name="arrowRight" size={13} />
-            </span>
-          )}
-        </span>
-      </Link>
-    )
-  }
-
-  function Group({ title, list }) {
-    if (!list.length) return null
-    return (
-      <div className="bk-group">
-        <div className="bk-group-head">
-          <span>{title}</span>
-          <span className="bk-group-count">{list.length}</span>
-        </div>
-        <div className="stack-sm">
-          {list.map((b) => <Row key={b.id} booking={b} />)}
-        </div>
-      </div>
-    )
-  }
-
   // Signed out: nothing to fetch, and an empty "no bookings" state would be a
   // lie — the bookings may well exist, just not for an anonymous caller.
   if (!user?.id) {
@@ -314,8 +326,18 @@ export default function MyBookingsPage() {
         </Empty>
       ) : filtered.length ? (
         <>
-          <Group title={locale === 'km' ? 'ជិតមកដល់' : 'Upcoming'} list={upcoming} />
-          <Group title={locale === 'km' ? 'កន្លងផុត' : 'Past'} list={past} />
+          <Group
+            title={locale === 'km' ? 'ជិតមកដល់' : 'Upcoming'}
+            list={upcoming}
+            apiEvents={apiEvents}
+            ticketCounts={ticketCounts}
+          />
+          <Group
+            title={locale === 'km' ? 'កន្លងផុត' : 'Past'}
+            list={past}
+            apiEvents={apiEvents}
+            ticketCounts={ticketCounts}
+          />
         </>
       ) : (
         <Empty icon="ticket" title={t('noBookings')}>
