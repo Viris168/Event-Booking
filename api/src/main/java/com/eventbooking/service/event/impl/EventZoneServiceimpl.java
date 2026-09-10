@@ -51,8 +51,14 @@ public class EventZoneServiceimpl implements EventZoneService {
         Event e = eventRepository.findById(eventId).orElseThrow(()-> new EventNotFoundException(eventId));
         organizerResolver.requireOwner(organizerId, e.getOrganizerId(), "event", eventId);
         EventZone eventZone = EventZoneMapper.toEventZone(e, request);
-        eventZoneRepository.save(eventZone);
-        return EventZoneMapper.toEventZoneResponse(eventZone);
+        // Map save()'s return, not the instance passed in. EventZone carries a
+        // @Version defaulted to 0, so Spring Data's isNew() reads that rather
+        // than the null id, decides the row already exists and calls merge() -
+        // which hands back a different managed instance. The original stays
+        // detached with id == null, and this endpoint answered 201 with
+        // "id": null while the row itself was written correctly.
+        EventZone saved = eventZoneRepository.save(eventZone);
+        return EventZoneMapper.toEventZoneResponse(saved);
     }
 
     @Override

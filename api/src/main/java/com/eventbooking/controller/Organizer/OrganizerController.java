@@ -38,7 +38,7 @@ public class OrganizerController {
      * organiser's events. The resolver is what keeps the two apart, and it
      * doubles as the check that the caller is an organiser at all.
      */
-    @GetMapping("/event")
+    @GetMapping("/events")
     public ResponseEntity<List<EventResponse>> listForOrganizer(
             @RequestHeader("X-User-Id") Long actorUserId,
             @RequestParam(required = false) EventStatus status) {

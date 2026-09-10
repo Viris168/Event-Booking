@@ -16,7 +16,7 @@ export const publishEvent = (id) => client.patch(`/events/${id}/publish`).then((
  * No organizerId parameter — the server scopes it to the caller.
  */
 export const getOrganizerEvents = (params) =>
-  client.get('/organizer/event', { params }).then((r) => r.data)
+  client.get('/organizer/events', { params }).then((r) => r.data)
 
 // --- review lifecycle -------------------------------------------------------
 // One function per legal transition rather than a generic post(action): the
