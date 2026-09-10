@@ -9,6 +9,7 @@ import java.util.List;
 public interface SeatClassService {
 
     SeatClassResponse createSeatClass(
+        Long organizerId,
         Long eventId,
         CreateSeatClassRequest request
     );
@@ -18,6 +19,7 @@ public interface SeatClassService {
     List<SeatClassResponse> findByEvent(Long eventId);
 
     SeatClassResponse updateSeatClass(
+        Long organizerId,
         Long seatClassId,
         UpdateSeatClassRequest request
     );

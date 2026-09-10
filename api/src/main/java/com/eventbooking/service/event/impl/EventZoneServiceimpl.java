@@ -11,8 +11,10 @@ import com.eventbooking.model.Event;
 import com.eventbooking.model.EventZone;
 import com.eventbooking.repository.EventRepository;
 import com.eventbooking.repository.EventZoneRepository;
+import com.eventbooking.security.OrganizerResolver;
 import com.eventbooking.service.event.EventZoneService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -21,27 +23,47 @@ public class EventZoneServiceimpl implements EventZoneService {
 
     private final EventRepository eventRepository;
     private final EventZoneRepository eventZoneRepository;
+    private final OrganizerResolver organizerResolver;
 
-    public EventZoneServiceimpl(EventRepository eventRepository, EventZoneRepository eventZoneRepository) {
+    public EventZoneServiceimpl(EventRepository eventRepository,
+                                EventZoneRepository eventZoneRepository,
+                                OrganizerResolver organizerResolver) {
         this.eventRepository = eventRepository;
         this.eventZoneRepository = eventZoneRepository;
+        this.organizerResolver = organizerResolver;
+    }
+
+    /**
+     * A zone has no organiser of its own - it inherits the event's. Resolving
+     * through the event is what makes "is this zone yours" answerable at all.
+     */
+    private EventZone requireOwnedZone(Long organizerId, Long zoneId) {
+        EventZone zone = eventZoneRepository.findById(zoneId)
+                .orElseThrow(() -> new EventZoneNotFoundException(zoneId));
+        organizerResolver.requireOwner(
+                organizerId, zone.getEvent().getOrganizerId(), "zone", zoneId);
+        return zone;
     }
 
     @Override
-    public EventZoneResponse createZone(Long eventId, CreateEventZoneRequest request) {
+    @Transactional
+    public EventZoneResponse createZone(Long organizerId, Long eventId, CreateEventZoneRequest request) {
         Event e = eventRepository.findById(eventId).orElseThrow(()-> new EventNotFoundException(eventId));
+        organizerResolver.requireOwner(organizerId, e.getOrganizerId(), "event", eventId);
         EventZone eventZone = EventZoneMapper.toEventZone(e, request);
         eventZoneRepository.save(eventZone);
         return EventZoneMapper.toEventZoneResponse(eventZone);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public EventZoneResponse getZone(Long zoneId) {
         EventZone eventZone =   eventZoneRepository.findById(zoneId).orElseThrow(()-> new EventZoneNotFoundException(zoneId));
         return EventZoneMapper.toEventZoneResponse(eventZone);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<EventZoneResponse> findByEvent(Long eventId) {
         if (!eventRepository.existsById(eventId)) {
             throw new EventNotFoundException(eventId);
@@ -53,9 +75,9 @@ public class EventZoneServiceimpl implements EventZoneService {
     }
 
     @Override
-    public EventZoneResponse updateZone(Long zoneId, UpdateZoneRequest request) {
-        EventZone eventZone = eventZoneRepository.findById(zoneId)
-                .orElseThrow(() -> new EventZoneNotFoundException(zoneId));
+    @Transactional
+    public EventZoneResponse updateZone(Long organizerId, Long zoneId, UpdateZoneRequest request) {
+        EventZone eventZone = requireOwnedZone(organizerId, zoneId);
 
         if (request.nameEn() != null) {
             eventZone.setNameEn(request.nameEn());
@@ -76,9 +98,9 @@ public class EventZoneServiceimpl implements EventZoneService {
     }
 
     @Override
-    public void deactivateZone(Long zoneId) {
-        EventZone eventZone = eventZoneRepository.findById(zoneId)
-                .orElseThrow(() -> new EventZoneNotFoundException(zoneId));
+    @Transactional
+    public void deactivateZone(Long organizerId, Long zoneId) {
+        EventZone eventZone = requireOwnedZone(organizerId, zoneId);
         eventZone.setActive(false);
         eventZoneRepository.save(eventZone);
     }

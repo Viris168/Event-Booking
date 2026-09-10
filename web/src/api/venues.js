@@ -28,9 +28,7 @@ export const getVenueSeatMap = (venueId) =>
  * `generateSeatGrid` below turns the common case into that shape.
  */
 export const createVenueSeats = (venueId, seats) =>
-  client
-    .post(`/venue/${venueId}/seats`, { venue_id: Number(venueId), seats })
-    .then((r) => r.data)
+  client.post(`/venue/${venueId}/seats`, { seats }).then((r) => r.data)
 
 /** The spacing every seat map in this database already uses. */
 export const SEAT_PITCH = 30

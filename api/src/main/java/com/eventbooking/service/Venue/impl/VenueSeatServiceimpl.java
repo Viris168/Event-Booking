@@ -12,6 +12,7 @@ import com.eventbooking.model.VenueSeat;
 import com.eventbooking.repository.VenueRepository;
 import com.eventbooking.repository.VenueSeatRepository;
 
+import com.eventbooking.security.OrganizerResolver;
 import com.eventbooking.service.Venue.VenueSeatService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,16 +29,22 @@ public class VenueSeatServiceimpl implements VenueSeatService {
     private final VenueSeatRepository venueSeatRepository;
     private final VenueRepository venueRepository;
 
-    public VenueSeatServiceimpl(VenueSeatRepository venueSeatRepository, VenueRepository venueRepository) {
+    private final OrganizerResolver organizerResolver;
+
+    public VenueSeatServiceimpl(VenueSeatRepository venueSeatRepository,
+                                VenueRepository venueRepository,
+                                OrganizerResolver organizerResolver) {
         this.venueSeatRepository = venueSeatRepository;
         this.venueRepository = venueRepository;
+        this.organizerResolver = organizerResolver;
     }
 
     @Override
     @Transactional
-    public VenueSeatMapResponse createVenueSeats(CreateVenueSeatsRequest request) {
-        Venue venue = venueRepository.findById(request.venueId())
-                .orElseThrow(() -> new VenueNotFoundException(request.venueId()));
+    public VenueSeatMapResponse createVenueSeats(Long organizerId, Long venueId, CreateVenueSeatsRequest request) {
+        Venue venue = venueRepository.findById(venueId)
+                .orElseThrow(() -> new VenueNotFoundException(venueId));
+        organizerResolver.requireOwner(organizerId, venue.getOrganizerId(), "venue", venueId);
                 
         // Re-posting a layout is how a second event gets run off the same
         // venue, so seats already on file are skipped instead of colliding
@@ -55,7 +62,7 @@ public class VenueSeatServiceimpl implements VenueSeatService {
 
         venueSeatRepository.saveAll(venueSeats);
 
-        return buildSeatMap(request.venueId());
+        return buildSeatMap(venueId);
     }
 
     @Override
