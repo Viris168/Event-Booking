@@ -1,4 +1,4 @@
-# Event Booking System (Cambodia)
+# CamboBook
 
 A fullstack event booking app — browse and reserve seats for events across Cambodia.
 The standout feature is **safe concurrency handling** so the last seat can never be oversold.

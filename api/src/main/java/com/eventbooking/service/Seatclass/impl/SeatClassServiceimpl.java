@@ -10,6 +10,7 @@ import com.eventbooking.model.Event;
 import com.eventbooking.model.SeatClass;
 import com.eventbooking.repository.EventRepository;
 import com.eventbooking.repository.SeatClassRepository;
+import com.eventbooking.security.OrganizerResolver;
 import com.eventbooking.service.Seatclass.SeatClassService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,16 +22,21 @@ public class SeatClassServiceimpl implements SeatClassService {
 
     private final SeatClassRepository seatClassRepository;
     private final EventRepository eventRepository;
+    private final OrganizerResolver organizerResolver;
 
-    public SeatClassServiceimpl(SeatClassRepository seatClassRepository, EventRepository eventRepository) {
+    public SeatClassServiceimpl(SeatClassRepository seatClassRepository,
+                                EventRepository eventRepository,
+                                OrganizerResolver organizerResolver) {
         this.seatClassRepository = seatClassRepository;
         this.eventRepository = eventRepository;
+        this.organizerResolver = organizerResolver;
     }
 
     @Override
     @Transactional
-    public SeatClassResponse createSeatClass(Long eventId, CreateSeatClassRequest request) {
+    public SeatClassResponse createSeatClass(Long organizerId, Long eventId, CreateSeatClassRequest request) {
         Event event = eventRepository.findById(eventId).orElseThrow(()-> new EventNotFoundException(eventId));
+        organizerResolver.requireOwner(organizerId, event.getOrganizerId(), "event", eventId);
         SeatClass seatClass = SeatClassMapper.toSeatClass(request,event);
         seatClassRepository.save(seatClass);
         return SeatClassMapper.toSeatClassResponse(seatClass);
@@ -54,8 +60,11 @@ public class SeatClassServiceimpl implements SeatClassService {
 
     @Override
     @Transactional
-    public SeatClassResponse updateSeatClass(Long seatClassId, UpdateSeatClassRequest request) {
+    public SeatClassResponse updateSeatClass(Long organizerId, Long seatClassId, UpdateSeatClassRequest request) {
         SeatClass seatClass = seatClassRepository.findById(seatClassId).orElseThrow(()-> new SeatClassNotFoundException(seatClassId));
+        // A tier inherits its event's organiser; there is no owner column here.
+        organizerResolver.requireOwner(
+                organizerId, seatClass.getEvent().getOrganizerId(), "seat class", seatClassId);
         if (request.nameEn() != null) seatClass.setNameEn(request.nameEn());
         if (request.nameKm() != null) seatClass.setNameKm(request.nameKm());
         if (request.priceUsdCents() != null) seatClass.setPriceUsdCents(request.priceUsdCents());

@@ -41,7 +41,7 @@ export const getSeatClasses = (eventId) =>
   client.get(`/event/${eventId}/seat-class`).then((r) => r.data)
 
 export const createSeatClass = (eventId, data) =>
-  client.post(`/event/${eventId}/seat-class`, { ...data, event_id: Number(eventId) }).then((r) => r.data)
+  client.post(`/event/${eventId}/seat-class`, data).then((r) => r.data)
 
 export const updateSeatClass = (eventId, seatClassId, data) =>
   client.patch(`/event/${eventId}/seat-class/${seatClassId}`, data).then((r) => r.data)

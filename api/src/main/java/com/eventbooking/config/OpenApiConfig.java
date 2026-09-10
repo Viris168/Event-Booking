@@ -24,7 +24,7 @@ public class OpenApiConfig {
         return new OpenAPI()
                 .servers(List.of(new Server().url("http://localhost:" + port).description("Local")))
                 .info(new Info()
-                        .title("Event Booking API")
+                        .title("CamboBook API")
                         .version("0.0.1-SNAPSHOT")
                         .description("""
                                 Ticketing for Cambodia: venues, events, seat and zone inventory,

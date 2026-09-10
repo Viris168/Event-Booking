@@ -1,6 +1,6 @@
 {
-  "name": "Event Booking Cambodia",
-  "short_name": "EBC",
+  "name": "CamboBook",
+  "short_name": "CamboBook",
   "description": "Ticketing for events across the Kingdom of Cambodia — reserved seats or general admission, with a QR ticket at the door.",
   "lang": "en",
   "start_url": "/",

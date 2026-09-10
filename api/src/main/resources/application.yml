@@ -99,10 +99,10 @@ app:
       acquiring-bank: ${BAKONG_ACQUIRING_BANK:}
       # Shown in the payer's banking app. Hard EMVCo limits: 25 and 15
       # characters. Startup fails rather than emitting a QR banks reject.
-      merchant-name: ${BAKONG_MERCHANT_NAME:Event Booking KH}
+      merchant-name: ${BAKONG_MERCHANT_NAME:CamboBook}
       merchant-city: ${BAKONG_MERCHANT_CITY:Phnom Penh}
       merchant-category-code: ${BAKONG_MCC:5999}
-      store-label: ${BAKONG_STORE_LABEL:EventBooking}
+      store-label: ${BAKONG_STORE_LABEL:CamboBook}
       terminal-label: ${BAKONG_TERMINAL_LABEL:WEB}
       # KHR is what Cambodian bank apps expect. Both totals were snapshotted on
       # the booking at checkout, so this only picks which one is charged.
