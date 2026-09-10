@@ -14,7 +14,7 @@ import {
   createEvent as createApiEvent,
   createEventZone,
   createSeatClass,
-  getEvent as getApiEvent,
+  getOrganizerEvents,
   getEventZones,
   getSeatClasses,
   publishEvent as publishApiEvent,
@@ -116,7 +116,19 @@ export default function EventFormPage() {
 
   useEffect(() => {
     let live = true
-    Promise.all([getVenues(), id ? getApiEvent(id) : Promise.resolve(null)])
+    // The organiser's own list, not GET /events/{id}. That endpoint 404s for
+    // anything not publicly visible - deliberately, so nobody can walk
+    // sequential ids to read other people's drafts - and it has no owner
+    // bypass, so editing your own DRAFT failed outright. Worse, the rejection
+    // took the whole Promise.all with it, so the venue dropdown came back
+    // empty too and the page rendered as "Create event".
+    Promise.all([
+      getVenues(),
+      id ? getOrganizerEvents().then((list) => {
+        const rows = list?.content ?? list ?? []
+        return rows.find((e) => String(e.id) === String(id)) ?? null
+      }) : Promise.resolve(null),
+    ])
       .then(async ([venueList, event]) => {
         if (!live) return
         const mappedVenues = (venueList?.content ?? venueList ?? []).map(mapVenue)
