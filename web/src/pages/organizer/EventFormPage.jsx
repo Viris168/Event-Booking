@@ -181,14 +181,26 @@ export default function EventFormPage() {
             getEventZones(e.id).catch(() => []),
           ])
           if (!live) return
+          // A tier binds to a venue section, and the server derives that from
+          // the seats assigned to it. It answers null for a tier with no seats
+          // yet - which is every tier between being priced and being filled -
+          // so fall back to the name. New tiers are created named after their
+          // section, so that is the same string in the ordinary case.
+          //
+          // Without either, section_label was always '' here: no row ever
+          // matched a section, so an existing seated event opened with its
+          // pricing blank and refused to save.
           setClasses(
-            (tiers ?? []).map((c) => ({
-              id: c.id,
-              section_label: c.section_label ?? c.sectionLabel ?? '',
-              name_en: c.name_en ?? c.nameEn,
-              name_km: c.name_km ?? c.nameKm,
-              price: ((c.price_usd_cents ?? c.priceUsdCents) / 100).toFixed(2),
-            })),
+            (tiers ?? []).map((c) => {
+              const name = c.name_en ?? c.nameEn
+              return {
+                id: c.id,
+                section_label: c.section_label ?? c.sectionLabel ?? name ?? '',
+                name_en: name,
+                name_km: c.name_km ?? c.nameKm,
+                price: ((c.price_usd_cents ?? c.priceUsdCents) / 100).toFixed(2),
+              }
+            }),
           )
           setZones(
             (zoneList ?? []).map((z) => ({

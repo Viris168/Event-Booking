@@ -15,6 +15,10 @@ export function mapSeatClass(c) {
     name_en: c.name_en ?? c.nameEn,
     name_km: c.name_km ?? c.nameKm,
     price_usd_cents: c.price_usd_cents ?? c.priceUsdCents,
+    // The venue section this tier prices. Server-derived from the seats
+    // assigned to it, and null when that is not a single answer - no seats
+    // yet, or seats spanning two sections.
+    section_label: c.section_label ?? c.sectionLabel ?? null,
     seat_count: c.seat_count ?? c.seatCount ?? 0,
     sold_count: c.sold_count ?? c.soldCount ?? 0,
     held_count: c.held_count ?? c.heldCount ?? 0,
