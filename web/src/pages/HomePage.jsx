@@ -314,20 +314,6 @@ export default function HomePage() {
           )}
         </section>
 
-        <section style={{ marginTop: '2.5rem' }}>
-          <div className="demo-note">
-            <b className="with-icon">
-              <Icon name="info" size={14} />
-              Prototype build.
-            </b>{' '}
-            Everything on this site is mock data held in the
-            browser — no API calls are made. Log in as <span className="mono">dara@example.com</span>{' '}
-            (customer), <span className="mono">organizer@example.com</span>, or{' '}
-            <span className="mono">admin@example.com</span> with the password{' '}
-            <span className="mono">password</span> — each one lands in a different role
-            experience.
-          </div>
-        </section>
       </div>
     </>
   )

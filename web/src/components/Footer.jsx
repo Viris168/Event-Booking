@@ -78,12 +78,6 @@ export default function Footer() {
           <span>
             © {new Date().getFullYear()} {t("brand")}
           </span>
-          <span className="footer-note">
-            <Icon name="info" size={13} />
-            {km
-              ? "គំរូរូបរាង — ទិន្នន័យសាកល្បង គ្មានការហៅ API"
-              : "UI prototype — mock data only, no API calls are made"}
-          </span>
           <span className="footer-lang" role="group" aria-label="Language">
             <button
               type="button"

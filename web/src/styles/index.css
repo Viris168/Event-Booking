@@ -1255,6 +1255,52 @@
     border-radius: 0;
   }
 
+  /* --------------------------------------------------------- about + art */
+  .about-body {
+    @apply flex items-start gap-[1.1rem];
+  }
+  .about-text {
+    @apply min-w-0 flex-auto;
+  }
+  /* Sized to actually be looked at, not just acknowledged. Roughly 40% of the
+     card at desktop widths, so the description still has a readable column
+     beside it rather than a narrow gutter. */
+  .about-art {
+    @apply relative block aspect-video w-[280px] flex-none cursor-pointer overflow-hidden
+      rounded-card border border-line bg-surface-2 p-0;
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+  }
+  @media (min-width: 1024px) {
+    .about-art {
+      @apply w-[360px];
+    }
+  }
+  .about-art:hover {
+    @apply -translate-y-[2px] shadow-float;
+  }
+  .about-art img {
+    @apply h-full w-full object-cover;
+  }
+  .about-art-zoom {
+    @apply pointer-events-none absolute bottom-[0.4rem] right-[0.4rem] grid size-[26px]
+      place-items-center rounded-full bg-black/55 text-white opacity-0 backdrop-blur-sm;
+    transition: opacity 0.18s ease;
+  }
+  .about-art:hover .about-art-zoom,
+  .about-art:focus-visible .about-art-zoom {
+    @apply opacity-100;
+  }
+  /* Below this the text column would be too narrow to read beside the picture,
+     so the picture goes on top at full width instead. */
+  @media (max-width: 640px) {
+    .about-body {
+      @apply flex-col;
+    }
+    .about-art {
+      @apply w-full;
+    }
+  }
+
   /* ------------------------------------------------- checkout order summary */
   .co-event {
     @apply mb-[0.75rem] flex items-start gap-[0.7rem];
@@ -2436,59 +2482,13 @@
       @apply max-w-[60%];
     }
   }
-  .hero-poster {
-    @apply block aspect-video w-[170px] flex-none overflow-hidden rounded-card
-      bg-black/20;
-    /* A hairline inside and a real shadow outside, so the card separates from
-       the backdrop whether the photo behind it is light or dark. */
-    box-shadow:
-      0 0 0 1px rgba(255, 255, 255, 0.28) inset,
-      0 10px 30px rgba(0, 0, 0, 0.45);
-  }
-  .hero-poster {
-    @apply relative cursor-pointer p-0;
-    transition: transform 0.18s ease, box-shadow 0.18s ease;
-  }
-  .hero-poster:hover {
-    @apply -translate-y-[2px];
-  }
-  .hero-poster img {
-    @apply h-full w-full object-cover;
-  }
-  /* The affordance only appears on hover/focus: at rest the card should read as
-     artwork, not as a control with a permanent button stuck on it. */
-  .hero-poster-zoom {
-    @apply pointer-events-none absolute bottom-[0.4rem] right-[0.4rem] grid size-[26px]
-      place-items-center rounded-full bg-black/55 text-white opacity-0 backdrop-blur-sm;
-    transition: opacity 0.18s ease;
-  }
-  .hero-poster:hover .hero-poster-zoom,
-  .hero-poster:focus-visible .hero-poster-zoom {
-    @apply opacity-100;
-  }
-  .hero-poster-full {
-    @apply max-h-[80vh] w-auto max-w-full rounded-card object-contain;
-  }
-
-  /* When both images are shown the backdrop is ambient, not the subject: two
-     unrelated photographs at equal weight compete and neither wins. Pushing it
-     back slightly is what makes the pair read as one composition. The scale
-     hides the soft edge the blur leaves at the boundary. */
-  .event-hero.has-poster .hero-photo {
-    filter: blur(2.5px) saturate(1.08);
-    transform: scale(1.06);
-  }
-  @media (min-width: 1024px) {
-    .hero-poster {
-      @apply w-[230px];
-    }
-  }
-  /* Below the split the copy needs the full width, and the backdrop is already
-     carrying the picture on its own. */
-  @media (max-width: 860px) {
-    .hero-poster {
-      @apply hidden;
-    }
+  /* Full-size artwork in the lightbox. The thumbnail that opens it now lives in
+     the About card, but the overlay image is styled the same wherever it is
+     opened from. */
+  /* Fills the media panel's width and is capped by height, so the picture is as
+     large as the viewport allows in either dimension. */
+  .about-art-full {
+    @apply block max-h-[88vh] w-full rounded-card object-contain;
   }
 
   .event-hero .hero-facts {
@@ -2968,6 +2968,34 @@
   background: #fff;
   border-radius: 1rem;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+}
+
+/* Media variant: the picture IS the content, so the panel stops being a card.
+   No white ground, no padding, no shadow — just the image on the backdrop, at
+   whatever size the viewport allows. */
+.qr-lightbox-panel.is-media {
+  width: min(96vw, 76rem);
+  padding: 0;
+  gap: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.qr-lightbox-code.is-media {
+  width: 100%;
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+}
+
+/* Sits over the image rather than on a white margin, so it needs its own
+   contrast instead of borrowing the panel's. */
+.qr-lightbox-panel.is-media .qr-lightbox-close {
+  top: -0.4rem;
+  right: -0.4rem;
+  background: rgba(0, 0, 0, 0.62);
+  color: #fff;
+  backdrop-filter: blur(4px);
 }
 
 .qr-lightbox-close {

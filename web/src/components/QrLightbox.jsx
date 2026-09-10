@@ -21,7 +21,20 @@ import { useLocale } from '../context/LocaleContext.jsx'
  * ancestor ticket card can clip it — the usual way a modal ends up trapped
  * inside the component that opened it.
  */
-export default function QrLightbox({ open, onClose, children, caption, subtitle }) {
+/**
+ * `variant`
+ *
+ * <p>`qr` (default) is the ticket case this was built for: a small white panel
+ * with the code, its caption, and the instruction to hold it up at the gate.
+ *
+ * <p>`media` is for looking at a picture. The caption, subtitle and gate hint
+ * are all suppressed and the panel chrome disappears, leaving the image on the
+ * backdrop with a close button. Those three lines are written for a ticket -
+ * shown under event artwork, "show this at the gate" is simply wrong - and a
+ * 30rem panel sized around a square QR is far too small for a 16:9 photo.
+ */
+export default function QrLightbox({ open, onClose, children, caption, subtitle, variant = 'qr' }) {
+  const media = variant === 'media'
   const { locale } = useLocale()
   const closeRef = useRef(null)
   const km = locale === 'km'
@@ -54,14 +67,14 @@ export default function QrLightbox({ open, onClose, children, caption, subtitle 
       className="qr-lightbox"
       role="dialog"
       aria-modal="true"
-      aria-label={caption || 'Ticket QR code'}
+      aria-label={caption || (media ? 'Image' : 'Ticket QR code')}
       // Only a click on the backdrop itself closes. Without the target check,
       // a drag that ends outside the panel dismisses the code mid-scan.
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
     >
-      <div className="qr-lightbox-panel">
+      <div className={`qr-lightbox-panel${media ? ' is-media' : ''}`}>
         <button
           ref={closeRef}
           type="button"
@@ -72,16 +85,18 @@ export default function QrLightbox({ open, onClose, children, caption, subtitle 
           <Icon name="xCircle" size={22} />
         </button>
 
-        <div className="qr-lightbox-code">{children}</div>
+        <div className={`qr-lightbox-code${media ? ' is-media' : ''}`}>{children}</div>
 
-        {caption && <p className="qr-lightbox-caption">{caption}</p>}
-        {subtitle && <p className="qr-lightbox-sub">{subtitle}</p>}
+        {!media && caption && <p className="qr-lightbox-caption">{caption}</p>}
+        {!media && subtitle && <p className="qr-lightbox-sub">{subtitle}</p>}
 
-        <p className="qr-lightbox-hint">
-          {km
-            ? 'បង្កើនពន្លឺអេក្រង់ ហើយបង្ហាញកូដនេះនៅមាត់ទ្វារ'
-            : 'Turn your screen brightness up and show this at the gate'}
-        </p>
+        {!media && (
+          <p className="qr-lightbox-hint">
+            {km
+              ? 'បង្កើនពន្លឺអេក្រង់ ហើយបង្ហាញកូដនេះនៅមាត់ទ្វារ'
+              : 'Turn your screen brightness up and show this at the gate'}
+          </p>
+        )}
       </div>
     </div>,
     document.body,

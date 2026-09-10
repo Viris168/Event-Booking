@@ -17,7 +17,6 @@ import { getEvent } from '../api/events.js'
 import { getSeatMap, getZoneAvailability } from '../api/availability.js'
 import { createHold, releaseHold, getHold } from '../api/holds.js'
 import { mapEvent, mapSeatMap, mapZone, mapHoldResponse } from '../api/adapters.js'
-import VenueLayoutPanel from '../components/VenueLayoutPanel.jsx'
 import QrLightbox from '../components/QrLightbox.jsx'
 
 export default function EventDetailPage() {
@@ -32,8 +31,8 @@ export default function EventDetailPage() {
   const [zoneQty, setZoneQty] = useState({})
   const [reserving, setReserving] = useState(false)
   const [expiredNotice, setExpiredNotice] = useState(false)
-  // Full-size event artwork. The hero card is ~230px wide, so a poster with a
-  // line-up or a schedule printed on it is unreadable until it is opened.
+  // Full-size event artwork. The thumbnail in About is small, so a poster with
+  // a line-up or a schedule printed on it is unreadable until it is opened.
   const [artZoom, setArtZoom] = useState(false)
   const [conflictHoldId, setConflictHoldId] = useState(null)
 
@@ -102,13 +101,10 @@ export default function EventDetailPage() {
   const venue = event?.venue
   // Wide slot on this page, so the banner wins and the cover is the stand-in.
   const heroArt = eventArt(event, 'banner')
-  // An event can carry both images. When it does, the banner is the backdrop
-  // and the cover rides on top as a poster - showing only one would waste half
-  // of what the organiser uploaded. Suppressed when the two resolve to the same
-  // file, which is what the cover/banner fallback does for a single upload:
-  // the same picture printed twice reads as a mistake.
+  // The cover, shown in the About card. It sat on the hero at first, where a
+  // second photograph competed with the banner behind it; beside the
+  // description it reads as an illustration of the event instead.
   const posterUrl = artUrl(event, 'cover')
-  const showPoster = !!posterUrl && posterUrl !== heroArt.url
 
   // The event endpoint serialises the venue in snake_case and mapEvent passes
   // it through untouched, so the camelCase reads this hero used resolved to
@@ -224,6 +220,52 @@ export default function EventDetailPage() {
   const showZones = ['ZONED', 'MIXED'].includes(event.inventory_mode) && zones.length > 0
   const hasSelection = selectedSeats.length > 0 || Object.values(zoneQty).some((q) => q > 0)
 
+  /**
+   * Whether this event can be bought at all right now.
+   *
+   * None of this was checked before: the page offered a live Reserve button on
+   * an event whose sales had closed, or that had nothing left, and the only
+   * feedback was whatever the server said after the click. The sales window is
+   * already on the response and the remaining count is already computed, so
+   * the state was knowable before the user spent time picking seats.
+   *
+   * An existing hold overrides all of it — those tickets are already yours and
+   * must stay payable even if the window shut a minute later.
+   */
+  const now = Date.now()
+  const salesNotOpen =
+    !!event.sales_open_at && now < new Date(event.sales_open_at).getTime()
+  const salesClosed =
+    !!event.sales_close_at && now > new Date(event.sales_close_at).getTime()
+  const soldOut = summary.capacity > 0 && summary.remaining <= 0
+  const canBuy = !!hold || (!salesNotOpen && !salesClosed && !soldOut)
+
+  const blockedReason = salesNotOpen
+    ? {
+        title: locale === 'km' ? 'មិនទាន់បើកលក់' : 'Not on sale yet',
+        body:
+          locale === 'km'
+            ? `ការលក់ចាប់ផ្តើម ${dateTime(event.sales_open_at)}`
+            : `Sales open ${dateTime(event.sales_open_at)}`,
+      }
+    : salesClosed
+      ? {
+          title: locale === 'km' ? 'បិទការលក់' : 'Sales closed',
+          body:
+            locale === 'km'
+              ? 'ការលក់សំបុត្រសម្រាប់ព្រឹត្តិការណ៍នេះបានបញ្ចប់។'
+              : 'Ticket sales for this event have ended.',
+        }
+      : soldOut
+        ? {
+            title: locale === 'km' ? 'អស់សំបុត្រ' : 'Sold out',
+            body:
+              locale === 'km'
+                ? 'គ្មានសំបុត្រនៅសល់ទេ។'
+                : 'There are no tickets left for this event.',
+          }
+        : null
+
   function toggleSeat(seat) {
     if (hold) return
     setSelectedSeats((prev) =>
@@ -232,6 +274,10 @@ export default function EventDetailPage() {
   }
 
   function onReserve() {
+    // Belt and braces: the button is not rendered when sales are shut, but the
+    // window can close while the page is open, and this is a request that takes
+    // real inventory.
+    if (!canBuy) return
     if (!isAuthenticated) {
       navigate('/login', { state: { from: `/events/${event.id}` } })
       return
@@ -307,9 +353,7 @@ export default function EventDetailPage() {
       </div>
 
       <div
-        className={`event-hero ${heroArt.className}${heroArt.hasImage ? ' has-photo' : ''}${
-          showPoster ? ' has-poster' : ''
-        }`}
+        className={`event-hero ${heroArt.className}${heroArt.hasImage ? ' has-photo' : ''}`}
       >
         {heroArt.hasImage ? (
           <img
@@ -343,6 +387,14 @@ export default function EventDetailPage() {
                 {event.inventory_mode}
               </span>
               {event.status !== 'PUBLISHED' && <Badge status={event.status} className="badge-solid" />}
+              {/* Sold out / closed, stated at the top rather than only being
+                  discovered at the buy button after scrolling past everything. */}
+              {blockedReason && (
+                <span className="badge badge-solid badge-hot">
+                  <Icon name="xCircle" size={12} />
+                  {blockedReason.title}
+                </span>
+              )}
             </div>
 
             <BiTitle record={event} field="title" />
@@ -365,34 +417,14 @@ export default function EventDetailPage() {
             </div>
           </div>
 
-          {showPoster && (
-            <button
-              type="button"
-              className="hero-poster"
-              onClick={() => setArtZoom(true)}
-              aria-label={locale === 'km' ? 'ពង្រីករូបភាព' : 'View the event image full size'}
-            >
-              <img
-                src={posterUrl}
-                alt=""
-                decoding="async"
-                onError={(e) => { e.currentTarget.closest('.hero-poster')?.remove() }}
-              />
-              <span className="hero-poster-zoom" aria-hidden="true">
-                <Icon name="search" size={14} />
-              </span>
-            </button>
-          )}
         </div>
       </div>
 
-      <QrLightbox
-        open={artZoom}
-        onClose={() => setArtZoom(false)}
-        caption={locale === 'km' ? event.title_km : event.title_en}
-        subtitle={venueName}
-      >
-        <img className="hero-poster-full" src={posterUrl} alt="" />
+      {/* variant="media": just the picture, large. The default lightbox adds a
+          caption, a subtitle and "show this at the gate" — copy written for a
+          ticket, which read as nonsense under event artwork. */}
+      <QrLightbox open={artZoom} onClose={() => setArtZoom(false)} variant="media">
+        <img className="about-art-full" src={posterUrl} alt="" />
       </QrLightbox>
 
       {expiredNotice && (
@@ -484,31 +516,55 @@ export default function EventDetailPage() {
             </div>
           </div>
 
-          {/* Above the seat picker: orient yourself before choosing. Hides
-              itself when the event has no banner. */}
-          {/* A layout belongs to the VENUE, not the event. This was handed
-              event.banner_image_url as a stand-in back when the banner was an
-              unused column; now that the banner is the event's own artwork on
-              the hero, that made the event poster render under a "Venue
-              layout" heading — a photo presented as a seating chart.
-              Passing the venue's own field instead: absent today, so the panel
-              renders nothing, and it lights up the moment a venue-level layout
-              image exists. */}
-          <VenueLayoutPanel imageUrl={venue?.layout_image_url ?? null} venue={venue} />
+          {/* No venue card here. It showed the venue name and address, which
+              the hero above now states in full — the same two lines twice on
+              one screen. VenueLayoutPanel is still in the tree unused: it comes
+              back the moment a venue-level LAYOUT image exists, because a
+              seating chart is the one thing it would add that the hero cannot
+              carry. Until then it would be a duplicate with a heading. */}
 
           <div className="card">
             <div className="card-head">
               <h2>{t('about')}</h2>
             </div>
-            <div className="card-body stack-sm">
-              <p>{locale === 'km' ? event.description_km : event.description_en}</p>
-              <p className={locale === 'km' ? 'small muted' : 'small muted km'}>
-                {locale === 'km' ? event.description_en : event.description_km}
-              </p>
+
+            <div className="card-body about-body">
+              {/* The cover lives here rather than on the hero, where a second
+                  photograph competed with the banner behind it. Beside the text
+                  it reads as an illustration of the event instead. */}
+              {posterUrl && (
+                <button
+                  type="button"
+                  className="about-art"
+                  onClick={() => setArtZoom(true)}
+                  aria-label={locale === 'km' ? 'ពង្រីករូបភាព' : 'View the event image full size'}
+                >
+                  <img
+                    src={posterUrl}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    onError={(e) => { e.currentTarget.closest('.about-art')?.remove() }}
+                  />
+                  <span className="about-art-zoom" aria-hidden="true">
+                    <Icon name="search" size={14} />
+                  </span>
+                </button>
+              )}
+
+              <div className="about-text stack-sm">
+                <p>{locale === 'km' ? event.description_km : event.description_en}</p>
+                <p className={locale === 'km' ? 'small muted' : 'small muted km'}>
+                  {locale === 'km' ? event.description_en : event.description_km}
+                </p>
+              </div>
             </div>
           </div>
 
-          {(showSeats || showZones) && (
+          {/* canBuy gates the picker too: choosing seats you cannot reserve is
+              worse than not being offered the choice — the work is only
+              discovered to be wasted at the moment of clicking Reserve. */}
+          {canBuy && (showSeats || showZones) && (
             <div className="card">
               <div className="card-head">
                 <h2>{t('pickSeats')}</h2>
@@ -594,10 +650,23 @@ export default function EventDetailPage() {
         <div className="summary" id="hold-summary">
           <div className="card">
             <div className="card-head">
-              <h3>{hold ? t('holdActive') : t('yourSelection')}</h3>
+              <h3>
+                {hold ? t('holdActive') : blockedReason ? blockedReason.title : t('yourSelection')}
+              </h3>
             </div>
             <div className="card-body">
-              {hold ? (
+              {/* Say why nothing can be bought, in the place the buy button
+                  would have been, rather than leaving a disabled control the
+                  user has to guess at. */}
+              {!hold && blockedReason ? (
+                <div className="stack-sm">
+                  <p className="muted small">{blockedReason.body}</p>
+                  <Link className="btn btn-outline btn-block" to="/events">
+                    <Icon name="search" size={15} />
+                    {t('browseEvents')}
+                  </Link>
+                </div>
+              ) : hold ? (
                 <>
                   <div className="stack-sm">
                     {held.seats.map((s) => (
