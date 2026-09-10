@@ -14,6 +14,7 @@ import com.eventbooking.repository.EventRepository;
 import com.eventbooking.repository.EventSeatRepository;
 import com.eventbooking.repository.SeatClassRepository;
 import com.eventbooking.repository.VenueSeatRepository;
+import com.eventbooking.security.OrganizerResolver;
 import com.eventbooking.service.event.EventSeatService;
 
 import org.springframework.stereotype.Service;
@@ -33,18 +34,22 @@ public class EventSeatServiceimpl implements EventSeatService {
     private final SeatClassRepository seatClassRepository;
     private final VenueSeatRepository venueSeatRepository;
 
-    public EventSeatServiceimpl(EventSeatRepository eventSeatRepository, EventRepository eventRepository, SeatClassRepository seatClassRepository, VenueSeatRepository venueSeatRepository) {
+    private final OrganizerResolver organizerResolver;
+
+    public EventSeatServiceimpl(EventSeatRepository eventSeatRepository, EventRepository eventRepository, SeatClassRepository seatClassRepository, VenueSeatRepository venueSeatRepository, OrganizerResolver organizerResolver) {
         this.eventSeatRepository = eventSeatRepository;
         this.eventRepository = eventRepository;
         this.seatClassRepository = seatClassRepository;
         this.venueSeatRepository = venueSeatRepository;
+        this.organizerResolver = organizerResolver;
     }
 
 
     @Override
     @Transactional
-    public SeatMapResponse generateEventSeats(Long eventId, GenerateEventSeatsRequest request) {
+    public SeatMapResponse generateEventSeats(Long organizerId, Long eventId, GenerateEventSeatsRequest request) {
         Event event = eventRepository.findById(eventId).orElseThrow( () -> new EventNotFoundException(eventId));
+        organizerResolver.requireOwner(organizerId, event.getOrganizerId(), "event", eventId);
 
         Map<Long, VenueSeat> seatsById =
                 venueSeatRepository.findAllById(request.venueSeatIds()).stream()
@@ -55,7 +60,22 @@ public class EventSeatServiceimpl implements EventSeatService {
                         .orElseThrow(() -> new VenueSeatNotFoundException(id)))
                 .toList();
 
+        // Both ids arrive in the body, so owning the event is not enough on its
+        // own: without these two checks an organiser could put another event's
+        // pricing on their seats, or sell chairs that stand in someone else's
+        // building. Reported as not-found rather than forbidden - a caller has
+        // no business learning that an id they cannot use exists.
         SeatClass s = seatClassRepository.findById(request.seatClassId()).orElseThrow( () -> new SeatClassNotFoundException(request.seatClassId()));
+        if (!s.getEvent().getId().equals(eventId)) {
+            throw new SeatClassNotFoundException(request.seatClassId());
+        }
+
+        Long venueId = event.getVenue().getId();
+        venueSeats.stream()
+                .filter(seat -> !seat.getVenue().getId().equals(venueId))
+                .findFirst()
+                .ifPresent(seat -> { throw new VenueSeatNotFoundException(seat.getId()); });
+
         List<EventSeat> eventSeat = EventSeatMapper.toEventSeats(event, s, venueSeats);
         
         eventSeatRepository.saveAll(eventSeat);
