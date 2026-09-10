@@ -2,7 +2,8 @@ import { useDocumentTitle } from '../lib/useDocumentTitle.js'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import HoldBar from '../components/HoldBar.jsx'
-import Icon from '../components/Icon.jsx'
+import Icon, { CATEGORY_ICON } from '../components/Icon.jsx'
+import { eventArt } from '../lib/eventArt.js'
 import { CheckoutSkeleton } from '../components/Skeleton.jsx'
 import PaymentModal from '../components/PaymentModal.jsx'
 import { Alert, Field, Steps } from '../components/ui.jsx'
@@ -113,6 +114,32 @@ export default function CheckoutPage() {
 
   const event = apiEvent
   const venue = event?.venue
+  const art = eventArt(event, 'cover')
+  const venueName =
+    (locale === 'km'
+      ? venue?.name_km ?? venue?.nameKm
+      : venue?.name_en ?? venue?.nameEn) ?? ''
+  // Seats are one ticket each; a zone line carries its own quantity.
+  const ticketTotal =
+    seats.length + zoneLines.reduce((a, l) => a + (l.qty ?? 0), 0)
+
+  /**
+   * Drop one field's error the moment it is edited.
+   *
+   * Errors were only ever recomputed inside validate(), which runs on submit —
+   * so "First name is required" stayed on screen while the user typed a name
+   * into the box directly beneath it, and only cleared on the next press of
+   * Pay. Clearing on edit says the complaint has been heard; the real check
+   * still runs on submit, so nothing gets through unvalidated.
+   */
+  function clearError(field) {
+    setErrors((prev) => {
+      if (!prev[field]) return prev
+      const next = { ...prev }
+      delete next[field]
+      return next
+    })
+  }
 
   function validate() {
     const next = {}
@@ -168,9 +195,24 @@ export default function CheckoutPage() {
 
   return (
     <div className="container">
+      {/* The only way off this page was Release, which throws the seats away.
+          Someone who just wants to check the start time before paying needs a
+          door that leaves the hold running. */}
+      <div className="breadcrumb">
+        <Link to={`/events/${event.id}`} className="with-icon">
+          <Icon name="arrowLeft" size={14} />
+          {locale === 'km' ? event.title_km : event.title_en}
+        </Link>
+      </div>
+
       <Steps current={1} labels={[t('pickSeats'), t('checkoutPay'), t('yourTickets')]} />
 
-      <HoldBar hold={hold} onExtend={() => {}} onRelease={() => navigate(`/events/${event?.id}`)} />
+      {/* No onExtend: HoldBar renders an Extend button whenever the prop is
+          present, and it was being handed `() => {}`. There is no extend
+          endpoint on the server, so that button sat on the one screen where the
+          clock actually matters and did nothing when pressed. Omitting the prop
+          hides it, which is the truthful state until the endpoint exists. */}
+      <HoldBar hold={hold} onRelease={() => navigate(`/events/${event?.id}`)} />
 
       <div className="split" style={{ marginTop: '1.3rem' }}>
         <form className="stack" onSubmit={submit} noValidate>
@@ -184,7 +226,7 @@ export default function CheckoutPage() {
                   <input
                     className="input"
                     value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
+                    onChange={(e) => { setFirstName(e.target.value); clearError('firstName') }}
                     aria-invalid={!!errors.firstName}
                     autoComplete="given-name"
                     maxLength={100}
@@ -194,7 +236,7 @@ export default function CheckoutPage() {
                   <input
                     className="input"
                     value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
+                    onChange={(e) => { setLastName(e.target.value); clearError('lastName') }}
                     aria-invalid={!!errors.lastName}
                     autoComplete="family-name"
                     maxLength={100}
@@ -208,7 +250,7 @@ export default function CheckoutPage() {
                   <input
                     className="input"
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
+                    onChange={(e) => { setPhone(e.target.value); clearError('phone') }}
                     aria-invalid={!!errors.phone}
                     inputMode="tel"
                     autoComplete="tel"
@@ -220,7 +262,7 @@ export default function CheckoutPage() {
                     className="input"
                     type="email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => { setEmail(e.target.value); clearError('email') }}
                     aria-invalid={!!errors.email}
                     autoComplete="email"
                     maxLength={50}
@@ -257,7 +299,13 @@ export default function CheckoutPage() {
                       checked={option === o.id}
                       onChange={() => setOption(o.id)}
                     />
-                    <span className="rc-logo" aria-hidden="true" style={{ padding: o.id === 'ABA_PAYWAY' ? 0 : '', border: o.id === 'ABA_PAYWAY' ? 'none' : '', borderRadius: o.id === 'ABA_PAYWAY' ? 0 : '' }}>
+                    {/* ABA supplies its own bordered lozenge, so the generic
+                        logo chrome is dropped for it rather than drawn twice.
+                        Was three conditional inline styles doing the same job. */}
+                    <span
+                      className={`rc-logo${o.id === 'ABA_PAYWAY' ? ' rc-logo-bare' : ''}`}
+                      aria-hidden="true"
+                    >
                       {o.id === 'ABA_PAYWAY' ? (
                         <div className="aba-khqr-logo-icon">
                           <div className="aba-top">ABA<span className="aba-quote">'</span></div>
@@ -294,15 +342,41 @@ export default function CheckoutPage() {
               <h3>{t('orderSummary')}</h3>
             </div>
             <div className="panel-body">
-              <div className="stack-sm" style={{ marginBottom: '0.5rem' }}>
-                <strong>{locale === 'km' ? event.title_km : event.title_en}</strong>
-                <span className="meta-row">
-                  <Icon name="calendar" size={14} />
-                  <span>{dateTime(event.starts_at)}</span>
+              {/* The artwork carries over from the card and the event page, so
+                  the last screen before paying still looks like the thing that
+                  was picked rather than an anonymous invoice. */}
+              <div className="co-event">
+                <span className={`co-art ${art.className}${art.hasImage ? ' has-photo' : ''}`}>
+                  {art.hasImage ? (
+                    <img
+                      className="ev-photo"
+                      src={art.url}
+                      alt=""
+                      decoding="async"
+                      onError={(e) => { e.currentTarget.remove() }}
+                    />
+                  ) : (
+                    <Icon
+                      name={CATEGORY_ICON[event.category] || 'ticket'}
+                      size={20}
+                      strokeWidth={1.5}
+                      className="cat-icon"
+                    />
+                  )}
                 </span>
-                <span className="meta-row">
-                  <Icon name="mapPin" size={14} />
-                  <span>{locale === 'km' ? venue.nameKm : venue.nameEn}</span>
+                <span className="co-event-main">
+                  <strong>{locale === 'km' ? event.title_km : event.title_en}</strong>
+                  <span className="meta-row">
+                    <Icon name="calendar" size={14} />
+                    <span>{dateTime(event.starts_at)}</span>
+                  </span>
+                  <span className="meta-row">
+                    <Icon name="mapPin" size={14} />
+                    {/* snake_case first: the event endpoint serialises the
+                        venue that way and mapEvent passes it through, so the
+                        camelCase-only read here rendered an empty line. */}
+                    <span>{venueName}</span>
+                  </span>
                 </span>
               </div>
 
@@ -322,7 +396,10 @@ export default function CheckoutPage() {
                   <span>
                     <span className="line-title">{locale === 'km' ? l.zone.name_km : l.zone.name_en}</span>
                     <div className="line-sub">
-                      {l.qty} × {usd(l.zone.price_usd_cents)} · {t('qty')} {l.qty}
+                      {/* Was "2 × $15.00 · Qty 2" — the multiplier already
+                          states the quantity, so the trailing repeat was
+                          noise on the line the total has to be checked against. */}
+                      {l.qty} × {usd(l.zone.price_usd_cents)}
                     </div>
                   </span>
                   <span>{usd(l.qty * l.zone.price_usd_cents)}</span>
@@ -331,7 +408,14 @@ export default function CheckoutPage() {
 
               <div className="totals">
                 <div className="total-row">
-                  <span>{t('subtotal')}</span>
+                  <span>
+                    {t('subtotal')}
+                    <span className="muted"> · {ticketTotal}{' '}
+                      {locale === 'km'
+                        ? 'ឯកតា'
+                        : ticketTotal === 1 ? 'ticket' : 'tickets'}
+                    </span>
+                  </span>
                   <span>{usd(subtotalUsdCents)}</span>
                 </div>
                 <div className="total-row big">

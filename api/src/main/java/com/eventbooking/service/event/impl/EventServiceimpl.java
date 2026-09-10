@@ -481,16 +481,19 @@ public class EventServiceimpl implements EventService {
         Event event = requireOwnedEvent(organizerId, eventId);
 
         // Read before the upload: once the column is overwritten there is no
-        // record of the old public id, and the file behind it is unreachable.
-        String replaced = currentPublicId(event, role);
+        // record of the old image, and the file behind it is unreachable.
+        String replaced = currentImageUrl(event, role);
 
         CloudinaryResponse uploaded = cloudinaryService.upload(file, file.getOriginalFilename());
-        writePublicId(eventId, role, uploaded.publicId());
 
-        // Only after the new id is safely stored. A delete first would lose the
+        // The delivery URL, not the public id — see V18. The uploader hands
+        // back both, so this costs nothing and frees the column from Cloudinary.
+        writePublicId(eventId, role, uploaded.url());
+
+        // Only after the new URL is safely stored. A delete first would lose the
         // old image with nothing to show in its place if the upload failed.
-        if (replaced != null && !replaced.equals(uploaded.publicId())) {
-            cloudinaryService.destroy(replaced);
+        if (replaced != null && !replaced.equals(uploaded.url())) {
+            destroyIfOurs(replaced);
         }
 
         return reloadResponse(eventId);
@@ -501,19 +504,34 @@ public class EventServiceimpl implements EventService {
     public EventResponse deleteImage(Long organizerId, Long eventId, ImageRole role) {
         Event event = requireOwnedEvent(organizerId, eventId);
 
-        String publicId = currentPublicId(event, role);
-        if (publicId == null) {
+        String url = currentImageUrl(event, role);
+        if (url == null) {
             throw new EventImageNotFoundException(eventId, role);
         }
 
         writePublicId(eventId, role, null);
-        cloudinaryService.destroy(publicId);
+        destroyIfOurs(url);
 
         return reloadResponse(eventId);
     }
 
-    private static String currentPublicId(Event event, ImageRole role) {
+    private static String currentImageUrl(Event event, ImageRole role) {
         return role == ImageRole.BANNER ? event.getCloudinaryBannerId() : event.getCloudinaryImageId();
+    }
+
+    /**
+     * Delete the file behind a stored URL, but only when it is one of ours.
+     *
+     * <p>Since V18 the column may hold an image hosted anywhere. A URL we did
+     * not upload has no public id to destroy and is not ours to remove, so
+     * clearing the column is the whole operation - which is what
+     * publicIdFromUrl returning null means here.
+     */
+    private void destroyIfOurs(String url) {
+        String publicId = cloudinaryService.publicIdFromUrl(url);
+        if (publicId != null) {
+            cloudinaryService.destroy(publicId);
+        }
     }
 
     /**
@@ -550,8 +568,9 @@ public class EventServiceimpl implements EventService {
                 event,
                 seatClasses,
                 zones,
-                cloudinaryService.urlFor(event.getCloudinaryImageId()),
-                cloudinaryService.urlFor(event.getCloudinaryBannerId()),
+                // Stored as delivery URLs since V18, so they go straight out.
+                event.getCloudinaryImageId(),
+                event.getCloudinaryBannerId(),
                 organizerActions(event),
                 stateMachine.isEditable(event.getStatus()),
                 latestReview(event.getId()));

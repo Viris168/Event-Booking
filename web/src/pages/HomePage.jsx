@@ -5,13 +5,19 @@ import Icon, { CATEGORY_ICON } from '../components/Icon.jsx'
 import { EventGridSkeleton, SpotlightSkeleton } from '../components/Skeleton.jsx'
 import { Empty, IconSelect, Money, SearchInput } from '../components/ui.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
-import { PROVINCES, platformStats, useStore } from '../mock/store.js'
+import { useProvinces } from '../lib/useProvinces.js'
+import { eventArt } from '../lib/eventArt.js'
 import { getEvents } from '../api/events.js'
 
 // One tap into the searches people actually run.
+//
+// Province codes are the numeric ones the API returns ("12" = Phnom Penh), not
+// the two-letter abbreviations the retired mock store used. Those old 'PP' /
+// 'SR' values matched no row once the filter started hitting the real
+// endpoint, so both chips returned an empty grid.
 const QUICK_SEARCHES = [
-  { q: 'pp', en: 'Phnom Penh', km: 'ភ្នំពេញ', icon: 'mapPin', params: { province: 'PP' } },
-  { q: 'sr', en: 'Siem Reap', km: 'សៀមរាប', icon: 'mapPin', params: { province: 'SR' } },
+  { q: 'pp', en: 'Phnom Penh', km: 'ភ្នំពេញ', icon: 'mapPin', params: { province: '12' } },
+  { q: 'sr', en: 'Siem Reap', km: 'សៀមរាប', icon: 'mapPin', params: { province: '17' } },
   { q: 'concert', en: 'Concerts', km: 'ការប្រគំតន្ត្រី', icon: 'music', params: { q: 'concert' } },
   { q: 'festival', en: 'Festivals', km: 'មហោស្រព', icon: 'festival', params: { q: 'festival' } },
   { q: 'cheap', en: 'Under $20', km: 'ក្រោម $20', icon: 'wallet', params: { maxUsd: '20' } },
@@ -48,6 +54,7 @@ function getMinPriceCents(event) {
  */
 function Spotlight({ event }) {
   const { t, locale, date, time } = useLocale()
+  const art = eventArt(event, 'cover')
   const venue = event.venue
   const price = getMinPriceCents(event)
   const start = event.startsAt ?? event.starts_at
@@ -76,13 +83,28 @@ function Spotlight({ event }) {
         <span className="spot-when">{countdown}</span>
       </div>
 
-      <Link to={`/events/${event.id}`} className={`spot-art cover-${event.cover || 1}`}>
-        <Icon
-          name={CATEGORY_ICON[event.category] || 'ticket'}
-          size={48}
-          strokeWidth={1.3}
-          className="cat-icon"
-        />
+      <Link
+        to={`/events/${event.id}`}
+        className={`spot-art ${art.className}${art.hasImage ? ' has-photo' : ''}`}
+      >
+        {art.hasImage ? (
+          <img
+            className="ev-photo"
+            src={art.url}
+            alt=""
+            decoding="async"
+            onError={(e) => {
+              e.currentTarget.remove()
+            }}
+          />
+        ) : (
+          <Icon
+            name={CATEGORY_ICON[event.category] || 'ticket'}
+            size={48}
+            strokeWidth={1.3}
+            className="cat-icon"
+          />
+        )}
         {(scarce.level === 'almost-full' || scarce.level === 'filling') && (
           <span className="spot-flag badge badge-solid badge-hot">
             <Icon name="trending" size={12} />
@@ -123,18 +145,23 @@ function Spotlight({ event }) {
 }
 
 export default function HomePage() {
-  useStore()
   const { t, locale } = useLocale()
+  const { provinces } = useProvinces()
   const navigate = useNavigate()
   const [q, setQ] = useState('')
   const [province, setProvince] = useState('')
 
   const [published, setPublished] = useState([])
+  // The catalogue-wide count, which the loaded page of 12 cannot give on its own.
+  const [totalLive, setTotalLive] = useState(0)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     getEvents({ size: 12, sort: 'startsAt,asc' })
-      .then((page) => setPublished(page.content || []))
+      .then((page) => {
+        setPublished(page.content || [])
+        setTotalLive(page.total_elements ?? page.totalElements ?? (page.content || []).length)
+      })
       .catch((e) => console.error(e))
       .finally(() => setLoading(false))
   }, [])
@@ -142,7 +169,20 @@ export default function HomePage() {
   const spotlight = published[0]
   const featured = published.slice(0, 4)
   const upcoming = published.slice(4, 12)
-  const stats = platformStats()
+
+  /**
+   * Hero counters, from the API instead of the retired mock store.
+   *
+   * `live` and `provinces` are exact - one is the page's total_elements, the
+   * other the length of the reference list. `sold` is summed over the events
+   * actually loaded (at most 12), so on a catalogue larger than one page it
+   * under-reports. Shown anyway because there is no aggregate endpoint for it,
+   * and an honest floor beats a number invented in the browser.
+   */
+  const ticketsSold = published.reduce(
+    (sum, e) => sum + (e.total_sold ?? e.totalSold ?? 0),
+    0,
+  )
 
   function submit(e) {
     e.preventDefault()
@@ -187,7 +227,7 @@ export default function HomePage() {
                 ariaLabel={t('province')}
               >
                 <option value="">{t('allProvinces')}</option>
-                {PROVINCES.map((p) => (
+                {provinces.map((p) => (
                   <option key={p.code} value={p.code}>
                     {locale === 'km' ? p.name_km : p.name_en}
                   </option>
@@ -213,15 +253,15 @@ export default function HomePage() {
 
           <div className="hero-stats">
             <div>
-              <b>{stats.published}</b>
+              <b>{totalLive}</b>
               {locale === 'km' ? 'ព្រឹត្តិការណ៍ផ្សាយ' : 'live events'}
             </div>
             <div>
-              <b>{stats.ticketsIssued.toLocaleString()}</b>
-              {locale === 'km' ? 'សំបុត្រចេញរួច' : 'tickets issued'}
+              <b>{ticketsSold.toLocaleString()}</b>
+              {locale === 'km' ? 'សំបុត្រលក់រួច' : 'tickets sold'}
             </div>
             <div>
-              <b>{PROVINCES.length}</b>
+              <b>{provinces.length}</b>
               {locale === 'km' ? 'ខេត្ត/ក្រុង' : 'provinces covered'}
             </div>
           </div>

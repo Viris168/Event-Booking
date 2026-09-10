@@ -29,12 +29,12 @@ public interface EventRepository extends JpaRepository<Event, Long> {
      */
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query("UPDATE Event e SET e.cloudinaryImageId = :publicId WHERE e.id = :eventId")
-    int updateCoverImageId(@Param("eventId") Long eventId, @Param("publicId") String publicId);
+    @Query("UPDATE Event e SET e.cloudinaryImageId = :url WHERE e.id = :eventId")
+    int updateCoverImageId(@Param("eventId") Long eventId, @Param("url") String url);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query("UPDATE Event e SET e.cloudinaryBannerId = :publicId WHERE e.id = :eventId")
-    int updateBannerImageId(@Param("eventId") Long eventId, @Param("publicId") String publicId);
+    @Query("UPDATE Event e SET e.cloudinaryBannerId = :url WHERE e.id = :eventId")
+    int updateBannerImageId(@Param("eventId") Long eventId, @Param("url") String url);
 
     /**
      * The public catalogue. Restricted by status because findAll() is what let

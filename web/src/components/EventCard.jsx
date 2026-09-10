@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom'
 import Icon, { CATEGORY_ICON } from './Icon.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
-import { provinceName } from '../mock/store.js'
+import { useProvinces } from '../lib/useProvinces.js'
+import { eventArt } from '../lib/eventArt.js'
 import { Money } from './ui.jsx'
 
 function getScarcity(event) {
@@ -54,19 +55,48 @@ function ScarcityFlag({ event }) {
 
 export default function EventCard({ event }) {
   const { locale, t, date } = useLocale()
+  const { provinceName } = useProvinces()
   const venue = event.venue
   const price = getMinPriceCents(event)
   const start = new Date(event.startsAt ?? event.starts_at)
+  const art = eventArt(event, 'cover')
+  const soldOut = getScarcity(event).level === 'sold-out'
 
   const titleEn = event.titleEn ?? event.title_en
   const titleKm = event.titleKm ?? event.title_km
   const title = locale === 'km' ? titleKm : titleEn
   const subtitle = locale === 'km' ? titleEn : titleKm
 
+  const province = provinceName(venue?.provinceCode ?? venue?.province_code, locale)
+  const venueName = locale === 'km' ? venue?.nameKm ?? venue?.name_km : venue?.nameEn ?? venue?.name_en
+
   return (
-    <Link to={`/events/${event.id}`} className="ev-card">
-      <div className={`ev-media cover-${event.cover || 1}`}>
-        <Icon name={CATEGORY_ICON[event.category] || 'ticket'} size={44} strokeWidth={1.4} className="cat-icon" />
+    <Link to={`/events/${event.id}`} className={`ev-card${soldOut ? ' is-soldout' : ''}`}>
+      {/* The gradient class stays on the box even when a photo loads: it is the
+          colour behind a decoding image and the fallback if the URL 404s. */}
+      <div className={`ev-media ${art.className}${art.hasImage ? ' has-photo' : ''}`}>
+        {art.hasImage ? (
+          <img
+            className="ev-photo"
+            src={art.url}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            /* Drop back to the gradient underneath rather than showing a
+               broken-image glyph if Cloudinary is unreachable. */
+            onError={(e) => {
+              e.currentTarget.remove()
+            }}
+          />
+        ) : (
+          <Icon
+            name={CATEGORY_ICON[event.category] || 'ticket'}
+            size={44}
+            strokeWidth={1.4}
+            className="cat-icon"
+          />
+        )}
+
         <span className="ev-date">
           {start.toLocaleDateString('en-GB', { month: 'short' }).toUpperCase()}
           <b>{start.getDate()}</b>
@@ -74,6 +104,13 @@ export default function EventCard({ event }) {
         <span className="ev-flag">
           <ScarcityFlag event={event} />
         </span>
+
+        {event.category && (
+          <span className="ev-cat">
+            <Icon name={CATEGORY_ICON[event.category] || 'ticket'} size={12} />
+            {event.category}
+          </span>
+        )}
       </div>
 
       <div className="ev-body">
@@ -89,13 +126,14 @@ export default function EventCard({ event }) {
         <div className="ev-meta">
           <span className="meta-row">
             <Icon name="mapPin" size={14} />
-            <span>{locale === 'km' ? venue?.nameKm : venue?.nameEn}</span>
+            <span>
+              {venueName}
+              {province && <span className="meta-dim"> · {province}</span>}
+            </span>
           </span>
           <span className="meta-row">
             <Icon name="calendar" size={14} />
-            <span>
-              {date(event.startsAt ?? event.starts_at)} · {provinceName(venue?.provinceCode ?? venue?.province_code, locale)}
-            </span>
+            <span>{date(event.startsAt ?? event.starts_at)}</span>
           </span>
         </div>
       </div>
@@ -105,7 +143,7 @@ export default function EventCard({ event }) {
           <span className="tiny">{t('from_price')}</span>
           <Money cents={price} stacked />
         </span>
-        <span className="btn btn-sm btn-outline">
+        <span className="btn btn-sm btn-outline ev-go" aria-hidden="true">
           <Icon name="arrowRight" size={15} />
         </span>
       </div>

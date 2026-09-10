@@ -73,6 +73,12 @@ export function mapEvent(e) {
     // the listing cards both read a mapped event, not a raw response.
     cover_image_url: e.coverImageUrl ?? e.cover_image_url ?? null,
     banner_image_url: e.bannerImageUrl ?? e.banner_image_url ?? null,
+    // Both were being dropped, and both are read by every card: `category`
+    // keys CATEGORY_ICON (an undefined key silently fell back to the generic
+    // ticket glyph on every event) and `cover` picks the fallback gradient
+    // (without it the colour came from a title hash, not the organiser's pick).
+    category: e.category ?? null,
+    cover: e.cover ?? null,
   }
 }
 

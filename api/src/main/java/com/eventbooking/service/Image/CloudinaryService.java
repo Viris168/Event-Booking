@@ -66,13 +66,64 @@ public class CloudinaryService {
 	}
 
 	/**
-	 * Delivery URL for a stored public id. Only the public id is persisted
-	 * (see V11), so this is where the URL comes from - change a transformation
-	 * or the cloud name and every URL follows on the next read, with no stored
-	 * column left pointing at the old one.
+	 * Delivery URL for a stored public id.
+	 *
+	 * <p>No longer used on the event read path - since V18 the event columns
+	 * hold the delivery URL itself, so there is nothing to derive. Kept for
+	 * callers that still persist a bare public id (the user avatar column).
 	 */
 	public String urlFor(String publicId) {
 		return publicId == null ? null : cloudinary.url().secure(true).generate(publicId);
+	}
+
+	/**
+	 * The public id behind one of our own delivery URLs, or null when the URL
+	 * did not come from Cloudinary.
+	 *
+	 * <p>Since V18 an event stores a URL rather than a public id, but
+	 * {@link #destroy(String)} still needs the id. A Cloudinary delivery URL
+	 * carries it in the path:
+	 *
+	 * <pre>
+	 *   https://res.cloudinary.com/&lt;cloud&gt;/image/upload/v1699/folder/name.jpg
+	 *                                                          ^^^^^^^^^^^ public id
+	 * </pre>
+	 *
+	 * Everything up to and including {@code /upload/} is prefix, an optional
+	 * {@code v&lt;digits&gt;} version segment follows, and the extension is not part
+	 * of the id. A null return is the signal that this image is hosted
+	 * elsewhere and is therefore not ours to delete - which is exactly the
+	 * behaviour wanted for an event pointed at an image on the open web.
+	 */
+	public String publicIdFromUrl(String url) {
+		if (url == null) return null;
+
+		int marker = url.indexOf("/upload/");
+		if (marker < 0) return null;
+
+		String path = url.substring(marker + "/upload/".length());
+
+		// Strip a leading version segment, and any transformation segments that
+		// precede it, by taking everything after the last "v<digits>/" run.
+		String[] segments = path.split("/");
+		int start = 0;
+		for (int i = 0; i < segments.length; i++) {
+			if (segments[i].matches("v\\d+")) start = i + 1;
+		}
+		if (start >= segments.length) return null;
+
+		String id = String.join("/", java.util.Arrays.copyOfRange(segments, start, segments.length));
+
+		// Drop a query string first, then the extension - in that order, since a
+		// signed URL can carry a dot in its query.
+		int query = id.indexOf('?');
+		if (query >= 0) id = id.substring(0, query);
+
+		int dot = id.lastIndexOf('.');
+		int slash = id.lastIndexOf('/');
+		if (dot > slash) id = id.substring(0, dot);
+
+		return id.isBlank() ? null : id;
 	}
 
 }

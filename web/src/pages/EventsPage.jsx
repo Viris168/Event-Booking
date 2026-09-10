@@ -6,7 +6,7 @@ import Icon from '../components/Icon.jsx'
 import { EventGridSkeleton, Skeleton } from '../components/Skeleton.jsx'
 import { ActiveFilters, Empty, Field, IconSelect, Pager, SearchInput } from '../components/ui.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
-import { PROVINCES, listEvents, provinceName, useStore } from '../mock/store.js'
+import { useProvinces } from '../lib/useProvinces.js'
 import { getEvents } from '../api/events.js'
 import { mapEvent } from '../api/adapters.js'
 
@@ -14,15 +14,18 @@ const PAGE_SIZE = 8
 const EMPTY = { q: '', province: '', from: '', to: '', minUsd: '', maxUsd: '', sort: 'soonest' }
 
 export default function EventsPage() {
-  useStore()
   const { t, locale, date } = useLocale()
+  const { provinces, provinceName } = useProvinces()
   useDocumentTitle(t('events'))
   const [params, setParams] = useSearchParams()
   const [page, setPage] = useState(1)
   const [showAdvanced, setShowAdvanced] = useState(false)
-  const [apiResults, setApiResults] = useState(null)
-  // The seeded store can answer instantly, but showing it and then swapping in
-  // the API's answer makes the grid jump. Placeholders until the read settles.
+  const [apiResults, setApiResults] = useState([])
+  const [failed, setFailed] = useState(false)
+  // Bumped by Retry. Re-setting identical search params would not change the
+  // effect's dependency, so a failed read had no way to be re-run.
+  const [reload, setReload] = useState(0)
+  // Placeholders until the read settles, so the grid never jumps.
   const [loading, setLoading] = useState(true)
 
   const filters = { ...EMPTY }
@@ -31,6 +34,7 @@ export default function EventsPage() {
   useEffect(() => {
     let active = true
     setLoading(true)
+    setFailed(false)
     getEvents(filters)
       .then((data) => {
         if (!active) return
@@ -38,13 +42,17 @@ export default function EventsPage() {
         setApiResults(list.map(mapEvent))
       })
       .catch(() => {
-        if (active) setApiResults(null)
+        // No mock fallback: seeded events standing in for a failed read looked
+        // like a working catalogue and hid the outage completely.
+        if (!active) return
+        setApiResults([])
+        setFailed(true)
       })
       .finally(() => {
         if (active) setLoading(false)
       })
     return () => { active = false }
-  }, [params]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [params, reload]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function update(patch) {
     const next = new URLSearchParams(params)
@@ -56,7 +64,7 @@ export default function EventsPage() {
     setPage(1)
   }
 
-  const results = apiResults ?? listEvents(filters).content
+  const results = apiResults
   const pages = Math.max(1, Math.ceil(results.length / PAGE_SIZE))
   const current = Math.min(page, pages)
   const visible = results.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE)
@@ -144,7 +152,7 @@ export default function EventsPage() {
               className="search-province"
             >
               <option value="">{t('allProvinces')}</option>
-              {PROVINCES.map((p) => (
+              {provinces.map((p) => (
                 <option key={p.code} value={p.code}>
                   {locale === 'km' ? p.name_km : p.name_en}
                 </option>
@@ -237,6 +245,23 @@ export default function EventsPage() {
           </div>
           <Pager page={current} pages={pages} onChange={setPage} />
         </>
+      ) : failed ? (
+        <Empty
+          icon="xCircle"
+          title={locale === 'km' ? 'មិនអាចផ្ទុកព្រឹត្តិការណ៍' : 'Could not load events'}
+        >
+          {locale === 'km'
+            ? 'សូមព្យាយាមម្តងទៀត។'
+            : 'The catalogue is unavailable right now. Please try again.'}
+          <button
+            className="btn btn-sm btn-primary"
+            style={{ marginTop: '0.8rem' }}
+            onClick={() => setReload((n) => n + 1)}
+          >
+            <Icon name="refresh" size={14} />
+            {locale === 'km' ? 'ព្យាយាមម្តងទៀត' : 'Retry'}
+          </button>
+        </Empty>
       ) : (
         <Empty icon="search" title={t('noEvents')}>
           {locale === 'km' ? 'សូមសម្រួលតម្រងរបស់អ្នក' : 'Try widening your filters.'}

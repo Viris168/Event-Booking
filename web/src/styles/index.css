@@ -1035,7 +1035,7 @@
     @apply -translate-y-[3px] no-underline shadow-float;
   }
   .ev-media {
-    @apply relative isolate grid aspect-video place-items-center text-white/95;
+    @apply relative isolate grid aspect-video place-items-center overflow-hidden text-white/95;
   }
   /* Soft light sweep so flat gradients read as artwork, not a colour block. */
   .ev-media::before,
@@ -1046,19 +1046,87 @@
       radial-gradient(120% 90% at 15% 5%, rgba(255, 255, 255, 0.3), transparent 55%),
       radial-gradient(90% 80% at 100% 100%, rgba(0, 0, 0, 0.28), transparent 60%);
   }
+
+  /* Uploaded artwork. Sits above the gradient but below every chip, so the
+     gradient is what shows while the image decodes and what remains if the
+     image fails to load (the <img> removes itself on error). */
+  /* `.event-hero > *` later in this file also matches the hero image and would
+     drag it back into flow at z-1; the two-class selector outranks it. */
+  .ev-photo,
+  .event-hero .hero-photo {
+    @apply absolute inset-0 z-0 h-full w-full object-cover;
+  }
+  .ev-card:hover .ev-photo {
+    transform: scale(1.04);
+  }
+  .ev-photo {
+    transition: transform 0.45s cubic-bezier(0.2, 0.7, 0.3, 1);
+  }
+  /* A photo brings its own colours, so the decorative sweep is replaced by a
+     scrim whose only job is keeping the chips readable on whatever was
+     uploaded. Darkened at BOTH ends: the date sits bottom-left and the
+     scarcity flag top-right, and a bottom-only scrim left that flag sitting on
+     bare photo where a bright sky made it unreadable. The middle stays clear so
+     the image is still the thing you see. */
+  .ev-media.has-photo::before {
+    background:
+      linear-gradient(to top, rgba(0, 0, 0, 0.58) 0%, rgba(0, 0, 0, 0.14) 34%, transparent 58%),
+      linear-gradient(to bottom, rgba(0, 0, 0, 0.34) 0%, transparent 26%);
+    @apply z-[1];
+  }
+  /* The hero already has its own ::after scrim for the title. Adding a second
+     one here darkened every banner twice over, which is what made photographed
+     events look muddy next to the flat gradients. One scrim, tuned once. */
+  .event-hero.has-photo::before {
+    background: none;
+  }
+  /* Two gradients, not one. The vertical pass keeps the bottom edge dark where
+     the copy sits; the horizontal pass darkens the left column specifically,
+     so the title holds up over a busy photo without flattening the whole
+     image the way a single full-cover wash did. The right side stays open,
+     which is what lets the picture still read as a picture. */
+  .event-hero.has-photo::after {
+    background:
+      linear-gradient(
+        180deg,
+        rgba(0, 0, 0, 0.34) 0%,
+        rgba(0, 0, 0, 0.06) 28%,
+        rgba(0, 0, 0, 0.55) 74%,
+        rgba(0, 0, 0, 0.82) 100%
+      ),
+      linear-gradient(
+        90deg,
+        rgba(0, 0, 0, 0.72) 0%,
+        rgba(0, 0, 0, 0.42) 38%,
+        rgba(0, 0, 0, 0.08) 66%,
+        transparent 82%
+      );
+  }
+  /* Banners are wide and shallow (1600x600); centring the crop keeps the
+     subject rather than the sky or the floor. */
+  .event-hero .hero-photo {
+    object-position: center 45%;
+  }
+  /* Category, bottom-right: tells you what KIND of event this is before you
+     read the title, which the icon alone only did when there was no photo. */
+  .ev-media .ev-cat {
+    @apply absolute bottom-[0.7rem] right-[0.7rem] z-[2] inline-flex items-center gap-[0.25rem]
+      rounded-full bg-black/45 px-[0.5rem] py-[0.2rem] text-[0.62rem] font-bold uppercase
+      tracking-[0.06em] text-white/95 backdrop-blur-sm;
+  }
   .ev-media > .cat-icon {
     @apply relative z-[1] opacity-95;
     filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.2));
   }
   .ev-media .ev-date {
-    @apply absolute bottom-[0.7rem] left-[0.7rem] z-[1] min-w-[40px] rounded-[10px] bg-white/[0.96]
+    @apply absolute bottom-[0.7rem] left-[0.7rem] z-[2] min-w-[40px] rounded-[10px] bg-white/[0.96]
       px-2 py-[0.3rem] text-center text-[0.7rem] font-extrabold leading-[1.2] tracking-[0.04em] text-ink shadow-card;
   }
   .ev-media .ev-date b {
     @apply block text-[1.05rem] tracking-[-0.01em];
   }
   .ev-media .ev-flag {
-    @apply absolute right-[0.7rem] top-[0.7rem] z-[1];
+    @apply absolute right-[0.7rem] top-[0.7rem] z-[2];
   }
   .ev-body {
     @apply flex flex-auto flex-col gap-[0.35rem] px-4 pt-[0.95rem];
@@ -1088,6 +1156,129 @@
   .price-tag .khr {
     @apply text-[0.8rem] text-muted;
     font-family: var(--font-khmer);
+  }
+  /* Province after the venue: secondary, so the venue name stays the thing
+     scanned first on a grid of cards. */
+  .meta-dim {
+    @apply text-muted/75;
+  }
+  /* The arrow is decoration - the whole card is the link - so it only picks
+     up the brand colour on hover instead of competing as a second target. */
+  .ev-go {
+    transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+  }
+  .ev-card:hover .ev-go {
+    @apply border-brand-600 bg-brand-600 text-white;
+  }
+  /* Sold out stays legible and clickable (the page still explains itself),
+     just visibly spent next to cards you can still buy. */
+  .ev-card.is-soldout .ev-media {
+    filter: saturate(0.45);
+  }
+  .ev-card.is-soldout .ev-title {
+    @apply text-muted;
+  }
+
+  /* --------------------------------------------------------- booking rows */
+  /* A booking is a receipt, not a poster: the layout is a row so the columns
+     that matter (what it is, what it cost, what to do next) line up down the
+     page and can be compared without reading each card in full. */
+  .bk-row {
+    @apply grid items-center gap-[0.9rem] rounded-card border border-line bg-surface p-[0.8rem]
+      text-inherit shadow-card;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+  }
+  .bk-row:hover {
+    @apply -translate-y-px border-brand-500 no-underline shadow-float;
+  }
+  .bk-art {
+    @apply relative isolate grid h-[58px] w-[82px] flex-none place-items-center
+      overflow-hidden rounded-tiny text-white/95;
+  }
+  .bk-main {
+    @apply flex min-w-0 flex-col gap-[0.28rem];
+  }
+  .bk-title {
+    @apply truncate text-[0.98rem] font-bold text-ink;
+  }
+  .bk-meta {
+    @apply flex flex-wrap gap-x-[0.9rem] gap-y-[0.1rem] text-small text-muted;
+  }
+  .bk-side {
+    @apply flex flex-none flex-col items-end gap-[0.25rem] text-right;
+  }
+  .bk-pay {
+    @apply mt-[0.15rem];
+  }
+  /* Closed bookings stay readable — they are the receipt archive — but drain
+     of colour so a live booking is never lost among them. */
+  .bk-row.is-closed {
+    @apply bg-transparent;
+  }
+  .bk-row.is-closed .bk-art {
+    filter: saturate(0.3) opacity(0.75);
+  }
+  .bk-row.is-closed .bk-title {
+    @apply font-semibold text-muted;
+  }
+  /* The one state that costs the buyer money if ignored gets a live edge.
+     Both tokens are redefined for dark mode, so this follows the theme. */
+  .bk-row.is-payable {
+    @apply border-warning/60;
+    box-shadow: inset 3px 0 0 0 var(--color-warning);
+  }
+
+  .bk-group + .bk-group {
+    @apply mt-[1.6rem];
+  }
+  .bk-group-head {
+    @apply mb-[0.6rem] flex items-center gap-[0.5rem] text-[0.72rem] font-bold uppercase
+      tracking-[0.08em] text-muted;
+  }
+  .bk-group-count {
+    @apply rounded-full bg-line/60 px-[0.45rem] py-[0.05rem] text-[0.7rem] tracking-normal;
+  }
+
+  .bk-alert {
+    @apply mb-[1.1rem] flex flex-wrap items-center gap-[0.6rem] rounded-card border
+      border-warning/45 bg-warning-soft px-[0.9rem] py-[0.7rem] text-small text-ink;
+  }
+  .bk-alert > span:nth-child(2) {
+    @apply flex-auto;
+  }
+
+  /* The ABA mark is already a bordered lozenge; the generic slot chrome would
+     draw a second box around it. */
+  .rc-logo-bare {
+    @apply border-none p-0;
+    border-radius: 0;
+  }
+
+  /* ------------------------------------------------- checkout order summary */
+  .co-event {
+    @apply mb-[0.75rem] flex items-start gap-[0.7rem];
+  }
+  .co-art {
+    @apply relative isolate grid h-[52px] w-[70px] flex-none place-items-center
+      overflow-hidden rounded-tiny text-white/95;
+  }
+  .co-event-main {
+    @apply flex min-w-0 flex-col gap-[0.2rem];
+  }
+  .co-event-main strong {
+    @apply text-[0.95rem] leading-[1.35];
+  }
+
+  @media (max-width: 640px) {
+    /* Price and CTA drop under the details rather than squeezing the title to
+       a few characters on a phone. */
+    .bk-row {
+      grid-template-columns: auto minmax(0, 1fr);
+    }
+    .bk-side {
+      @apply col-span-2 flex-row items-center justify-between text-left;
+    }
   }
 
   /* Cover gradients stand in for event photography. */
@@ -2195,9 +2386,18 @@
   }
 
   /* ------------------------------------------------------------ event hero */
+  /* 220px was a band for text that happened to be coloured. Now that a real
+     banner can sit behind it, the hero needs enough height for the image to be
+     an image — but capped, so a tall viewport does not push the actual booking
+     controls below the fold. */
   .event-hero {
-    @apply relative flex min-h-[220px] flex-col justify-end gap-[0.4rem] overflow-hidden
+    @apply relative flex min-h-[280px] flex-col justify-end gap-[0.4rem] overflow-hidden
       rounded-hero p-[1.7rem] text-white shadow-float;
+  }
+  @media (min-width: 768px) {
+    .event-hero {
+      @apply min-h-[360px] p-[2rem];
+    }
   }
   .event-hero::after {
     content: '';
@@ -2209,6 +2409,105 @@
   }
   .event-hero .hero-cat {
     @apply absolute right-[1.2rem] top-[1.1rem] z-[1] opacity-[0.32];
+  }
+  /* Category chip, matching the one on the listing card so the two screens
+     agree about what kind of event this is. */
+  .event-hero .hero-chip {
+    @apply uppercase tracking-[0.05em];
+  }
+  /* Backdrop + poster. The banner is the wide image behind everything; the
+     cover rides on it as a card, so an event that has both actually shows
+     both instead of one of them going unused. */
+  /* Copy left, cover card right, both sitting on the bottom edge.
+     The cover started out to the LEFT of the copy, which put a small picture
+     directly against the title - it read as a stray sticker rather than the
+     event's second image. Splitting them to opposite ends also matches the
+     scrim: the copy gets the darkened side, the cover the open one. */
+  .event-hero .hero-body {
+    @apply flex items-end justify-between gap-[1.5rem];
+  }
+  .event-hero .hero-copy {
+    @apply flex min-w-0 flex-auto flex-col gap-[0.4rem];
+  }
+  /* Long titles otherwise run the full width and finish under the cover card,
+     where the scrim has already faded out and they stop being readable. */
+  @media (min-width: 861px) {
+    .event-hero .hero-copy {
+      @apply max-w-[60%];
+    }
+  }
+  .hero-poster {
+    @apply block aspect-video w-[170px] flex-none overflow-hidden rounded-card
+      bg-black/20;
+    /* A hairline inside and a real shadow outside, so the card separates from
+       the backdrop whether the photo behind it is light or dark. */
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.28) inset,
+      0 10px 30px rgba(0, 0, 0, 0.45);
+  }
+  .hero-poster {
+    @apply relative cursor-pointer p-0;
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+  }
+  .hero-poster:hover {
+    @apply -translate-y-[2px];
+  }
+  .hero-poster img {
+    @apply h-full w-full object-cover;
+  }
+  /* The affordance only appears on hover/focus: at rest the card should read as
+     artwork, not as a control with a permanent button stuck on it. */
+  .hero-poster-zoom {
+    @apply pointer-events-none absolute bottom-[0.4rem] right-[0.4rem] grid size-[26px]
+      place-items-center rounded-full bg-black/55 text-white opacity-0 backdrop-blur-sm;
+    transition: opacity 0.18s ease;
+  }
+  .hero-poster:hover .hero-poster-zoom,
+  .hero-poster:focus-visible .hero-poster-zoom {
+    @apply opacity-100;
+  }
+  .hero-poster-full {
+    @apply max-h-[80vh] w-auto max-w-full rounded-card object-contain;
+  }
+
+  /* When both images are shown the backdrop is ambient, not the subject: two
+     unrelated photographs at equal weight compete and neither wins. Pushing it
+     back slightly is what makes the pair read as one composition. The scale
+     hides the soft edge the blur leaves at the boundary. */
+  .event-hero.has-poster .hero-photo {
+    filter: blur(2.5px) saturate(1.08);
+    transform: scale(1.06);
+  }
+  @media (min-width: 1024px) {
+    .hero-poster {
+      @apply w-[230px];
+    }
+  }
+  /* Below the split the copy needs the full width, and the backdrop is already
+     carrying the picture on its own. */
+  @media (max-width: 860px) {
+    .hero-poster {
+      @apply hidden;
+    }
+  }
+
+  .event-hero .hero-facts {
+    @apply mt-[0.25rem] flex flex-col gap-[0.3rem] text-small;
+    color: rgba(255, 255, 255, 0.92);
+  }
+  .event-hero .hero-facts b {
+    @apply font-semibold text-white;
+  }
+  /* The full postal address is reference material, not headline: present for
+     anyone who needs it, dimmed so it does not compete with the venue name,
+     and dropped entirely on a phone where it would wrap to three lines. */
+  .hero-addr {
+    color: rgba(255, 255, 255, 0.68);
+  }
+  @media (max-width: 640px) {
+    .hero-addr {
+      @apply hidden;
+    }
   }
   .event-hero h1 {
     @apply text-white;
@@ -3427,6 +3726,13 @@
   align-items: flex-start;
   gap: 1.1rem;
   flex-wrap: wrap;
+}
+
+/* No layout image: the address is the whole content, so it gets the full width
+   rather than sitting in a narrow column beside the space an image would have
+   occupied. */
+.venue-layout.is-plain .venue-layout-meta {
+  flex: 1 1 auto;
 }
 
 .venue-layout-img {

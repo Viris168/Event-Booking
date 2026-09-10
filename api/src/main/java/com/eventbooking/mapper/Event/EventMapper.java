@@ -44,9 +44,9 @@ public class EventMapper {
     }
 
     /**
-     * @param coverImageUrl  derived from the stored public id by
-     *                       CloudinaryService.urlFor - the mapper is static and
-     *                       has no bean to call, so the caller resolves it.
+     * @param coverImageUrl  the event's stored cover URL, passed through as-is.
+     *                       Since V18 the column holds the delivery URL itself,
+     *                       so there is nothing left for the caller to derive.
      * @param bannerImageUrl same, for the banner slot. Either may be null when
      *                       the slot is empty.
      */

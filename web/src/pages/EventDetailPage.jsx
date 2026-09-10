@@ -11,15 +11,19 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
 import { useToast } from '../context/ToastContext.jsx'
 import { seatLabel, usd } from '../lib/format.js'
+import { useProvinces } from '../lib/useProvinces.js'
+import { eventArt, artUrl } from '../lib/eventArt.js'
 import { getEvent } from '../api/events.js'
 import { getSeatMap, getZoneAvailability } from '../api/availability.js'
 import { createHold, releaseHold, getHold } from '../api/holds.js'
 import { mapEvent, mapSeatMap, mapZone, mapHoldResponse } from '../api/adapters.js'
 import VenueLayoutPanel from '../components/VenueLayoutPanel.jsx'
+import QrLightbox from '../components/QrLightbox.jsx'
 
 export default function EventDetailPage() {
   const { id } = useParams()
   const { t, locale, dateTime, date, time } = useLocale()
+  const { provinceName } = useProvinces()
   const { isAuthenticated, user } = useAuth()
   const toast = useToast()
   const navigate = useNavigate()
@@ -28,6 +32,9 @@ export default function EventDetailPage() {
   const [zoneQty, setZoneQty] = useState({})
   const [reserving, setReserving] = useState(false)
   const [expiredNotice, setExpiredNotice] = useState(false)
+  // Full-size event artwork. The hero card is ~230px wide, so a poster with a
+  // line-up or a schedule printed on it is unreadable until it is opened.
+  const [artZoom, setArtZoom] = useState(false)
   const [conflictHoldId, setConflictHoldId] = useState(null)
 
   const [apiEvent, setApiEvent] = useState(null)
@@ -93,6 +100,34 @@ export default function EventDetailPage() {
 
   const event = apiEvent
   const venue = event?.venue
+  // Wide slot on this page, so the banner wins and the cover is the stand-in.
+  const heroArt = eventArt(event, 'banner')
+  // An event can carry both images. When it does, the banner is the backdrop
+  // and the cover rides on top as a poster - showing only one would waste half
+  // of what the organiser uploaded. Suppressed when the two resolve to the same
+  // file, which is what the cover/banner fallback does for a single upload:
+  // the same picture printed twice reads as a mistake.
+  const posterUrl = artUrl(event, 'cover')
+  const showPoster = !!posterUrl && posterUrl !== heroArt.url
+
+  // The event endpoint serialises the venue in snake_case and mapEvent passes
+  // it through untouched, so the camelCase reads this hero used resolved to
+  // undefined across the board - which rendered as a bare "· , , , Siem Reap"
+  // with no venue name at all. Both spellings accepted; empty parts dropped so
+  // a venue missing a field never prints a stray comma.
+  const venueName =
+    (locale === 'km'
+      ? venue?.name_km ?? venue?.nameKm
+      : venue?.name_en ?? venue?.nameEn) ?? ''
+  const addressLine = [
+    venue?.street_address ?? venue?.streetAddress,
+    venue?.sangkat_commune ?? venue?.sangkatCommune,
+    venue?.khan_district ?? venue?.khanDistrict,
+    provinceName(venue?.province_code ?? venue?.provinceCode, locale),
+  ]
+    .map((p) => (typeof p === 'string' ? p.trim() : p))
+    .filter(Boolean)
+    .join(', ')
   const classes = event?.seat_classes || []
   const zones = apiZones || []
   const seats = apiSeats || []
@@ -271,30 +306,94 @@ export default function EventDetailPage() {
         <Link to="/events">{t('events')}</Link> / {locale === 'km' ? event.title_km : event.title_en}
       </div>
 
-      <div className={`event-hero cover-${event.cover || 1}`}>
-        <Icon
-          name={CATEGORY_ICON[event.category] || 'ticket'}
-          size={76}
-          strokeWidth={1.2}
-          className="hero-cat"
-        />
-        <div className="row row-tight">
-          <span className="badge badge-solid badge-mode">
-            <Icon name={event.inventory_mode === 'ZONED' ? 'users' : 'seat'} size={12} />
-            {event.inventory_mode}
-          </span>
-          {event.status !== 'PUBLISHED' && <Badge status={event.status} className="badge-solid" />}
-        </div>
-        <BiTitle record={event} field="title" />
-        <div className="small with-icon" style={{ color: 'rgba(255,255,255,0.9)' }}>
-          <Icon name="mapPin" size={15} />
-          <span>
-            {locale === 'km' ? venue?.nameKm : venue?.nameEn} · {venue?.streetAddress},{' '}
-            {venue?.sangkatCommune}, {venue?.khanDistrict},{' '}
-            {venue?.provinceCode}
-          </span>
+      <div
+        className={`event-hero ${heroArt.className}${heroArt.hasImage ? ' has-photo' : ''}${
+          showPoster ? ' has-poster' : ''
+        }`}
+      >
+        {heroArt.hasImage ? (
+          <img
+            className="hero-photo"
+            src={heroArt.url}
+            alt=""
+            decoding="async"
+            onError={(e) => {
+              e.currentTarget.remove()
+            }}
+          />
+        ) : (
+          <Icon
+            name={CATEGORY_ICON[event.category] || 'ticket'}
+            size={76}
+            strokeWidth={1.2}
+            className="hero-cat"
+          />
+        )}
+        <div className="hero-body">
+          <div className="hero-copy">
+            <div className="row row-tight">
+              {event.category && (
+                <span className="badge badge-solid hero-chip">
+                  <Icon name={CATEGORY_ICON[event.category] || 'ticket'} size={12} />
+                  {event.category}
+                </span>
+              )}
+              <span className="badge badge-solid badge-mode">
+                <Icon name={event.inventory_mode === 'ZONED' ? 'users' : 'seat'} size={12} />
+                {event.inventory_mode}
+              </span>
+              {event.status !== 'PUBLISHED' && <Badge status={event.status} className="badge-solid" />}
+            </div>
+
+            <BiTitle record={event} field="title" />
+
+            {/* Date and place, split into two lines. They were one run of text
+                ending in a four-part postal address, which buried the two
+                things actually being looked for here — when, and where. */}
+            <div className="hero-facts">
+              <span className="with-icon">
+                <Icon name="calendar" size={15} />
+                <span>{dateTime(event.starts_at)}</span>
+              </span>
+              <span className="with-icon">
+                <Icon name="mapPin" size={15} />
+                <span>
+                  <b>{venueName}</b>
+                  {addressLine && <span className="hero-addr"> · {addressLine}</span>}
+                </span>
+              </span>
+            </div>
+          </div>
+
+          {showPoster && (
+            <button
+              type="button"
+              className="hero-poster"
+              onClick={() => setArtZoom(true)}
+              aria-label={locale === 'km' ? 'ពង្រីករូបភាព' : 'View the event image full size'}
+            >
+              <img
+                src={posterUrl}
+                alt=""
+                decoding="async"
+                onError={(e) => { e.currentTarget.closest('.hero-poster')?.remove() }}
+              />
+              <span className="hero-poster-zoom" aria-hidden="true">
+                <Icon name="search" size={14} />
+              </span>
+            </button>
+          )}
         </div>
       </div>
+
+      <QrLightbox
+        open={artZoom}
+        onClose={() => setArtZoom(false)}
+        caption={locale === 'km' ? event.title_km : event.title_en}
+        subtitle={venueName}
+      >
+        <img className="hero-poster-full" src={posterUrl} alt="" />
+      </QrLightbox>
 
       {expiredNotice && (
         <div style={{ marginTop: '1rem' }}>
@@ -387,7 +486,15 @@ export default function EventDetailPage() {
 
           {/* Above the seat picker: orient yourself before choosing. Hides
               itself when the event has no banner. */}
-          <VenueLayoutPanel imageUrl={event.banner_image_url} venue={venue} />
+          {/* A layout belongs to the VENUE, not the event. This was handed
+              event.banner_image_url as a stand-in back when the banner was an
+              unused column; now that the banner is the event's own artwork on
+              the hero, that made the event poster render under a "Venue
+              layout" heading — a photo presented as a seating chart.
+              Passing the venue's own field instead: absent today, so the panel
+              renders nothing, and it lights up the moment a venue-level layout
+              image exists. */}
+          <VenueLayoutPanel imageUrl={venue?.layout_image_url ?? null} venue={venue} />
 
           <div className="card">
             <div className="card-head">

@@ -127,9 +127,17 @@ public class Event {
     @Builder.Default
     private List<Hold> holds = new ArrayList<>();
 
+    /**
+     * Delivery URL of the cover image, or null.
+     *
+     * <p>Despite the column name this is a URL, not a public id — see V18. Any
+     * host works: a Cloudinary upload stores its secure_url here, and an image
+     * hosted elsewhere is just as valid.
+     */
     @Column(name = "cloudinary_image_id")
     private String cloudinaryImageId;
 
+    /** Delivery URL of the wide banner image, or null. Same rules as cover. */
     @Column(name = "cloudinary_banner_id")
     private String cloudinaryBannerId;
 }
