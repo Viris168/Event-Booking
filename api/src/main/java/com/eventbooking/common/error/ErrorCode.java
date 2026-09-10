@@ -30,12 +30,24 @@ public enum ErrorCode {
     INVALID_ADMIT_COUNT(HttpStatus.BAD_REQUEST),
     EMPTY_UPLOAD(HttpStatus.BAD_REQUEST),
 
+    // 401 Unauthorized
+    /* One code for every way a login can fail. Splitting it into "no such user"
+       and "wrong password" would turn the endpoint into a way to discover which
+       phone numbers are registered. */
+    INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED),
+    /* Likewise one code whether the refresh token is unknown, already revoked
+       or expired: the client's next move is the same in all three cases. */
+    INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED),
+    ACCOUNT_DISABLED(HttpStatus.UNAUTHORIZED),
+
     // 403 Forbidden
     NOT_AN_ORGANIZER(HttpStatus.FORBIDDEN),
     NOT_AN_ADMIN(HttpStatus.FORBIDDEN),
     NOT_RESOURCE_OWNER(HttpStatus.FORBIDDEN),
 
     // 409 Conflict
+    PHONE_ALREADY_REGISTERED(HttpStatus.CONFLICT),
+    EMAIL_ALREADY_REGISTERED(HttpStatus.CONFLICT),
     INVALID_EVENT_STATUS_TRANSITION(HttpStatus.CONFLICT),
     EVENT_NOT_EDITABLE(HttpStatus.CONFLICT),
     EVENT_NOT_ON_SALE(HttpStatus.CONFLICT),

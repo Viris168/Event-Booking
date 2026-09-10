@@ -7,7 +7,11 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import com.eventbooking.security.JwtAuthenticationFilter;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -41,21 +45,38 @@ public class SecurityConfig {
     private static final Logger log = LoggerFactory.getLogger(SecurityConfig.class);
 
     private final List<String> allowedOrigins;
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
-    public SecurityConfig(@Value("${app.cors.allowed-origins}") List<String> allowedOrigins) {
+    public SecurityConfig(@Value("${app.cors.allowed-origins}") List<String> allowedOrigins,
+                          JwtAuthenticationFilter jwtAuthenticationFilter) {
         this.allowedOrigins = allowedOrigins;
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
     }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        log.warn("Security is wide open: every endpoint permits all callers, and the actor is "
-                + "read from the X-User-Id header. Replace this chain when JWT auth lands.");
+        log.warn("Security is wide open: every endpoint still permits all callers, and the "
+                + "inventory and booking lanes read the actor from X-User-Id. A Bearer token is "
+                + "now honoured when present, but nothing requires one yet - tighten these rules "
+                + "in #20, together with the lanes that depend on the header.");
 
         http
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
+                // Still permitAll everywhere, so the inventory and booking lanes
+                // keep working through X-User-Id. /auth/** is listed explicitly
+                // anyway: it has to stay public when the rest is tightened in
+                // #20, and writing it now means that change is one line rather
+                // than a puzzle about which paths login needs.
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/api/v1/auth/**").permitAll()
+                        .anyRequest().permitAll())
+                // Ahead of UsernamePasswordAuthenticationFilter, which is where form
+                // login would sit. That slot has no meaning for a token API, but it
+                // is the conventional anchor point and guarantees the context is
+                // populated before any authorization rule is evaluated.
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
@@ -65,6 +86,24 @@ public class SecurityConfig {
      * from {@code app.cors.allowed-origins}, which has been sitting in
      * application.yml unused - this is what finally reads it.
      */
+    /**
+     * How passwords are hashed and checked. BCrypt generates its own random salt
+     * per password and stores it inside the resulting hash, so two users who
+     * pick the same password still end up with different values in
+     * {@code app_user.password_hash} - a stolen dump cannot be cracked in bulk
+     * by hashing a candidate once and comparing it against every row.
+     *
+     * <p>It is also deliberately slow. That costs a few milliseconds on a real
+     * login and makes brute-forcing the whole table impractical.
+     *
+     * <p>Never store a password itself. Registration calls {@code encode()};
+     * login calls {@code matches(raw, storedHash)}. There is no decode step.
+     */
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();

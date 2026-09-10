@@ -1,0 +1,172 @@
+package com.eventbooking.security;
+
+import com.eventbooking.Enumeration.Provider;
+import com.eventbooking.Enumeration.Role;
+import com.eventbooking.dto.auth.LoginRequest;
+import com.eventbooking.dto.auth.RegisterRequest;
+import com.eventbooking.dto.auth.TokenResponse;
+import com.eventbooking.model.AppUser;
+import com.eventbooking.repository.AppUserRepository;
+import com.eventbooking.security.error.AccountDisabledException;
+import com.eventbooking.security.error.EmailAlreadyRegisteredException;
+import com.eventbooking.security.error.InvalidCredentialsException;
+import com.eventbooking.security.error.InvalidRefreshTokenException;
+import com.eventbooking.security.error.PhoneAlreadyRegisteredException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Optional;
+
+/**
+ * Register, sign in, refresh, sign out.
+ *
+ * <p>This is the piece that finally joins the two halves already built:
+ * {@link AppUserDetailsService} and the {@link PasswordEncoder} answer "is this
+ * really you", {@link JwtService} and {@link RefreshTokenService} answer "here
+ * is proof, carry it with you". Until this existed neither had ever run.
+ */
+@Service
+public class AuthService {
+
+    private static final Logger log = LoggerFactory.getLogger(AuthService.class);
+
+    private final AppUserRepository appUserRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
+    private final RefreshTokenService refreshTokenService;
+    private final long accessExpirationMs;
+
+    public AuthService(AppUserRepository appUserRepository,
+                       PasswordEncoder passwordEncoder,
+                       JwtService jwtService,
+                       RefreshTokenService refreshTokenService,
+                       @Value("${app.jwt.access-expiration-ms}") long accessExpirationMs) {
+        this.appUserRepository = appUserRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.jwtService = jwtService;
+        this.refreshTokenService = refreshTokenService;
+        this.accessExpirationMs = accessExpirationMs;
+    }
+
+    /**
+     * Creates a LOCAL account and signs it straight in - a freshly registered
+     * user should not have to type their password again immediately.
+     *
+     * <p>Uniqueness is checked before inserting so a duplicate is a 409 that
+     * names the field, rather than a raw 23505 unpicked afterwards. The
+     * database constraints remain the real guarantee: two simultaneous
+     * registrations of the same number can both pass this check, and the second
+     * insert is then rejected by Postgres - correctly, if less prettily.
+     */
+    @Transactional
+    public TokenResponse register(RegisterRequest request, String userAgent) {
+        if (appUserRepository.existsByPhoneE164(request.phoneE164())) {
+            throw new PhoneAlreadyRegisteredException();
+        }
+        if (request.email() != null && !request.email().isBlank()
+                && appUserRepository.existsByEmail(request.email())) {
+            throw new EmailAlreadyRegisteredException();
+        }
+
+        AppUser user = appUserRepository.save(AppUser.builder()
+                .phoneE164(request.phoneE164())
+                .email(emptyToNull(request.email()))
+                // The raw password is hashed here and never stored, logged, or
+                // returned. This is the only place it is touched.
+                .passwordHash(passwordEncoder.encode(request.password()))
+                .displayName(request.displayName())
+                .role(Role.CUSTOMER)
+                .provider(Provider.LOCAL)
+                .isDisabled(false)
+                .build());
+
+        log.info("Registered user {} ({})", user.getId(), user.getPhoneE164());
+        return issuePair(user, userAgent);
+    }
+
+    /**
+     * Exchanges credentials for a token pair.
+     *
+     * <p>Every failure below raises the same {@link InvalidCredentialsException}
+     * with the same message. A missing user and a wrong password must be
+     * indistinguishable, or the endpoint becomes a way to enumerate which phone
+     * numbers hold accounts.
+     */
+    @Transactional
+    public TokenResponse login(LoginRequest request, String userAgent) {
+        AppUser user = appUserRepository.findByPhoneE164(request.phoneE164())
+                .orElseThrow(InvalidCredentialsException::new);
+
+        // A GOOGLE account has no password_hash. Rejecting it here rather than
+        // letting matches() run against "" keeps the two sign-in paths separate.
+        if (user.getPasswordHash() == null || user.getPasswordHash().isBlank()) {
+            throw new InvalidCredentialsException();
+        }
+
+        if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+            throw new InvalidCredentialsException();
+        }
+
+        // Checked only AFTER the password, so a disabled account cannot be used
+        // to confirm that a number is registered.
+        if (Boolean.TRUE.equals(user.getIsDisabled())) {
+            throw new AccountDisabledException();
+        }
+
+        log.info("User {} signed in", user.getId());
+        return issuePair(user, userAgent);
+    }
+
+    /**
+     * Trades a live refresh token for a new pair, burning the old one.
+     *
+     * <p>The access token is not consulted: it has usually expired, which is
+     * the whole reason the client is here.
+     */
+    @Transactional
+    public TokenResponse refresh(String refreshToken, String userAgent) {
+        RefreshTokenService.Rotated rotated = refreshTokenService.rotate(refreshToken, userAgent)
+                .orElseThrow(InvalidRefreshTokenException::new);
+
+        AppUser user = rotated.user();
+        if (Boolean.TRUE.equals(user.getIsDisabled())) {
+            // Disabling an account takes effect at the next refresh, i.e. within
+            // the access token's 15 minutes rather than its 14-day lifetime.
+            refreshTokenService.revokeAll(user);
+            throw new AccountDisabledException();
+        }
+
+        return new TokenResponse(
+                jwtService.generateAccessToken(user.getPhoneE164(), user.getRole().name()),
+                rotated.rawToken(),
+                "Bearer",
+                accessExpirationMs / 1000);
+    }
+
+    /**
+     * Ends this session. Deliberately silent about whether the token was live:
+     * logging out twice is not an error worth reporting, and a 404 here would
+     * confirm which tokens exist.
+     */
+    @Transactional
+    public void logout(String refreshToken) {
+        refreshTokenService.revoke(refreshToken);
+    }
+
+    // ------------------------------------------------------------------
+
+    private TokenResponse issuePair(AppUser user, String userAgent) {
+        return TokenResponse.bearer(
+                jwtService.generateAccessToken(user.getPhoneE164(), user.getRole().name()),
+                refreshTokenService.issue(user, userAgent),
+                accessExpirationMs / 1000);
+    }
+
+    private static String emptyToNull(String value) {
+        return Optional.ofNullable(value).filter(v -> !v.isBlank()).orElse(null);
+    }
+}
