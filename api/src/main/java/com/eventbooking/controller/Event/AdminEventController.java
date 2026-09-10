@@ -1,11 +1,13 @@
 package com.eventbooking.controller.Event;
 
+import com.eventbooking.Enumeration.EventStatus;
 import com.eventbooking.dto.event.EventResponse;
 import com.eventbooking.dto.event.ReviewDecisionRequest;
 import com.eventbooking.security.AdminResolver;
 import com.eventbooking.service.event.EventService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -32,6 +34,29 @@ public class AdminEventController {
     public AdminEventController(EventService eventService, AdminResolver adminResolver) {
         this.eventService = eventService;
         this.adminResolver = adminResolver;
+    }
+
+    /**
+     * The moderation queue. Defaults to PENDING_REVIEW because that is the
+     * screen's whole purpose; the parameter exists so the same endpoint can
+     * back a "recently rejected" or "approved, not yet published" view without
+     * a second method.
+     *
+     * <p>This is not GET /api/v1/event with a filter. That endpoint is the
+     * public catalogue and returns only PUBLISHED and TAKEN_DOWN by design -
+     * accepting an arbitrary status there would hand every organiser's DRAFT,
+     * with title, venue and prices, to any anonymous caller. Listing
+     * unpublished work is an admin capability, so it lives on the admin
+     * controller behind AdminResolver.
+     */
+    @GetMapping
+    public ResponseEntity<Page<EventResponse>> listForReview(
+            @RequestHeader("X-User-Id") Long actorUserId,
+            @RequestParam(defaultValue = "PENDING_REVIEW") EventStatus status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        adminResolver.requireAdminUserId(actorUserId);
+        return new ResponseEntity<>(eventService.listForReview(status, page, size), HttpStatus.OK);
     }
 
     @PatchMapping("/{id}/approve")
