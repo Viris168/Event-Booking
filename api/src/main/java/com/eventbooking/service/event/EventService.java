@@ -5,6 +5,7 @@ import com.eventbooking.Enumeration.ImageRole;
 import com.eventbooking.dto.event.CreateEventRequest;
 import com.eventbooking.dto.event.EventResponse;
 import com.eventbooking.dto.event.EventReviewResponse;
+import com.eventbooking.dto.event.EventSearchCriteria;
 import com.eventbooking.dto.event.UpdateEventRequest;
 import org.springframework.data.domain.Page;
 
@@ -19,7 +20,8 @@ public interface EventService {
     // refuse rows owned by anyone else. takeDownEvent is the exception: it is
     // a moderation action, so it is not the organiser's to authorize.
 
-    Page<EventResponse> listEvents(int page, int size);
+    /** The public catalogue. Browsing is a search with nothing filled in. */
+    Page<EventResponse> listEvents(EventSearchCriteria criteria, int page, int size);
     EventResponse getEvent(Long eventId);
     void verifyEventIsOnSale(Long eventId);
 

@@ -8,6 +8,7 @@ import com.eventbooking.catalog.EventStateMachine;
 import com.eventbooking.catalog.error.*;
 import com.eventbooking.dto.event.CreateEventRequest;
 import com.eventbooking.dto.event.EventReviewResponse;
+import com.eventbooking.dto.event.EventSearchCriteria;
 import com.eventbooking.model.*;
 import com.eventbooking.repository.*;
 import com.eventbooking.dto.event.EventResponse;
@@ -40,6 +41,9 @@ import static com.eventbooking.Enumeration.EventTransition.SUBMIT;
 @Service
 public class EventServiceimpl implements EventService {
 
+    /** Ceiling on ?size for the public catalogue. */
+    private static final int MAX_PAGE_SIZE = 100;
+
     private final VenueRepository venueRepository;
     private final EventRepository eventRepository;
     private final SeatClassRepository seatClassRepository;
@@ -68,11 +72,25 @@ public class EventServiceimpl implements EventService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<EventResponse> listEvents(int page, int size) {
+    public Page<EventResponse> listEvents(EventSearchCriteria criteria, int page, int size) {
         // Was findAll(), which published every DRAFT to the home page and the
         // events list the instant an organiser created one - title, slug,
         // venue and prices, to any anonymous caller.
-        return eventRepository.findByStatusIn(EventStatus.publiclyVisible(), PageRequest.of(page, size))
+        //
+        // The page size is clamped rather than trusted: it comes straight off
+        // the query string, and toEventResponse below runs three reads per
+        // event, so an unbounded size is an invitation to ask for the whole
+        // catalogue several thousand queries at a time.
+        return eventRepository.search(
+                        EventStatus.publiclyVisible(),
+                        criteria.titleLike(),
+                        criteria.provinceCode(),
+                        criteria.startsFrom(),
+                        criteria.startsBefore(),
+                        criteria.minPriceCents(),
+                        criteria.maxPriceCents(),
+                        criteria.sort().name(),
+                        PageRequest.of(Math.max(page, 0), Math.clamp(size, 1, MAX_PAGE_SIZE)))
                 .map(this::toEventResponse);
     }
 

@@ -13,6 +13,26 @@ import { mapEvent } from '../api/adapters.js'
 const PAGE_SIZE = 8
 const EMPTY = { q: '', province: '', from: '', to: '', minUsd: '', maxUsd: '', sort: 'soonest' }
 
+/** How long typing has to pause before the search reaches the URL and the API. */
+const SEARCH_DEBOUNCE_MS = 300
+
+/**
+ * What actually goes on the wire: the filters that are set, plus the window of
+ * the catalogue to return.
+ *
+ * <p>Filtering and paging both happen on the server now. They have to happen in
+ * the same place - this page used to ask for 20 events and then slice them into
+ * pages of 8 in the browser, which made "3 pages" mean "the first 20 rows",
+ * left event 21 unreachable, and printed a count that was really "up to 20".
+ */
+function requestParams(filters, page) {
+  const query = { page: page - 1, size: PAGE_SIZE }
+  for (const [key, value] of Object.entries(filters)) {
+    if (value !== '' && value != null) query[key] = value
+  }
+  return query
+}
+
 export default function EventsPage() {
   const { t, locale, date } = useLocale()
   const { provinces, provinceName } = useProvinces()
@@ -21,6 +41,10 @@ export default function EventsPage() {
   const [page, setPage] = useState(1)
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [apiResults, setApiResults] = useState([])
+  // Straight from the server's Page, so the count and the pager describe the
+  // whole catalogue rather than the slice that happens to be loaded.
+  const [totalCount, setTotalCount] = useState(0)
+  const [totalPages, setTotalPages] = useState(1)
   const [failed, setFailed] = useState(false)
   // Bumped by Retry. Re-setting identical search params would not change the
   // effect's dependency, so a failed read had no way to be re-run.
@@ -31,28 +55,67 @@ export default function EventsPage() {
   const filters = { ...EMPTY }
   for (const key of Object.keys(EMPTY)) filters[key] = params.get(key) ?? EMPTY[key]
 
+  // What the search box shows while it is being typed in. The URL stays the
+  // source of truth for what has actually been searched for; this is only the
+  // draft on its way there.
+  const [qDraft, setQDraft] = useState(filters.q)
+  const [syncedQ, setSyncedQ] = useState(filters.q)
+
+  // The search changed from somewhere other than the box: arriving from the
+  // home page's search bar, removing the chip, Reset, or the back button.
+  // Adjusted here rather than in an effect because that is what React
+  // recommends for state derived from something outside it - an effect would
+  // paint the stale value once before correcting it.
+  if (filters.q !== syncedQ) {
+    setSyncedQ(filters.q)
+    setQDraft(filters.q)
+  }
+
+  // Typing used to write the URL on every keystroke, and every write refetched
+  // the catalogue and dropped the whole grid to skeletons - eight requests and
+  // eight flashes to type "concert", with the answers arriving out of order.
+  // Now the URL is written once typing pauses, and one request follows.
+  useEffect(() => {
+    if (qDraft === filters.q) return
+    const timer = setTimeout(() => update({ q: qDraft }), SEARCH_DEBOUNCE_MS)
+    return () => clearTimeout(timer)
+  }, [qDraft]) // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     let active = true
     setLoading(true)
     setFailed(false)
-    getEvents(filters)
+    getEvents(requestParams(filters, page))
       .then((data) => {
         if (!active) return
         const list = Array.isArray(data?.content) ? data.content : (Array.isArray(data) ? data : [])
+        // The API serialises Page in snake_case; the camelCase spellings are
+        // here for the same reason adapters.js carries both - one Jackson
+        // setting is all that stands between the two, and reading only the
+        // camel names silently pins the pager to a single page.
+        const pages = Math.max(1, data?.total_pages ?? data?.totalPages ?? 1)
         setApiResults(list.map(mapEvent))
+        setTotalCount(data?.total_elements ?? data?.totalElements ?? list.length)
+        setTotalPages(pages)
+        // The catalogue shrank under a page that no longer exists - Retry after
+        // events were taken down. Without this the grid is empty and the pager
+        // has already hidden itself, leaving no way back but Reset.
+        if (page > pages) setPage(pages)
       })
       .catch(() => {
         // No mock fallback: seeded events standing in for a failed read looked
         // like a working catalogue and hid the outage completely.
         if (!active) return
         setApiResults([])
+        setTotalCount(0)
+        setTotalPages(1)
         setFailed(true)
       })
       .finally(() => {
         if (active) setLoading(false)
       })
     return () => { active = false }
-  }, [params, reload]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [params, page, reload]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function update(patch) {
     const next = new URLSearchParams(params)
@@ -63,11 +126,6 @@ export default function EventsPage() {
     setParams(next, { replace: true })
     setPage(1)
   }
-
-  const results = apiResults
-  const pages = Math.max(1, Math.ceil(results.length / PAGE_SIZE))
-  const current = Math.min(page, pages)
-  const visible = results.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE)
 
   // Everything narrowing the result set, as removable chips.
   const chips = []
@@ -120,10 +178,10 @@ export default function EventsPage() {
             <Skeleton className="skel-line mt-2 w-52" />
           ) : (
             <p>
-              {results.length}{' '}
+              {totalCount}{' '}
               {locale === 'km'
                 ? 'ព្រឹត្តិការណ៍កំពុងលក់សំបុត្រ'
-                : `${results.length === 1 ? 'event' : 'events'} currently on sale`}
+                : `${totalCount === 1 ? 'event' : 'events'} currently on sale`}
             </p>
           )}
         </div>
@@ -134,8 +192,8 @@ export default function EventsPage() {
         <div className="panel-body">
           <div className="search-row">
             <SearchInput
-              value={filters.q}
-              onChange={(v) => update({ q: v })}
+              value={qDraft}
+              onChange={setQDraft}
               placeholder={
                 locale === 'km'
                   ? 'ស្វែងរកព្រឹត្តិការណ៍ ឬទីកន្លែង'
@@ -236,14 +294,14 @@ export default function EventsPage() {
 
       {loading ? (
         <EventGridSkeleton count={PAGE_SIZE} style={{ marginTop: '1.4rem' }} />
-      ) : visible.length ? (
+      ) : apiResults.length ? (
         <>
           <div className="grid grid-cards" style={{ marginTop: '1.4rem' }}>
-            {visible.map((e) => (
+            {apiResults.map((e) => (
               <EventCard key={e.id} event={e} />
             ))}
           </div>
-          <Pager page={current} pages={pages} onChange={setPage} />
+          <Pager page={page} pages={totalPages} onChange={setPage} />
         </>
       ) : failed ? (
         <Empty
