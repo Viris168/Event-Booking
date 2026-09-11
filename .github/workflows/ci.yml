@@ -56,6 +56,18 @@ jobs:
           CLOUDINARY_CLOUD_NAME: ci-placeholder
           CLOUDINARY_API_KEY: ci-placeholder
           CLOUDINARY_API_SECRET: ci-placeholder
+          # JwtSecretGuard refuses the placeholder committed in .env.example,
+          # on the grounds that anyone who can read the repo could sign a token
+          # claiming to be a platform admin. Without a value here the guard
+          # fires and every @SpringBootTest fails to start a context - which is
+          # what it is for, and why CI needs its own throwaway value.
+          #
+          # Not a secret and not worth making one: it signs nothing outside this
+          # runner, and the tokens it signs live as long as the job does.
+          JWT_SECRET: ci-only-not-a-real-secret-at-least-32-chars
+          # Same shape of guard, same reasoning. Rotating this would invalidate
+          # issued tickets in a real environment; here nothing outlives the job.
+          TICKET_SIGNING_SECRET: ci-only-ticket-signing-key-at-least-32-chars
         run: ./mvnw -B --no-transfer-progress verify
 
       - name: Publish test reports
