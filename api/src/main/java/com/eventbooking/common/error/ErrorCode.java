@@ -16,6 +16,7 @@ public enum ErrorCode {
     BOOKING_NOT_FOUND(HttpStatus.NOT_FOUND),
     PAYMENT_NOT_FOUND(HttpStatus.NOT_FOUND),
     TICKET_NOT_FOUND(HttpStatus.NOT_FOUND),
+    ORGANIZER_APPLICATION_NOT_FOUND(HttpStatus.NOT_FOUND),
     RESOURCE_NOT_FOUND(HttpStatus.NOT_FOUND),
 
     // 400 Bad Request
@@ -71,6 +72,16 @@ public enum ErrorCode {
     BOOKING_NOT_PAYABLE(HttpStatus.CONFLICT),
     TICKET_NOT_CHECKED_IN(HttpStatus.CONFLICT),
     PAYMENT_ALREADY_SETTLED(HttpStatus.CONFLICT),
+    /* The caller already has an organizer_profile row, which IS what being an
+       organiser means - there is nothing for an application to grant them. */
+    ALREADY_AN_ORGANIZER(HttpStatus.CONFLICT),
+    /* One open application per person. Checked in the service so the caller
+       gets this instead of the raw violation from
+       uq_organizer_application_pending. */
+    ORGANIZER_APPLICATION_ALREADY_PENDING(HttpStatus.CONFLICT),
+    /* Approve or reject on a row that is no longer PENDING. Two admins working
+       the queue at once is the ordinary way to reach this. */
+    ORGANIZER_APPLICATION_ALREADY_DECIDED(HttpStatus.CONFLICT),
 
     // 410 Gone
     HOLD_EXPIRED(HttpStatus.GONE),

@@ -76,6 +76,10 @@ export default function Navbar() {
     { to: '/', label: t('home'), icon: 'home', end: true, show: true },
     { to: '/events', label: t('events'), icon: 'calendar', show: true },
     { to: '/my-bookings', label: t('myBookings'), icon: 'ticket', show: isAuthenticated },
+    // Never shown beside the /organizer link: isOrganizer covers ORGANIZER and
+    // PLATFORM_ADMIN, so exactly one of these two rows is ever visible and they
+    // can share the building icon without ambiguity.
+    { to: '/become-an-organizer', label: t('becomeOrganizer'), icon: 'building', show: isAuthenticated && !isOrganizer },
     { to: '/organizer', label: t('organizer'), icon: 'building', show: isOrganizer },
     { to: '/admin', label: t('admin'), icon: 'shield', show: isAdmin },
   ].filter((l) => l.show)
