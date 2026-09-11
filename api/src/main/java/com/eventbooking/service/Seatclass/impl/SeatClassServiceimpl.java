@@ -38,8 +38,7 @@ public class SeatClassServiceimpl implements SeatClassService {
         Event event = eventRepository.findById(eventId).orElseThrow(()-> new EventNotFoundException(eventId));
         organizerResolver.requireOwner(organizerId, event.getOrganizerId(), "event", eventId);
         SeatClass seatClass = SeatClassMapper.toSeatClass(request,event);
-        seatClassRepository.save(seatClass);
-        return SeatClassMapper.toSeatClassResponse(seatClass);
+        return SeatClassMapper.toSeatClassResponse(seatClassRepository.save(seatClass));
     }
 
     @Override

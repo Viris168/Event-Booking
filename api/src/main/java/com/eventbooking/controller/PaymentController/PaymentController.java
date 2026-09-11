@@ -1,5 +1,6 @@
 package com.eventbooking.controller.PaymentController;
 
+import com.eventbooking.security.CurrentUserId;
 import com.eventbooking.dto.payment.PaymentResponse;
 import com.eventbooking.dto.payment.StartPaymentRequest;
 import com.eventbooking.payment.PaymentReconciler;
@@ -15,7 +16,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
@@ -42,10 +42,10 @@ import java.util.List;
  * not use it as its polling loop; it is rate-limited per attempt for that
  * reason.
  *
- * <p><b>X-User-Id is a placeholder.</b> Nothing is secured yet, so the caller
- * identifies itself by header and every ownership check reads it. It becomes
- * the JWT principal the moment the auth lane lands, and the service signatures
- * do not change when it does.
+ * <p>Every ownership check below reads the actor id from the verified access
+ * token, via {@link com.eventbooking.security.CurrentUserId}. It used to read a
+ * header the caller set, which meant "is this your booking to pay for" was
+ * answered with a number the caller had chosen.
  */
 @RestController
 @RequestMapping("/api/v1")
@@ -79,7 +79,7 @@ public class PaymentController {
     public PaymentResponse startPayment(
             @PathVariable Long bookingId,
             @Parameter(description = "Stand-in for the authenticated user until JWT lands", example = "1")
-            @RequestHeader("X-User-Id") Long actorUserId,
+            @CurrentUserId Long actorUserId,
             @Valid @RequestBody StartPaymentRequest request) {
 
         return paymentService.startPayment(bookingId, request.provider(), actorUserId);
@@ -93,7 +93,7 @@ public class PaymentController {
     public List<PaymentResponse> listAttempts(
             @PathVariable Long bookingId,
             @Parameter(description = "Stand-in for the authenticated user until JWT lands", example = "1")
-            @RequestHeader("X-User-Id") Long actorUserId) {
+            @CurrentUserId Long actorUserId) {
 
         return paymentService.listForBooking(bookingId, actorUserId);
     }
@@ -111,7 +111,7 @@ public class PaymentController {
     public PaymentResponse getPayment(
             @PathVariable Long paymentId,
             @Parameter(description = "Stand-in for the authenticated user until JWT lands", example = "1")
-            @RequestHeader("X-User-Id") Long actorUserId) {
+            @CurrentUserId Long actorUserId) {
 
         return paymentService.getForUser(paymentId, actorUserId);
     }
@@ -128,7 +128,7 @@ public class PaymentController {
     public PaymentResponse refreshPayment(
             @PathVariable Long paymentId,
             @Parameter(description = "Stand-in for the authenticated user until JWT lands", example = "1")
-            @RequestHeader("X-User-Id") Long actorUserId) {
+            @CurrentUserId Long actorUserId) {
 
         return reconciler.refresh(paymentId, actorUserId);
     }

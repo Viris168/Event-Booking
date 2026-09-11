@@ -72,3 +72,12 @@ export const confirmGroup = (payload, eventId, ticketIds) =>
   client
     .post('/tickets/scan/group/confirm', { payload, event_id: eventId, ticket_ids: ticketIds })
     .then((r) => r.data)
+
+/**
+ * Admission progress for one event: issued, admitted, still to come, refused.
+ *
+ * Scoped to the organiser of the event by the server, so there is no id to
+ * pass beyond the event's own.
+ */
+export const getCheckInStats = (eventId) =>
+  client.get(`/events/${eventId}/check-in-stats`).then((r) => r.data)

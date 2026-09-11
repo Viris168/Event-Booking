@@ -15,6 +15,10 @@ export function mapSeatClass(c) {
     name_en: c.name_en ?? c.nameEn,
     name_km: c.name_km ?? c.nameKm,
     price_usd_cents: c.price_usd_cents ?? c.priceUsdCents,
+    // The venue section this tier prices. Server-derived from the seats
+    // assigned to it, and null when that is not a single answer - no seats
+    // yet, or seats spanning two sections.
+    section_label: c.section_label ?? c.sectionLabel ?? null,
     seat_count: c.seat_count ?? c.seatCount ?? 0,
     sold_count: c.sold_count ?? c.soldCount ?? 0,
     held_count: c.held_count ?? c.heldCount ?? 0,
@@ -47,7 +51,12 @@ export function mapEvent(e) {
   return {
     id: e.id,
     organizer_id: e.organizer_id ?? e.organizerId,
-    venue_id: e.venue_id ?? e.venueId,
+    // EventResponse carries the venue as a nested object and no flat id, so
+    // the first two are always undefined on a real response. Without the third
+    // the edit form loaded an event, found no venue, never fetched that venue's
+    // seat map, and told the organiser "No seats in this venue" about a venue
+    // with fifty of them.
+    venue_id: e.venue_id ?? e.venueId ?? e.venue?.id ?? null,
     venue: e.venue, // Keep the venue object!
     inventory_mode: e.inventory_mode ?? e.inventoryMode,
     slug: e.slug,

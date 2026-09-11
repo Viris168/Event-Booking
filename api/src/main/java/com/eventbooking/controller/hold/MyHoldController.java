@@ -1,11 +1,11 @@
 package com.eventbooking.controller.hold;
 
+import com.eventbooking.security.CurrentUserId;
 import com.eventbooking.dto.hold.HoldResponse;
 import com.eventbooking.service.hold.HoldService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -29,7 +29,7 @@ public class MyHoldController {
      */
     @GetMapping("/my-active-hold")
     public ResponseEntity<List<HoldResponse>> getMyActiveHold(
-            @RequestHeader("X-User-Id") Long userId) {
+            @CurrentUserId Long userId) {
         return ResponseEntity.ok(holdService.getMyActiveHolds(userId));
     }
 }

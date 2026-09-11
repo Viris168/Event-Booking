@@ -1,0 +1,47 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  # ── Spring Boot API — host log file ───────────────────────────────────────
+  # The Spring Boot app runs on the HOST (not in Docker).
+  # Logback writes to logs/app.log in the repo root.
+  # We mount that directory into the Promtail container as /host-logs
+  # so Promtail can tail it directly — no Docker socket needed.
+  - job_name: event-booking-api
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          # Labels that appear on every log line in Loki
+          application: event-booking-api
+          env: local
+          # __path__ tells Promtail which file(s) to tail
+          __path__: /host-logs/app*.log
+
+    pipeline_stages:
+      # Parse multi-line stack traces — a new log entry starts with a timestamp
+      - multiline:
+          firstline: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}'
+          max_wait_time: 3s
+
+      # Extract fields from Spring Boot log format:
+      # 2026-09-11T12:00:00.000  INFO 12345 --- [main] c.e.MyClass : message
+      - regex:
+          expression: '^(?P<timestamp>\S+)\s+(?P<level>\w+)\s+(?P<pid>\d+)\s+---\s+\[(?P<thread>[^\]]+)\]\s+(?P<logger>\S+)\s*:\s+(?P<message>.*)'
+
+      # Promote log level to a Loki label so you can filter cheaply in Grafana
+      - labels:
+          level:
+
+      # Drop DEBUG and TRACE in local to keep Loki storage lean
+      # Remove this stage if you want all log levels
+      - drop:
+          source: level
+          expression: "DEBUG|TRACE"

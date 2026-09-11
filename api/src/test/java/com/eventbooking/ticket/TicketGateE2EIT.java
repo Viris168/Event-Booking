@@ -8,6 +8,8 @@ import com.eventbooking.repository.EventRepository;
 import com.eventbooking.repository.OrganizerProfileRepository;
 import com.eventbooking.repository.ScanLogRepository;
 import com.eventbooking.repository.TicketRepository;
+import com.eventbooking.Enumeration.Role;
+import com.eventbooking.security.AppUserPrincipal;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.MethodOrderer;
@@ -21,7 +23,9 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.WebApplicationContext;
@@ -34,6 +38,8 @@ import com.eventbooking.dto.booking.CheckoutRequest;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
+import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 
 /**
  * The whole gate, end to end, over real HTTP against a real Postgres.
@@ -144,9 +150,39 @@ class TicketGateE2EIT {
 
     private MockMvc mvc() {
         if (mvc == null) {
-            mvc = MockMvcBuilders.webAppContextSetup(context).build();
+            // .apply(springSecurity()) installs the real filter chain. Without
+            // it these requests would skip authorization entirely and the suite
+            // would keep passing while every endpoint it touches was wide open.
+            mvc = MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build();
         }
         return mvc;
+    }
+
+    /**
+     * Signs a request as a given {@code app_user.id}.
+     *
+     * <p>Replaces the {@code X-User-Id} header these tests used to send. The
+     * header is gone because the API no longer lets a caller assert who they
+     * are; what the controllers read is the authenticated principal, so a test
+     * has to put one in the context rather than set a string.
+     *
+     * <p>The role is carried honestly - CUSTOMER for buyers, ORGANIZER for the
+     * gate operator. The ticket endpoints authorize on ownership rather than on
+     * role today, but a principal that lied about its role would make this suite
+     * blind to the first rule that does check one.
+     */
+    private static RequestPostProcessor as(Long userId, Role role) {
+        AppUserPrincipal principal = new AppUserPrincipal(userId, "+8559999" + userId, role, false);
+        return authentication(new UsernamePasswordAuthenticationToken(
+                principal, null, principal.getAuthorities()));
+    }
+
+    private static RequestPostProcessor asBuyer(Long userId) {
+        return as(userId, Role.CUSTOMER);
+    }
+
+    private static RequestPostProcessor asOperator(String userId) {
+        return as(Long.valueOf(userId), Role.ORGANIZER);
     }
 
     // ==================================================================
@@ -245,7 +281,7 @@ class TicketGateE2EIT {
     @Order(2)
     void theOwnerReadsTheirTicketsAndGetsARealSignedPayload() throws Exception {
         String body = mvc().perform(get("/api/v1/bookings/{id}/tickets", soloBookingId)
-                        .header("X-User-Id", buyerIds.get(soloBookingId)))
+                        .with(asBuyer(buyerIds.get(soloBookingId))))
                 .andReturn().getResponse().getContentAsString();
 
         JsonNode tickets = JSON.readTree(body);
@@ -259,7 +295,7 @@ class TicketGateE2EIT {
 
         JsonNode partyBody = JSON.readTree(
                 mvc().perform(get("/api/v1/bookings/{id}/tickets", partyBookingId)
-                                .header("X-User-Id", buyerIds.get(partyBookingId)))
+                                .with(asBuyer(buyerIds.get(partyBookingId))))
                         .andReturn().getResponse().getContentAsString());
         partyPayloads = partyBody.findValuesAsText("qr_payload");
         assertThat(partyPayloads).hasSize(3).doesNotHaveDuplicates();
@@ -271,7 +307,7 @@ class TicketGateE2EIT {
         Long ticketId = ticketRepository.findByBookingId(soloBookingId).getFirst().getId();
 
         var response = mvc().perform(get("/api/v1/tickets/{id}/qr.svg", ticketId)
-                        .header("X-User-Id", buyerIds.get(soloBookingId))
+                        .with(asBuyer(buyerIds.get(soloBookingId)))
                         .param("size", "320"))
                 .andReturn().getResponse();
 
@@ -306,7 +342,7 @@ class TicketGateE2EIT {
     @Order(5)
     void aScanThatNamesNoEventIsRejected() throws Exception {
         mvc().perform(post("/api/v1/tickets/scan")
-                        .header("X-User-Id", operator)
+                        .with(asOperator(operator))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"payload\":\"" + soloPayload + "\"}"))
                 .andExpect(status().isBadRequest());
@@ -478,7 +514,7 @@ class TicketGateE2EIT {
         Long ticketId = ticketRepository.findByBookingId(soloBookingId).getFirst().getId();
 
         mvc().perform(post("/api/v1/tickets/{id}/check-in/undo", ticketId)
-                        .header("X-User-Id", operator)
+                        .with(asOperator(operator))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"event_id\":" + eventId + ",\"reason\":\"Scanned the wrong person\"}"))
                 .andExpect(status().isOk());
@@ -497,7 +533,7 @@ class TicketGateE2EIT {
     void statsAndTheAuditTrailReflectEverythingThatHappened() throws Exception {
         JsonNode stats = JSON.readTree(
                 mvc().perform(get("/api/v1/events/{id}/check-in-stats", eventId)
-                                .header("X-User-Id", operator))
+                                .with(asOperator(operator)))
                         .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
 
         assertThat(stats.get("tickets_issued").asLong()).isGreaterThanOrEqualTo(4);
@@ -506,7 +542,7 @@ class TicketGateE2EIT {
                 .as("MALFORMED, BAD_SIGNATURE and the ALREADY_CHECKED_INs")
                 .isGreaterThanOrEqualTo(4);
 
-        mvc().perform(get("/api/v1/events/{id}/check-ins", eventId).header("X-User-Id", operator))
+        mvc().perform(get("/api/v1/events/{id}/check-ins", eventId).with(asOperator(operator)))
                 .andExpect(status().isOk());
 
         // The fraud signal: a refused code leaves a row even though it touched
@@ -540,7 +576,7 @@ class TicketGateE2EIT {
     private static org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder
             scan(String payload, Long event, String userId) {
         return post("/api/v1/tickets/scan")
-                .header("X-User-Id", userId)
+                .with(asBuyer(Long.valueOf(userId)))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"payload\":\"" + payload + "\",\"event_id\":" + event + "}");
     }
@@ -550,7 +586,7 @@ class TicketGateE2EIT {
         String body = "{\"payload\":\"" + payload + "\",\"event_id\":" + event
                 + (ticketIds == null ? "" : ",\"ticket_ids\":[" + ticketIds + "]") + "}";
         return post("/api/v1/tickets/scan/group/" + leg)
-                .header("X-User-Id", userId)
+                .with(asBuyer(Long.valueOf(userId)))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body);
     }

@@ -11,3 +11,9 @@ app:
     # it is forgeable by anyone with the repo — which is fine for a laptop and
     # is exactly why it must never be the value a deployment falls back to.
     signing-secret: ${TICKET_SIGNING_SECRET:dev-only-ticket-secret-not-for-any-real-event}
+
+  jwt:
+    # Dev-only, and public by virtue of being in this file. Anyone with the repo
+    # can forge a token signed with it - fine for a laptop, and exactly why
+    # JwtSecretGuard makes it impossible for a deployment to fall back here.
+    secret: ${JWT_SECRET:dev-only-jwt-secret-not-for-any-deployment-32+}

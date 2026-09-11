@@ -18,7 +18,7 @@ item). What's left on your side is login, the queue endpoint, and the page.
 |---|---|---|
 | 1 | **Reseed the demo passwords** — §1 | Blocks your own login work; nobody can sign in today |
 | 2 | **Lock down `SecurityConfig`** (#20) — §2 | Every endpoint is still `permitAll`; the header→principal swap goes with it |
-| 3 | **`GET /event?status=`** — §3 | Four lines; the queue page can't be built without it |
+| 3 | **`GET /events?status=`** — §3 | Four lines; the queue page can't be built without it |
 | 4 | **The admin page** — §4 | The actual screen. Consider a new `/admin/review` route |
 
 Sections 5–8 are reference — read them when you need them, not before starting.
@@ -88,12 +88,16 @@ because you can now write role rules that actually line up with the code:
 | `VenueSeatController` | POST — organiser | GET — public |
 | `AdminEventController` | all — **admin** | — |
 
-**One trap when you write path matchers.** `EventSeatController` uses
-`/api/v1/events/{id}/seats` — *plural* — for its write, while its own read and
-the entire rest of the API are singular `/api/v1/event/...`. A rule written
-against `/api/v1/event/**` silently misses that POST. I left the spelling alone
-because the React client calls both and renaming is its own change; just don't
-let a matcher assume consistency that isn't there.
+**Paths are now consistently plural**, which makes your matchers writable as
+one rule. Every event-scoped route is `/api/v1/events/...` and every admin route
+is `/api/v1/admin/events/...`. This used to be split - `EventSeatController`
+wrote to `/events/{id}/seats` while reading from `/event/{id}/seat-map`, and
+zones, seat classes and the event collection itself were singular - so a matcher
+on `/api/v1/event/**` silently missed four routes. That is fixed; `/api/v1/event`
+(singular) now matches nothing at all.
+
+Zone-scoped routes stay `/api/v1/zone/{id}` because they hang off a zone, not an
+event.
 
 **These controllers have no `X-User-Id` and that is correct** — genuinely public
 or machine-called: `HealthController`, `ProvinceController`,
@@ -124,7 +128,7 @@ what happens without it.
 
 ## 3. Task 3 — the queue endpoint
 
-`GET /api/v1/event` currently takes only `page` and `size`:
+`GET /api/v1/events` currently takes only `page` and `size`:
 
 ```java
 public ResponseEntity<Page<EventResponse>> listEvents(
@@ -239,14 +243,14 @@ after approval could neither fix it nor abandon it.
 ### The endpoints
 
 ```
-PATCH /api/v1/event/{id}/submit                   organiser
-PATCH /api/v1/event/{id}/withdraw                 organiser
-GET   /api/v1/event/{id}/review                   history, with diffs
+PATCH /api/v1/events/{id}/submit                   organiser
+PATCH /api/v1/events/{id}/withdraw                 organiser
+GET   /api/v1/events/{id}/review                   history, with diffs
 
-PATCH /api/v1/admin/event/{id}/approve            admin
-PATCH /api/v1/admin/event/{id}/reject             admin + message
-PATCH /api/v1/admin/event/{id}/request-changes    admin + message
-PATCH /api/v1/admin/event/{id}/takedown           admin
+PATCH /api/v1/admin/events/{id}/approve            admin
+PATCH /api/v1/admin/events/{id}/reject             admin + message
+PATCH /api/v1/admin/events/{id}/request-changes    admin + message
+PATCH /api/v1/admin/events/{id}/takedown           admin
 ```
 
 Admin actions live on their own controller behind `AdminResolver`, which reads
@@ -266,7 +270,7 @@ needs ≥1 seat class each with ≥1 seat, MIXED needs both.
 
 ### Review history and diffs
 
-`GET /event/{id}/review` returns the `event_review` log, diffing each entry
+`GET /events/{id}/review` returns the `event_review` log, diffing each entry
 against the previous snapshot — so a re-review reads as "title_en changed"
 rather than as a second full read-through. Useful on the queue screen when an
 event comes back after `CHANGES_REQUESTED`.

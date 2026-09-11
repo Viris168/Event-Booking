@@ -1,3 +1,15 @@
+# ── Port binding ──────────────────────────────────────────────────────────
+# Every port below is published on ${BIND_ADDRESS:-127.0.0.1} - the loopback
+# interface - not on 0.0.0.0. Docker publishes to all interfaces by default,
+# and Docker's own iptables rules sit in FRONT of ufw/firewalld, so a "firewalled"
+# host with these containers running still had Postgres, pgAdmin, Prometheus,
+# Loki and Grafana answering the internet, several of them on admin/admin.
+#
+# Reach them from another machine over an SSH tunnel:
+#   ssh -L 53000:localhost:53000 user@server     # then http://localhost:53000
+#
+# Setting BIND_ADDRESS=0.0.0.0 undoes all of this. Do it only behind a network
+# you control, and never while any of the default passwords are still in place.
 services:
   postgres:
     image: postgres:16-alpine
@@ -12,7 +24,7 @@ services:
       # with other Postgres containers you already have running in Docker
       # Desktop. Container-internal port stays 5432 - only the host side
       # (left of the colon) needed to move.
-      - "${DB_PORT:-55432}:5432"
+      - "${BIND_ADDRESS:-127.0.0.1}:${DB_PORT:-55432}:5432"
     volumes:
       - event_booking_pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -35,7 +47,7 @@ services:
     ports:
       # Also non-default (pgAdmin's usual convention is 5050) for the same
       # collision-avoidance reason as the DB port above.
-      - "${PGADMIN_PORT:-55050}:80"
+      - "${BIND_ADDRESS:-127.0.0.1}:${PGADMIN_PORT:-55050}:80"
     volumes:
       - event_booking_pgadmin:/var/lib/pgadmin
       # Pre-registers the "Event Booking (local)" connection so it shows up
@@ -56,7 +68,7 @@ services:
     ports:
       # Non-default host port to avoid colliding with another Prometheus
       # you might be running. Container internal port stays 9090.
-      - "${PROMETHEUS_PORT:-59090}:9090"
+      - "${BIND_ADDRESS:-127.0.0.1}:${PROMETHEUS_PORT:-59090}:9090"
     volumes:
       # Scrape configuration — which targets Prometheus pulls from.
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
@@ -73,6 +85,46 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
+  # ── Loki — log aggregation backend ──────────────────────────────────────
+  # Stores and indexes log streams pushed by Promtail. Grafana queries it
+  # the same way it queries Prometheus — just a different datasource type.
+  loki:
+    image: grafana/loki:latest
+    container_name: event-booking-loki
+    restart: unless-stopped
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${LOKI_PORT:-53100}:3100"
+    volumes:
+      - ./monitoring/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - event_booking_loki:/loki
+    command: -config.file=/etc/loki/loki-config.yml
+
+  # ── Promtail — log shipper ────────────────────────────────────────────────
+  # Tails the Docker container logs of the Spring Boot app and ships them
+  # to Loki. Needs access to the Docker socket to discover containers.
+  promtail:
+    image: grafana/promtail:latest
+    container_name: event-booking-promtail
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/promtail/promtail-config.yml:/etc/promtail/promtail-config.yml:ro
+      # Mount the repo-root logs/ directory so Promtail can tail the Spring Boot
+      # log file written by the host process (app is NOT in Docker).
+      # Spring Boot writes to logs/app.log. Relative to THIS file, not to the
+      # shell - Compose resolves a leading ./ against the compose file's own
+      # directory, so it does not matter where you run docker compose from. The
+      # absolute /home/... path that used to be here worked on exactly one
+      # machine.
+      #
+      # Launching the API from api/ puts the log in api/logs instead; set
+      # LOGGING_FILE_PATH to the repo-root logs/app.log so both agree.
+      - ./logs:/host-logs:ro
+      # Promtail stores read positions here so it doesn't re-ship old logs
+      - event_booking_promtail:/tmp
+    command: -config.file=/etc/promtail/promtail-config.yml
+    depends_on:
+      - loki
+
   # Grafana reads from Prometheus and renders the dashboards.
   grafana:
     image: grafana/grafana:latest
@@ -80,24 +132,30 @@ services:
     restart: unless-stopped
     ports:
       # Non-default host port, same collision-avoidance reason as above.
-      - "${GRAFANA_PORT:-53000}:3000"
+      - "${BIND_ADDRESS:-127.0.0.1}:${GRAFANA_PORT:-53000}:3000"
     environment:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
       # Disable sign-up to keep the local UI clean.
       GF_USERS_ALLOW_SIGN_UP: "false"
+      # Enable Grafana unified alerting (required for provisioned alert rules)
+      GF_UNIFIED_ALERTING_ENABLED: "true"
+      GF_ALERTING_ENABLED: "false"
     volumes:
       # Persistent storage for dashboards you create/edit in the UI.
       - event_booking_grafana:/var/lib/grafana
-      # Auto-provisions the Prometheus datasource + the Spring Boot dashboard
-      # from ./monitoring/grafana/provisioning/ on first startup.
+      # Auto-provisions datasources, dashboards, and alert rules
+      # from ./monitoring/grafana/provisioning/ on every startup.
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
     depends_on:
       - prometheus
+      - loki
 
 volumes:
   event_booking_pgdata:
   event_booking_pgadmin:
   event_booking_prometheus:
   event_booking_grafana:
+  event_booking_loki:
+  event_booking_promtail:
 

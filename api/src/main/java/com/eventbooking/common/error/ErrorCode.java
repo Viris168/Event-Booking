@@ -39,6 +39,10 @@ public enum ErrorCode {
        or expired: the client's next move is the same in all three cases. */
     INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED),
     ACCOUNT_DISABLED(HttpStatus.UNAUTHORIZED),
+    /* No usable token on a request that needs one - missing, expired, forged,
+       or issued for a user who has since been deleted. The filter collapses all
+       four into "no authentication", and so does this. */
+    NOT_AUTHENTICATED(HttpStatus.UNAUTHORIZED),
 
     // 403 Forbidden
     NOT_AN_ORGANIZER(HttpStatus.FORBIDDEN),

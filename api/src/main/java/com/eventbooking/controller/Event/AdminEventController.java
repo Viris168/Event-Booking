@@ -1,5 +1,6 @@
 package com.eventbooking.controller.Event;
 
+import com.eventbooking.security.CurrentUserId;
 import com.eventbooking.dto.event.EventResponse;
 import com.eventbooking.dto.event.ReviewDecisionRequest;
 import com.eventbooking.security.AdminResolver;
@@ -23,7 +24,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @Slf4j
 @CrossOrigin
-@RequestMapping("/api/v1/admin/event")
+@RequestMapping("/api/v1/admin/events")
 public class AdminEventController {
 
     private final EventService eventService;
@@ -36,7 +37,7 @@ public class AdminEventController {
 
     @PatchMapping("/{id}/approve")
     public ResponseEntity<EventResponse> approve(
-            @RequestHeader("X-User-Id") Long actorUserId,
+            @CurrentUserId Long actorUserId,
             @PathVariable Long id) {
         Long adminUserId = adminResolver.requireAdminUserId(actorUserId);
         return new ResponseEntity<>(eventService.approve(adminUserId, id), HttpStatus.OK);
@@ -53,7 +54,7 @@ public class AdminEventController {
      */
     @PatchMapping("/{id}/takedown")
     public ResponseEntity<EventResponse> takeDown(
-            @RequestHeader("X-User-Id") Long actorUserId,
+            @CurrentUserId Long actorUserId,
             @PathVariable Long id) {
         adminResolver.requireAdminUserId(actorUserId);
         return new ResponseEntity<>(eventService.takeDownEvent(id), HttpStatus.OK);
@@ -61,7 +62,7 @@ public class AdminEventController {
 
     @PatchMapping("/{id}/reject")
     public ResponseEntity<EventResponse> reject(
-            @RequestHeader("X-User-Id") Long actorUserId,
+            @CurrentUserId Long actorUserId,
             @PathVariable Long id,
             @Valid @RequestBody ReviewDecisionRequest request) {
         Long adminUserId = adminResolver.requireAdminUserId(actorUserId);
@@ -70,7 +71,7 @@ public class AdminEventController {
 
     @PatchMapping("/{id}/request-changes")
     public ResponseEntity<EventResponse> requestChanges(
-            @RequestHeader("X-User-Id") Long actorUserId,
+            @CurrentUserId Long actorUserId,
             @PathVariable Long id,
             @Valid @RequestBody ReviewDecisionRequest request) {
         Long adminUserId = adminResolver.requireAdminUserId(actorUserId);

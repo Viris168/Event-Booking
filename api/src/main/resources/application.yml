@@ -24,6 +24,12 @@ spring:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/event_booking}
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:postgres}
+    hikari:
+      # Increased from the default 10 to handle concurrent load.
+      # Rule of thumb: (CPU cores × 2) + effective spindle count.
+      # 20 is a safe ceiling for a dev machine; tune down in prod based on DB limits.
+      maximum-pool-size: ${HIKARI_MAX_POOL_SIZE:20}
+      minimum-idle: ${HIKARI_MIN_IDLE:5}
 
   # Flyway owns the schema. It runs everything in
   # src/main/resources/db/migration (V1__schema.sql, V2__..., ...) in order
@@ -200,6 +206,26 @@ payway:
     fixed-delay-ms: 60000
     after-minutes: 1
 
+# ── Logging ────────────────────────────────────────────
+# Write logs to a file so Promtail (running in Docker) can tail them.
+# The file path is relative to the process working directory.
+# When launched with `mvn spring-boot:run` from api/ this resolves to
+# api/logs/app.log; from the repo root it resolves to logs/app.log.
+# Promtail mounts the repo-root logs/ directory, so both paths work
+# as long as LOGGING_FILE_PATH points at the same absolute location.
+logging:
+  file:
+    name: ${LOGGING_FILE_PATH:logs/app.log}
+  pattern:
+    # Standard Spring Boot pattern — Promtail's regex is written for this format
+    file: "%d{yyyy-MM-dd'T'HH:mm:ss.SSS} %5p ${PID} --- [%15.15t] %-40.40logger{39} : %m%n%wEx"
+  logback:
+    rollingpolicy:
+      # Rotate daily, keep 7 days, max 50 MB per file
+      max-file-size: 50MB
+      max-history: 7
+      clean-history-on-start: false
+
 # ── Observability (Actuator + Prometheus) ──────────────
 management:
   endpoints:
@@ -217,3 +243,15 @@ management:
       # Tags every metric with the app name so Grafana can filter by
       # application when multiple services share the same Prometheus.
       application: ${spring.application.name}
+    distribution:
+      # Enable full histogram buckets for HTTP requests.
+      # This makes Apdex Score, Top 5 Slowest Endpoints, and p50/p95/p99
+      # panels in Grafana populate with real data.
+      percentiles-histogram:
+        http.server.requests: true
+      # Also publish explicit percentiles to Prometheus (p50, p95, p99)
+      percentiles:
+        http.server.requests: 0.5, 0.95, 0.99
+      # SLO buckets aligned with Apdex thresholds (0.5s satisfied, 2s tolerating)
+      slo:
+        http.server.requests: 100ms, 250ms, 500ms, 1s, 2s, 5s

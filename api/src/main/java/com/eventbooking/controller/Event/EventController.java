@@ -1,5 +1,6 @@
 package com.eventbooking.controller.Event;
 
+import com.eventbooking.security.CurrentUserId;
 import com.eventbooking.Enumeration.ImageRole;
 import com.eventbooking.dto.event.CreateEventRequest;
 import com.eventbooking.dto.event.EventResponse;
@@ -20,18 +21,17 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 @Slf4j
 @CrossOrigin
-@RequestMapping(value = "/api/v1/event")
+@RequestMapping(value = "/api/v1/events")
 public class EventController {
 
     private final EventService eventService;
     private final OrganizerResolver organizerResolver;
 
     /**
-     * X-User-Id is an app_user id and is still unauthenticated - anyone can
-     * send any value. What changed is that it is no longer the OWNER id: the
-     * resolver turns it into an organizer_profile id and rejects callers who
-     * have no profile. When the JWT filter lands, the header is replaced by
-     * the principal here and nothing below this class moves.
+     * The actor id is an app_user id taken from the verified token, never the
+     * OWNER id: the resolver turns it into an organizer_profile id and rejects
+     * callers who have no profile. Two id spaces that look identical on the
+     * wire, which is why the translation lives in one place.
      */
     public EventController(EventService eventService, OrganizerResolver organizerResolver) {
         this.eventService = eventService;
@@ -40,7 +40,7 @@ public class EventController {
 
     @PostMapping
     public ResponseEntity<EventResponse> createEvent(
-            @RequestHeader("X-User-Id") Long actorUserId,
+            @CurrentUserId Long actorUserId,
             @Valid @RequestBody CreateEventRequest eventRequest) {
         Long organizerId = organizerResolver.requireOrganizerId(actorUserId);
         EventResponse eventResponse = eventService.createEvent(organizerId, eventRequest);
@@ -63,7 +63,7 @@ public class EventController {
 
     @PatchMapping("/{id}")
     public ResponseEntity<EventResponse> updateEvent(
-            @RequestHeader("X-User-Id") Long actorUserId,
+            @CurrentUserId Long actorUserId,
             @PathVariable Long id,
             @Valid @RequestBody UpdateEventRequest request) {
         Long organizerId = organizerResolver.requireOrganizerId(actorUserId);
@@ -79,7 +79,7 @@ public class EventController {
      */
     @PatchMapping("/{id}/submit")
     public ResponseEntity<EventResponse> submitForReview(
-            @RequestHeader("X-User-Id") Long actorUserId,
+            @CurrentUserId Long actorUserId,
             @PathVariable Long id) {
         Long organizerId = organizerResolver.requireOrganizerId(actorUserId);
         return new ResponseEntity<>(eventService.submitForReview(organizerId, id, actorUserId), HttpStatus.OK);
@@ -88,7 +88,7 @@ public class EventController {
     /** Take it back out of the queue - or out of APPROVED, to fix something. */
     @PatchMapping("/{id}/withdraw")
     public ResponseEntity<EventResponse> withdrawFromReview(
-            @RequestHeader("X-User-Id") Long actorUserId,
+            @CurrentUserId Long actorUserId,
             @PathVariable Long id) {
         Long organizerId = organizerResolver.requireOrganizerId(actorUserId);
         return new ResponseEntity<>(eventService.withdrawFromReview(organizerId, id, actorUserId), HttpStatus.OK);
@@ -96,7 +96,7 @@ public class EventController {
 
     @PatchMapping("/{id}/publish")
     public ResponseEntity<EventResponse> publishEvent(
-            @RequestHeader("X-User-Id") Long actorUserId,
+            @CurrentUserId Long actorUserId,
             @PathVariable Long id) {
         Long organizerId = organizerResolver.requireOrganizerId(actorUserId);
         EventResponse updatedEvent = eventService.publishEvent(organizerId, id);
@@ -113,7 +113,7 @@ public class EventController {
      */
     @PostMapping(value = "/{id}/image", consumes = "multipart/form-data")
     public ResponseEntity<EventResponse> uploadEventImage(
-            @RequestHeader("X-User-Id") Long actorUserId,
+            @CurrentUserId Long actorUserId,
             @PathVariable Long id,
             @RequestParam(defaultValue = "COVER") ImageRole role,
             @RequestParam("file") MultipartFile file) {
@@ -123,7 +123,7 @@ public class EventController {
 
     @DeleteMapping("/{id}/image")
     public ResponseEntity<EventResponse> deleteEventImage(
-            @RequestHeader("X-User-Id") Long actorUserId,
+            @CurrentUserId Long actorUserId,
             @PathVariable Long id,
             @RequestParam(defaultValue = "COVER") ImageRole role) {
         Long organizerId = organizerResolver.requireOrganizerId(actorUserId);
