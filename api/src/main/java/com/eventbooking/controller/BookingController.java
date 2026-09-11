@@ -1,5 +1,6 @@
 package com.eventbooking.controller;
 
+import com.eventbooking.security.CurrentUserId;
 import com.eventbooking.booking.BookingService;
 import com.eventbooking.dto.booking.BookingResponse;
 import com.eventbooking.dto.booking.CheckoutRequest;
@@ -14,7 +15,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -62,7 +62,7 @@ public class BookingController {
     })
     public BookingResponse checkout(
             @Parameter(description = "Stand-in for the authenticated user until JWT lands", example = "1")
-            @RequestHeader("X-User-Id") Long actorUserId,
+            @CurrentUserId Long actorUserId,
             @Valid @RequestBody CheckoutRequest request) {
 
         return bookingService.checkout(request, actorUserId);
@@ -72,7 +72,7 @@ public class BookingController {
     @Operation(summary = "The caller's bookings, newest first")
     public List<BookingResponse> myBookings(
             @Parameter(description = "Stand-in for the authenticated user until JWT lands", example = "1")
-            @RequestHeader("X-User-Id") Long actorUserId,
+            @CurrentUserId Long actorUserId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
 
@@ -87,7 +87,7 @@ public class BookingController {
     public BookingResponse getBooking(
             @PathVariable Long bookingId,
             @Parameter(description = "Stand-in for the authenticated user until JWT lands", example = "1")
-            @RequestHeader("X-User-Id") Long actorUserId) {
+            @CurrentUserId Long actorUserId) {
 
         return bookingService.getResponseForUser(bookingId, actorUserId);
     }

@@ -77,7 +77,7 @@ public class DatabaseSeeder implements CommandLineRunner {
         if (organizerUsers.isEmpty()) {
             organizerUsers.add(userRepository.save(AppUser.builder()
                     .phoneE164("+85599990001")
-                    .passwordHash("hashed-password")
+                    .passwordHash("$2a$10$YGBHNV6zrTujC5bIsCGFr.9WojCiuxYzNEX.r3cYdyQfJfxIMIk0K")
                     .displayName("Dev Organizer")
                     .role(Role.ORGANIZER)
                     .isDisabled(false)

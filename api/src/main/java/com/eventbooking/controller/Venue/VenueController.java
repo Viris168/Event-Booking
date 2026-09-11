@@ -1,5 +1,6 @@
 package com.eventbooking.controller.Venue;
 
+import com.eventbooking.security.CurrentUserId;
 import com.eventbooking.dto.venue.CreateVenueRequest;
 import com.eventbooking.dto.venue.UpdateVenueRequest;
 import com.eventbooking.dto.venue.VenueResponse;
@@ -28,7 +29,7 @@ public class VenueController {
 
     @PostMapping
     public ResponseEntity<VenueResponse> createVenue(
-            @RequestHeader("X-User-Id") Long actorUserId,
+            @CurrentUserId Long actorUserId,
             @Valid @RequestBody CreateVenueRequest venue) {
         Long organizerId = organizerResolver.requireOrganizerId(actorUserId);
         VenueResponse v = venueService.createVenue(organizerId, venue);
@@ -48,7 +49,7 @@ public class VenueController {
 
     @PatchMapping("/{id}")
     public ResponseEntity<VenueResponse> updateVenue(
-            @RequestHeader("X-User-Id") Long actorUserId,
+            @CurrentUserId Long actorUserId,
             @PathVariable Long id,
             @Valid @RequestBody UpdateVenueRequest request) {
         Long organizerId = organizerResolver.requireOrganizerId(actorUserId);
@@ -58,7 +59,7 @@ public class VenueController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteVenue(
-            @RequestHeader("X-User-Id") Long actorUserId,
+            @CurrentUserId Long actorUserId,
             @PathVariable Long id) {
         Long organizerId = organizerResolver.requireOrganizerId(actorUserId);
         venueService.deactivateVenue(organizerId, id);

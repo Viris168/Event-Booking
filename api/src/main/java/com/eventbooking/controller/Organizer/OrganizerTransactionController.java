@@ -1,5 +1,6 @@
 package com.eventbooking.controller.Organizer;
 
+import com.eventbooking.security.CurrentUserId;
 import com.eventbooking.Enumeration.BookingStatus;
 import com.eventbooking.dto.booking.MonthlyRevenueResponse;
 import com.eventbooking.dto.booking.OrganizerTransactionResponse;
@@ -43,7 +44,7 @@ public class OrganizerTransactionController {
      */
     @GetMapping("/monthly")
     public ResponseEntity<List<MonthlyRevenueResponse>> monthlyRevenue(
-            @RequestHeader("X-User-Id") Long actorUserId,
+            @CurrentUserId Long actorUserId,
             @RequestParam(defaultValue = "12") int months) {
         Long organizerId = organizerResolver.requireOrganizerId(actorUserId);
         return new ResponseEntity<>(
@@ -52,7 +53,7 @@ public class OrganizerTransactionController {
 
     @GetMapping
     public ResponseEntity<Page<OrganizerTransactionResponse>> list(
-            @RequestHeader("X-User-Id") Long actorUserId,
+            @CurrentUserId Long actorUserId,
             @RequestParam(required = false) Long eventId,
             @RequestParam(required = false) BookingStatus state,
             @RequestParam(defaultValue = "0") int page,

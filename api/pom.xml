@@ -30,7 +30,6 @@
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
         <jjwt.version>0.12.6</jjwt.version>
-        <testcontainers.version>1.20.4</testcontainers.version>
         <!-- springdoc 3.x is the Spring Boot 4 / Spring Framework 7 line.
              The 2.x releases target Boot 3 and will not start here. -->
         <springdoc.version>3.0.2</springdoc.version>
@@ -40,20 +39,6 @@
         <commons-io.version>2.22.0</commons-io.version>
     <kotlin.version>2.3.10</kotlin.version>
     </properties>
-
-    <dependencyManagement>
-        <dependencies>
-            <!-- Testcontainers BOM: keeps testcontainers-* and junit-jupiter module
-                 versions aligned so they don't drift independently. -->
-            <dependency>
-                <groupId>org.testcontainers</groupId>
-                <artifactId>testcontainers-bom</artifactId>
-                <version>${testcontainers.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
 
     <dependencies>
         <!-- Web / REST -->
@@ -210,15 +195,36 @@
         <!-- Testcontainers: spins up a real Postgres in Docker per test run,
              so plpgsql triggers, partial indexes and CHECK constraints from
              V1__schema.sql are actually exercised. H2 can't run any of those,
-             which is why it was dropped from the runtime deps above. -->
+             which is why it was dropped from the runtime deps above.
+
+             DELIBERATELY UNVERSIONED. The Spring Boot BOM manages Testcontainers,
+             and pinning it here to a 1.x release is what broke every IT in this
+             project: Testcontainers 1.x negotiates with the Docker daemon using a
+             hardcoded API version of 1.32, and Docker Engine 25+ refuses anything
+             below 1.40 outright -
+
+                 400 Bad Request: client version 1.32 is too old.
+                 Minimum supported API version is 1.40
+
+             The strategy probe caches that failure, so the suite does not fail a
+             test - it fails to find Docker at all, and every IT errors identically
+             with "Could not find a valid Docker environment". Nothing in the
+             message points at the version pin, which is why this comment exists.
+
+             Setting DOCKER_API_VERSION does not help: 1.x hardcodes the ping and
+             never reads it. The only fix is 2.x, so let the BOM choose and this
+             cannot silently drift backwards again.
+
+             2.x also renamed these artifacts - `postgresql` became
+             `testcontainers-postgresql` - which is why the ids below changed. -->
         <dependency>
             <groupId>org.testcontainers</groupId>
-            <artifactId>junit-jupiter</artifactId>
+            <artifactId>testcontainers-junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
-            <artifactId>postgresql</artifactId>
+            <artifactId>testcontainers-postgresql</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>

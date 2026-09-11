@@ -1,13 +1,13 @@
 package com.eventbooking.config;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.eventbooking.security.JwtAuthenticationFilter;
+import com.eventbooking.security.RestAuthenticationEntryPoint;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import com.eventbooking.security.JwtAuthenticationFilter;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -19,59 +19,142 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.List;
 
 /**
- * Opens the API up while there is no authentication to enforce.
+ * Who may call what.
  *
- * <p><b>Why this file exists at all.</b> spring-boot-starter-security is on the
- * classpath, and with no {@code SecurityFilterChain} bean Boot installs its own:
- * every endpoint behind HTTP Basic, with a password printed once at startup.
- * Nothing in this application ever authenticated against that - callers identify
- * themselves with an {@code X-User-Id} header - so the default was not securing
- * anything, only making the API and Swagger UI unreachable.
+ * <p><b>Deny by default.</b> The last rule is {@code anyRequest().authenticated()},
+ * so anything not named above it needs a token. That ordering is the whole
+ * design: a new endpoint added next month is private until someone deliberately
+ * makes it public, rather than public until someone notices. The previous
+ * version of this file ended in {@code anyRequest().permitAll()}, which meant
+ * every write in the application - approving an event, generating seat
+ * inventory, deactivating a zone - was reachable by anyone who knew the URL,
+ * with the caller's identity taken from an {@code X-User-Id} header they typed
+ * themselves.
  *
- * <p><b>What replaces it.</b> The auth lane's JWT filter and its real rules.
- * When that lands, this chain becomes the {@code permitAll} list for the public
- * endpoints (login, register, health, the docs) and everything else moves to
- * {@code authenticated()}, with {@code X-User-Id} dropped in favour of the
- * principal. The service layer already takes an actor id per call, so nothing
- * below the controllers changes.
+ * <p><b>What stays public, and why.</b> Reading the catalogue: events, zones,
+ * seat classes, seat maps, availability, venues, provinces. None of it is
+ * private - it is what is on sale - and requiring a token to browse would mean
+ * nobody could decide to buy without an account. Everything that names a person
+ * (holds, bookings, tickets, check-ins, organiser dashboards, moderation) is
+ * authenticated, including the GETs.
+ *
+ * <p><b>Why the public list is enumerated rather than pattern-matched.</b> A
+ * tempting shortcut is "permit all GETs under /api/v1/events/**". It is wrong:
+ * {@code GET /api/v1/events/{id}/holds/{holdId}} and
+ * {@code GET /api/v1/events/{id}/check-in-stats} both live under that prefix and
+ * both belong to a specific person. Matching on shape rather than on meaning is
+ * how a rule quietly grants more than it reads like it does.
  *
  * <p>CSRF is off and sessions are stateless because this is a token API serving
- * a separate SPA origin: there is no cookie to forge a request with, which is
- * the thing CSRF protection defends.
+ * a separate SPA origin: credentials travel in an {@code Authorization} header
+ * the browser does not attach automatically, so there is no ambient cookie for a
+ * cross-site request to ride on - which is the thing CSRF protection defends.
  */
 @Configuration
 public class SecurityConfig {
 
-    private static final Logger log = LoggerFactory.getLogger(SecurityConfig.class);
+    /**
+     * Readable without signing in. Every entry is a catalogue read; see the
+     * class note for why this is a list and not a wildcard.
+     */
+    private static final String[] PUBLIC_GETS = {
+            "/api/v1/health",
+            "/api/v1/province",
+            "/api/v1/events",
+            "/api/v1/events/{id}",
+            "/api/v1/events/{id}/verify",
+            "/api/v1/events/{id}/zone",
+            "/api/v1/events/{id}/seat-map",
+            "/api/v1/events/{id}/seat-class",
+            "/api/v1/events/{id}/seat-class/{seatClassId}",
+            "/api/v1/events/{id}/seats/availability",
+            "/api/v1/events/{id}/availability",
+            "/api/v1/zone/{id}",
+            "/api/v1/zone/{id}/availability",
+            "/api/v1/venue",
+            "/api/v1/venue/{id}",
+            "/api/v1/venue/{id}/seats",
+    };
+
+    /**
+     * The API description and the page that renders it. Harmless on a laptop and
+     * a free map of the attack surface on a public host, so it is worth turning
+     * off there - hence the switch rather than a hardcoded permit.
+     */
+    private static final String[] DOCS = {
+            "/swagger-ui.html",
+            "/swagger-ui/**",
+            "/v3/api-docs",
+            "/v3/api-docs/**",
+    };
 
     private final List<String> allowedOrigins;
+    private final boolean docsPublic;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final RestAuthenticationEntryPoint authenticationEntryPoint;
 
     public SecurityConfig(@Value("${app.cors.allowed-origins}") List<String> allowedOrigins,
-                          JwtAuthenticationFilter jwtAuthenticationFilter) {
+                          @Value("${app.docs.public:false}") boolean docsPublic,
+                          JwtAuthenticationFilter jwtAuthenticationFilter,
+                          RestAuthenticationEntryPoint authenticationEntryPoint) {
         this.allowedOrigins = allowedOrigins;
+        this.docsPublic = docsPublic;
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.authenticationEntryPoint = authenticationEntryPoint;
     }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        log.warn("Security is wide open: every endpoint still permits all callers, and the "
-                + "inventory and booking lanes read the actor from X-User-Id. A Bearer token is "
-                + "now honoured when present, but nothing requires one yet - tighten these rules "
-                + "in #20, together with the lanes that depend on the header.");
-
         http
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                // Still permitAll everywhere, so the inventory and booking lanes
-                // keep working through X-User-Id. /auth/** is listed explicitly
-                // anyway: it has to stay public when the rest is tightened in
-                // #20, and writing it now means that change is one line rather
-                // than a puzzle about which paths login needs.
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/v1/auth/**").permitAll()
-                        .anyRequest().permitAll())
+
+                .authorizeHttpRequests(auth -> {
+                    // Sign-in itself cannot require being signed in. /auth/me is
+                    // deliberately NOT in here - it is the one endpoint under
+                    // /auth that answers a question only a token can pose.
+                    auth.requestMatchers(HttpMethod.POST,
+                            "/api/v1/auth/register",
+                            "/api/v1/auth/login",
+                            "/api/v1/auth/refresh",
+                            "/api/v1/auth/logout").permitAll();
+
+                    // The browser sends a credential-less OPTIONS before any
+                    // cross-origin request with an Authorization header. Rejecting
+                    // it means the real request is never sent, and the failure
+                    // surfaces as an opaque CORS error rather than a 401.
+                    auth.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll();
+
+                    auth.requestMatchers(HttpMethod.GET, PUBLIC_GETS).permitAll();
+
+                    // The ABA PayWay return page. The gateway redirects the
+                    // customer's browser here after approval, carrying no token
+                    // of ours - it never had one.
+                    auth.requestMatchers(HttpMethod.GET, "/checkout").permitAll();
+
+                    // Liveness and the scrape endpoint. /actuator/metrics and
+                    // anything Boot adds later are NOT listed, so they fall
+                    // through to authenticated() below - an actuator endpoint
+                    // should have to be named to be exposed.
+                    auth.requestMatchers(HttpMethod.GET,
+                            "/actuator/health",
+                            "/actuator/health/**",
+                            "/actuator/prometheus").permitAll();
+
+                    if (docsPublic) {
+                        auth.requestMatchers(DOCS).permitAll();
+                    }
+
+                    auth.anyRequest().authenticated();
+                })
+
+                // Without this, an unauthenticated call to a protected endpoint
+                // returns Spring's own 403 HTML page. The client cannot tell that
+                // from a genuine permission failure, so it never knows to refresh
+                // its token - it just reports "forbidden" and stops.
+                .exceptionHandling(ex -> ex.authenticationEntryPoint(authenticationEntryPoint))
+
                 // Ahead of UsernamePasswordAuthenticationFilter, which is where form
                 // login would sit. That slot has no meaning for a token API, but it
                 // is the conventional anchor point and guarantees the context is
@@ -81,11 +164,6 @@ public class SecurityConfig {
         return http.build();
     }
 
-    /**
-     * Lets the Vite dev server call the API from its own origin. The list comes
-     * from {@code app.cors.allowed-origins}, which has been sitting in
-     * application.yml unused - this is what finally reads it.
-     */
     /**
      * How passwords are hashed and checked. BCrypt generates its own random salt
      * per password and stores it inside the resulting hash, so two users who
@@ -104,13 +182,21 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
+    /**
+     * Lets the SPA call the API from its own origin. The list comes from
+     * {@code app.cors.allowed-origins}, which must name the real frontend origin
+     * in any deployment - the default is the Vite dev server.
+     */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(allowedOrigins);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
-        config.setAllowCredentials(true);
+        // Tokens travel in the Authorization header, which the client sets
+        // explicitly - no cookie is involved, so credentialed CORS buys nothing
+        // and would force every allowed origin to be named exactly anyway.
+        config.setAllowCredentials(false);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);

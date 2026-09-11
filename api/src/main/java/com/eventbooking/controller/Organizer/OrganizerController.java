@@ -1,5 +1,6 @@
 package com.eventbooking.controller.Organizer;
 
+import com.eventbooking.security.CurrentUserId;
 import com.eventbooking.Enumeration.EventStatus;
 import com.eventbooking.dto.event.EventResponse;
 import com.eventbooking.security.OrganizerResolver;
@@ -40,7 +41,7 @@ public class OrganizerController {
      */
     @GetMapping("/events")
     public ResponseEntity<List<EventResponse>> listForOrganizer(
-            @RequestHeader("X-User-Id") Long actorUserId,
+            @CurrentUserId Long actorUserId,
             @RequestParam(required = false) EventStatus status) {
         Long organizerId = organizerResolver.requireOrganizerId(actorUserId);
         return ResponseEntity.ok(eventService.listForOrganizer(organizerId, status));

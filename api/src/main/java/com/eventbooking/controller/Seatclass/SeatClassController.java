@@ -1,5 +1,6 @@
 package com.eventbooking.controller.Seatclass;
 
+import com.eventbooking.security.CurrentUserId;
 import com.eventbooking.dto.seatclass.CreateSeatClassRequest;
 import com.eventbooking.dto.seatclass.SeatClassResponse;
 import com.eventbooking.dto.seatclass.UpdateSeatClassRequest;
@@ -15,7 +16,6 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -50,7 +50,7 @@ public class SeatClassController {
     @PostMapping
     @Operation(summary = "Create a pricing tier for this event")
     public ResponseEntity<SeatClassResponse> create(
-            @RequestHeader("X-User-Id") Long actorUserId,
+            @CurrentUserId Long actorUserId,
             @PathVariable Long eventId,
             @Valid @RequestBody CreateSeatClassRequest request) {
 
@@ -78,7 +78,7 @@ public class SeatClassController {
                     snapshots `unit_price_usd_cents` at checkout, so this only affects seats
                     sold from here on.""")
     public SeatClassResponse update(
-            @RequestHeader("X-User-Id") Long actorUserId,
+            @CurrentUserId Long actorUserId,
             @PathVariable Long eventId,
             @PathVariable Long seatClassId,
             @Valid @RequestBody UpdateSeatClassRequest request) {

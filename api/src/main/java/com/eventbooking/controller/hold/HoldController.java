@@ -1,5 +1,6 @@
 package com.eventbooking.controller.hold;
 
+import com.eventbooking.security.CurrentUserId;
 import com.eventbooking.dto.hold.CreateHoldRequest;
 import com.eventbooking.dto.hold.HoldResponse;
 import com.eventbooking.service.hold.HoldService;
@@ -24,7 +25,7 @@ public class HoldController {
     public ResponseEntity<HoldResponse> createHold(
             @PathVariable Long eventId,
             @Valid @RequestBody CreateHoldRequest request,
-            @RequestHeader("X-User-Id") Long userId) {
+            @CurrentUserId Long userId) {
         HoldResponse response = holdService.createHold(eventId, request.seatIds(), request.zoneQty(), userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -32,14 +33,14 @@ public class HoldController {
     @GetMapping("/{holdId}")
     public ResponseEntity<HoldResponse> getHold(
             @PathVariable Long holdId,
-            @RequestHeader("X-User-Id") Long userId) {
+            @CurrentUserId Long userId) {
         return ResponseEntity.ok(holdService.getHold(holdId, userId));
     }
 
     @DeleteMapping("/{holdId}")
     public ResponseEntity<Void> releaseHold(
             @PathVariable Long holdId,
-            @RequestHeader("X-User-Id") Long userId) {
+            @CurrentUserId Long userId) {
         holdService.releaseHold(holdId, userId);
         return ResponseEntity.noContent().build();
     }

@@ -3,14 +3,17 @@ package com.eventbooking.security;
 import com.eventbooking.Enumeration.Provider;
 import com.eventbooking.Enumeration.Role;
 import com.eventbooking.dto.auth.LoginRequest;
+import com.eventbooking.dto.auth.MeResponse;
 import com.eventbooking.dto.auth.RegisterRequest;
 import com.eventbooking.dto.auth.TokenResponse;
 import com.eventbooking.model.AppUser;
 import com.eventbooking.repository.AppUserRepository;
+import com.eventbooking.repository.OrganizerProfileRepository;
 import com.eventbooking.security.error.AccountDisabledException;
 import com.eventbooking.security.error.EmailAlreadyRegisteredException;
 import com.eventbooking.security.error.InvalidCredentialsException;
 import com.eventbooking.security.error.InvalidRefreshTokenException;
+import com.eventbooking.security.error.NotAuthenticatedException;
 import com.eventbooking.security.error.PhoneAlreadyRegisteredException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,17 +38,20 @@ public class AuthService {
     private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
     private final AppUserRepository appUserRepository;
+    private final OrganizerProfileRepository organizerProfileRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final RefreshTokenService refreshTokenService;
     private final long accessExpirationMs;
 
     public AuthService(AppUserRepository appUserRepository,
+                       OrganizerProfileRepository organizerProfileRepository,
                        PasswordEncoder passwordEncoder,
                        JwtService jwtService,
                        RefreshTokenService refreshTokenService,
                        @Value("${app.jwt.access-expiration-ms}") long accessExpirationMs) {
         this.appUserRepository = appUserRepository;
+        this.organizerProfileRepository = organizerProfileRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.refreshTokenService = refreshTokenService;
@@ -155,6 +161,34 @@ public class AuthService {
     @Transactional
     public void logout(String refreshToken) {
         refreshTokenService.revoke(refreshToken);
+    }
+
+    /**
+     * The caller's own record, for a client that holds a token and needs to
+     * know whose it is.
+     *
+     * <p>Re-read rather than assembled from the principal. The principal was
+     * built from a row at the start of THIS request, so it is fresh enough for
+     * an id and a role - but it carries neither the display name nor the
+     * organiser profile, and inflating it to carry everything a screen might
+     * want would put that cost on every authenticated request instead of on the
+     * one call that asks.
+     *
+     * <p>The organiser profile is looked up unconditionally rather than only for
+     * {@code Role.ORGANIZER}. Role and profile are separate facts in this schema
+     * and have drifted before; asking the table is cheaper than trusting they
+     * agree.
+     */
+    @Transactional(readOnly = true)
+    public MeResponse me(Long actorUserId) {
+        if (actorUserId == null) {
+            throw new NotAuthenticatedException();
+        }
+        AppUser user = appUserRepository.findById(actorUserId)
+                .orElseThrow(NotAuthenticatedException::new);
+
+        return MeResponse.of(user,
+                organizerProfileRepository.findByUserId(user.getId()).orElse(null));
     }
 
     // ------------------------------------------------------------------

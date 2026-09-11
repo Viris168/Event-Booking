@@ -1,0 +1,235 @@
+apiVersion: 1
+
+# Grafana unified alerting — provisioned rules.
+# Changes here are auto-loaded on Grafana restart; no UI edits needed.
+groups:
+  - orgId: 1
+    name: event-booking-api
+    folder: Event Booking API
+    interval: 1m
+    rules:
+
+      # ── 1. App Down ───────────────────────────────────────────────────────
+      # Fires when Prometheus can no longer scrape the Spring Boot actuator.
+      - uid: alert-app-down
+        title: "🔴 App Down — event-booking-api not reachable"
+        condition: C
+        for: 1m
+        labels:
+          severity: critical
+          app: event-booking-api
+        annotations:
+          summary: "event-booking-api is not responding"
+          description: "Prometheus has received no scrape data from event-booking-api for more than 1 minute. The app may be crashed or the actuator endpoint is unreachable."
+        data:
+          - refId: A
+            queryType: ""
+            relativeTimeRange: { from: 120, to: 0 }
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: "up{job=\"event-booking-api\"}"
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            queryType: ""
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: "__expr__"
+            model:
+              conditions:
+                - evaluator: { params: [1], type: lt }
+                  operator: { type: and }
+                  query: { params: [A] }
+                  reducer: { type: last }
+                  type: query
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              refId: C
+              type: threshold
+
+      # ── 2. High Error Rate ────────────────────────────────────────────────
+      # Fires when 4xx/5xx responses exceed 5 % of total traffic.
+      - uid: alert-high-error-rate
+        title: "🔴 High HTTP Error Rate (> 5%)"
+        condition: C
+        for: 2m
+        labels:
+          severity: critical
+          app: event-booking-api
+        annotations:
+          summary: "HTTP error rate above 5%"
+          description: "More than 5% of HTTP responses are 4xx or 5xx. Check the Error Rate panel and application logs."
+        data:
+          - refId: A
+            queryType: ""
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: "100 * sum(rate(http_server_requests_seconds_count{application=\"event-booking-api\", status=~\"[45]..\"}[5m])) / sum(rate(http_server_requests_seconds_count{application=\"event-booking-api\"}[5m]))"
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            queryType: ""
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: "__expr__"
+            model:
+              conditions:
+                - evaluator: { params: [5], type: gt }
+                  operator: { type: and }
+                  query: { params: [A] }
+                  reducer: { type: last }
+                  type: query
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              refId: C
+              type: threshold
+
+      # ── 3. High Latency (p95 > 2 s) ──────────────────────────────────────
+      - uid: alert-high-latency
+        title: "⚠️ High HTTP Latency — p95 > 2s"
+        condition: C
+        for: 2m
+        labels:
+          severity: warning
+          app: event-booking-api
+        annotations:
+          summary: "p95 HTTP latency exceeds 2 seconds"
+          description: "The 95th percentile HTTP response time has been above 2 seconds for 2 minutes. Check slow endpoints and DB query performance."
+        data:
+          - refId: A
+            queryType: ""
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{application=\"event-booking-api\"}[5m])) by (le))"
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            queryType: ""
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: "__expr__"
+            model:
+              conditions:
+                - evaluator: { params: [2], type: gt }
+                  operator: { type: and }
+                  query: { params: [A] }
+                  reducer: { type: last }
+                  type: query
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              refId: C
+              type: threshold
+
+      # ── 4. JVM Heap Near Full (> 85 %) ───────────────────────────────────
+      - uid: alert-heap-near-full
+        title: "⚠️ JVM Heap Usage > 85%"
+        condition: C
+        for: 3m
+        labels:
+          severity: warning
+          app: event-booking-api
+        annotations:
+          summary: "JVM heap usage is above 85%"
+          description: "The JVM heap is above 85% of its max size. Risk of OutOfMemoryError. Check for memory leaks or increase -Xmx."
+        data:
+          - refId: A
+            queryType: ""
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: "100 * sum(jvm_memory_used_bytes{application=\"event-booking-api\", area=\"heap\"}) / sum(jvm_memory_max_bytes{application=\"event-booking-api\", area=\"heap\"})"
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            queryType: ""
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: "__expr__"
+            model:
+              conditions:
+                - evaluator: { params: [85], type: gt }
+                  operator: { type: and }
+                  query: { params: [A] }
+                  reducer: { type: last }
+                  type: query
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              refId: C
+              type: threshold
+
+      # ── 5. HikariCP Timeout ───────────────────────────────────────────────
+      # Fires when any DB connection timeout occurs — even one is a problem.
+      - uid: alert-hikaricp-timeout
+        title: "🔴 HikariCP Connection Timeout"
+        condition: C
+        for: 0s
+        labels:
+          severity: critical
+          app: event-booking-api
+        annotations:
+          summary: "Database connection pool timeout detected"
+          description: "At least one HikariCP connection timeout occurred in the last 5 minutes. The app could not acquire a DB connection in time. Check pool size and DB load."
+        data:
+          - refId: A
+            queryType: ""
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: "sum(increase(hikaricp_connections_timeout_total{application=\"event-booking-api\"}[5m]))"
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            queryType: ""
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: "__expr__"
+            model:
+              conditions:
+                - evaluator: { params: [0], type: gt }
+                  operator: { type: and }
+                  query: { params: [A] }
+                  reducer: { type: last }
+                  type: query
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              refId: C
+              type: threshold
+
+      # ── 6. HikariCP Pending Connections High ──────────────────────────────
+      - uid: alert-hikaricp-pending
+        title: "⚠️ HikariCP Pending Connections > 3"
+        condition: C
+        for: 2m
+        labels:
+          severity: warning
+          app: event-booking-api
+        annotations:
+          summary: "DB connection pool is saturated (>3 pending)"
+          description: "More than 3 threads are waiting for a HikariCP connection. The pool may be undersized or there are slow queries holding connections."
+        data:
+          - refId: A
+            queryType: ""
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: "hikaricp_connections_pending{application=\"event-booking-api\"}"
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            queryType: ""
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: "__expr__"
+            model:
+              conditions:
+                - evaluator: { params: [3], type: gt }
+                  operator: { type: and }
+                  query: { params: [A] }
+                  reducer: { type: last }
+                  type: query
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              refId: C
+              type: threshold

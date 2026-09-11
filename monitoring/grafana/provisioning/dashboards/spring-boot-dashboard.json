@@ -2,10 +2,11 @@
   "__inputs": [],
   "__requires": [
     { "type": "grafana", "id": "grafana", "name": "Grafana", "version": "8.0.0" },
-    { "type": "datasource", "id": "prometheus", "name": "Prometheus", "version": "1.0.0" }
+    { "type": "datasource", "id": "prometheus", "name": "Prometheus", "version": "1.0.0" },
+    { "type": "datasource", "id": "loki", "name": "Loki", "version": "1.0.0" }
   ],
   "annotations": { "list": [] },
-  "description": "Spring Boot 3 / Micrometer metrics — HTTP, JVM, HikariCP, custom business counters",
+  "description": "Spring Boot 3 / Micrometer metrics — HTTP, JVM, HikariCP, business counters + Loki logs",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -107,7 +108,7 @@
       "id": 5,
       "title": "Total Requests (last 5m)",
       "type": "stat",
-      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 9 },
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 9 },
       "datasource": "Prometheus",
       "fieldConfig": {
         "defaults": {
@@ -129,7 +130,7 @@
       "id": 6,
       "title": "Error % (last 5m)",
       "type": "stat",
-      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 9 },
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 9 },
       "datasource": "Prometheus",
       "fieldConfig": {
         "defaults": {
@@ -149,6 +150,72 @@
           "expr": "100 * sum(rate(http_server_requests_seconds_count{application=\"event-booking-api\", status=~\"[45]..\"}[5m])) / sum(rate(http_server_requests_seconds_count{application=\"event-booking-api\"}[5m]))",
           "legendFormat": "Error %",
           "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 7,
+      "title": "Apdex Score",
+      "description": "Apdex = (Satisfied + Tolerating/2) / Total. Satisfied < 0.5s, Tolerating < 2s.",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 9 },
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "red", "value": 0 },
+              { "color": "yellow", "value": 0.7 },
+              { "color": "green", "value": 0.9 }
+            ]
+          },
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "decimals": 2
+        }
+      },
+      "targets": [
+        {
+          "expr": "(sum(rate(http_server_requests_seconds_bucket{application=\"event-booking-api\",le=\"0.5\"}[5m])) + sum(rate(http_server_requests_seconds_bucket{application=\"event-booking-api\",le=\"2\"}[5m])) - sum(rate(http_server_requests_seconds_bucket{application=\"event-booking-api\",le=\"0.5\"}[5m]))) / 2 / sum(rate(http_server_requests_seconds_count{application=\"event-booking-api\"}[5m]))",
+          "legendFormat": "Apdex",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 8,
+      "title": "Top 5 Slowest Endpoints (p95, last 5m)",
+      "type": "table",
+      "gridPos": { "h": 4, "w": 12, "x": 12, "y": 13 },
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": { "unit": "s" },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "uri" },
+            "properties": [{ "id": "custom.width", "value": 300 }]
+          }
+        ]
+      },
+      "options": {
+        "sortBy": [{ "displayName": "Value", "desc": true }],
+        "footer": { "show": false }
+      },
+      "transformations": [
+        { "id": "sortBy", "options": { "fields": [{ "displayName": "Value", "desc": true }] } },
+        { "id": "limit", "options": { "limitCount": 5 } }
+      ],
+      "targets": [
+        {
+          "expr": "topk(5, histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{application=\"event-booking-api\"}[5m])) by (le, uri)))",
+          "legendFormat": "{{uri}}",
+          "refId": "A",
+          "instant": true,
+          "format": "table"
         }
       ]
     },
@@ -224,7 +291,7 @@
       "id": 13,
       "title": "JVM GC Pause Duration",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 26 },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 26 },
       "datasource": "Prometheus",
       "fieldConfig": {
         "defaults": {
@@ -246,7 +313,7 @@
       "id": 14,
       "title": "JVM Threads",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 26 },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 26 },
       "datasource": "Prometheus",
       "fieldConfig": {
         "defaults": {
@@ -270,6 +337,35 @@
           "expr": "jvm_threads_daemon_threads{application=\"event-booking-api\"}",
           "legendFormat": "Daemon",
           "refId": "C"
+        }
+      ]
+    },
+
+    {
+      "id": 15,
+      "title": "CPU Usage",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 26 },
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1
+        }
+      },
+      "targets": [
+        {
+          "expr": "process_cpu_usage{application=\"event-booking-api\"}",
+          "legendFormat": "Process CPU",
+          "refId": "A"
+        },
+        {
+          "expr": "system_cpu_usage{application=\"event-booking-api\"}",
+          "legendFormat": "System CPU",
+          "refId": "B"
         }
       ]
     },
@@ -391,6 +487,38 @@
     },
 
     {
+      "id": 25,
+      "title": "Connection Pool Usage %",
+      "description": "Active connections as a percentage of total pool size.",
+      "type": "gauge",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 43 },
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "yellow", "value": 60 },
+              { "color": "red", "value": 85 }
+            ]
+          },
+          "unit": "percent",
+          "min": 0,
+          "max": 100
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["last"] }, "showThresholdLabels": false, "showThresholdMarkers": true },
+      "targets": [
+        {
+          "expr": "100 * hikaricp_connections_active{application=\"event-booking-api\"} / hikaricp_connections{application=\"event-booking-api\"}",
+          "legendFormat": "Usage %",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
       "id": 30,
       "type": "row",
       "title": "💳 Business Metrics",
@@ -440,6 +568,102 @@
           "refId": "A"
         }
       ]
+    },
+
+    {
+      "id": 40,
+      "type": "row",
+      "title": "📋 Logs (Loki)",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 56 },
+      "collapsed": false
+    },
+
+    {
+      "id": 41,
+      "title": "Application Logs — INFO & above",
+      "type": "logs",
+      "gridPos": { "h": 12, "w": 16, "x": 0, "y": 57 },
+      "datasource": "Loki",
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "expr": "{application=\"event-booking-api\"} |= ``",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 42,
+      "title": "Errors & Warnings Only",
+      "type": "logs",
+      "gridPos": { "h": 12, "w": 8, "x": 16, "y": 57 },
+      "datasource": "Loki",
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "expr": "{application=\"event-booking-api\", level=~\"ERROR|WARN\"}",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 43,
+      "title": "Log Rate by Level",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 69 },
+      "datasource": "Loki",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 15 },
+          "unit": "short"
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "ERROR" }, "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "WARN" }, "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "INFO" }, "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }] }
+        ]
+      },
+      "options": { "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "expr": "sum(rate({application=\"event-booking-api\", level=\"ERROR\"}[1m]))",
+          "legendFormat": "ERROR",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(rate({application=\"event-booking-api\", level=\"WARN\"}[1m]))",
+          "legendFormat": "WARN",
+          "refId": "B"
+        },
+        {
+          "expr": "sum(rate({application=\"event-booking-api\", level=\"INFO\"}[1m]))",
+          "legendFormat": "INFO",
+          "refId": "C"
+        }
+      ]
     }
 
   ],
@@ -452,5 +676,5 @@
   "timezone": "browser",
   "title": "Event Booking API",
   "uid": "event-booking-api-v1",
-  "version": 1
+  "version": 2
 }

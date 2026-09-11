@@ -7,7 +7,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
@@ -26,10 +25,15 @@ import java.io.IOException;
  * <p><b>It never rejects anything.</b> No token, expired token, forged token: it
  * simply leaves the context empty and calls the next filter. Deciding what an
  * unauthenticated caller is allowed to do belongs to the rules in
- * {@code SecurityConfig}, not here. Keeping that split means this filter can be
- * added while every endpoint is still {@code permitAll} - the inventory and
- * booking lanes carry on working through {@code X-User-Id} exactly as before, and
- * only start requiring a token when the rules change in #20.
+ * {@code SecurityConfig}, not here - an anonymous request to a public endpoint
+ * and an anonymous request to an organiser write look identical at this point,
+ * and only the rules know that one of them is fine.
+ *
+ * <p>What it puts in the context is an {@link AppUserPrincipal}, which carries
+ * {@code app_user.id}. Controllers take it with
+ * {@code @AuthenticationPrincipal} and pass the id to the service layer - the
+ * same id that used to arrive in an {@code X-User-Id} header, now proved by a
+ * signature instead of asserted by the caller.
  */
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -75,7 +79,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             // nothing about the account's CURRENT state, so re-read the user:
             // this is what makes disabling an account take effect immediately
             // rather than whenever the token happens to expire.
-            UserDetails user = appUserDetailsService.loadUserByUsername(phone);
+            AppUserPrincipal user = appUserDetailsService.loadUserByUsername(phone);
 
             if (user.isEnabled()) {
                 UsernamePasswordAuthenticationToken authentication =

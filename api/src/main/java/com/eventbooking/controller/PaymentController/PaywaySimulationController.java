@@ -8,6 +8,7 @@ import com.eventbooking.repository.PaymentTransactionRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -31,10 +32,18 @@ import java.util.Map;
  * after it - confirming the booking, issuing the tickets - is the same code the
  * real check-transaction path runs, so a flow tested here is a flow that works
  * against the real gateway.
+ *
+ * <p><b>Two locks, not one.</b> The mode check below is a configuration switch,
+ * and the default for that switch is MOCK - so a deploy that simply never set
+ * {@code PAYWAY_MODE} got these endpoints, unauthenticated, on a public
+ * port. {@code @Profile("dev")} is the second lock and the one that fails
+ * closed: absent a profile the bean is not registered at all, so forgetting
+ * something can no longer be the thing that turns money-printing on.
  */
 @RestController
 @RequestMapping("/api/v1/dev/payway")
-@ConditionalOnProperty(prefix = "payway", name = "mode", havingValue = "MOCK", matchIfMissing = true)
+@ConditionalOnProperty(prefix = "payway", name = "mode", havingValue = "MOCK", matchIfMissing = false)
+@Profile("dev")
 @Tag(name = "Payments (PayWay simulation)",
         description = "MOCK mode only. Stands in for ABA approving a transaction.")
 public class PaywaySimulationController {

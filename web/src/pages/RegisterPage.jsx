@@ -50,7 +50,7 @@ export default function RegisterPage() {
     return Object.keys(next).length === 0
   }
 
-  function submit(e) {
+  async function submit(e) {
     e.preventDefault()
     if (busy) return
     setServerError(null)
@@ -62,12 +62,14 @@ export default function RegisterPage() {
       return
     }
     setBusy(true)
-    const result = register({
+    // `email: null` rather than '' - the API treats a blank string as a value
+    // and would try to enforce UNIQUE on it, so two accounts without an email
+    // would collide with each other.
+    const result = await register({
       display_name: form.display_name.trim(),
       phone_e164: form.phone_e164.trim(),
       email: form.email.trim() || null,
       password: form.password,
-      locale: form.locale,
     })
     setBusy(false)
     if (result.error) {

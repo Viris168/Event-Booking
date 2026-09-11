@@ -1,9 +1,11 @@
 package com.eventbooking.controller;
 
 import com.eventbooking.dto.auth.LoginRequest;
+import com.eventbooking.dto.auth.MeResponse;
 import com.eventbooking.dto.auth.RegisterRequest;
 import com.eventbooking.dto.auth.TokenResponse;
 import com.eventbooking.security.AuthService;
+import com.eventbooking.security.CurrentUserId;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -11,6 +13,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -87,6 +90,22 @@ public class AuthController {
     public ResponseEntity<Void> logout(@Valid @RequestBody RefreshRequest request) {
         authService.logout(request.refreshToken());
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/me")
+    @Operation(
+            summary = "Who this access token belongs to",
+            description = """
+                    The only endpoint under `/auth` that requires a token. Returns the
+                    caller's own record, including `role` and `organizer_profile_id` - the
+                    two things a client needs to render anything and neither of which is
+                    recoverable from the token, whose subject is only a phone number.
+
+                    Do not decode the JWT client-side to read the `role` claim instead. It
+                    is a snapshot from issue time, and a browser cannot verify the
+                    signature that makes it trustworthy.""")
+    public MeResponse me(@CurrentUserId Long actorUserId) {
+        return authService.me(actorUserId);
     }
 
     /** Shared by refresh and logout - both identify a session by its refresh token. */
