@@ -50,4 +50,15 @@ public interface EventRepository extends JpaRepository<Event, Long> {
         """)
     List<Event> findForOrganizer(@Param("organizerId") Long organizerId,
                                  @Param("status") EventStatus status);
+
+    /**
+     * The moderation queue. One status at a time, ordered by the caller's
+     * Pageable so the admin screen can ask for oldest-submitted-first.
+     *
+     * <p>Deliberately not merged into {@link #findByStatusIn}: that one is the
+     * public catalogue and its status set is fixed on purpose. Opening it to an
+     * arbitrary status would put every DRAFT back in front of anonymous
+     * callers, which is the exact regression its comment above describes.
+     */
+    Page<Event> findByStatus(EventStatus status, Pageable pageable);
 }

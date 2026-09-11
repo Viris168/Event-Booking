@@ -3,10 +3,23 @@ name: CI
 # Two independent jobs. The API and the web app share a repo and nothing else,
 # so a broken frontend should not hide a green backend or vice versa.
 on:
+  # Every branch, not a hand-maintained list. The list had main and Dev-viris
+  # on it, so two of the three developers pushed without any check running -
+  # you found out your branch was broken only when you opened a PR. Actions
+  # minutes are free on a public repo, so there was nothing being saved.
   push:
-    branches: [main, Dev-viris]
+    branches: ['**']
   pull_request:
     branches: [main]
+
+# One run per branch. Pushing twice in a row, or opening a PR on a branch that
+# just ran, cancels the older run instead of queueing beside it.
+#
+# main is exempt: every commit that lands there keeps its own result, so the
+# history shows which merge broke something rather than "cancelled".
+concurrency:
+  group: ci-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   api:
@@ -43,6 +56,18 @@ jobs:
           CLOUDINARY_CLOUD_NAME: ci-placeholder
           CLOUDINARY_API_KEY: ci-placeholder
           CLOUDINARY_API_SECRET: ci-placeholder
+          # JwtSecretGuard refuses the placeholder committed in .env.example,
+          # on the grounds that anyone who can read the repo could sign a token
+          # claiming to be a platform admin. Without a value here the guard
+          # fires and every @SpringBootTest fails to start a context - which is
+          # what it is for, and why CI needs its own throwaway value.
+          #
+          # Not a secret and not worth making one: it signs nothing outside this
+          # runner, and the tokens it signs live as long as the job does.
+          JWT_SECRET: ci-only-not-a-real-secret-at-least-32-chars
+          # Same shape of guard, same reasoning. Rotating this would invalidate
+          # issued tickets in a real environment; here nothing outlives the job.
+          TICKET_SIGNING_SECRET: ci-only-ticket-signing-key-at-least-32-chars
         run: ./mvnw -B --no-transfer-progress verify
 
       - name: Publish test reports

@@ -29,6 +29,7 @@ import AdminLayout from './pages/admin/AdminLayout.jsx'
 import AdminDashboardPage from './pages/admin/AdminDashboardPage.jsx'
 import AdminUsersPage from './pages/admin/AdminUsersPage.jsx'
 import AdminEventsPage from './pages/admin/AdminEventsPage.jsx'
+import AdminReviewPage from './pages/admin/AdminReviewPage.jsx'
 import AdminPaymentsPage from './pages/admin/AdminPaymentsPage.jsx'
 
 export default function App() {
@@ -79,6 +80,9 @@ export default function App() {
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<AdminDashboardPage />} />
               <Route path="users" element={<AdminUsersPage />} />
+              {/* The queue you work through, vs. /admin/events which is the
+                  directory you browse. Different sort, default and action. */}
+              <Route path="review" element={<AdminReviewPage />} />
               <Route path="events" element={<AdminEventsPage />} />
               <Route path="payments" element={<AdminPaymentsPage />} />
             </Route>

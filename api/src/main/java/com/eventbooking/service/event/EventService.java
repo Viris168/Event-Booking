@@ -40,4 +40,14 @@ public interface EventService {
     /** Every decision on this event, oldest first, each with what changed since the previous one. */
     List<EventReviewResponse> getReviewHistory(Long eventId);
     List<EventResponse> listForOrganizer(Long organizerId, EventStatus status);
+
+    /**
+     * The moderation queue: every event in one status, oldest submission first.
+     *
+     * <p>Not a variant of {@link #listEvents}. That one is the public catalogue
+     * and answers "what can a customer browse"; this answers "what is waiting
+     * for an admin", which includes rows no customer may see. Two questions,
+     * two methods, and only this one sits behind AdminResolver.
+     */
+    Page<EventResponse> listForReview(EventStatus status, int page, int size);
 }

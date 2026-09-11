@@ -26,6 +26,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -77,6 +78,27 @@ public class EventServiceimpl implements EventService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Page<EventResponse> listForReview(EventStatus status, int page, int size) {
+        // Oldest submission first: a review queue is a fair-order queue, so the
+        // organiser who has been waiting longest is looked at first. V14's
+        // partial index idx_event_pending_review is on exactly this column and
+        // this direction.
+        //
+        // Rows with a null submitted_at - anything never submitted, or
+        // withdrawn - sort last under Postgres' default NULLS LAST for ASC.
+        // Only PENDING_REVIEW is a genuine queue and every row in it has the
+        // column set, so this matters solely when an admin browses some other
+        // status out of curiosity.
+        Page<Event> events = eventRepository.findByStatus(
+                status, PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "submittedAt")));
+        // ADMIN audience: this screen's whole purpose is the three decisions,
+        // and the organiser-scoped default would send back only WITHDRAW -
+        // an action the admin cannot perform, on a queue with no other buttons.
+        return events.map(e -> toEventResponse(e, Audience.ADMIN));
+    }
+
+    @Override
     @Transactional
     public EventResponse createEvent(Long organizerId, CreateEventRequest request) {
         Venue venue = requireHostable(venueRepository.findById(request.venueId())
@@ -93,7 +115,7 @@ public class EventServiceimpl implements EventService {
         // shortcut - but its actions and editability still come from the state
         // machine, so the form can render its footer immediately.
         return EventMapper.toEventResponse(event, List.of(), List.of(), null, null,
-                organizerActions(event),
+                actionsFor(event, Audience.ORGANIZER),
                 stateMachine.isEditable(event.getStatus()),
                 null);
     }
@@ -552,7 +574,21 @@ public class EventServiceimpl implements EventService {
                 .orElseThrow(() -> new EventNotFoundException(eventId)));
     }
 
+    /**
+     * Who is being drawn this response, which decides what
+     * {@code available_actions} may contain.
+     *
+     * <p>Not the same as authorization. The server refuses an action the caller
+     * may not perform regardless of what was listed here; this only stops a
+     * screen offering a button that would come back 403.
+     */
+    private enum Audience { ORGANIZER, ADMIN }
+
     private EventResponse toEventResponse(Event event) {
+        return toEventResponse(event, Audience.ORGANIZER);
+    }
+
+    private EventResponse toEventResponse(Event event, Audience audience) {
         List<SeatClassResponse> seatClasses =
                 seatClassRepository.findAllByEventId(event.getId())
                         .stream()
@@ -571,26 +607,27 @@ public class EventServiceimpl implements EventService {
                 // Stored as delivery URLs since V18, so they go straight out.
                 event.getCloudinaryImageId(),
                 event.getCloudinaryBannerId(),
-                organizerActions(event),
+                actionsFor(event, audience),
                 stateMachine.isEditable(event.getStatus()),
                 latestReview(event.getId()));
     }
 
     /**
-     * The actions an organiser may take on this event.
+     * The actions this audience may take on this event.
      *
-     * <p>availableTransitions answers "legal from this status", which includes
-     * APPROVE and TAKE_DOWN on a PENDING_REVIEW or PUBLISHED event - legal
-     * moves, but not this caller's to make. Filtering here rather than in the
-     * client means the rule lives beside the state machine instead of being
-     * copied into every screen that renders a menu.
-     *
-     * <p>The admin queue will need the complement of this; when it does, this
-     * takes the caller's role rather than assuming one.
+     * <p>availableTransitions answers "legal from this status", which is not the
+     * same question as "yours to perform": APPROVE and WITHDRAW are both legal
+     * from PENDING_REVIEW, but they belong to different people. Filtering here
+     * rather than in the client means the rule lives beside the state machine
+     * instead of being copied into every screen that renders a menu - and the
+     * two copies drifting is exactly how a UI ends up offering a button that
+     * comes back 403.
      */
-    private List<EventTransition> organizerActions(Event event) {
+    private List<EventTransition> actionsFor(Event event, Audience audience) {
         return stateMachine.availableTransitions(event.getStatus()).stream()
-                .filter(EventTransition::isOrganizerAction)
+                .filter(audience == Audience.ADMIN
+                        ? EventTransition::isAdminAction
+                        : EventTransition::isOrganizerAction)
                 .toList();
     }
 

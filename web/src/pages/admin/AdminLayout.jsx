@@ -10,6 +10,7 @@ export default function AdminLayout() {
         links={[
           { to: '/admin', label: t('adminDashboard'), end: true },
           { to: '/admin/users', label: t('users') },
+          { to: '/admin/review', label: t('reviewQueue') },
           { to: '/admin/events', label: t('moderation') },
           { to: '/admin/payments', label: t('payments') },
         ]}
