@@ -3807,3 +3807,297 @@
   background: #fff;
   border-radius: 0.5rem;
 }
+
+/* ==========================================================================
+   Become an organizer — the application form and its decided states.
+
+   Outside @layer components on purpose, matching the venue-layout block above:
+   these are page-specific and never composed with variants, so they do not
+   need to participate in the layer's cascade.
+
+   Every colour is a token, not the hex it resolves to today. The page renders
+   on a surface that inverts under [data-theme='dark'], and a literal #ffffff
+   card would stay white while the text on it turned light.
+   ========================================================================== */
+
+.org-apply {
+  /* Narrower than .container-wide: a single column of fields reads badly past
+     about 70 characters, and the design caps it here. */
+  max-width: 680px;
+  padding-top: 2rem;
+  padding-bottom: 3rem;
+}
+
+.org-apply.is-loading {
+  color: var(--color-muted);
+}
+
+/* Khmer runs taller than Latin and needs the script-aware family. Scoped to
+   elements that declare lang="km" so it follows the content, not the UI
+   language - the Khmer name field stays Khmer on an English page. */
+.org-apply [lang='km'] {
+  font-family: var(--font-khmer);
+  line-height: 1.7;
+}
+
+/* ------------------------------------------------------------------ head */
+.org-apply-head {
+  margin-bottom: 1.4rem;
+}
+.org-apply-head h1 {
+  font-size: clamp(1.5rem, 4vw, 1.75rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0 0 0.15rem;
+}
+.org-apply-head-km {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--color-muted);
+  margin: 0 0 0.6rem;
+}
+.org-apply-head-note {
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: var(--color-muted);
+  margin: 0;
+}
+
+/* ------------------------------------------------------------------ form */
+/* .card supplies the surface, border, radius and shadow. Sections divide it. */
+.org-apply-section {
+  padding: 1.5rem;
+}
+.org-apply-section + .org-apply-section,
+.org-apply-foot {
+  border-top: 1px solid var(--color-line);
+}
+.org-apply-section h2 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+.org-apply-section-note {
+  font-size: 0.8125rem;
+  color: var(--color-muted);
+  margin: 0.1rem 0 1.1rem;
+}
+/* Direct children only. A descendant selector here also matched the second
+   .field inside .org-apply-pair, pushing the Facebook input 1rem below the
+   Telegram one it is supposed to sit beside - the grid already spaces them. */
+.org-apply-section > .field + .field,
+.org-apply-section > .org-apply-pair + .field,
+.org-apply-section > .field + .org-apply-chips,
+.org-apply-section > .org-apply-chips + .field {
+  margin-top: 1rem;
+}
+
+/* Two contact fields side by side once there is room for both. */
+.org-apply-pair {
+  display: grid;
+  gap: 1rem;
+}
+@media (min-width: 640px) {
+  .org-apply-pair {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* The required marker. Its own token so it is not mistaken for an error. */
+.org-apply-req {
+  color: var(--color-danger);
+}
+.org-apply-field-error {
+  font-size: 0.76rem;
+  color: var(--color-danger);
+}
+
+/* The "@" that lives inside the Telegram field rather than in its placeholder:
+   a placeholder disappears the moment someone types, taking the only cue that
+   the handle is expected without one. */
+.org-apply-prefixed {
+  position: relative;
+  display: block;
+}
+.org-apply-prefix {
+  position: absolute;
+  left: 0.7rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-muted);
+  font-size: 0.9rem;
+  pointer-events: none;
+}
+.org-apply-prefixed .input {
+  padding-left: 1.6rem;
+}
+
+/* ----------------------------------------------------------------- chips */
+.org-apply-chips {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+.org-apply-chips legend {
+  font-size: var(--text-small, 0.8rem);
+  font-weight: 650;
+  color: var(--color-ink-2);
+  padding: 0;
+  margin-bottom: 0.5rem;
+}
+.org-apply-chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.org-apply-chip {
+  border-radius: 999px;
+  border: 1px solid var(--color-line);
+  background: var(--color-surface);
+  color: var(--color-ink-2);
+  font-size: 0.78rem;
+  font-weight: 500;
+  padding: 0.35rem 0.85rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+.org-apply-chip:hover {
+  border-color: color-mix(in oklab, var(--color-muted) 40%, var(--color-line));
+}
+/* Selection is carried by aria-pressed, so the styling cannot drift from the
+   state a screen reader announces. */
+.org-apply-chip[aria-pressed='true'] {
+  background: var(--color-tint);
+  border-color: var(--color-brand-600);
+  color: var(--color-on-tint);
+  font-weight: 600;
+}
+.org-apply-chip:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+/* Counter pinned inside the textarea's bottom-right, with room reserved so it
+   never sits on top of the last line of typing. */
+.org-apply-counted {
+  position: relative;
+  display: block;
+}
+.org-apply-counted .textarea {
+  padding-bottom: 1.75rem;
+}
+.org-apply-count {
+  position: absolute;
+  right: 0.7rem;
+  bottom: 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--color-muted);
+  pointer-events: none;
+}
+
+/* ------------------------------------------------------------ card foot */
+.org-apply-foot {
+  padding: 1.5rem;
+}
+.org-apply-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  margin: 0 0 1.25rem;
+  padding: 0.75rem;
+  border-radius: 8px;
+  background: var(--color-tint);
+  border: 1px solid var(--color-tint-2);
+  color: var(--color-on-tint);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  font-weight: 500;
+}
+.org-apply-note .icon {
+  flex: none;
+  margin-top: 0.08rem;
+}
+.org-apply-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+}
+
+/* -------------------------------------------------------- decided states */
+.org-apply-error {
+  margin-bottom: 1rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 10px;
+  background: var(--color-danger-soft);
+  border: 1px solid color-mix(in oklab, var(--color-danger) 22%, transparent);
+  color: var(--color-danger);
+  font-size: 0.85rem;
+}
+
+.org-apply-status {
+  padding: 1.75rem 1.5rem;
+  text-align: center;
+}
+.org-apply-status h2 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 0 0 0.25rem;
+}
+.org-apply-status p {
+  color: var(--color-ink-2);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  margin: 0 auto;
+  max-width: 46ch;
+}
+.org-apply-status-meta {
+  font-size: 0.8rem;
+  color: var(--color-muted);
+  margin-bottom: 0.75rem;
+}
+/* A coloured rule rather than an icon circle: the status is already stated in
+   the heading, and a second decorative signal on a page this quiet reads as
+   alarm rather than information. */
+.org-apply-status.is-pending {
+  border-top: 3px solid var(--color-warning);
+}
+.org-apply-status.is-rejected {
+  border-top: 3px solid var(--color-danger);
+}
+.org-apply-status .btn {
+  margin-top: 1.25rem;
+}
+
+.org-apply-reason {
+  margin: 1rem auto 0;
+  max-width: 46ch;
+  text-align: left;
+  padding: 0.7rem 0.9rem;
+  border-left: 3px solid var(--color-line);
+  background: var(--color-surface-2);
+  color: var(--color-ink-2);
+  font-size: 0.88rem;
+  line-height: 1.6;
+}
+
+.org-apply-summary {
+  margin: 1.25rem auto 0;
+  max-width: 46ch;
+  text-align: left;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.35rem 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-line-2);
+  font-size: 0.85rem;
+}
+.org-apply-summary dt {
+  color: var(--color-muted);
+}
+.org-apply-summary dd {
+  margin: 0;
+  color: var(--color-ink);
+}

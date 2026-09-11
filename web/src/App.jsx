@@ -13,6 +13,7 @@ import CheckoutPage from './pages/CheckoutPage.jsx'
 import PaymentPage from './pages/PaymentPage.jsx'
 import BookingDetailPage from './pages/BookingDetailPage.jsx'
 import MyBookingsPage from './pages/MyBookingsPage.jsx'
+import BecomeOrganizerPage from './pages/BecomeOrganizerPage.jsx'
 import NotFoundPage from './pages/NotFoundPage.jsx'
 
 import OrganizerLayout from './pages/organizer/OrganizerLayout.jsx'
@@ -54,6 +55,9 @@ export default function App() {
             <Route path="/checkout/:bookingId/pay" element={<PaymentPage />} />
             <Route path="/bookings/:id" element={<BookingDetailPage />} />
             <Route path="/my-bookings" element={<MyBookingsPage />} />
+            {/* Not under /organizer: that subtree needs the ORGANIZER role,
+                and everyone this page is for does not have it yet. */}
+            <Route path="/become-an-organizer" element={<BecomeOrganizerPage />} />
           </Route>
 
           {/* -------------------------------- ORGANIZER (+ admin) area */}

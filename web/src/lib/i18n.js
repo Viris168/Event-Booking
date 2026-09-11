@@ -11,6 +11,7 @@ const dict = {
   myBookings: { en: "My Bookings", km: "ការកក់របស់ខ្ញុំ" },
   organizer: { en: "Organizer", km: "អ្នករៀបចំកម្មវិធី" },
   admin: { en: "Admin", km: "អ្នកគ្រប់គ្រង" },
+  becomeOrganizer: { en: "Become an organizer", km: "ក្លាយជាអ្នករៀបចំ" },
   login: { en: "Log in", km: "ចូលគណនី" },
   register: { en: "Sign up", km: "បង្កើតគណនី" },
   logout: { en: "Log out", km: "ចាកចេញ" },

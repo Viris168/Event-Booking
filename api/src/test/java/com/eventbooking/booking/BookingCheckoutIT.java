@@ -78,6 +78,15 @@ class BookingCheckoutIT {
          */
         registry.add("app.ticket.signing-secret",
                 () -> "booking-checkout-it-signing-secret-32-chars");
+        // Same story for the JWT secret, and the same trap: JwtSecretGuard
+        // rejects the placeholder from application.yml, so without this the
+        // context dies here rather than in anything this class is testing.
+        //
+        // The two guards are separate beans checking separate keys, so
+        // satisfying one says nothing about the other - which is how this broke
+        // a second time on a file that already carried the warning.
+        registry.add("app.jwt.secret",
+                () -> "booking-checkout-it-jwt-secret-at-least-32-chars");
     }
 
     private static final AtomicInteger SEQ = new AtomicInteger();
