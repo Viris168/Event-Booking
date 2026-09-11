@@ -1,6 +1,7 @@
 package com.eventbooking.controller.Event;
 
 import com.eventbooking.Enumeration.EventStatus;
+import com.eventbooking.security.CurrentUserId;
 import com.eventbooking.dto.event.EventResponse;
 import com.eventbooking.dto.event.ReviewDecisionRequest;
 import com.eventbooking.security.AdminResolver;
@@ -25,7 +26,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @Slf4j
 @CrossOrigin
-@RequestMapping("/api/v1/admin/event")
+@RequestMapping("/api/v1/admin/events")
 public class AdminEventController {
 
     private final EventService eventService;
@@ -42,7 +43,7 @@ public class AdminEventController {
      * back a "recently rejected" or "approved, not yet published" view without
      * a second method.
      *
-     * <p>This is not GET /api/v1/event with a filter. That endpoint is the
+     * <p>This is not GET /api/v1/events with a filter. That endpoint is the
      * public catalogue and returns only PUBLISHED and TAKEN_DOWN by design -
      * accepting an arbitrary status there would hand every organiser's DRAFT,
      * with title, venue and prices, to any anonymous caller. Listing
@@ -51,7 +52,7 @@ public class AdminEventController {
      */
     @GetMapping
     public ResponseEntity<Page<EventResponse>> listForReview(
-            @RequestHeader("X-User-Id") Long actorUserId,
+            @CurrentUserId Long actorUserId,
             @RequestParam(defaultValue = "PENDING_REVIEW") EventStatus status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
@@ -61,7 +62,7 @@ public class AdminEventController {
 
     @PatchMapping("/{id}/approve")
     public ResponseEntity<EventResponse> approve(
-            @RequestHeader("X-User-Id") Long actorUserId,
+            @CurrentUserId Long actorUserId,
             @PathVariable Long id) {
         Long adminUserId = adminResolver.requireAdminUserId(actorUserId);
         return new ResponseEntity<>(eventService.approve(adminUserId, id), HttpStatus.OK);
@@ -78,7 +79,7 @@ public class AdminEventController {
      */
     @PatchMapping("/{id}/takedown")
     public ResponseEntity<EventResponse> takeDown(
-            @RequestHeader("X-User-Id") Long actorUserId,
+            @CurrentUserId Long actorUserId,
             @PathVariable Long id) {
         adminResolver.requireAdminUserId(actorUserId);
         return new ResponseEntity<>(eventService.takeDownEvent(id), HttpStatus.OK);
@@ -86,7 +87,7 @@ public class AdminEventController {
 
     @PatchMapping("/{id}/reject")
     public ResponseEntity<EventResponse> reject(
-            @RequestHeader("X-User-Id") Long actorUserId,
+            @CurrentUserId Long actorUserId,
             @PathVariable Long id,
             @Valid @RequestBody ReviewDecisionRequest request) {
         Long adminUserId = adminResolver.requireAdminUserId(actorUserId);
@@ -95,7 +96,7 @@ public class AdminEventController {
 
     @PatchMapping("/{id}/request-changes")
     public ResponseEntity<EventResponse> requestChanges(
-            @RequestHeader("X-User-Id") Long actorUserId,
+            @CurrentUserId Long actorUserId,
             @PathVariable Long id,
             @Valid @RequestBody ReviewDecisionRequest request) {
         Long adminUserId = adminResolver.requireAdminUserId(actorUserId);

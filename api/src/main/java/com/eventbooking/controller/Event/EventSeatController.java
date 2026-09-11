@@ -1,5 +1,6 @@
 package com.eventbooking.controller.Event;
 
+import com.eventbooking.security.CurrentUserId;
 import com.eventbooking.dto.eventseat.GenerateEventSeatsRequest;
 import com.eventbooking.dto.eventseat.SeatMapResponse;
 import com.eventbooking.security.OrganizerResolver;
@@ -13,9 +14,9 @@ import org.springframework.web.bind.annotation.*;
 /**
  * Puts a venue's chairs on sale at one event, in one pricing tier.
  *
- * <p>The POST takes {@code X-User-Id}; the seat map read does not, because it
- * is what a customer picks seats from. Before this, neither did - so anyone
- * could generate inventory on anyone's event.
+ * <p>The POST requires an authenticated organiser; the seat map read does not,
+ * because it is what a customer picks seats from. Before this, neither did - so
+ * anyone could generate inventory on anyone's event.
  *
  * <p><b>Note the URL prefix.</b> The write is {@code /api/v1/events/...}
  * (plural) while the read is {@code /api/v1/event/...} (singular), and the rest
@@ -38,7 +39,7 @@ public class EventSeatController {
 
     @PostMapping("/api/v1/events/{eventId}/seats")
     public ResponseEntity<SeatMapResponse> generateEventSeats(
-            @RequestHeader("X-User-Id") Long actorUserId,
+            @CurrentUserId Long actorUserId,
             @PathVariable Long eventId,
             @Valid @RequestBody GenerateEventSeatsRequest request
     ) {
@@ -48,7 +49,7 @@ public class EventSeatController {
     }
 
 
-    @GetMapping("/api/v1/event/{eventId}/seat-map")
+    @GetMapping("/api/v1/events/{eventId}/seat-map")
     public ResponseEntity<SeatMapResponse> getSeatMap(
             @PathVariable Long eventId
     ) {

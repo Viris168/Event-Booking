@@ -1,5 +1,6 @@
 package com.eventbooking.controller.PaymentController;
 
+import com.eventbooking.security.CurrentUserId;
 import com.eventbooking.dto.payment.PaymentResponse;
 import com.eventbooking.payment.PaymentReconciler;
 import com.eventbooking.payment.PaymentService;
@@ -9,9 +10,9 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -28,10 +29,18 @@ import org.springframework.web.bind.annotation.RestController;
  * and the clock running out. Everything downstream - reconciling, settling,
  * confirming the booking, releasing inventory - is the real code path, so a
  * flow tested here is a flow that works against the real provider.
+ *
+ * <p><b>Two locks, not one.</b> The mode check below is a configuration switch,
+ * and the default for that switch is MOCK - so a deploy that simply never set
+ * {@code BAKONG_MODE} got these endpoints, unauthenticated, on a public
+ * port. {@code @Profile("dev")} is the second lock and the one that fails
+ * closed: absent a profile the bean is not registered at all, so forgetting
+ * something can no longer be the thing that turns money-printing on.
  */
 @RestController
 @RequestMapping("/api/v1/dev/payments")
-@ConditionalOnProperty(prefix = "app.payment.bakong", name = "mode", havingValue = "MOCK", matchIfMissing = true)
+@ConditionalOnProperty(prefix = "app.payment.bakong", name = "mode", havingValue = "MOCK", matchIfMissing = false)
+@Profile("dev")
 @Tag(name = "Payments (simulation)",
         description = "MOCK mode only. Stands in for a customer scanning the QR, or walking away from it.")
 public class PaymentSimulationController {
@@ -62,7 +71,7 @@ public class PaymentSimulationController {
     public PaymentResponse simulatePayment(
             @PathVariable Long paymentId,
             @Parameter(description = "Must own the booking", example = "1")
-            @RequestHeader("X-User-Id") Long actorUserId) {
+            @CurrentUserId Long actorUserId) {
 
         PaymentResponse current = paymentService.getForUser(paymentId, actorUserId);
 
@@ -86,7 +95,7 @@ public class PaymentSimulationController {
     public PaymentResponse simulateExpiry(
             @PathVariable Long paymentId,
             @Parameter(description = "Must own the booking", example = "1")
-            @RequestHeader("X-User-Id") Long actorUserId) {
+            @CurrentUserId Long actorUserId) {
 
         return paymentService.expireAttemptNow(paymentId, actorUserId);
     }

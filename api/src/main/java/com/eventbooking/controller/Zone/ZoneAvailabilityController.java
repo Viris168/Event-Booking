@@ -27,7 +27,7 @@ public class ZoneAvailabilityController {
         return new ResponseEntity<>(zoneAvailabilityService.getAvailability(zoneId), HttpStatus.OK);
     }
 
-    @GetMapping("/event/{eventId}/availability")
+    @GetMapping("/events/{eventId}/availability")
     public ResponseEntity<List<ZoneAvailabilityResponse>> getAvailabilityEvent(@PathVariable Long eventId) {
         return new ResponseEntity<>(zoneAvailabilityService.getEventAvailability(eventId), HttpStatus.OK);
     }

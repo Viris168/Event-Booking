@@ -20,7 +20,7 @@ import client from './client.js'
  *        status defaults to PENDING_REVIEW server-side.
  */
 export const getReviewQueue = (params) =>
-  client.get('/admin/event', { params }).then((r) => r.data)
+  client.get('/admin/events', { params }).then((r) => r.data)
 
 // --- decisions --------------------------------------------------------------
 // One function per transition, mirroring events.js. approve and takedown carry
@@ -28,13 +28,13 @@ export const getReviewQueue = (params) =>
 // has to be told what to fix - the server rejects a blank one.
 
 export const approveEvent = (id) =>
-  client.patch(`/admin/event/${id}/approve`).then((r) => r.data)
+  client.patch(`/admin/events/${id}/approve`).then((r) => r.data)
 
 export const rejectEvent = (id, message) =>
-  client.patch(`/admin/event/${id}/reject`, { message }).then((r) => r.data)
+  client.patch(`/admin/events/${id}/reject`, { message }).then((r) => r.data)
 
 export const requestEventChanges = (id, message) =>
-  client.patch(`/admin/event/${id}/request-changes`, { message }).then((r) => r.data)
+  client.patch(`/admin/events/${id}/request-changes`, { message }).then((r) => r.data)
 
 export const takeDownEvent = (id) =>
-  client.patch(`/admin/event/${id}/takedown`).then((r) => r.data)
+  client.patch(`/admin/events/${id}/takedown`).then((r) => r.data)

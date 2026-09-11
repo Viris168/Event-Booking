@@ -7,20 +7,33 @@ import { Alert, Field } from '../components/ui.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
 
-// Dev Organizer is listed because they are the organiser the backend seeder
-// gives data to. Without them the only organiser button here was Chantha Meas,
-// who owns nothing in an existing database - so the obvious way in landed on an
-// empty dashboard that looked broken rather than accurate.
+// Phone numbers, not emails. The API identifies an account by phone_e164 -
+// app_user.email is nullable, so it cannot be the login identifier - and these
+// buttons used to fill in addresses that /auth/login has no way to look up.
+//
+// The numbers are the demo rows from V6__seed_demo_users.sql, whose password
+// V19 finally made a real BCrypt hash of "password". Before that migration every
+// one of these failed with "wrong password", because the seeded column held the
+// literal string 'hashed-password'.
 const DEMO = [
-  { label: 'Dara Sok', role: 'Customer', icon: 'user', id: 'dara@example.com' },
-  { label: 'Dev Organizer', role: 'Organizer · has data', icon: 'building', id: 'dev.organizer@example.com' },
-  { label: 'Chantha Meas', role: 'Organizer', icon: 'building', id: 'organizer@example.com' },
-  { label: 'Platform Admin', role: 'Platform admin', icon: 'shield', id: 'admin@example.com' },
+  { label: 'Dara Sok', role: 'Customer', icon: 'user', id: '+85512345678' },
+  { label: 'Chantha Meas', role: 'Organizer', icon: 'building', id: '+85512987654' },
+  { label: 'Sovann Chey', role: 'Organizer', icon: 'building', id: '+85511556677' },
+  { label: 'Platform Admin', role: 'Platform admin', icon: 'shield', id: '+85510111222' },
 ]
 
 const ERRORS = {
-  NO_SUCH_USER: { en: 'No account with that phone or email.', km: 'គ្មានគណនីជាមួយលេខ ឬអ៊ីមែលនេះទេ។' },
-  BAD_CREDENTIALS: { en: 'Wrong password.', km: 'ពាក្យសម្ងាត់មិនត្រឹមត្រូវ។' },
+  // One message for an unknown number AND a wrong password. The API answers the
+  // same 401 either way, on purpose: a difference between the two would let
+  // anyone use this form to discover which phone numbers hold accounts.
+  BAD_CREDENTIALS: {
+    en: 'Incorrect phone number or password.',
+    km: 'លេខទូរស័ព្ទ ឬពាក្យសម្ងាត់មិនត្រឹមត្រូវ។',
+  },
+  NETWORK: {
+    en: 'Could not reach the server. Check your connection and try again.',
+    km: 'មិនអាចភ្ជាប់ទៅម៉ាស៊ីនមេបានទេ។ សូមពិនិត្យការតភ្ជាប់ ហើយព្យាយាមម្តងទៀត។',
+  },
   ACCOUNT_DISABLED: {
     en: 'This account has been disabled by the platform.',
     km: 'គណនីនេះត្រូវបានបិទដោយវេទិកា។',
@@ -40,11 +53,11 @@ export default function LoginPage() {
 
   const from = location.state?.from || '/'
 
-  function submit(e) {
+  async function submit(e) {
     e.preventDefault()
     if (busy) return
     setBusy(true)
-    const result = login({ identifier, password })
+    const result = await login({ identifier, password })
     setBusy(false)
     if (result.error) {
       setError(result.error)
@@ -96,14 +109,15 @@ export default function LoginPage() {
       )}
 
       <form className="stack" onSubmit={submit} noValidate>
-        <Field label={t('phoneOrEmail')} hint="+85512345678 · dara@example.com">
+        <Field label={t('phone')} hint="+85512345678">
           <span className="field-icon">
             <Icon name="user" size={16} />
             <input
               className="input"
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
-              autoComplete="username"
+              autoComplete="tel"
+              inputMode="tel"
             />
           </span>
         </Field>

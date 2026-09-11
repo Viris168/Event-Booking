@@ -7,8 +7,16 @@ import { useAuth } from '../context/AuthContext.jsx'
  * PLATFORM_ADMIN inherits organizer access, as in the role table.
  */
 export default function ProtectedRoute({ roles }) {
-  const { isAuthenticated, role } = useAuth()
+  const { isAuthenticated, loading, role } = useAuth()
   const location = useLocation()
+
+  // On a hard reload the token is in storage but /auth/me has not answered yet,
+  // so `isAuthenticated` is briefly false for a user who is perfectly signed in.
+  // Redirecting during that window sends people to the login screen every time
+  // they refresh a page - and, worse, loses where they were going.
+  if (loading) {
+    return null
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location.pathname + location.search }} replace />

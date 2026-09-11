@@ -1,5 +1,6 @@
 package com.eventbooking.controller;
 
+import com.eventbooking.security.CurrentUserId;
 import com.eventbooking.dto.ticket.GroupConfirmRequest;
 import com.eventbooking.dto.ticket.GroupConfirmResponse;
 import com.eventbooking.dto.ticket.GroupPreviewResponse;
@@ -25,7 +26,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -63,7 +63,7 @@ public class TicketController {
     public List<TicketResponse> ticketsForBooking(
             @PathVariable Long bookingId,
             @Parameter(description = "Stand-in for the authenticated user until JWT lands", example = "1")
-            @RequestHeader("X-User-Id") Long actorUserId) {
+            @CurrentUserId Long actorUserId) {
 
         return ticketService.listForBooking(bookingId, actorUserId);
     }
@@ -73,7 +73,7 @@ public class TicketController {
     public TicketResponse getTicket(
             @PathVariable Long ticketId,
             @Parameter(description = "Stand-in for the authenticated user until JWT lands", example = "1")
-            @RequestHeader("X-User-Id") Long actorUserId) {
+            @CurrentUserId Long actorUserId) {
 
         return ticketService.getForUser(ticketId, actorUserId);
     }
@@ -90,7 +90,7 @@ public class TicketController {
     public ResponseEntity<String> ticketQr(
             @PathVariable Long ticketId,
             @Parameter(description = "Stand-in for the authenticated user until JWT lands", example = "1")
-            @RequestHeader("X-User-Id") Long actorUserId,
+            @CurrentUserId Long actorUserId,
             @Parameter(description = "Presentation size in px; the image is vector regardless")
             @RequestParam(required = false) Integer size) {
 
@@ -130,7 +130,7 @@ public class TicketController {
     public ScanResponse scan(
             @Parameter(description = "The gate operator. Must be the organiser of event_id; "
                     + "recorded as checked_in_by", example = "1")
-            @RequestHeader("X-User-Id") Long operatorUserId,
+            @CurrentUserId Long operatorUserId,
             @Valid @RequestBody ScanTicketRequest request) {
 
         return ticketService.scan(request.payload(), request.eventId(), operatorUserId);
@@ -161,7 +161,7 @@ public class TicketController {
     })
     public GroupPreviewResponse previewGroup(
             @Parameter(description = "The gate operator; must be the organiser of event_id", example = "1")
-            @RequestHeader("X-User-Id") Long operatorUserId,
+            @CurrentUserId Long operatorUserId,
             @Valid @RequestBody GroupScanRequest request) {
 
         return ticketService.previewGroup(request.payload(), request.eventId(), operatorUserId);
@@ -194,7 +194,7 @@ public class TicketController {
     })
     public GroupConfirmResponse confirmGroup(
             @Parameter(description = "The gate operator; recorded as checked_in_by on every ticket admitted", example = "1")
-            @RequestHeader("X-User-Id") Long operatorUserId,
+            @CurrentUserId Long operatorUserId,
             @Valid @RequestBody GroupConfirmRequest request) {
 
         return ticketService.confirmGroup(
@@ -217,7 +217,7 @@ public class TicketController {
     public Page<TicketResponse> checkIns(
             @PathVariable Long eventId,
             @Parameter(description = "The organiser of this event", example = "1")
-            @RequestHeader("X-User-Id") Long operatorUserId,
+            @CurrentUserId Long operatorUserId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
 
@@ -237,7 +237,7 @@ public class TicketController {
     public CheckInStatsResponse checkInStats(
             @PathVariable Long eventId,
             @Parameter(description = "The organiser of this event", example = "1")
-            @RequestHeader("X-User-Id") Long operatorUserId) {
+            @CurrentUserId Long operatorUserId) {
 
         return ticketService.checkInStats(eventId, operatorUserId);
     }
@@ -263,7 +263,7 @@ public class TicketController {
     public TicketResponse undoCheckIn(
             @PathVariable Long ticketId,
             @Parameter(description = "The organiser of this event", example = "1")
-            @RequestHeader("X-User-Id") Long operatorUserId,
+            @CurrentUserId Long operatorUserId,
             @Valid @RequestBody UndoCheckInRequest request) {
 
         return ticketService.undoCheckIn(ticketId, request.eventId(), request.reason(), operatorUserId);

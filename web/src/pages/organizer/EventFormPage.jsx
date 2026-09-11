@@ -14,7 +14,7 @@ import {
   createEvent as createApiEvent,
   createEventZone,
   createSeatClass,
-  getEvent as getApiEvent,
+  getOrganizerEvents,
   getEventZones,
   getSeatClasses,
   publishEvent as publishApiEvent,
@@ -116,7 +116,19 @@ export default function EventFormPage() {
 
   useEffect(() => {
     let live = true
-    Promise.all([getVenues(), id ? getApiEvent(id) : Promise.resolve(null)])
+    // The organiser's own list, not GET /events/{id}. That endpoint 404s for
+    // anything not publicly visible - deliberately, so nobody can walk
+    // sequential ids to read other people's drafts - and it has no owner
+    // bypass, so editing your own DRAFT failed outright. Worse, the rejection
+    // took the whole Promise.all with it, so the venue dropdown came back
+    // empty too and the page rendered as "Create event".
+    Promise.all([
+      getVenues(),
+      id ? getOrganizerEvents().then((list) => {
+        const rows = list?.content ?? list ?? []
+        return rows.find((e) => String(e.id) === String(id)) ?? null
+      }) : Promise.resolve(null),
+    ])
       .then(async ([venueList, event]) => {
         if (!live) return
         const mappedVenues = (venueList?.content ?? venueList ?? []).map(mapVenue)
@@ -169,14 +181,26 @@ export default function EventFormPage() {
             getEventZones(e.id).catch(() => []),
           ])
           if (!live) return
+          // A tier binds to a venue section, and the server derives that from
+          // the seats assigned to it. It answers null for a tier with no seats
+          // yet - which is every tier between being priced and being filled -
+          // so fall back to the name. New tiers are created named after their
+          // section, so that is the same string in the ordinary case.
+          //
+          // Without either, section_label was always '' here: no row ever
+          // matched a section, so an existing seated event opened with its
+          // pricing blank and refused to save.
           setClasses(
-            (tiers ?? []).map((c) => ({
-              id: c.id,
-              section_label: c.section_label ?? c.sectionLabel ?? '',
-              name_en: c.name_en ?? c.nameEn,
-              name_km: c.name_km ?? c.nameKm,
-              price: ((c.price_usd_cents ?? c.priceUsdCents) / 100).toFixed(2),
-            })),
+            (tiers ?? []).map((c) => {
+              const name = c.name_en ?? c.nameEn
+              return {
+                id: c.id,
+                section_label: c.section_label ?? c.sectionLabel ?? name ?? '',
+                name_en: name,
+                name_km: c.name_km ?? c.nameKm,
+                price: ((c.price_usd_cents ?? c.priceUsdCents) / 100).toFixed(2),
+              }
+            }),
           )
           setZones(
             (zoneList ?? []).map((z) => ({
@@ -431,7 +455,7 @@ export default function EventFormPage() {
             {t('save')}
           </button>
           {existing?.status === 'PUBLISHED' ? (
-            /* Taking a published event down is PATCH /admin/event/{id}/takedown -
+            /* Taking a published event down is PATCH /admin/events/{id}/takedown -
                an admin action, not an organiser one, because pulling a show that
                has sold tickets is a refund decision. The button used to flip the
                status in the prototype store, which looked like it worked and

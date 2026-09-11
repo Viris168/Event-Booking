@@ -1,5 +1,6 @@
 package com.eventbooking.controller.Venue;
 
+import com.eventbooking.security.CurrentUserId;
 import com.eventbooking.dto.VenueSeat.CreateVenueSeatsRequest;
 import com.eventbooking.dto.VenueSeat.VenueSeatMapResponse;
 import com.eventbooking.security.OrganizerResolver;
@@ -13,7 +14,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -56,7 +56,7 @@ public class VenueSeatController {
                     The venue comes from the path only - it is no longer accepted in the body,
                     so there is one id to check ownership against and one id to write with.""")
     public ResponseEntity<VenueSeatMapResponse> create(
-            @RequestHeader("X-User-Id") Long actorUserId,
+            @CurrentUserId Long actorUserId,
             @PathVariable Long venueId,
             @Valid @RequestBody CreateVenueSeatsRequest request) {
 

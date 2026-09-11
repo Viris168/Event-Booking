@@ -1,10 +1,10 @@
 import client from './client.js'
 
-export const getEvents = (params) => client.get('/event', { params }).then((r) => r.data)
-export const getEvent = (id) => client.get(`/event/${id}`).then((r) => r.data)
-export const createEvent = (data) => client.post('/event', data).then((r) => r.data)
-export const updateEvent = (id, data) => client.patch(`/event/${id}`, data).then((r) => r.data)
-export const publishEvent = (id) => client.patch(`/event/${id}/publish`).then((r) => r.data)
+export const getEvents = (params) => client.get('/events', { params }).then((r) => r.data)
+export const getEvent = (id) => client.get(`/events/${id}`).then((r) => r.data)
+export const createEvent = (data) => client.post('/events', data).then((r) => r.data)
+export const updateEvent = (id, data) => client.patch(`/events/${id}`, data).then((r) => r.data)
+export const publishEvent = (id) => client.patch(`/events/${id}/publish`).then((r) => r.data)
 
 /**
  * The organiser's own events, every status included.
@@ -16,7 +16,7 @@ export const publishEvent = (id) => client.patch(`/event/${id}/publish`).then((r
  * No organizerId parameter — the server scopes it to the caller.
  */
 export const getOrganizerEvents = (params) =>
-  client.get('/organizer/event', { params }).then((r) => r.data)
+  client.get('/organizer/events', { params }).then((r) => r.data)
 
 // --- review lifecycle -------------------------------------------------------
 // One function per legal transition rather than a generic post(action): the
@@ -24,13 +24,13 @@ export const getOrganizerEvents = (params) =>
 // would have to know that mapping anyway.
 
 export const submitEventForReview = (id) =>
-  client.patch(`/event/${id}/submit`).then((r) => r.data)
+  client.patch(`/events/${id}/submit`).then((r) => r.data)
 
 export const withdrawEventFromReview = (id) =>
-  client.patch(`/event/${id}/withdraw`).then((r) => r.data)
+  client.patch(`/events/${id}/withdraw`).then((r) => r.data)
 
 export const getEventReviewHistory = (id) =>
-  client.get(`/event/${id}/review`).then((r) => r.data)
+  client.get(`/events/${id}/review`).then((r) => r.data)
 
 // --- seat classes ----------------------------------------------------------
 // What a section costs at THIS event. The seats themselves belong to the venue;
@@ -38,13 +38,13 @@ export const getEventReviewHistory = (id) =>
 // id and never a venue id.
 
 export const getSeatClasses = (eventId) =>
-  client.get(`/event/${eventId}/seat-class`).then((r) => r.data)
+  client.get(`/events/${eventId}/seat-class`).then((r) => r.data)
 
 export const createSeatClass = (eventId, data) =>
-  client.post(`/event/${eventId}/seat-class`, data).then((r) => r.data)
+  client.post(`/events/${eventId}/seat-class`, data).then((r) => r.data)
 
 export const updateSeatClass = (eventId, seatClassId, data) =>
-  client.patch(`/event/${eventId}/seat-class/${seatClassId}`, data).then((r) => r.data)
+  client.patch(`/events/${eventId}/seat-class/${seatClassId}`, data).then((r) => r.data)
 
 /** Assign venue seats to a class — this is what makes them sellable. */
 export const assignEventSeats = (eventId, seatClassId, venueSeatIds) =>
@@ -56,15 +56,15 @@ export const assignEventSeats = (eventId, seatClassId, venueSeatIds) =>
     .then((r) => r.data)
 
 export const getEventSeatMap = (eventId) =>
-  client.get(`/event/${eventId}/seat-map`).then((r) => r.data)
+  client.get(`/events/${eventId}/seat-map`).then((r) => r.data)
 
 // --- zones -----------------------------------------------------------------
 
 export const getEventZones = (eventId) =>
-  client.get(`/event/${eventId}/zone`).then((r) => r.data)
+  client.get(`/events/${eventId}/zone`).then((r) => r.data)
 
 export const createEventZone = (eventId, data) =>
-  client.post(`/event/${eventId}/zone`, data).then((r) => r.data)
+  client.post(`/events/${eventId}/zone`, data).then((r) => r.data)
 
 export const updateEventZone = (zoneId, data) =>
   client.patch(`/zone/${zoneId}`, data).then((r) => r.data)
@@ -81,7 +81,7 @@ export const uploadEventImage = (eventId, file, role = 'COVER') => {
   const body = new FormData()
   body.append('file', file)
   return client
-    .post(`/event/${eventId}/image`, body, {
+    .post(`/events/${eventId}/image`, body, {
       params: { role },
       // Explicitly unset: the shared client sets application/json, and axios
       // must be left to write its own multipart boundary.
@@ -91,4 +91,4 @@ export const uploadEventImage = (eventId, file, role = 'COVER') => {
 }
 
 export const deleteEventImage = (eventId, role = 'COVER') =>
-  client.delete(`/event/${eventId}/image`, { params: { role } }).then((r) => r.data)
+  client.delete(`/events/${eventId}/image`, { params: { role } }).then((r) => r.data)
