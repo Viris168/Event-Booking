@@ -1,5 +1,5 @@
 import { useDocumentTitle } from '../../lib/useDocumentTitle.js'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ConfirmDialog from '../../components/ConfirmDialog.jsx'
 import Icon from '../../components/Icon.jsx'
 import { Alert, Badge, Empty, Field, Pager } from '../../components/ui.jsx'
@@ -185,9 +185,12 @@ export default function AdminReviewPage() {
           </p>
         </div>
         <div className="rq-head-right">
-          <Field label={t('status')}>
+          <div className="rq-filter">
+            <label className="sr-only" htmlFor="rq-status">
+              {t('status')}
+            </label>
             <select
-              className="select"
+              id="rq-status"
               value={status}
               onChange={(e) => changeStatus(e.target.value)}
             >
@@ -197,7 +200,7 @@ export default function AdminReviewPage() {
                 </option>
               ))}
             </select>
-          </Field>
+          </div>
           <div className="rq-count" aria-live="polite">
             {loading
               ? km
@@ -228,55 +231,65 @@ export default function AdminReviewPage() {
 
       {rows.length > 0 && (
         <div className="rq-split">
-          {/* ---------------------------------------------------- the queue */}
+          {/* ------------------------------------------- the queue, as a table */}
           <div className="rq-col">
-            <ul className="rq-list" role="listbox" aria-label={km ? 'ជួរ' : 'Queue'}>
-            {rows.map((event, i) => {
-              /*
-               * submitted_at is CLEARED when an event leaves the queue -
-               * withdraw, reject and request-changes all null it, because the
-               * event is no longer waiting. So on any queue but PENDING_REVIEW
-               * it is absent, and "never submitted" would be a lie about an
-               * event that was plainly submitted and then decided on. Fall
-               * back to when the decision was made.
-               */
-              const submittedAt = pick(event, 'submitted_at', 'submittedAt')
-              const decided = pick(event, 'latest_review', 'latestReview')
-              const stamp = submittedAt ?? pick(decided ?? {}, 'created_at', 'createdAt')
-              const stampLabel = submittedAt
-                ? km ? 'រង់ចាំ ' : 'waiting '
-                : km ? 'សម្រេច ' : 'decided '
-              const on = event.id === selected?.id
-              return (
-                <li key={event.id}>
-                  <button
-                    type="button"
-                    role="option"
-                    aria-selected={on}
-                    className={`rq-row${on ? ' is-on' : ''}`}
-                    onClick={() => selectRow(event, i)}
-                  >
-                    <span className="rq-row-top">
-                      <b className="rq-row-title">
-                        {(km ? event.title_km : event.title_en) || event.title_en}
-                      </b>
-                      <Badge status={event.status} />
-                    </span>
-                    <span className="rq-row-meta small">
-                      {stamp ? (
-                        <>
-                          <Icon name="clock" size={12} /> {stampLabel}
-                          {timeAgo(stamp)}
-                        </>
-                      ) : (
-                        <em>{km ? 'មិនទាន់ដាក់ស្នើ' : 'never submitted'}</em>
-                      )}
-                    </span>
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
+            <div className="rq-tablewrap">
+              <table className="rq-queue">
+                <thead>
+                  <tr>
+                    <th>{km ? 'ព្រឹត្តិការណ៍' : 'Event'}</th>
+                    <th>{km ? 'ទីកន្លែង' : 'Venue'}</th>
+                    <th>{t('status')}</th>
+                    <th className="rq-num">{km ? 'រង់ចាំ' : 'Waiting'}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((event, i) => {
+                    /*
+                     * submitted_at is cleared when an event leaves the queue, so
+                     * on any status but PENDING_REVIEW it is absent and "never
+                     * submitted" would be a lie. Fall back to the decision time.
+                     */
+                    const submittedAt = pick(event, 'submitted_at', 'submittedAt')
+                    const decided = pick(event, 'latest_review', 'latestReview')
+                    const stamp = submittedAt ?? pick(decided ?? {}, 'created_at', 'createdAt')
+                    const venue = event.venue
+                    const venueName = venue
+                      ? (km ? pick(venue, 'name_km', 'nameKm') : null) ||
+                        pick(venue, 'name_en', 'nameEn')
+                      : null
+                    const on = event.id === selected?.id
+                    return (
+                      <tr
+                        key={event.id}
+                        className={`rq-qrow${on ? ' is-on' : ''}`}
+                        aria-selected={on}
+                        tabIndex={0}
+                        onClick={() => selectRow(event, i)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault()
+                            selectRow(event, i)
+                          }
+                        }}
+                      >
+                        <td>
+                          <div className="rq-qtitle">{event.title_en}</div>
+                          {event.title_km && <div className="km rq-qsub">{event.title_km}</div>}
+                        </td>
+                        <td className="rq-qmuted">{venueName ?? '—'}</td>
+                        <td>
+                          <Badge status={event.status} />
+                        </td>
+                        <td className="rq-num rq-qmuted">
+                          {stamp ? timeAgo(stamp) : <em>{km ? 'គ្មាន' : 'none'}</em>}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
 
             {/* Pager counts from 1; Spring's Pageable counts from 0. Without
                 this the 21st submission is unreachable. */}
@@ -289,7 +302,7 @@ export default function AdminReviewPage() {
             )}
           </div>
 
-          {/* --------------------------------------------------- the detail */}
+          {/* -------------------------------------- the detail rail, on the right */}
           {selected && (
             <EventReviewPanel
               event={selected}
@@ -370,6 +383,19 @@ export default function AdminReviewPage() {
  * new type every render, so React remounts the subtree instead of updating it.
  */
 function EventReviewPanel({ event, km, locale, busy, onApprove, onRequestChanges, onReject }) {
+  /*
+   * Back to the top when the selection changes.
+   *
+   * Without this the pane keeps the scroll offset of the submission you just
+   * finished reading, so the next one opens partway down - at "Inventory mode"
+   * rather than at its title. Scrolling an element is a DOM effect, not state,
+   * so there is no render cascade to avoid here.
+   */
+  const scrollRef = useRef(null)
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = 0
+  }, [event.id])
+
   const actions = pick(event, 'available_actions', 'availableActions') ?? []
   const latest = pick(event, 'latest_review', 'latestReview')
   const venue = event.venue
@@ -385,7 +411,7 @@ function EventReviewPanel({ event, km, locale, busy, onApprove, onRequestChanges
 
   return (
     <section className="rq-panel" aria-label={km ? 'ព័ត៌មានលម្អិត' : 'Submission detail'}>
-      <div className="rq-panel-scroll">
+      <div className="rq-panel-scroll" ref={scrollRef}>
         {cover ? (
           <img className="rq-cover" src={cover} alt="" />
         ) : (
@@ -425,16 +451,16 @@ function EventReviewPanel({ event, km, locale, busy, onApprove, onRequestChanges
           </Alert>
         )}
 
-        <Section title={km ? 'មូលដ្ឋាន' : 'Basics'}>
+        <div className="rq-section">
           <Row label={km ? 'ទីកន្លែង' : 'Venue'}>{venueName ?? '—'}</Row>
           <Row label={km ? 'ប្រភេទ' : 'Category'}>{event.category ?? '—'}</Row>
           <Row label={km ? 'របៀបសំបុត្រ' : 'Inventory mode'}>
             {pick(event, 'inventory_mode', 'inventoryMode') ?? '—'}
           </Row>
           <Row label="Slug">
-            <span className="mono small">{event.slug}</span>
+            <span className="mono">{event.slug}</span>
           </Row>
-        </Section>
+        </div>
 
         <Section title={km ? 'កាលវិភាគ' : 'Schedule'}>
           <Row label={km ? 'ចាប់ផ្តើម' : 'Starts'}>{fmt(event.starts_at, locale)}</Row>
@@ -503,29 +529,46 @@ function EventReviewPanel({ event, km, locale, busy, onApprove, onRequestChanges
         )}
       </div>
 
-      {/* Pinned. A reviewer who scrolls a long submission should not scroll
-          back up to act on it. */}
+      {/*
+        * Pinned, as in the reference: a reviewer who has scrolled a long
+        * submission should not scroll back up to act on it. The reference puts
+        * its order total here; the equivalent for an event is what it is
+        * putting on sale.
+        */}
       <footer className="rq-actions">
-        {actions.includes('APPROVE') && (
-          <button className="btn btn-primary" disabled={busy} onClick={onApprove}>
-            <Icon name="check" size={15} />
-            {km ? 'អនុម័ត' : 'Approve'}
-          </button>
-        )}
-        {actions.includes('REQUEST_CHANGES') && (
-          <button className="btn" disabled={busy} onClick={onRequestChanges}>
-            <Icon name="edit" size={15} />
-            {km ? 'ស្នើសុំកែប្រែ' : 'Request changes'}
-          </button>
-        )}
-        {actions.includes('REJECT') && (
-          <button className="btn btn-danger" disabled={busy} onClick={onReject}>
-            <Icon name="xCircle" size={15} />
-            {km ? 'បដិសេធ' : 'Reject'}
-          </button>
-        )}
-        {actions.length === 0 && (
-          <span className="muted small">{km ? 'គ្មានសកម្មភាព' : 'No actions available'}</span>
+        <div className="rq-total">
+          <span>{km ? 'ចំណុះសរុប' : 'Total capacity'}</span>
+          <b>{capacity.toLocaleString()}</b>
+        </div>
+
+        {actions.length === 0 ? (
+          <span className="rq-qmuted">{km ? 'គ្មានសកម្មភាព' : 'No actions available'}</span>
+        ) : (
+          <>
+            {actions.includes('APPROVE') && (
+              <button className="rq-act rq-act-approve" disabled={busy} onClick={onApprove}>
+                <Icon name="check" size={15} />
+                {km ? 'អនុម័ត' : 'Approve'}
+              </button>
+            )}
+            {/* Two-up beneath, the way the reference pairs its actions. Reject
+                is the quietest of the three on purpose - it is the only one
+                that cannot be walked back. */}
+            <div className="rq-actpair">
+              {actions.includes('REQUEST_CHANGES') && (
+                <button className="rq-act rq-act-changes" disabled={busy} onClick={onRequestChanges}>
+                  <Icon name="edit" size={14} />
+                  {km ? 'កែប្រែ' : 'Changes'}
+                </button>
+              )}
+              {actions.includes('REJECT') && (
+                <button className="rq-act rq-act-reject" disabled={busy} onClick={onReject}>
+                  <Icon name="xCircle" size={14} />
+                  {km ? 'បដិសេធ' : 'Reject'}
+                </button>
+              )}
+            </div>
+          </>
         )}
       </footer>
     </section>
@@ -575,92 +618,199 @@ function errorText(e, fallback) {
  */
 const RQ_CSS = `
 /*
- * One spacing scale, 4px steps. The first draft of this file used fourteen
- * hand-picked values - .3rem, .32rem and .35rem all appeared, differences
- * nobody can see. Every length below is one of these five.
+ * A reading screen, not a dashboard.
+ *
+ * The reviewer's job here is to read a submission and judge it, so the design
+ * follows a document: one column of candidates ruled off by hairlines, and the
+ * submission itself set as prose with a real heading, at a size meant to be
+ * read rather than scanned.
+ *
+ * Three things were deliberately removed from the earlier pass, all of them on
+ * the list in CLAUDE.md or next to it:
+ *
+ *   - nested boxes. Page card holding a table card holding row cards holding a
+ *     rail card. Four borders deep before any content. Rows are separated by a
+ *     hairline now and the rail is a single panel.
+ *   - uppercase micro-labels (EVENT, BASICS, SCHEDULE) in tiny letterspaced
+ *     caps. They label things that are already obvious from their content, and
+ *     they are the single clearest tell of a generated admin template.
+ *   - a type scale where everything sat between .68 and .8rem. Nothing could be
+ *     more important than anything else, which is the same as having no
+ *     hierarchy at all.
+ *
+ * One 4px spacing scale. Every length below is one of these.
  */
 .rq-wrap {
-  --rq-1: .25rem; --rq-2: .5rem; --rq-3: .75rem; --rq-4: 1rem; --rq-5: 1.5rem;
+  --rq-1: .25rem; --rq-2: .5rem; --rq-3: .75rem; --rq-4: 1rem;
+  --rq-5: 1.5rem; --rq-6: 2rem;
   max-width: var(--container-shell, 1360px); margin: 0 auto;
   padding: var(--spacing-page, 1.15rem); color: var(--color-ink);
 }
 
-.rq-head { display: flex; gap: var(--rq-4); align-items: flex-end;
+.rq-head { display: flex; gap: var(--rq-4); align-items: baseline;
            justify-content: space-between; flex-wrap: wrap;
-           margin-bottom: var(--rq-4); }
-.rq-head h1 { margin: 0 0 var(--rq-1); }
-.rq-head p { margin: 0; color: var(--color-muted); }
-.rq-head-right { display: flex; gap: var(--rq-4); align-items: flex-end; }
-.rq-count { padding-bottom: var(--rq-2); white-space: nowrap;
-            font-variant-numeric: tabular-nums; color: var(--color-muted); }
+           padding-bottom: var(--rq-3); margin-bottom: var(--rq-5);
+           border-bottom: 1px solid var(--color-line); }
+.rq-head h1 { margin: 0; letter-spacing: -.022em; }
+.rq-head p { margin: var(--rq-1) 0 0; color: var(--color-muted); }
+.rq-head-right { display: flex; gap: var(--rq-4); align-items: baseline; }
 
-.rq-split { display: grid; grid-template-columns: minmax(260px, 340px) 1fr;
-            gap: var(--rq-4); align-items: start; }
-@media (max-width: 900px) { .rq-split { grid-template-columns: 1fr; } }
+/*
+ * The dropdown the browser opens is NOT styled by the rules below - it is an
+ * operating-system widget. What controls it is color-scheme: told 'dark', the
+ * browser paints that list dark and picks a readable text colour itself.
+ *
+ * Without it the popup came up in its default white while the options inherited
+ * --color-ink, which is near-white in dark mode. White on white, unreadable -
+ * and invisible to any amount of styling aimed at .rq-filter select.
+ *
+ * The page-level <meta name="color-scheme" content="light dark"> follows the
+ * OS, so it gets this wrong for anyone who forces the app's own theme against
+ * their system setting. This states it from the same place the theme is set.
+ */
+.rq-filter select {
+  appearance: none; font: inherit; font-size: .85rem; font-weight: 500;
+  padding: var(--rq-1) 1.6rem var(--rq-1) var(--rq-2);
+  border: 0; border-bottom: 1px solid var(--color-line);
+  border-radius: 0; color: var(--color-ink); cursor: pointer;
+  color-scheme: light;
+  /* Opaque, like the app's own .select. A transparent control leaves the
+     native popup to fall back to white. */
+  background-color: var(--color-surface);
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
+                    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: calc(100% - 9px) 58%, calc(100% - 4px) 58%;
+  background-size: 5px 5px, 5px 5px; background-repeat: no-repeat;
+}
+[data-theme='dark'] .rq-filter select { color-scheme: dark; }
+/* Belt and braces: some engines do read these, and where they do not the
+   color-scheme above has already made the popup readable. */
+.rq-filter select option { background: var(--color-surface); color: var(--color-ink); }
+.rq-filter select:hover { border-bottom-color: var(--color-ink); }
+.rq-count { white-space: nowrap; font-size: .85rem; color: var(--color-muted);
+            font-variant-numeric: tabular-nums; }
 
-.rq-col { display: flex; flex-direction: column; gap: var(--rq-3); }
-.rq-list { list-style: none; margin: 0; padding: 0; display: flex;
-           flex-direction: column; gap: var(--rq-2);
-           max-height: calc(100vh - 260px); overflow-y: auto; }
+/* No wrapper card. The list sits on the page and the rail beside it - the
+   only framed thing on the screen, because it is the only thing that scrolls
+   independently. Rail is wide enough to read a paragraph in. */
+.rq-split { display: grid; grid-template-columns: minmax(0, 1fr) 440px;
+            gap: var(--rq-6); align-items: start; }
+@media (max-width: 1180px) { .rq-split { grid-template-columns: minmax(0, 1fr) 380px; gap: var(--rq-5); } }
+@media (max-width: 1024px) { .rq-split { grid-template-columns: 1fr; } }
 
-.rq-row { width: 100%; text-align: start; cursor: pointer; display: flex;
-          flex-direction: column; gap: var(--rq-1);
-          padding: var(--rq-3); border-radius: var(--radius-ui, 12px);
-          border: 1px solid var(--color-line);
-          background: var(--color-surface); color: var(--color-ink);
-          font: inherit; box-shadow: var(--shadow-card); }
-.rq-row:hover { border-color: var(--color-brand-500); }
-.rq-row.is-on { border-color: var(--color-brand-500);
-                background: var(--color-brand-50);
-                box-shadow: inset 3px 0 0 0 var(--color-brand-500); }
-[data-theme='dark'] .rq-row.is-on { background: var(--color-surface-2); }
-.rq-row-top { display: flex; gap: var(--rq-2); align-items: center;
-              justify-content: space-between; }
-.rq-row-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.rq-row-meta { color: var(--color-muted); }
+.rq-col { display: flex; flex-direction: column; gap: var(--rq-4); min-width: 0; }
+.rq-tablewrap { overflow-x: auto; }
+.rq-queue { width: 100%; border-collapse: collapse; }
+.rq-queue thead th { text-align: start; font-size: .78rem; font-weight: 500;
+                     color: var(--color-muted); padding: 0 var(--rq-3) var(--rq-2);
+                     white-space: nowrap; border-bottom: 1px solid var(--color-line); }
+.rq-queue thead th:first-child { padding-inline-start: 0; }
+.rq-queue thead th.rq-num { text-align: end; padding-inline-end: 0; }
 
+/* Ruled, not boxed. The selected row is marked by a solid accent edge and a
+   faint tint - one signal in one place, rather than a border tracing every
+   cell. */
+.rq-qrow { cursor: pointer; }
+.rq-qrow > td { padding: var(--rq-3); vertical-align: baseline;
+                border-bottom: 1px solid var(--color-line-2);
+                box-shadow: inset 3px 0 0 0 transparent; }
+.rq-qrow > td:first-child { padding-inline-start: var(--rq-3); }
+.rq-qrow > td:last-child { padding-inline-end: 0; }
+.rq-qrow:hover > td { background: var(--color-surface-2); }
+.rq-qrow.is-on > td { background: var(--color-surface-2); }
+.rq-qrow.is-on > td:first-child { box-shadow: inset 3px 0 0 0 var(--color-ink); }
+/* One ring around the row, not one per cell - what the previous rule did. */
+.rq-qrow:focus-visible { outline: 2px solid var(--color-brand-500);
+                         outline-offset: -2px; }
+.rq-qrow:focus-visible > td { background: var(--color-surface-2); }
+
+.rq-qtitle { font-size: .95rem; font-weight: 600; letter-spacing: -.01em; }
+.rq-qsub { font-size: .8rem; color: var(--color-muted); margin-top: 1px; }
+.rq-qmuted { color: var(--color-muted); font-size: .85rem; }
+
+/* --------------------------------------------------------------- the rail */
 .rq-panel { border: 1px solid var(--color-line);
             border-radius: var(--radius-card, 16px);
             background: var(--color-surface); color: var(--color-ink);
             display: flex; flex-direction: column;
-            max-height: calc(100vh - 260px); overflow: hidden;
-            box-shadow: var(--shadow-card); }
-.rq-panel-scroll { overflow-y: auto; padding: var(--rq-4); display: flex;
-                   flex-direction: column; gap: var(--rq-5); }
-.rq-panel-head { display: flex; gap: var(--rq-4); align-items: flex-start;
-                 justify-content: space-between; }
-.rq-panel-head h2 { margin: 0; line-height: 1.25; }
+            /* Sized to fit BELOW the nav, sub-nav and page heading, which
+               is where it sits before any scrolling. Sticky pins it to the top
+               afterwards, where it could afford to be taller - but a decision
+               bar that starts off the bottom of the screen is worse than one
+               that never uses the last 40px. */
+            max-height: calc(100vh - 248px); overflow: hidden;
+            position: sticky; top: var(--rq-4); }
+.rq-panel-scroll { overflow-y: auto; padding: var(--rq-5);
+                   display: flex; flex-direction: column; gap: var(--rq-5); }
 
-.rq-cover { width: 100%; max-height: 190px; object-fit: cover;
+/* The submission's own heading, set like one. */
+.rq-panel-head { display: flex; flex-direction: column; gap: var(--rq-2);
+                 align-items: flex-start; }
+.rq-panel-head h2 { margin: 0; font-size: 1.35rem; line-height: 1.2;
+                    letter-spacing: -.025em; }
+.rq-panel-head .km-title { font-size: .95rem; color: var(--color-ink-2); }
+
+.rq-cover { width: 100%; max-height: 170px; object-fit: cover;
             border-radius: var(--radius-ui, 12px); }
 .rq-cover-empty { display: flex; align-items: center; justify-content: center;
-                  gap: var(--rq-2); height: 76px; max-height: none;
-                  color: var(--color-muted);
+                  gap: var(--rq-2); height: 60px; max-height: none;
+                  color: var(--color-muted); font-size: .8rem;
                   background: var(--color-surface-2);
                   border: 1px dashed var(--color-line); }
 .rq-banner { width: 100%; border-radius: var(--radius-tiny, 8px); }
 
-.rq-section > h3 { margin: 0 0 var(--rq-2); font-size: .75rem; font-weight: 700;
-                   text-transform: uppercase; letter-spacing: .08em;
-                   color: var(--color-muted); }
-.rq-kv { display: grid; grid-template-columns: 9.5rem 1fr; gap: var(--rq-2);
-         padding: var(--rq-1) 0; align-items: baseline;
-         border-top: 1px solid var(--color-line-2); }
-.rq-section > .rq-kv:first-of-type { border-top: 0; }
-.rq-kv > span:first-child { color: var(--color-muted); }
-@media (max-width: 560px) { .rq-kv { grid-template-columns: 1fr; gap: 0; } }
-.rq-desc { margin: 0 0 var(--rq-2); white-space: pre-wrap; line-height: 1.65;
-           color: var(--color-ink-2); }
+/* Sentence case, normal tracking, real weight. A heading, not a tag. */
+.rq-section > h3 { margin: 0 0 var(--rq-2); font-size: .9rem; font-weight: 600;
+                   letter-spacing: -.005em; color: var(--color-ink); }
 
-.rq-table { width: 100%; border-collapse: collapse; }
-.rq-table td { padding: var(--rq-2) var(--rq-1);
-               border-top: 1px solid var(--color-line-2); vertical-align: top; }
+.rq-kv { display: flex; justify-content: space-between; gap: var(--rq-4);
+         padding: var(--rq-2) 0; font-size: .875rem; align-items: baseline;
+         border-top: 1px solid var(--color-line-2); }
+.rq-section > .rq-kv:first-of-type { border-top: 0; padding-top: 0; }
+.rq-kv > span:first-child { color: var(--color-muted); white-space: nowrap; }
+.rq-kv > span:last-child { text-align: end; font-variant-numeric: tabular-nums; }
+
+/* Prose, at a size meant to be read. */
+.rq-desc { margin: 0 0 var(--rq-3); white-space: pre-wrap; line-height: 1.7;
+           font-size: .9rem; color: var(--color-ink-2); max-width: 62ch; }
+
+.rq-table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+.rq-table td { padding: var(--rq-2) 0; vertical-align: baseline;
+               border-top: 1px solid var(--color-line-2); }
 .rq-table tr:first-child td { border-top: 0; }
 .rq-num { text-align: end; white-space: nowrap;
           font-variant-numeric: tabular-nums; color: var(--color-ink-2); }
 
-.rq-actions { display: flex; gap: var(--rq-2); flex-wrap: wrap;
-              padding: var(--rq-3) var(--rq-4);
+/* The decision bar. Approve commits and reads that way; Changes is the
+   reversible middle; Reject is quietest because it is the only one that
+   cannot be walked back. */
+.rq-actions { display: flex; flex-direction: column; gap: var(--rq-3);
+              padding: var(--rq-4) var(--rq-5);
               border-top: 1px solid var(--color-line);
-              background: var(--color-surface-2); }
+              background: var(--color-surface); }
+.rq-total { display: flex; justify-content: space-between; align-items: baseline;
+            font-size: .875rem; color: var(--color-muted); }
+.rq-total b { font-size: 1.15rem; color: var(--color-ink);
+              font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.rq-actpair { display: grid; grid-template-columns: 1fr 1fr; gap: var(--rq-2); }
+
+.rq-act { display: inline-flex; align-items: center; justify-content: center;
+          gap: var(--rq-2); font: inherit; font-size: .875rem; font-weight: 600;
+          padding: var(--rq-3) var(--rq-4); border-radius: var(--radius-ui, 12px);
+          border: 1px solid transparent; cursor: pointer; width: 100%;
+          transition: background .12s, border-color .12s; }
+.rq-act:disabled { opacity: .5; cursor: not-allowed; }
+.rq-act-approve { background: var(--color-ink); color: var(--color-surface); }
+.rq-act-approve:not(:disabled):hover { background: var(--color-brand-800); }
+.rq-act-changes { background: transparent; color: var(--color-ink-2);
+                  border-color: var(--color-line); }
+.rq-act-changes:not(:disabled):hover { border-color: var(--color-ink-2);
+                                       background: var(--color-surface-2); }
+.rq-act-reject { background: transparent; color: var(--color-danger);
+                 border-color: transparent; }
+.rq-act-reject:not(:disabled):hover { border-color: var(--color-danger); }
+[data-theme='dark'] .rq-act-approve { background: var(--color-ink);
+                                      color: var(--color-page); }
+[data-theme='dark'] .rq-act-approve:not(:disabled):hover {
+  background: var(--color-brand-100); }
 `
