@@ -5,6 +5,7 @@ import com.eventbooking.Enumeration.ImageRole;
 import com.eventbooking.dto.event.CreateEventRequest;
 import com.eventbooking.dto.event.EventResponse;
 import com.eventbooking.dto.event.EventReviewResponse;
+import com.eventbooking.dto.event.EventSearchCriteria;
 import com.eventbooking.dto.event.UpdateEventRequest;
 import com.eventbooking.security.OrganizerResolver;
 import com.eventbooking.service.event.EventService;
@@ -47,11 +48,30 @@ public class EventController {
         return new ResponseEntity<>(eventResponse,HttpStatus.CREATED);
     }
 
+    /**
+     * The public catalogue, with the filter bar's six controls applied.
+     *
+     * <p>All of them are optional and all of them arrive as raw strings: the
+     * events page keeps its whole filter state in the URL and sends the
+     * untouched ones as empty values, so binding {@code from} as a LocalDate or
+     * {@code minUsd} as a BigDecimal would answer 400 to a visitor who has
+     * simply not typed anything. EventSearchCriteria parses them leniently
+     * instead - a value it cannot read means "no filter", never an error.
+     */
     @GetMapping
     public ResponseEntity<Page<EventResponse>> listEvents(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        Page<EventResponse> events = eventService.listEvents(page, size);
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String province,
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to,
+            @RequestParam(required = false) String minUsd,
+            @RequestParam(required = false) String maxUsd,
+            @RequestParam(required = false) String sort) {
+        EventSearchCriteria criteria =
+                EventSearchCriteria.of(q, province, from, to, minUsd, maxUsd, sort);
+        Page<EventResponse> events = eventService.listEvents(criteria, page, size);
         return new ResponseEntity<>(events, HttpStatus.OK);
     }
 
