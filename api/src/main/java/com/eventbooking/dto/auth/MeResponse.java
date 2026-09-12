@@ -1,6 +1,5 @@
 package com.eventbooking.dto.auth;
 
-import com.eventbooking.Enumeration.Locale;
 import com.eventbooking.Enumeration.Provider;
 import com.eventbooking.Enumeration.Role;
 import com.eventbooking.model.AppUser;
@@ -41,8 +40,6 @@ public record MeResponse(
 
         @JsonProperty("role") Role role,
 
-        @JsonProperty("locale") Locale locale,
-
         /** LOCAL or GOOGLE. How this person signs in, so a screen can say so. */
         @JsonProperty("provider") Provider provider,
 
@@ -79,7 +76,6 @@ public record MeResponse(
                 user.getEmail(),
                 user.getDisplayName(),
                 user.getRole(),
-                user.getLocale(),
                 user.getProvider(),
                 user.getPasswordHash() != null && !user.getPasswordHash().isBlank(),
                 Boolean.TRUE.equals(user.getIsDisabled()),

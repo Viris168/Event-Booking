@@ -58,6 +58,9 @@ const PATHS = {
   globe: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM3.5 9h17M3.5 15h17M12 3c2.5 2.4 3.8 5.4 3.8 9s-1.3 6.6-3.8 9c-2.5-2.4-3.8-5.4-3.8-9S9.5 5.4 12 3Z',
   phone: 'M7 3h3l1.5 4-2 1.5a11 11 0 0 0 5 5L16 11.5 20 13v3a2 2 0 0 1-2.2 2A15 15 0 0 1 5 5.2 2 2 0 0 1 7 3Z',
   mail: 'M3 6h18v12H3zM3 7l9 6 9-6',
+  // Drawn open-bottomed so the count badge can sit on the rim without the
+  // stroke reading through it.
+  bell: 'M18 16V11a6 6 0 1 0-12 0v5l-1.5 2.5h15L18 16ZM10 21h4',
 
   // status
   check: 'M4.5 12.5 9.5 17.5 20 7',

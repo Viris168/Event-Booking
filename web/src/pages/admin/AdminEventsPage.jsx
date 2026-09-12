@@ -1,7 +1,17 @@
 import { useDocumentTitle } from '../../lib/useDocumentTitle.js'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Badge, Field, Progress, ResponsiveTable } from '../../components/ui.jsx'
+import ConfirmDialog from '../../components/ConfirmDialog.jsx'
+import {
+  ActiveFilters,
+  Badge,
+  Empty,
+  Field,
+  IconSelect,
+  Progress,
+  ResponsiveTable,
+  SearchInput,
+} from '../../components/ui.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
 import { usd } from '../../lib/format.js'
@@ -33,13 +43,39 @@ const STATUSES = [
 export default function AdminEventsPage() {
   useStore()
   const { t, locale, date } = useLocale()
+  const km = locale === 'km'
   useDocumentTitle(t('moderation'))
   const toast = useToast()
   const [q, setQ] = useState('')
   const [status, setStatus] = useState('ALL')
   const [province, setProvince] = useState('')
+  // Event awaiting a take-down confirmation. Taking an event down pulls a live
+  // listing off sale, so it asks first; restoring is safe and stays one click.
+  const [confirming, setConfirming] = useState(null)
 
   const events = listEvents({ q, status, province, sort: 'soonest' }).content
+
+  const chips = [
+    q && { key: 'q', icon: 'search', label: q, onRemove: () => setQ('') },
+    status !== 'ALL' && {
+      key: 'status',
+      icon: 'filter',
+      label: status,
+      onRemove: () => setStatus('ALL'),
+    },
+    province && {
+      key: 'province',
+      icon: 'mapPin',
+      label: provinceName(province, locale),
+      onRemove: () => setProvince(''),
+    },
+  ].filter(Boolean)
+
+  function clearAll() {
+    setQ('')
+    setStatus('ALL')
+    setProvince('')
+  }
 
   function organizerName(organizerId) {
     const profile = db.organizerProfiles.find((p) => p.id === organizerId)
@@ -56,9 +92,10 @@ export default function AdminEventsPage() {
         <div>
           <h1>{t('moderation')}</h1>
           <p>
-            {locale === 'km'
-              ? 'ព្រឹត្តិការណ៍ទាំងអស់លើវេទិកា ដោយមិនគិតពីអ្នកចាត់ចែង។'
-              : 'Every event on the platform, regardless of owner.'}
+            {events.length}{' '}
+            {km
+              ? 'ព្រឹត្តិការណ៍ត្រូវនឹងតម្រង — គ្រប់ម្ចាស់ទាំងអស់។'
+              : 'events match the current filters, across every owner.'}
           </p>
         </div>
       </div>
@@ -67,38 +104,67 @@ export default function AdminEventsPage() {
         <div className="panel-body">
           <div className="filterbar">
             <Field label={t('searchLabel')}>
-              <input className="input" value={q} onChange={(e) => setQ(e.target.value)} />
+              <SearchInput
+                value={q}
+                onChange={setQ}
+                placeholder={km ? 'ចំណងជើង ឬទីកន្លែង' : 'Title or venue'}
+                ariaLabel={t('searchLabel')}
+                clearLabel={t('reset')}
+              />
             </Field>
             <Field label={t('status')}>
-              <select className="select" value={status} onChange={(e) => setStatus(e.target.value)}>
-                <option value="ALL">{locale === 'km' ? 'ទាំងអស់' : 'All statuses'}</option>
+              <IconSelect icon="filter" value={status} onChange={setStatus} ariaLabel={t('status')}>
+                <option value="ALL">{km ? 'ទាំងអស់' : 'All statuses'}</option>
                 {STATUSES.map((s) => (
                   <option key={s} value={s}>
                     {s}
                   </option>
                 ))}
-              </select>
+              </IconSelect>
             </Field>
             <Field label={t('province')}>
-              <select className="select" value={province} onChange={(e) => setProvince(e.target.value)}>
+              <IconSelect
+                icon="mapPin"
+                value={province}
+                onChange={setProvince}
+                ariaLabel={t('province')}
+              >
                 <option value="">{t('allProvinces')}</option>
                 {PROVINCES.map((p) => (
                   <option key={p.code} value={p.code}>
-                    {locale === 'km' ? p.name_km : p.name_en}
+                    {km ? p.name_km : p.name_en}
                   </option>
                 ))}
-              </select>
+              </IconSelect>
             </Field>
           </div>
+
+          {chips.length > 0 && (
+            <div style={{ marginTop: '0.85rem' }}>
+              <ActiveFilters items={chips} onClearAll={clearAll} clearAllLabel={t('reset')} />
+            </div>
+          )}
         </div>
       </div>
 
+      {events.length === 0 ? (
+        <Empty icon="search" title={km ? 'រកមិនឃើញព្រឹត្តិការណ៍ទេ' : 'No events match'}>
+          {km
+            ? 'សាកល្បងលុបតម្រងចេញ ឬស្វែងរកពាក្យផ្សេង។'
+            : 'Try clearing a filter or searching for something else.'}
+          {chips.length > 0 && (
+            <button className="btn btn-sm btn-outline" onClick={clearAll} style={{ marginTop: '0.7rem' }}>
+              {t('reset')}
+            </button>
+          )}
+        </Empty>
+      ) : (
       <div className="panel">
         <ResponsiveTable>
           <table className="table">
             <thead>
               <tr>
-                <th>{locale === 'km' ? 'ព្រឹត្តិការណ៍' : 'Event'}</th>
+                <th>{km ? 'ព្រឹត្តិការណ៍' : 'Event'}</th>
                 <th>{t('organizer')}</th>
                 <th>{t('status')}</th>
                 <th>{locale === 'km' ? 'កាលបរិច្ឆេទ' : 'Date'}</th>
@@ -150,13 +216,7 @@ export default function AdminEventsPage() {
                             {locale === 'km' ? 'ផ្សាយវិញ' : 'Restore'}
                           </button>
                         ) : (
-                          <button
-                            className="btn btn-sm btn-danger"
-                            onClick={() => {
-                              setEventStatus(e.id, 'TAKEN_DOWN')
-                              toast(locale === 'km' ? 'បានដកចេញ' : 'Event taken down', 'info')
-                            }}
-                          >
+                          <button className="btn btn-sm btn-danger" onClick={() => setConfirming(e)}>
                             {t('takeDown')}
                           </button>
                         )}
@@ -169,6 +229,26 @@ export default function AdminEventsPage() {
           </table>
 </ResponsiveTable>
       </div>
+      )}
+
+      <ConfirmDialog
+        open={Boolean(confirming)}
+        tone="danger"
+        title={km ? 'ដកព្រឹត្តិការណ៍នេះចេញ?' : 'Take this event down?'}
+        confirmLabel={t('takeDown')}
+        onConfirm={() => {
+          setEventStatus(confirming.id, 'TAKEN_DOWN')
+          toast(km ? 'បានដកចេញ' : 'Event taken down', 'info')
+          setConfirming(null)
+        }}
+        onClose={() => setConfirming(null)}
+      >
+        <p className="small muted">
+          {km
+            ? `«${confirming?.title_km}» នឹងបាត់ពីការស្វែងរក ហើយឈប់លក់សំបុត្រភ្លាម។ សំបុត្រដែលបានលក់រួចនៅតែមានសុពលភាព ហើយអ្នកអាចផ្សាយវិញបាន។`
+            : `“${confirming?.title_en}” disappears from search and stops selling immediately. Tickets already sold stay valid, and you can restore it afterwards.`}
+        </p>
+      </ConfirmDialog>
     </div>
   )
 }

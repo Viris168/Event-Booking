@@ -53,4 +53,24 @@ public class OrganizerResolver {
             throw new NotResourceOwnerException(resource, resourceId);
         }
     }
+
+    /**
+     * Ownership gate for rows that are allowed to have no owner at all.
+     *
+     * <p>A {@code null} owner means the row belongs to the platform rather than
+     * to a person - today only {@code venue.organizer_id}, where it marks a
+     * public hall any organiser may host at and maintain. Every organiser passes
+     * that case; an owned row still admits only its owner.
+     *
+     * <p>Separate from {@link #requireOwner} on purpose. Teaching that method to
+     * treat null as "anyone may write" would silently loosen every other
+     * ownership check the moment some unrelated column went nullable - and the
+     * one thing an authorization helper must not do is get quietly weaker.
+     */
+    public void requireOwnerOrShared(Long organizerId, Long rowOrganizerId, String resource, Long resourceId) {
+        if (rowOrganizerId == null) {
+            return;
+        }
+        requireOwner(organizerId, rowOrganizerId, resource, resourceId);
+    }
 }

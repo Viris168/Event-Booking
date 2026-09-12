@@ -45,14 +45,25 @@ export function formatDateTime(iso, locale = 'en') {
 }
 
 /** Compact relative age for admin/audit tables: "3m ago", "2d ago". */
-export function timeAgo(iso) {
+/**
+ * Elapsed time, coarsely.
+ *
+ * The locale argument is optional so the existing English-only callers keep
+ * working untouched; the notification inbox passes it, because a timestamp is
+ * the one part of a Khmer-rendered row that would otherwise still be English.
+ */
+export function timeAgo(iso, locale = 'en') {
+  const km = locale === 'km'
   const secs = Math.floor((Date.now() - new Date(iso).getTime()) / 1000)
-  if (secs < 60) return `${secs}s ago`
+
+  if (secs < 60) return km ? `${secs} វិនាទីមុន` : `${secs}s ago`
   const mins = Math.floor(secs / 60)
-  if (mins < 60) return `${mins}m ago`
+  if (mins < 60) return km ? `${mins} នាទីមុន` : `${mins}m ago`
   const hours = Math.floor(mins / 60)
-  if (hours < 24) return `${hours}h ago`
-  return `${Math.floor(hours / 24)}d ago`
+  if (hours < 24) return km ? `${hours} ម៉ោងមុន` : `${hours}h ago`
+
+  const days = Math.floor(hours / 24)
+  return km ? `${days} ថ្ងៃមុន` : `${days}d ago`
 }
 
 /** Countdown as m:ss, falling back to h:mm:ss over an hour. */

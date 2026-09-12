@@ -11,10 +11,12 @@ import com.eventbooking.organizer.error.AlreadyAnOrganizerException;
 import com.eventbooking.organizer.error.OrganizerApplicationAlreadyDecidedException;
 import com.eventbooking.organizer.error.OrganizerApplicationAlreadyPendingException;
 import com.eventbooking.organizer.error.OrganizerApplicationNotFoundException;
+import com.eventbooking.notification.NotificationEvents;
 import com.eventbooking.repository.AppUserRepository;
 import com.eventbooking.repository.OrganizerApplicationRepository;
 import com.eventbooking.repository.OrganizerProfileRepository;
 import com.eventbooking.service.Organizer.OrganizerService;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,13 +33,16 @@ public class OrganizerServiceimpl implements OrganizerService {
     private final OrganizerApplicationRepository organizerApplicationRepository;
     private final OrganizerProfileRepository organizerProfileRepository;
     private final AppUserRepository appUserRepository;
+    private final ApplicationEventPublisher events;
 
     public OrganizerServiceimpl(OrganizerApplicationRepository organizerApplicationRepository,
                                 OrganizerProfileRepository organizerProfileRepository,
-                                AppUserRepository appUserRepository) {
+                                AppUserRepository appUserRepository,
+                                ApplicationEventPublisher events) {
         this.organizerApplicationRepository = organizerApplicationRepository;
         this.organizerProfileRepository = organizerProfileRepository;
         this.appUserRepository = appUserRepository;
+        this.events = events;
     }
 
     /**
@@ -76,6 +81,10 @@ public class OrganizerServiceimpl implements OrganizerService {
         }
 
         OrganizerApplication saved = organizerApplicationRepository.save(toEntity(actorUserId, request));
+
+        // The admins are the only ones who can act on this, and until now the
+        // only way they learned of it was by opening the queue and looking.
+        events.publishEvent(new NotificationEvents.OrganizerApplicationSubmitted(saved.getId()));
 
         // No reviewer yet - the row is PENDING, so reviewedBy is null by
         // construction and the DB CHECK requires it to stay that way.
@@ -141,6 +150,12 @@ public class OrganizerServiceimpl implements OrganizerService {
         appUserRepository.save(applicant);
         organizerProfileRepository.save(profile);
 
+        // Their role changed under them. Without this the only signal is the
+        // organiser link appearing in the navbar after their next login, which
+        // people do not connect to an application they made days ago.
+        events.publishEvent(new NotificationEvents.OrganizerApplicationDecided(
+                application.getId(), OrganizerApplicationStatus.APPROVED));
+
         return toResponse(application, applicant.getDisplayName(), displayName(adminUserId));
     }
 
@@ -164,6 +179,11 @@ public class OrganizerServiceimpl implements OrganizerService {
         application.setAdminNote(note);
 
         organizerApplicationRepository.save(application);
+
+        // The note is the point of telling them at all: it is what makes a
+        // second application worth submitting rather than a guess.
+        events.publishEvent(new NotificationEvents.OrganizerApplicationDecided(
+                application.getId(), OrganizerApplicationStatus.REJECTED));
 
         return toResponse(application, displayName(application.getUserId()), displayName(adminUserId));
     }

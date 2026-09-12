@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import Icon from '../../components/Icon.jsx'
 import { Alert, Badge, Money, Progress, ResponsiveTable, Stat } from '../../components/ui.jsx'
+import { EventSalesSkeleton } from '../../components/Skeleton.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
 import { usd } from '../../lib/format.js'
 import { getOrganizerEvents, getSeatClasses } from '../../api/events.js'
@@ -174,11 +175,7 @@ export default function EventSalesPage() {
   }, [tx.rows])
 
   if (status === 'loading' || loadedId !== id) {
-    return (
-      <div className="container">
-        <p className="muted">{locale === 'km' ? 'កំពុងផ្ទុក…' : 'Loading…'}</p>
-      </div>
-    )
+    return <EventSalesSkeleton />
   }
 
   if (status === 'missing' || !event) {

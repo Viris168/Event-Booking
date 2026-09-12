@@ -4,9 +4,11 @@ import com.eventbooking.Enumeration.BookingStatus;
 import com.eventbooking.booking.error.IllegalBookingTransitionException;
 import com.eventbooking.model.Booking;
 import com.eventbooking.model.BookingStatusHistory;
+import com.eventbooking.notification.NotificationEvents;
 import com.eventbooking.repository.BookingStatusHistoryRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -111,9 +113,12 @@ public class BookingStateMachine {
     }
 
     private final BookingStatusHistoryRepository historyRepository;
+    private final ApplicationEventPublisher events;
 
-    public BookingStateMachine(BookingStatusHistoryRepository historyRepository) {
+    public BookingStateMachine(BookingStatusHistoryRepository historyRepository,
+                               ApplicationEventPublisher events) {
         this.historyRepository = historyRepository;
+        this.events = events;
     }
 
     public Set<BookingStatus> legalTargets(BookingStatus from) {
@@ -169,6 +174,21 @@ public class BookingStateMachine {
 
         log.info("Booking {} transitioned {} -> {} (actor={})",
                 booking.getId(), from, to, actorUserId == null ? "system" : actorUserId);
+
+        /*
+         * Announced for every transition, including the ones nobody is told
+         * about. Deciding here which states are worth a notification would put
+         * a product question inside the state machine, and this class would
+         * then need editing every time the answer changed; NotificationListener
+         * filters instead.
+         *
+         * Published, not written. Spring holds it until this transaction
+         * commits, so the notification cannot describe a payment that then
+         * failed to save - and a failure on the notification side cannot undo
+         * the transition, because by the time it runs there is nothing left to
+         * roll back.
+         */
+        events.publishEvent(new NotificationEvents.BookingStateChanged(booking.getId(), from, to));
 
         return entry;
     }

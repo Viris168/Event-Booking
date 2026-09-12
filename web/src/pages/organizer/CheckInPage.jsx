@@ -2,6 +2,7 @@ import { useDocumentTitle } from '../../lib/useDocumentTitle.js'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Icon from '../../components/Icon.jsx'
 import { Field } from '../../components/ui.jsx'
+import { Skeleton, SkeletonRegion } from '../../components/Skeleton.jsx'
 import GroupPassModal from '../../components/GroupPassModal.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
 import { scanTicket, previewGroup, confirmGroup } from '../../api/tickets.js'
@@ -100,6 +101,9 @@ export default function CheckInPage() {
   useDocumentTitle(t('checkIn'))
 
   const [events, setEvents] = useState([])
+  // The gate list is the one thing that must arrive before anything can be
+  // scanned, so its wait is shown rather than left as an empty dropdown.
+  const [eventsLoading, setEventsLoading] = useState(true)
   const [eventId, setEventId] = useState('')
   const [code, setCode] = useState('')
   const [last, setLast] = useState(null)
@@ -127,6 +131,7 @@ export default function CheckInPage() {
         if (mapped.length === 1) setEventId(String(mapped[0].id))
       })
       .catch(() => !cancelled && setEvents([]))
+      .finally(() => !cancelled && setEventsLoading(false))
     return () => {
       cancelled = true
     }
@@ -396,18 +401,28 @@ export default function CheckInPage() {
                     : 'Required — tickets are checked against this event'
                 }
               >
-                <select
-                  className="input"
-                  value={eventId}
-                  onChange={(e) => setEventId(e.target.value)}
-                >
-                  <option value="">{km ? 'ជ្រើសរើសព្រឹត្តិការណ៍…' : 'Choose an event…'}</option>
-                  {events.map((ev) => (
-                    <option key={ev.id} value={ev.id}>
-                      {km ? ev.title_km : ev.title_en}
-                    </option>
-                  ))}
-                </select>
+                {eventsLoading ? (
+                  /* Sized to the select it replaces, so the panel does not
+                     resize under the steward's thumb when the list lands. */
+                  <SkeletonRegion label={km ? 'កំពុងផ្ទុក…' : 'Loading events…'}>
+                    {/* 42px and a 10px radius are the `.input` metrics, not
+                        round numbers — matched so the swap is invisible. */}
+                    <Skeleton className="h-10.5 w-full rounded-[10px]" />
+                  </SkeletonRegion>
+                ) : (
+                  <select
+                    className="input"
+                    value={eventId}
+                    onChange={(e) => setEventId(e.target.value)}
+                  >
+                    <option value="">{km ? 'ជ្រើសរើសព្រឹត្តិការណ៍…' : 'Choose an event…'}</option>
+                    {events.map((ev) => (
+                      <option key={ev.id} value={ev.id}>
+                        {km ? ev.title_km : ev.title_en}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </Field>
 
               <Scanner
@@ -416,12 +431,18 @@ export default function CheckInPage() {
                 onError={() => setCameraOn(false)}
               />
 
+              {/* The page's primary control, and the one pressed most often
+                  while standing at a door holding a phone in one hand. It was
+                  btn-sm btn-ghost: the lightest weight in the system at 32px
+                  tall, under the 44px a thumb reliably hits. btn-lg is 48px,
+                  and btn-block puts the whole panel width behind it — no new
+                  style, just the sizes the system already has. */}
               <button
-                className="btn btn-sm btn-ghost"
+                className="btn btn-lg btn-block btn-outline"
                 onClick={() => setCameraOn((v) => !v)}
                 disabled={!eventId}
               >
-                <Icon name="scan" size={15} />
+                <Icon name="scan" size={18} />
                 {cameraOn
                   ? km
                     ? 'បិទកាមេរ៉ា'

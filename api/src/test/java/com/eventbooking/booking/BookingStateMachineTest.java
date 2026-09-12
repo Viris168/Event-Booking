@@ -9,6 +9,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -49,7 +50,9 @@ class BookingStateMachineTest {
             saved.add(entry);
             return entry;
         });
-        stateMachine = new BookingStateMachine(historyRepository);
+        // A mock publisher: these tests are about the transition table, and the
+        // notification it announces is somebody else's test.
+        stateMachine = new BookingStateMachine(historyRepository, mock(ApplicationEventPublisher.class));
     }
 
     // ------------------------------------------------------------------

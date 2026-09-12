@@ -227,9 +227,6 @@ public class AuthService {
 
         user.setDisplayName(request.displayName());
         user.setEmail(email);
-        if (request.locale() != null) {
-            user.setLocale(request.locale());
-        }
         appUserRepository.save(user);
 
         log.info("User {} updated their profile", user.getId());

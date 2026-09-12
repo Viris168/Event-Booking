@@ -75,11 +75,16 @@ export function logout() {
 }
 
 /**
- * Edits your own record: display name, email, language.
+ * Edits your own record: display name and email.
  *
  * No id parameter. The server edits the row the token names, so "update someone
  * else's profile" is unrepresentable rather than merely refused - the same rule
  * the organiser-application and catalogue write endpoints follow.
+ *
+ * No language field. The interface reads its language from LocaleContext, which
+ * is seeded from localStorage and lives in the browser; the account record never
+ * fed it. This used to forward a `locale` that no caller set, so it went as
+ * undefined on every request - the column it targeted is gone now.
  *
  * Resolves with the updated record, in the same shape `me()` returns, so the
  * caller can hand it straight back to the auth context.
@@ -92,7 +97,6 @@ export const updateProfile = (data) =>
     .patch('/auth/me', {
       display_name: data.display_name,
       email: data.email || null,
-      locale: data.locale,
     })
     .then((r) => r.data)
 

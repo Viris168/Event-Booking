@@ -32,7 +32,15 @@ public class Venue {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "organizer_id", nullable = false)
+    /**
+     * The organiser who owns this venue, or {@code null} for a shared venue.
+     *
+     * <p>A shared venue is part of the platform's catalogue - a public hall or
+     * stadium that any organiser may host at and maintain. Nothing here is
+     * allowed to assume an owner is present; see
+     * {@link com.eventbooking.security.OrganizerResolver#requireOwnerOrShared}.
+     */
+    @Column(name = "organizer_id")
     private Long organizerId;
 
     @Column(name = "name_en", nullable = false)

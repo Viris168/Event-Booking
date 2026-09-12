@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import Icon from '../../components/Icon.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
 import { Badge, Empty, Progress, ResponsiveTable } from '../../components/ui.jsx'
+import { OrganizerDashboardSkeleton } from '../../components/Skeleton.jsx'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
 import { usd } from '../../lib/format.js'
@@ -162,11 +163,7 @@ export default function OrganizerDashboardPage() {
         </div>
       )}
 
-      {loading && !error && (
-        <p className="text-small text-muted text-center py-10">
-          {km ? 'កំពុងផ្ទុក…' : 'Loading…'}
-        </p>
-      )}
+      {loading && !error && <OrganizerDashboardSkeleton />}
 
       <div className={`grid gap-4 lg:grid-cols-3 items-start ${loading || error ? 'hidden' : ''}`}>
         {/* ------------------------------------------------ left, two columns */}
