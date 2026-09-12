@@ -253,6 +253,10 @@ const dict = {
   payments: { en: "Payments", km: "ប្រតិបត្តិការទូទាត់ប្រាក់" },
   moderation: { en: "Event moderation", km: "ការត្រួតពិនិត្យព្រឹត្តិការណ៍" },
   reviewQueue: { en: "Review queue", km: "ជួរត្រួតពិនិត្យ" },
+  organizerApplications: {
+    en: "Organiser applications",
+    km: "ពាក្យសុំធ្វើជាអ្នករៀបចំ",
+  },
   disable: { en: "Disable", km: "បិទដំណើរការ" },
   enable: { en: "Enable", km: "បើកដំណើរការ" },
   takeDown: { en: "Take down", km: "ដកចេញពីប្រព័ន្ធ" },

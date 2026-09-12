@@ -30,6 +30,7 @@ import AdminDashboardPage from './pages/admin/AdminDashboardPage.jsx'
 import AdminUsersPage from './pages/admin/AdminUsersPage.jsx'
 import AdminEventsPage from './pages/admin/AdminEventsPage.jsx'
 import AdminReviewPage from './pages/admin/AdminReviewPage.jsx'
+import AdminApplicationsPage from './pages/admin/AdminApplicationsPage.jsx'
 import AdminPaymentsPage from './pages/admin/AdminPaymentsPage.jsx'
 
 export default function App() {
@@ -83,6 +84,9 @@ export default function App() {
               {/* The queue you work through, vs. /admin/events which is the
                   directory you browse. Different sort, default and action. */}
               <Route path="review" element={<AdminReviewPage />} />
+              {/* Applications gate who may run events at all; /admin/review
+                  judges what an already-trusted organiser submitted. */}
+              <Route path="applications" element={<AdminApplicationsPage />} />
               <Route path="events" element={<AdminEventsPage />} />
               <Route path="payments" element={<AdminPaymentsPage />} />
             </Route>
