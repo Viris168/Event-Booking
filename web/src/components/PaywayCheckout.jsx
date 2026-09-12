@@ -73,7 +73,7 @@ export default function PaywayCheckout({
   const amountLine = usd(txn.amount_usd_cents)
 
   const sheetContent = (txn.status === 'APPROVED' || txn.status === 'SUCCESS') && !processing ? (
-    <SuccessScreen />
+    <SuccessScreen bookingId={txn.booking_id ?? txn.bookingId} />
   ) : (
     <>
       <div className="pw-head-new">
@@ -141,12 +141,6 @@ export default function PaywayCheckout({
           </div>
         )}
       </div>
-
-      <div className="pw-demo-wrap">
-        {step !== 'processing' && (
-          <DemoRow onPay={complete} disabled={expired} t={t} />
-        )}
-      </div>
     </>
   )
 
@@ -192,7 +186,7 @@ function Processing({ status, locale, t }) {
   )
 }
 
-function SuccessScreen() {
+function SuccessScreen({ bookingId }) {
   return (
     <div className="pw-success">
       <div className="pw-success-top">
@@ -233,7 +227,18 @@ function SuccessScreen() {
           <b>payer@email.com</b>
         </p>
         <div className="pw-success-actions">
-          <button type="button" className="pw-btn-outline">Download Receipt</button>
+          {/* The ticket is what the buyer actually came for, so this goes to the
+              booking that carries it - /my-bookings only if we somehow have no
+              id to send them to. */}
+          <button
+            type="button"
+            className="pw-btn-outline"
+            onClick={() => {
+              window.location.href = bookingId ? `/bookings/${bookingId}` : '/my-bookings'
+            }}
+          >
+            View your ticket
+          </button>
           <button type="button" className="pw-btn-solid" onClick={() => window.location.href = '/'}>Continue Shopping</button>
         </div>
       </div>
@@ -245,36 +250,3 @@ function SuccessScreen() {
 
 // Panel removed since we merged it into the ticket.
 
-/**
- * There is no gateway behind this prototype, so the outcomes a real PayWay
- * session would produce are driven from here.
- */
-function DemoRow({ onPay, disabled, t, paidLabel, hidePaid = false }) {
-  return (
-    <div className="pw-demo">
-      <span className="tiny">{t('simulate')}</span>
-      <div className="row">
-        {!hidePaid && (
-          <button
-            type="button"
-            className="btn btn-sm btn-primary"
-            disabled={disabled}
-            onClick={() => onPay('APPROVED')}
-          >
-            <Icon name="check" size={13} />
-            {paidLabel || t('simulateSuccess')}
-          </button>
-        )}
-        <button
-          type="button"
-          className="btn btn-sm btn-danger"
-          disabled={disabled}
-          onClick={() => onPay('DECLINED')}
-        >
-          <Icon name="close" size={13} />
-          {t('simulateFail')}
-        </button>
-      </div>
-    </div>
-  )
-}
