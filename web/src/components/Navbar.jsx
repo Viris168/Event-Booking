@@ -12,7 +12,7 @@ const ROLE_LABEL = {
   PLATFORM_ADMIN: 'Platform admin',
 }
 
-export default function Navbar() {
+export default function Navbar({ onOpenAccount }) {
   const { isAuthenticated, user, role, isOrganizer, isAdmin, logout } = useAuth()
   const { t, locale, setLocale } = useLocale()
   const { isDark, toggle: toggleTheme } = useTheme()
@@ -141,7 +141,17 @@ export default function Navbar() {
 
           {isAuthenticated ? (
             <>
-              <div className="nav-user">
+              {/* Your own name and face are the way into your account -
+                  clicking them is what people try first, and a chip that
+                  looks like a person but does nothing reads as broken.
+                  A button, not a link: it opens a panel over the page you are
+                  already on rather than navigating anywhere. */}
+              <button
+                type="button"
+                className="nav-user"
+                onClick={onOpenAccount}
+                title={t('myAccount')}
+              >
                 <span className="avatar" aria-hidden="true">
                   {user.display_name.slice(0, 1).toUpperCase()}
                 </span>
@@ -149,7 +159,7 @@ export default function Navbar() {
                   {user.display_name}
                   <span>{ROLE_LABEL[role]}</span>
                 </span>
-              </div>
+              </button>
               <button className="nav-icon-btn" onClick={onLogout} title={t('logout')} aria-label={t('logout')}>
                 <Icon name="logout" size={17} />
               </button>
@@ -193,13 +203,20 @@ export default function Navbar() {
           <div className="nav-drawer-inner">
             {isAuthenticated ? (
               <div className="drawer-user">
-                <span className="avatar" aria-hidden="true">
-                  {user.display_name.slice(0, 1).toUpperCase()}
-                </span>
-                <span className="nav-who">
-                  {user.display_name}
-                  <span>{ROLE_LABEL[role]}</span>
-                </span>
+                <button
+                  type="button"
+                  className="drawer-who"
+                  onClick={onOpenAccount}
+                  title={t('myAccount')}
+                >
+                  <span className="avatar" aria-hidden="true">
+                    {user.display_name.slice(0, 1).toUpperCase()}
+                  </span>
+                  <span className="nav-who">
+                    {user.display_name}
+                    <span>{ROLE_LABEL[role]}</span>
+                  </span>
+                </button>
                 <button className="btn btn-sm ml-auto" onClick={onLogout}>
                   <Icon name="logout" size={14} />
                   {t('logout')}

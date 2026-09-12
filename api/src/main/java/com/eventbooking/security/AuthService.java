@@ -4,7 +4,9 @@ import com.eventbooking.Enumeration.Provider;
 import com.eventbooking.Enumeration.Role;
 import com.eventbooking.dto.auth.LoginRequest;
 import com.eventbooking.dto.auth.MeResponse;
+import com.eventbooking.dto.auth.ChangePasswordRequest;
 import com.eventbooking.dto.auth.RegisterRequest;
+import com.eventbooking.dto.auth.UpdateProfileRequest;
 import com.eventbooking.dto.auth.TokenResponse;
 import com.eventbooking.model.AppUser;
 import com.eventbooking.repository.AppUserRepository;
@@ -189,6 +191,91 @@ public class AuthService {
 
         return MeResponse.of(user,
                 organizerProfileRepository.findByUserId(user.getId()).orElse(null));
+    }
+
+    /**
+     * Edits the caller's own record. Returns the row as {@link #me} would.
+     *
+     * <p>Only ever touches the row named by {@code actorUserId}, which comes
+     * from the verified token and never from the body. An id in the payload is
+     * how "update my profile" quietly becomes "update anyone's profile", so
+     * there is no field here to supply one.
+     *
+     * <p>The email uniqueness check excludes the caller's own row. Without that
+     * exclusion, saving the form without touching the email - which is what
+     * happens every time someone edits only their display name - collides with
+     * the address already stored against this very account and comes back 409.
+     */
+    @Transactional
+    public MeResponse updateProfile(Long actorUserId, UpdateProfileRequest request) {
+        if (actorUserId == null) {
+            throw new NotAuthenticatedException();
+        }
+        AppUser user = appUserRepository.findById(actorUserId)
+                .orElseThrow(NotAuthenticatedException::new);
+
+        String email = emptyToNull(request.email());
+        if (email != null && !email.equalsIgnoreCase(user.getEmail())
+                && appUserRepository.existsByEmail(email)) {
+            throw new EmailAlreadyRegisteredException();
+        }
+
+        user.setDisplayName(request.displayName());
+        user.setEmail(email);
+        if (request.locale() != null) {
+            user.setLocale(request.locale());
+        }
+        appUserRepository.save(user);
+
+        log.info("User {} updated their profile", user.getId());
+        return MeResponse.of(user,
+                organizerProfileRepository.findByUserId(user.getId()).orElse(null));
+    }
+
+    /**
+     * Replaces the password, then signs every session out and re-admits this one.
+     *
+     * <p>Changing a password is what someone does when they believe it is known
+     * to another person, so leaving that person's session alive defeats the
+     * point: {@link RefreshTokenService#revokeAll} burns every outstanding
+     * refresh token, including the caller's own. A fresh pair is issued
+     * immediately afterwards so the browser doing the change stays signed in -
+     * every other device is logged out within the access token's 15 minutes.
+     *
+     * <p>A wrong current password raises {@link InvalidCredentialsException},
+     * the same type login uses. This one is not an enumeration risk - the caller
+     * is already authenticated and the account is their own - but answering with
+     * one shape keeps "your password was wrong" from ever depending on which
+     * endpoint asked.
+     *
+     * <p>A GOOGLE account has no hash to compare against and is refused for the
+     * reason login refuses it: there is no local password to replace.
+     */
+    @Transactional
+    public TokenResponse changePassword(Long actorUserId,
+                                        ChangePasswordRequest request,
+                                        String userAgent) {
+        if (actorUserId == null) {
+            throw new NotAuthenticatedException();
+        }
+        AppUser user = appUserRepository.findById(actorUserId)
+                .orElseThrow(NotAuthenticatedException::new);
+
+        if (user.getPasswordHash() == null || user.getPasswordHash().isBlank()) {
+            throw new InvalidCredentialsException();
+        }
+        if (!passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) {
+            throw new InvalidCredentialsException();
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+        appUserRepository.save(user);
+
+        int revoked = refreshTokenService.revokeAll(user);
+        log.info("User {} changed their password; {} refresh tokens revoked",
+                user.getId(), revoked);
+
+        return issuePair(user, userAgent);
     }
 
     // ------------------------------------------------------------------

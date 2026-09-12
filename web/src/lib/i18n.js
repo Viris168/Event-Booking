@@ -216,6 +216,7 @@ const dict = {
   noAccount: { en: "No account yet?", km: "មិនទាន់មានគណនីមែនទេ?" },
   haveAccount: { en: "Already have an account?", km: "មានគណនីរួចហើយមែនទេ?" },
   registerTitle: { en: "Create your account", km: "បង្កើតគណនីរបស់អ្នក" },
+  myAccount: { en: "My account", km: "គណនីរបស់ខ្ញុំ" },
   displayName: { en: "Display name", km: "ឈ្មោះបង្ហាញ" },
   preferredLanguage: { en: "Preferred language", km: "ភាសាដែលអ្នកចង់ប្រើ" },
   demoAccounts: { en: "Demo accounts", km: "គណនីសាកល្បង" },

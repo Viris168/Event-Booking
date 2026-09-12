@@ -403,8 +403,23 @@
   .nav-sep {
     @apply mx-[0.4rem] h-[22px] w-px bg-white/15;
   }
+  /* A button now - it opens the account panel rather than navigating - so it
+     needs the affordances a bare <button> does not inherit here. */
   .nav-user {
-    @apply flex items-center gap-2 pl-[0.2rem];
+    @apply flex cursor-pointer items-center gap-2 rounded-full border-0 bg-transparent py-[0.15rem] pr-2 pl-[0.2rem] text-start transition-colors;
+  }
+  /* It is a link now, so it has to look like one is there. A quiet fill on
+     hover and a real focus ring - the chip carries the only route to the
+     account page. */
+  .nav-user:hover {
+    @apply bg-white/10;
+  }
+  .nav-user:focus-visible,
+  .drawer-who:focus-visible {
+    @apply outline-2 outline-offset-2 outline-gold-500;
+  }
+  .drawer-who {
+    @apply flex min-w-0 cursor-pointer items-center gap-2 border-0 bg-transparent text-start;
   }
   .avatar {
     @apply grid size-[30px] flex-none place-items-center rounded-full bg-gold-500 text-[0.8rem] font-extrabold text-brand-900;

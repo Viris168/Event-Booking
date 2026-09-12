@@ -50,3 +50,47 @@ export function logout() {
   if (!refresh_token) return Promise.resolve()
   return client.post('/auth/logout', { refresh_token }).catch(() => {})
 }
+
+/**
+ * Edits your own record: display name, email, language.
+ *
+ * No id parameter. The server edits the row the token names, so "update someone
+ * else's profile" is unrepresentable rather than merely refused - the same rule
+ * the organiser-application and catalogue write endpoints follow.
+ *
+ * Resolves with the updated record, in the same shape `me()` returns, so the
+ * caller can hand it straight back to the auth context.
+ *
+ * Rejects 409 EMAIL_ALREADY_REGISTERED if the address belongs to another
+ * account. Submitting the form without touching the email is not a conflict.
+ */
+export const updateProfile = (data) =>
+  client
+    .patch('/auth/me', {
+      display_name: data.display_name,
+      email: data.email || null,
+      locale: data.locale,
+    })
+    .then((r) => r.data)
+
+/**
+ * Replaces the password and returns a FRESH TOKEN PAIR.
+ *
+ * The pair matters. The server revokes every outstanding refresh token,
+ * including the one this browser is holding, so the old credentials are dead by
+ * the time this resolves. Storing the response is what keeps the current
+ * session alive - skip it and the user is signed out at the next refresh,
+ * having done nothing wrong.
+ *
+ * Rejects 401 INVALID_CREDENTIALS when the current password is wrong, which is
+ * the expected failure and not a session problem: the axios interceptor must
+ * not treat it as one.
+ */
+export function changePassword({ current_password, new_password }) {
+  return client
+    .post('/auth/change-password', { current_password, new_password })
+    .then((r) => {
+      storeTokens(r.data)
+      return r.data
+    })
+}
