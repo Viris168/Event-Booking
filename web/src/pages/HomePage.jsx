@@ -18,7 +18,7 @@ import { getEvents } from '../api/events.js'
 /* Hero backdrop, served from web/public. If the file is missing the banner
    falls back to its gradient rather than breaking, so swapping the art is just
    a change to this one constant. */
-const HERO_IMAGE = '/event.png'
+const HERO_IMAGE = '/event.jpeg'
 
 const QUICK_SEARCHES = [
   { q: 'pp', en: 'Phnom Penh', km: 'ភ្នំពេញ', icon: 'mapPin', params: { province: '12' } },

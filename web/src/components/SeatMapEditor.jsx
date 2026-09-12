@@ -30,78 +30,90 @@ function normaliseSeats(map) {
   }))
 }
 
-/*
- * Room above the seats for the stage band AND for a section's own label. The
- * label used to be drawn 12 units above its first row, which for a section
- * starting at y=0 put it straight through the STAGE text - the first section's
- * name was unreadable on every map.
+/**
+ * The seat map, drawn the way the customer-facing map draws one.
+ *
+ * This used to be an SVG plotted straight from pos_x / pos_y. That faithfully
+ * rendered the stored geometry and was the wrong thing to show: an organiser
+ * checking a generated block wants to read row B seat 7, and a grid of
+ * unlabelled squares scaled to fit its container answers a question nobody
+ * asked. Worse, it was a second seat vocabulary - different sizes, different
+ * spacing, no numbers - for the same object the buyer sees.
+ *
+ * So it reuses SeatMap's own markup and classes (.rows / .row / .row-label /
+ * .seats / .seat). Positions come back to what they are in a seated venue: an
+ * ORDER, not coordinates. Rows sort alphabetically and seats numerically, which
+ * is what the stored pitch was encoding anyway.
+ *
+ * The one thing coordinates still decide is the order of the SECTIONS down the
+ * page, since a section's y is the only record of whether it sits in front of
+ * or behind another.
  */
-const STAGE_BAND = 26
-const LABEL_ROOM = 22
-const PAD_TOP = STAGE_BAND + LABEL_ROOM
-const PAD_BOTTOM = 24
-
 function SeatMapPreview({ seats }) {
-  const { width, height } = useMemo(() => {
-    if (!seats.length) return { width: 400, height: 120 }
-    return {
-      width: Math.max(...seats.map((s) => s.pos_x)) + 46,
-      // Includes the offset the content is translated by; without it the last
-      // row was pushed past the bottom edge and clipped.
-      height: Math.max(...seats.map((s) => s.pos_y)) + PAD_TOP + PAD_BOTTOM,
+  const sections = useMemo(() => {
+    const bySection = new Map()
+    for (const s of seats) {
+      if (!bySection.has(s.section_label)) bySection.set(s.section_label, [])
+      bySection.get(s.section_label).push(s)
     }
+
+    return [...bySection.entries()]
+      .map(([label, list]) => {
+        const byRow = new Map()
+        for (const s of list) {
+          if (!byRow.has(s.row_label)) byRow.set(s.row_label, [])
+          byRow.get(s.row_label).push(s)
+        }
+        const rows = [...byRow.keys()]
+          .sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }))
+          .map((rowLabel) => ({
+            label: rowLabel,
+            // Numeric collation, so seat 10 follows seat 9 rather than seat 1.
+            seats: byRow
+              .get(rowLabel)
+              .slice()
+              .sort((a, b) =>
+                String(a.seat_number).localeCompare(String(b.seat_number), undefined, {
+                  numeric: true,
+                }),
+              ),
+          }))
+        return { label, rows, top: Math.min(...list.map((s) => s.pos_y)) }
+      })
+      .sort((a, b) => a.top - b.top)
   }, [seats])
 
-  const sections = useMemo(() => {
-    const map = new Map()
-    for (const s of seats) {
-      if (!map.has(s.section_label)) map.set(s.section_label, [])
-      map.get(s.section_label).push(s)
-    }
-    return [...map.entries()]
-  }, [seats])
+  if (!seats.length) return null
 
   return (
     <div className="seatmap-wrap">
-      {/* No width/height attributes: the viewBox alone drives it, so the map
-          scales to whatever container it lands in. It used to render at exactly
-          its own coordinate extent (1 unit = 1px) with a 520px CSS floor, which
-          stretched a small venue into a mostly-empty box and made a large one
-          scroll sideways. Venues differ by ASPECT RATIO - a stadium bowl is
-          near square, a hall is wide - so a fixed width is the wrong dial. */}
-      <svg className="seatmap" viewBox={`0 0 ${width} ${height}`} role="img">
-        <rect className="stage" x={width / 2 - 100} y="6" width="200" height="18" rx="6" />
-        <text className="stage-text" x={width / 2} y="20" textAnchor="middle">
-          Stage
-        </text>
-        <g transform={`translate(0, ${PAD_TOP})`}>
-        {sections.map(([label, list]) => (
-          <g key={label}>
-            <text
-              className="section-label"
-              x={Math.min(...list.map((s) => s.pos_x)) - 8}
-              y={Math.min(...list.map((s) => s.pos_y)) - 14}
-            >
-              {label}
-            </text>
-            {list.map((s) => (
-              <rect
-                key={s.id}
-                x={s.pos_x - 11}
-                y={s.pos_y - 11}
-                width="22"
-                height="22"
-                rx="6"
-                className="seat"
-                fill="#12613c"
-              >
-                <title>{`${s.section_label} ${s.row_label}${s.seat_number}`}</title>
-              </rect>
+      <div className="seatmap-stage">Stage</div>
+      {sections.map((section) => (
+        <div key={section.label} className="seatmap-section">
+          <div className="section-name">{section.label}</div>
+          <div className="rows">
+            {section.rows.map((row) => (
+              <div key={row.label} className="row">
+                <span className="row-label">{row.label}</span>
+                <div className="seats">
+                  {row.seats.map((s) => (
+                    /* A span, not a button: nothing here is selectable, and a
+                       row of disabled buttons reads to a screen reader as a
+                       set of dead controls rather than as a diagram. */
+                    <span
+                      key={s.id}
+                      className="seat seat-plain"
+                      title={`${s.section_label} ${s.row_label}${s.seat_number}`}
+                    >
+                      {s.seat_number}
+                    </span>
+                  ))}
+                </div>
+              </div>
             ))}
-          </g>
-        ))}
-        </g>
-      </svg>
+          </div>
+        </div>
+      ))}
     </div>
   )
 }

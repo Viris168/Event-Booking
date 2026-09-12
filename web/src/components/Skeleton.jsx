@@ -13,9 +13,21 @@
 
 import { useLocale } from '../context/LocaleContext.jsx'
 
-/** One grey block. Size it with utilities: `<Skeleton className="h-4 w-1/2" />`. */
-export function Skeleton({ className = '', dark = false }) {
-  return <span className={`skel ${dark ? 'skel-dark' : ''} ${className}`} aria-hidden="true" />
+/**
+ * One grey block. Size it with utilities: `<Skeleton className="h-4 w-1/2" />`.
+ *
+ * `style` is for the sizes that cannot be utilities — a bar whose height is a
+ * computed percentage, a cell whose width comes from a repeating pattern.
+ * Prefer a class wherever one exists.
+ */
+export function Skeleton({ className = '', dark = false, style }) {
+  return (
+    <span
+      className={`skel ${dark ? 'skel-dark' : ''} ${className}`}
+      style={style}
+      aria-hidden="true"
+    />
+  )
 }
 
 /** A paragraph of lines; the last one is short, the way real text ends. */
@@ -131,7 +143,7 @@ export function EventDetailSkeleton() {
       <div className="split" style={{ marginTop: '1.4rem' }}>
         <div className="panel">
           <div className="panel-head">
-            <Skeleton className="h-[1rem] w-40" />
+            <Skeleton className="h-4 w-40" />
           </div>
           <div className="panel-body">
             <Skeleton className="h-[320px] w-full rounded-card" />
@@ -186,6 +198,179 @@ export function BookingListSkeleton({ count = 3 }) {
           </div>
         </div>
       ))}
+    </SkeletonRegion>
+  )
+}
+
+/**
+ * A table's worth of placeholder rows, inside the real `<table>` shell.
+ *
+ * Rendered as actual rows rather than a stack of blocks so the column widths
+ * are the ones the loaded table will use — a centred "Loading…" lets every
+ * column resize the moment data arrives, which is the jump these exist to
+ * prevent. Widths vary per column so the block does not read as a grid.
+ */
+export function TableRowsSkeleton({ rows = 6, cols = 5, widths, cellClassName = '', rowClassName = '' }) {
+  // A repeating, uneven pattern beats random: it stays stable across re-renders
+  // and still reads as text of differing lengths.
+  const pattern = widths || ['70%', '45%', '60%', '40%', '55%', '35%', '50%']
+  return (
+    <tbody aria-hidden="true">
+      {Array.from({ length: rows }, (_, r) => (
+        <tr key={r} className={rowClassName}>
+          {Array.from({ length: cols }, (_, c) => (
+            <td key={c} className={cellClassName}>
+              <Skeleton
+                className="skel-line"
+                style={{ width: pattern[(r + c) % pattern.length] }}
+              />
+            </td>
+          ))}
+        </tr>
+      ))}
+    </tbody>
+  )
+}
+
+/** The four MiniStat tiles on the organizer dashboard's right rail. */
+function StatTilesSkeleton({ count = 4 }) {
+  return (
+    <div className="grid grid-cols-2 gap-4">
+      {Array.from({ length: count }, (_, i) => (
+        <div
+          key={i}
+          className="flex flex-col justify-between gap-5 rounded-card border border-line bg-surface p-4 shadow-card"
+          aria-hidden="true"
+        >
+          <Skeleton className="h-6 w-20" />
+          <div className="flex items-end justify-between gap-2">
+            <Skeleton className="skel-line w-16" />
+            <Skeleton className="h-8 w-8 shrink-0 rounded-full" />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/**
+ * The organizer dashboard: bar chart and events table on the left, revenue
+ * breakdown and stat tiles on the right.
+ *
+ * The chart placeholder is twelve bars of settled, uneven heights rather than
+ * one grey slab — a flat block at chart size reads as a broken image, and the
+ * bars tell the reader what is about to appear there.
+ */
+export function OrganizerDashboardSkeleton() {
+  const bars = [38, 62, 45, 80, 55, 92, 48, 70, 35, 84, 58, 66]
+  return (
+    <SkeletonRegion className="grid items-start gap-4 lg:grid-cols-3">
+      <div className="flex flex-col gap-4 lg:col-span-2">
+        <section
+          className="rounded-card border border-line bg-surface p-5 shadow-card"
+          aria-hidden="true"
+        >
+          <div className="mb-6 flex items-start justify-between gap-4">
+            <div className="flex flex-col gap-2">
+              <Skeleton className="skel-line w-32" />
+              <Skeleton className="h-8 w-40" />
+            </div>
+            <Skeleton className="h-[1.4rem] w-24 rounded-full" />
+          </div>
+          <div className="flex h-32 items-end gap-1.5">
+            {bars.map((h, i) => (
+              <Skeleton key={i} className="flex-1 rounded-t-tiny" style={{ height: `${h}%` }} />
+            ))}
+          </div>
+          <div className="mt-3 flex justify-between gap-1.5">
+            {bars.map((_, i) => (
+              <Skeleton key={i} className="skel-line h-2 flex-1" />
+            ))}
+          </div>
+        </section>
+
+        <section
+          className="rounded-card border border-line bg-surface p-5 shadow-card"
+          aria-hidden="true"
+        >
+          <div className="mb-4 flex items-center justify-between">
+            <Skeleton className="h-4 w-28" />
+            <Skeleton className="skel-line w-24" />
+          </div>
+          <div className="table-wrap">
+            <table className="table">
+              <TableRowsSkeleton rows={5} cols={6} />
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <div className="flex flex-col gap-4">
+        <section
+          className="rounded-card border border-line bg-surface p-5 shadow-card"
+          aria-hidden="true"
+        >
+          <Skeleton className="mb-4 h-4 w-36" />
+          <div className="flex flex-col gap-3.5">
+            {[92, 74, 58, 40, 26].map((w, i) => (
+              <div key={i}>
+                <div className="mb-1 flex items-baseline justify-between gap-2">
+                  <Skeleton className="skel-line w-[55%]" />
+                  <Skeleton className="skel-line w-12" />
+                </div>
+                <Skeleton className="h-2 rounded-full" style={{ width: `${w}%` }} />
+                <Skeleton className="skel-line mt-1 h-2 w-20" />
+              </div>
+            ))}
+          </div>
+        </section>
+        <StatTilesSkeleton />
+      </div>
+    </SkeletonRegion>
+  )
+}
+
+/** Event sales: stat row, the tier table, then the two side panels. */
+export function EventSalesSkeleton() {
+  return (
+    <SkeletonRegion className="container container-wide">
+      <div className="page-head">
+        <div className="stack-sm">
+          <Skeleton className="skel-line w-28" />
+          <Skeleton className="h-[1.7rem] w-64" />
+          <Skeleton className="skel-line w-48" />
+        </div>
+        <Skeleton className="h-[1.6rem] w-24 rounded-full" />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {Array.from({ length: 4 }, (_, i) => (
+          <div
+            key={i}
+            className="flex flex-col justify-between gap-5 rounded-card border border-line bg-surface p-4 shadow-card"
+            aria-hidden="true"
+          >
+            <Skeleton className="skel-line w-20" />
+            <Skeleton className="h-6 w-24" />
+          </div>
+        ))}
+      </div>
+
+      <div className="panel" style={{ marginTop: '1.3rem' }} aria-hidden="true">
+        <div className="panel-head">
+          <Skeleton className="h-4 w-32" />
+        </div>
+        <div className="table-wrap">
+          <table className="table">
+            <TableRowsSkeleton rows={4} cols={6} />
+          </table>
+        </div>
+      </div>
+
+      <div className="split" style={{ marginTop: '1.3rem' }}>
+        <SkeletonPanel lines={4} />
+        <SkeletonPanel lines={3} />
+      </div>
     </SkeletonRegion>
   )
 }

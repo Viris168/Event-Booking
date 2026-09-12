@@ -1939,33 +1939,37 @@
   .seatmap-wrap {
     @apply max-h-[62vh] overflow-auto rounded-ui border border-line bg-surface-2 p-[0.6rem];
   }
-  .seatmap {
-    @apply mx-auto block h-auto w-full;
-    /* 680px is the tightest place a seat map renders - the event form's seat
-       map drawer (46rem minus padding). The customer panel gives ~770px, so
-       capping here fits everywhere without a second breakpoint.
-       A cap rather than a fixed size: a six-seat venue should not render seats
-       the size of buttons. */
-    max-width: 680px;
+  /* The stage band and section heading the editor's preview draws around the
+     rows. The customer map has neither: it shows one event's seats, already in
+     context, while this one is the whole venue and has to say which end the
+     stage is at. Sized to the seat block rather than the panel, so it does not
+     stretch into a banner across an empty container. */
+  .seatmap-stage {
+    @apply mx-auto mb-4 w-full max-w-[340px] rounded-tiny py-[0.4rem] text-center text-[11px] font-bold uppercase tracking-[0.18em] text-white;
+    background: var(--color-brand-900);
   }
-  .stage {
-    fill: var(--color-brand-900);
+  /* Centred as a BLOCK — w-fit shrinks the section to its widest row, then the
+     auto margins centre that. Centring each row on its own instead would let a
+     short row drift out of line with a long one and take the row letters with
+     it, so A and B would no longer start at the same x.
+     When a row is wider than the panel the auto margins collapse to zero and
+     .seatmap-wrap's overflow takes over, so nothing is cut off on the left. */
+  .seatmap-section {
+    @apply mx-auto w-fit;
   }
-  .stage-text {
-    @apply text-[11px] font-bold uppercase tracking-[0.18em];
-    fill: #fff;
+  .seatmap-section + .seatmap-section {
+    @apply mt-5;
   }
-  .section-label {
-    @apply text-[10px] font-bold uppercase tracking-[0.1em];
-    fill: var(--color-ink-2);
+  .section-name {
+    @apply mb-2 text-[10px] font-bold uppercase tracking-[0.1em] text-ink-2;
   }
-  html[lang='km'] .section-label {
+  html[lang='km'] .section-name {
     @apply tracking-normal;
   }
-  .row-label {
-    @apply text-[9px] font-bold;
-    fill: var(--color-muted);
-  }
+  /* The SVG seat map that used to live here (.seatmap, .stage, .stage-text,
+     .section-label, and a second .row-label that shadowed the real one) is
+     gone: the venue editor now draws its preview with the same markup the
+     customer map uses, so there is one seat vocabulary instead of two. */
   /* Seat number printed inside bookable seats. */
   .seat-num {
     @apply pointer-events-none text-[9px] font-bold;
@@ -1981,6 +1985,18 @@
   .seat {
     stroke: color-mix(in oklab, var(--color-ink) 14%, transparent);
     stroke-width: 1;
+  }
+  /* A seat with no booking state: the venue editor's preview, where every seat
+     is just a position rather than something for sale. Same shape and size as
+     a bookable seat so the organiser is looking at what the buyer will look
+     at — only the cursor and the lift on hover are dropped, because none of
+     these do anything when clicked. */
+  .seat-plain {
+    background: var(--color-brand-600);
+    @apply cursor-default;
+  }
+  .seat-plain:hover {
+    @apply translate-y-0;
   }
   .seat-available {
     @apply cursor-pointer;

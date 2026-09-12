@@ -1,6 +1,5 @@
 package com.eventbooking.model;
 
-import com.eventbooking.Enumeration.Locale;
 import com.eventbooking.Enumeration.Provider;
 import com.eventbooking.Enumeration.Role;
 import jakarta.persistence.*;
@@ -32,11 +31,6 @@ public class AppUser {
 
     @Column(name = "display_name", nullable = false)
     private String displayName;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    @Builder.Default
-    private com.eventbooking.Enumeration.Locale locale = Locale.KM;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

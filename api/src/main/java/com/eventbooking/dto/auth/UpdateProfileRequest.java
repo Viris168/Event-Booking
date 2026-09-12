@@ -1,6 +1,5 @@
 package com.eventbooking.dto.auth;
 
-import com.eventbooking.Enumeration.Locale;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -8,7 +7,7 @@ import jakarta.validation.constraints.NotBlank;
 /**
  * The parts of your own record you are allowed to change.
  *
- * <p>Three fields, and the omissions are the design. {@code phone_e164} is the
+ * <p>Two fields, and the omissions are the design. {@code phone_e164} is the
  * login identity and the JWT's subject, so changing it here would invalidate
  * every token the caller holds and hand them an account they can no longer sign
  * in to. {@code role} and {@code is_disabled} are decisions the platform makes
@@ -26,13 +25,6 @@ public record UpdateProfileRequest(
         @JsonProperty("display_name") String displayName,
 
         /** Null or blank clears it. Non-null must be unique across app_user. */
-        @Email String email,
-
-        /**
-         * The language this account reads the platform in. Not derived from the
-         * browser: a phone borrowed from a relative should not silently rewrite
-         * the owner's preference.
-         */
-        Locale locale
+        @Email String email
 ) {
 }

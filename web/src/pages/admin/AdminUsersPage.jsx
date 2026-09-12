@@ -1,7 +1,17 @@
 import { useDocumentTitle } from '../../lib/useDocumentTitle.js'
 import { Fragment, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Badge, Field, Money, ResponsiveTable } from '../../components/ui.jsx'
+import ConfirmDialog from '../../components/ConfirmDialog.jsx'
+import {
+  ActiveFilters,
+  Badge,
+  Empty,
+  Field,
+  IconSelect,
+  Money,
+  ResponsiveTable,
+  SearchInput,
+} from '../../components/ui.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
 import { listBookings, listUsers, setUserDisabled, useStore } from '../../mock/store.js'
@@ -11,14 +21,37 @@ const ROLES = ['CUSTOMER', 'ORGANIZER', 'PLATFORM_ADMIN']
 export default function AdminUsersPage() {
   useStore()
   const { t, locale, date } = useLocale()
+  const km = locale === 'km'
   useDocumentTitle(t('users'))
   const toast = useToast()
   const [q, setQ] = useState('')
   const [role, setRole] = useState('')
   const [disabled, setDisabled] = useState('')
   const [expanded, setExpanded] = useState(null)
+  // Holds the user awaiting a disable confirmation. Disabling locks someone out
+  // of an account they may be mid-booking on, so it asks first; re-enabling is
+  // harmless and stays one click.
+  const [confirming, setConfirming] = useState(null)
 
   const users = listUsers({ q, role, disabled })
+
+  const stateLabel = (v) => (v === 'yes' ? (km ? 'បានបិទ' : 'Disabled') : km ? 'សកម្ម' : 'Active')
+  const chips = [
+    q && { key: 'q', icon: 'search', label: q, onRemove: () => setQ('') },
+    role && { key: 'role', icon: 'shield', label: role, onRemove: () => setRole('') },
+    disabled && {
+      key: 'disabled',
+      icon: 'user',
+      label: stateLabel(disabled),
+      onRemove: () => setDisabled(''),
+    },
+  ].filter(Boolean)
+
+  function clearAll() {
+    setQ('')
+    setRole('')
+    setDisabled('')
+  }
 
   return (
     <div className="container container-wide">
@@ -36,45 +69,74 @@ export default function AdminUsersPage() {
         <div className="panel-body">
           <div className="filterbar">
             <Field label={t('searchLabel')}>
-              <input
-                className="input"
+              <SearchInput
                 value={q}
-                placeholder={locale === 'km' ? 'ឈ្មោះ លេខទូរស័ព្ទ អ៊ីមែល' : 'Name, phone or email'}
-                onChange={(e) => setQ(e.target.value)}
+                onChange={setQ}
+                placeholder={km ? 'ឈ្មោះ លេខទូរស័ព្ទ អ៊ីមែល' : 'Name, phone or email'}
+                ariaLabel={t('searchLabel')}
+                clearLabel={t('reset')}
               />
             </Field>
-            <Field label="Role">
-              <select className="select" value={role} onChange={(e) => setRole(e.target.value)}>
-                <option value="">{locale === 'km' ? 'គ្រប់តួនាទី' : 'All roles'}</option>
+            <Field label={km ? 'តួនាទី' : 'Role'}>
+              <IconSelect
+                icon="shield"
+                value={role}
+                onChange={setRole}
+                ariaLabel={km ? 'តួនាទី' : 'Role'}
+              >
+                <option value="">{km ? 'គ្រប់តួនាទី' : 'All roles'}</option>
                 {ROLES.map((r) => (
                   <option key={r} value={r}>
                     {r}
                   </option>
                 ))}
-              </select>
+              </IconSelect>
             </Field>
-            <Field label={locale === 'km' ? 'ស្ថានភាពគណនី' : 'Account state'}>
-              <select className="select" value={disabled} onChange={(e) => setDisabled(e.target.value)}>
-                <option value="">{locale === 'km' ? 'ទាំងអស់' : 'All'}</option>
-                <option value="no">{locale === 'km' ? 'សកម្ម' : 'Active'}</option>
-                <option value="yes">{locale === 'km' ? 'បានបិទ' : 'Disabled'}</option>
-              </select>
+            <Field label={km ? 'ស្ថានភាពគណនី' : 'Account state'}>
+              <IconSelect
+                icon="user"
+                value={disabled}
+                onChange={setDisabled}
+                ariaLabel={km ? 'ស្ថានភាពគណនី' : 'Account state'}
+              >
+                <option value="">{km ? 'ទាំងអស់' : 'All'}</option>
+                <option value="no">{km ? 'សកម្ម' : 'Active'}</option>
+                <option value="yes">{km ? 'បានបិទ' : 'Disabled'}</option>
+              </IconSelect>
             </Field>
           </div>
+
+          {chips.length > 0 && (
+            <div style={{ marginTop: '0.85rem' }}>
+              <ActiveFilters items={chips} onClearAll={clearAll} clearAllLabel={t('reset')} />
+            </div>
+          )}
         </div>
       </div>
 
+      {users.length === 0 ? (
+        <Empty icon="search" title={km ? 'រកមិនឃើញអ្នកប្រើទេ' : 'No users match'}>
+          {km
+            ? 'សាកល្បងលុបតម្រងចេញ ឬស្វែងរកពាក្យផ្សេង។'
+            : 'Try clearing a filter or searching for something else.'}
+          {chips.length > 0 && (
+            <button className="btn btn-sm btn-outline" onClick={clearAll} style={{ marginTop: '0.7rem' }}>
+              {t('reset')}
+            </button>
+          )}
+        </Empty>
+      ) : (
       <div className="panel">
         <ResponsiveTable>
           <table className="table">
             <thead>
               <tr>
-                <th>{locale === 'km' ? 'អ្នកប្រើ' : 'User'}</th>
-                <th>Role</th>
+                <th>{km ? 'អ្នកប្រើ' : 'User'}</th>
+                <th>{km ? 'តួនាទី' : 'Role'}</th>
                 <th>{t('phone')}</th>
                 <th>{t('email')}</th>
-                <th>Locale</th>
-                <th>{locale === 'km' ? 'ចុះឈ្មោះ' : 'Joined'}</th>
+                <th>{km ? 'ភាសា' : 'Locale'}</th>
+                <th>{km ? 'ចុះឈ្មោះ' : 'Joined'}</th>
                 <th>{t('status')}</th>
                 <th />
               </tr>
@@ -127,13 +189,7 @@ export default function AdminUsersPage() {
                               {t('enable')}
                             </button>
                           ) : (
-                            <button
-                              className="btn btn-sm btn-danger"
-                              onClick={() => {
-                                setUserDisabled(u.id, true)
-                                toast(`${u.display_name} ${locale === 'km' ? 'បានបិទ' : 'disabled'}`, 'info')
-                              }}
-                            >
+                            <button className="btn btn-sm btn-danger" onClick={() => setConfirming(u)}>
                               {t('disable')}
                             </button>
                           )}
@@ -177,6 +233,26 @@ export default function AdminUsersPage() {
           </table>
 </ResponsiveTable>
       </div>
+      )}
+
+      <ConfirmDialog
+        open={Boolean(confirming)}
+        tone="danger"
+        title={km ? 'បិទគណនីនេះ?' : 'Disable this account?'}
+        confirmLabel={t('disable')}
+        onConfirm={() => {
+          setUserDisabled(confirming.id, true)
+          toast(`${confirming.display_name} ${km ? 'បានបិទ' : 'disabled'}`, 'info')
+          setConfirming(null)
+        }}
+        onClose={() => setConfirming(null)}
+      >
+        <p className="small muted">
+          {km
+            ? `${confirming?.display_name} នឹងមិនអាចចូលគណនីបានទេ។ ការកក់ដែលមានស្រាប់មិនត្រូវបានលុបចោលទេ ហើយអ្នកអាចបើកវិញនៅពេលណាក៏បាន។`
+            : `${confirming?.display_name} will not be able to log in. Existing bookings are left untouched, and you can re-enable the account at any time.`}
+        </p>
+      </ConfirmDialog>
     </div>
   )
 }

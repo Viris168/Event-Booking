@@ -1,0 +1,23 @@
+-- Drop app_user.locale.
+--
+-- It recorded a language preference the application never read. The interface
+-- picks its language from the browser - LocaleContext initialises from
+-- localStorage and falls back to English - and it never consulted this column
+-- to do it. So a signed-in user's stored 'KM' had no effect on a single screen,
+-- while the EN/KM toggle they actually used was never written back here. The
+-- column could only ever disagree with what the person was looking at.
+--
+-- The account form stopped offering it, and registration stopped collecting it,
+-- which left every new row taking the 'KM' default regardless of who signed up.
+-- A field that is written by nobody and read by nobody is worse than absent:
+-- the next person to find it has to work out whether it means anything.
+--
+-- Dropping the column takes app_user_locale_check with it; there is no separate
+-- DROP CONSTRAINT to write.
+--
+-- Earlier migrations are untouched on purpose. V1 creates this column, V5
+-- repairs its casing and V6 seeds rows that name it - all of which still run,
+-- in order, on a fresh database before this one removes it. Rewriting history
+-- to pretend the column never existed would change the checksum of migrations
+-- that are already applied everywhere.
+ALTER TABLE app_user DROP COLUMN locale;

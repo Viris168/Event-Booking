@@ -49,7 +49,7 @@ public class VenueServiceimpl implements VenueService {
     @Override
     public VenueResponse updateVenue(Long organizerId, Long venueId, UpdateVenueRequest request) {
         Venue v = venueRepository.findById(venueId).orElseThrow(() -> new VenueNotFoundException(venueId));
-        organizerResolver.requireOwner(organizerId, v.getOrganizerId(), "venue", venueId);
+        organizerResolver.requireOwnerOrShared(organizerId, v.getOrganizerId(), "venue", venueId);
         if (request.nameEn() != null) v.setNameEn(request.nameEn());
         if (request.nameKm() != null) v.setNameKm(request.nameKm());
         if (request.provinceCode() != null) v.setProvinceCode(request.provinceCode());
@@ -65,7 +65,7 @@ public class VenueServiceimpl implements VenueService {
     @Override
     public void deactivateVenue(Long organizerId, Long venueId) {
         Venue v = venueRepository.findById(venueId).orElseThrow(() -> new VenueNotFoundException(venueId));
-        organizerResolver.requireOwner(organizerId, v.getOrganizerId(), "venue", venueId);
+        organizerResolver.requireOwnerOrShared(organizerId, v.getOrganizerId(), "venue", venueId);
         v.setIsDisabled(true);
         venueRepository.save(v);
     }

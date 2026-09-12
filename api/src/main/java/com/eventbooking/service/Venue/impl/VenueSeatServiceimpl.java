@@ -44,7 +44,7 @@ public class VenueSeatServiceimpl implements VenueSeatService {
     public VenueSeatMapResponse createVenueSeats(Long organizerId, Long venueId, CreateVenueSeatsRequest request) {
         Venue venue = venueRepository.findById(venueId)
                 .orElseThrow(() -> new VenueNotFoundException(venueId));
-        organizerResolver.requireOwner(organizerId, venue.getOrganizerId(), "venue", venueId);
+        organizerResolver.requireOwnerOrShared(organizerId, venue.getOrganizerId(), "venue", venueId);
                 
         // Re-posting a layout is how a second event gets run off the same
         // venue, so seats already on file are skipped instead of colliding

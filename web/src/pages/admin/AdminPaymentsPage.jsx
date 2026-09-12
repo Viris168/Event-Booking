@@ -1,7 +1,15 @@
 import { useDocumentTitle } from '../../lib/useDocumentTitle.js'
 import { useState, useEffect, useCallback } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Alert, Badge, Field, ResponsiveTable } from '../../components/ui.jsx'
+import {
+  ActiveFilters,
+  Alert,
+  Badge,
+  Empty,
+  Field,
+  IconSelect,
+  ResponsiveTable,
+} from '../../components/ui.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
 import { timeAgo, usd } from '../../lib/format.js'
@@ -24,6 +32,29 @@ export default function AdminPaymentsPage() {
   const [stuckOnly, setStuckOnly] = useState(params.get('stuck') === '1')
 
   const payments = listPayments({ provider, status, stuckOnly })
+
+  const km = locale === 'km'
+  const chips = [
+    provider && {
+      key: 'provider',
+      icon: 'card',
+      label: provider,
+      onRemove: () => setProvider(''),
+    },
+    status && { key: 'status', icon: 'filter', label: status, onRemove: () => setStatus('') },
+    stuckOnly && {
+      key: 'stuck',
+      icon: 'alert',
+      label: km ? 'ជាប់' : 'Stuck only',
+      onRemove: () => setStuckOnly(false),
+    },
+  ].filter(Boolean)
+
+  function clearAll() {
+    setProvider('')
+    setStatus('')
+    setStuckOnly(false)
+  }
 
   /*
    * The refund queue is live, unlike the payments table above it, which still
@@ -144,25 +175,30 @@ export default function AdminPaymentsPage() {
       <div className="panel" style={{ marginBottom: '1.2rem' }}>
         <div className="panel-body">
           <div className="filterbar">
-            <Field label={locale === 'km' ? 'អ្នកផ្តល់សេវា' : 'Provider'}>
-              <select className="select" value={provider} onChange={(e) => setProvider(e.target.value)}>
-                <option value="">{locale === 'km' ? 'ទាំងអស់' : 'All providers'}</option>
+            <Field label={km ? 'អ្នកផ្តល់សេវា' : 'Provider'}>
+              <IconSelect
+                icon="card"
+                value={provider}
+                onChange={setProvider}
+                ariaLabel={km ? 'អ្នកផ្តល់សេវា' : 'Provider'}
+              >
+                <option value="">{km ? 'ទាំងអស់' : 'All providers'}</option>
                 {PROVIDERS.map((p) => (
                   <option key={p} value={p}>
                     {p}
                   </option>
                 ))}
-              </select>
+              </IconSelect>
             </Field>
             <Field label={t('status')}>
-              <select className="select" value={status} onChange={(e) => setStatus(e.target.value)}>
-                <option value="">{locale === 'km' ? 'ទាំងអស់' : 'All statuses'}</option>
+              <IconSelect icon="filter" value={status} onChange={setStatus} ariaLabel={t('status')}>
+                <option value="">{km ? 'ទាំងអស់' : 'All statuses'}</option>
                 {STATUSES.map((s) => (
                   <option key={s} value={s}>
                     {s}
                   </option>
                 ))}
-              </select>
+              </IconSelect>
             </Field>
             <Field label={t('reconciliation')}>
               <button
@@ -180,15 +216,48 @@ export default function AdminPaymentsPage() {
               </button>
             </Field>
           </div>
+
+          {chips.length > 0 && (
+            <div style={{ marginTop: '0.85rem' }}>
+              <ActiveFilters items={chips} onClearAll={clearAll} clearAllLabel={t('reset')} />
+            </div>
+          )}
         </div>
       </div>
 
+      {payments.length === 0 ? (
+        <Empty
+          icon={stuckOnly ? 'checkCircle' : 'search'}
+          title={
+            stuckOnly
+              ? km
+                ? 'គ្មានការទូទាត់ជាប់ទេ'
+                : 'Nothing stuck'
+              : km
+                ? 'រកមិនឃើញការទូទាត់ទេ'
+                : 'No payments match'
+          }
+        >
+          {stuckOnly
+            ? km
+              ? 'រាល់ការទូទាត់ដែលកំពុងរង់ចាំនៅតែស្ថិតក្នុងកម្រិតធម្មតា។'
+              : 'Every pending attempt is still inside the one-hour window.'
+            : km
+              ? 'សាកល្បងលុបតម្រងចេញ។'
+              : 'Try clearing a filter.'}
+          {chips.length > 0 && (
+            <button className="btn btn-sm btn-outline" onClick={clearAll} style={{ marginTop: '0.7rem' }}>
+              {t('reset')}
+            </button>
+          )}
+        </Empty>
+      ) : (
       <div className="panel">
         <ResponsiveTable>
           <table className="table">
             <thead>
               <tr>
-                <th>{locale === 'km' ? 'អ្នកផ្តល់សេវា' : 'Provider'}</th>
+                <th>{km ? 'អ្នកផ្តល់សេវា' : 'Provider'}</th>
                 <th>Provider ref</th>
                 <th>Booking</th>
                 <th>{t('status')}</th>
@@ -226,17 +295,11 @@ export default function AdminPaymentsPage() {
                   <td className="small muted">{p.resolved_at ? timeAgo(p.resolved_at) : '—'}</td>
                 </tr>
               ))}
-              {!payments.length && (
-                <tr>
-                  <td colSpan="7" className="muted small">
-                    {locale === 'km' ? 'គ្មានប្រតិបត្តិការ' : 'No transactions match those filters.'}
-                  </td>
-                </tr>
-              )}
             </tbody>
           </table>
 </ResponsiveTable>
       </div>
+      )}
 
       <p className="hint" style={{ marginTop: '0.8rem' }}>
         {locale === 'km'

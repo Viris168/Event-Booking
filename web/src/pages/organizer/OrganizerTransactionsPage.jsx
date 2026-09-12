@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useDocumentTitle } from '../../lib/useDocumentTitle.js'
 import Icon from '../../components/Icon.jsx'
 import { Badge } from '../../components/ui.jsx'
+import { SkeletonRegion, TableRowsSkeleton } from '../../components/Skeleton.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
 import { usd } from '../../lib/format.js'
 import { getOrganizerTransactions } from '../../api/bookings.js'
@@ -118,6 +119,25 @@ export default function OrganizerTransactionsPage() {
     .reduce((a, r) => a + r.total_usd_cents, 0)
 
   const filtered = Boolean(q || state || eventId)
+
+  // Defined once and rendered by both the loaded table and its skeleton. Two
+  // copies of this markup would be two things to keep in step, and a skeleton
+  // whose columns have drifted from the real ones is worse than none.
+  const tableHead = (
+    <thead>
+      <tr className="bg-surface-2 border-b border-line text-tiny text-muted font-bold uppercase tracking-wide">
+        <th className="px-5 py-3">{km ? 'ព្រឹត្តិការណ៍' : 'Event'}</th>
+        <th className="px-5 py-3 whitespace-nowrap">{km ? 'ពេលវេលា' : 'Time'}</th>
+        <th className="px-5 py-3">{km ? 'អ្នកទិញ' : 'Customer'}</th>
+        <th className="px-5 py-3">{km ? 'វិធីបង់' : 'Method'}</th>
+        <th className="px-5 py-3">{km ? 'លេខយោង' : 'Reference'}</th>
+        <th className="px-5 py-3">{t('status')}</th>
+        <th className="px-5 py-3 text-right whitespace-nowrap">
+          {km ? 'ចំនួនទឹកប្រាក់' : 'Amount'}
+        </th>
+      </tr>
+    </thead>
+  )
 
   return (
     <div className="container container-wide">
@@ -245,9 +265,23 @@ export default function OrganizerTransactionsPage() {
 
         {/* ----------------------------------------------------------- table */}
         {loading ? (
-          <div className="px-5 py-16 text-center text-small text-muted">
-            {km ? 'កំពុងផ្ទុក…' : 'Loading transactions…'}
-          </div>
+          /* The real header over placeholder rows, rather than a centred
+             "Loading…". The columns are then already at their final widths, so
+             nothing shifts sideways when the ledger lands. */
+          <SkeletonRegion
+            className="overflow-x-auto"
+            label={km ? 'កំពុងផ្ទុក…' : 'Loading transactions…'}
+          >
+            <table className="w-full text-left border-collapse">
+              {tableHead}
+              <TableRowsSkeleton
+                rows={8}
+                cols={7}
+                cellClassName="px-5 py-3"
+                rowClassName="border-b border-line-2"
+              />
+            </table>
+          </SkeletonRegion>
         ) : error ? (
           <div className="px-5 py-16 text-center">
             <Icon name="alert" size={28} className="text-danger" />
@@ -267,17 +301,7 @@ export default function OrganizerTransactionsPage() {
         ) : visible.length ? (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-surface-2 border-b border-line text-tiny text-muted font-bold uppercase tracking-wide">
-                  <th className="px-5 py-3">{km ? 'ព្រឹត្តិការណ៍' : 'Event'}</th>
-                  <th className="px-5 py-3 whitespace-nowrap">{km ? 'ពេលវេលា' : 'Time'}</th>
-                  <th className="px-5 py-3">{km ? 'អ្នកទិញ' : 'Customer'}</th>
-                  <th className="px-5 py-3">{km ? 'វិធីបង់' : 'Method'}</th>
-                  <th className="px-5 py-3">{km ? 'លេខយោង' : 'Reference'}</th>
-                  <th className="px-5 py-3">{t('status')}</th>
-                  <th className="px-5 py-3 text-right whitespace-nowrap">{km ? 'ចំនួនទឹកប្រាក់' : 'Amount'}</th>
-                </tr>
-              </thead>
+              {tableHead}
               <tbody className="text-small text-ink">
                 {visible.map((r, i) => {
                   const outgoing = OUTGOING.has(r.state)

@@ -122,10 +122,14 @@ public class EventServiceimpl implements EventService {
         Venue venue = requireHostable(venueRepository.findById(request.venueId())
                 .orElseThrow(() -> new VenueNotFoundException(request.venueId())));
 
-        // You may only stage events at your own venue. Without this an
-        // organiser could hang events off a competitor's venue, and the venue
-        // owner would have no way to see it, let alone stop it.
-        organizerResolver.requireOwner(organizerId, venue.getOrganizerId(), "venue", venue.getId());
+        // You may stage events at your own venue, or at a shared one. Without
+        // this an organiser could hang events off a COMPETITOR's venue, and the
+        // venue owner would have no way to see it, let alone stop it - so an
+        // owned venue still admits only its owner. A shared venue is the public
+        // hall case: it has no owner to be taken advantage of, and refusing
+        // there just meant the second organiser to want Olympic Stadium could
+        // not run anything at all.
+        organizerResolver.requireOwnerOrShared(organizerId, venue.getOrganizerId(), "venue", venue.getId());
 
         Event event = eventRepository.save(EventMapper.toEventEntity(request, venue, organizerId));
         // A freshly created event has no inventory, no images and no review
@@ -182,7 +186,8 @@ public class EventServiceimpl implements EventService {
         if (request.venueId() != null) {
             Venue venue = venueRepository.findById(request.venueId())
                     .orElseThrow(() -> new VenueNotFoundException(request.venueId()));
-            organizerResolver.requireOwner(organizerId, venue.getOrganizerId(), "venue", venue.getId());
+            // Same rule as createEvent: your own venue, or a shared one.
+            organizerResolver.requireOwnerOrShared(organizerId, venue.getOrganizerId(), "venue", venue.getId());
 
             /*
              * Only a MOVE has to be hostable.

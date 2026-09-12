@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import Icon from '../../components/Icon.jsx'
 import SeatMapEditor from '../../components/SeatMapEditor.jsx'
 import { Alert } from '../../components/ui.jsx'
+import { Skeleton, SkeletonRegion } from '../../components/Skeleton.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
 import { useProvinces } from '../../lib/useProvinces.js'
 import { getVenue, getVenueSeatMap } from '../../api/venues.js'
@@ -66,9 +67,18 @@ export default function SeatMapEditorPage() {
 
   if (status === 'loading' || loadedId !== id) {
     return (
-      <div className="container">
-        <p className="muted">{locale === 'km' ? 'កំពុងផ្ទុក…' : 'Loading…'}</p>
-      </div>
+      <SkeletonRegion className="container container-wide">
+        <Skeleton className="skel-line w-40" />
+        <div className="page-head" style={{ marginTop: '1rem' }}>
+          <div className="stack-sm">
+            <Skeleton className="h-[1.7rem] w-56" />
+            <Skeleton className="skel-line w-72" />
+          </div>
+        </div>
+        {/* The editor is the page. A short block here would let the whole
+            screen jump down when the real canvas mounts. */}
+        <Skeleton className="h-105 w-full rounded-card" />
+      </SkeletonRegion>
     )
   }
 

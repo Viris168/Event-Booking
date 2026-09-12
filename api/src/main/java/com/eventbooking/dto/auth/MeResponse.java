@@ -1,6 +1,5 @@
 package com.eventbooking.dto.auth;
 
-import com.eventbooking.Enumeration.Locale;
 import com.eventbooking.Enumeration.Role;
 import com.eventbooking.model.AppUser;
 import com.eventbooking.model.OrganizerProfile;
@@ -40,8 +39,6 @@ public record MeResponse(
 
         @JsonProperty("role") Role role,
 
-        @JsonProperty("locale") Locale locale,
-
         @JsonProperty("is_disabled") boolean isDisabled,
 
         @JsonProperty("image_url") String imageUrl,
@@ -60,7 +57,6 @@ public record MeResponse(
                 user.getEmail(),
                 user.getDisplayName(),
                 user.getRole(),
-                user.getLocale(),
                 Boolean.TRUE.equals(user.getIsDisabled()),
                 user.getCloudinaryImageId(),
                 profile == null ? null : profile.getId(),
