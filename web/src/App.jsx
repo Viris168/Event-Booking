@@ -5,6 +5,7 @@ import ScrollToTop from './components/ScrollToTop.jsx'
 import Footer from './components/Footer.jsx'
 import ProtectedRoute from './routes/ProtectedRoute.jsx'
 import AccountPanel from './components/AccountPanel.jsx'
+import PhoneGate from './components/PhoneGate.jsx'
 
 import HomePage from './pages/HomePage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
@@ -62,7 +63,17 @@ export default function App() {
 
           {/* ---------------------------------- any logged-in customer */}
           <Route element={<ProtectedRoute />}>
-            <Route path="/checkout" element={<CheckoutPage />} />
+            {/* A Google account has no phone number, and a ticket is collected
+                against one. Gated here rather than at sign-in so browsing stays
+                open and only paying is interrupted. */}
+            <Route
+              path="/checkout"
+              element={
+                <PhoneGate>
+                  <CheckoutPage />
+                </PhoneGate>
+              }
+            />
             <Route path="/checkout/:bookingId/pay" element={<PaymentPage />} />
             <Route path="/bookings/:id" element={<BookingDetailPage />} />
             <Route path="/my-bookings" element={<MyBookingsPage />} />

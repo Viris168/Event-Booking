@@ -1,6 +1,8 @@
 package com.eventbooking.controller;
 
 import com.eventbooking.dto.auth.ChangePasswordRequest;
+import com.eventbooking.dto.auth.GoogleLoginRequest;
+import com.eventbooking.dto.auth.SetPhoneRequest;
 import com.eventbooking.dto.auth.LoginRequest;
 import com.eventbooking.dto.auth.MeResponse;
 import com.eventbooking.dto.auth.RegisterRequest;
@@ -190,6 +192,49 @@ public class AuthController {
                                                         HttpServletRequest http) {
         return issued(authService.changePassword(actorUserId, request, http.getHeader("User-Agent")),
                 HttpStatus.OK);
+    }
+
+    @PostMapping("/google")
+    @Operation(
+            summary = "Sign in with Google",
+            description = """
+                    Takes the ID token the browser received from Google Identity Services
+                    and returns what `/auth/login` returns - access token in the body,
+                    refresh token in the httpOnly cookie. The account is created on first
+                    sign-in.
+
+                    Matched on Google's permanent `sub`, never on the email address: an
+                    address can be renamed or, inside a Workspace domain, reassigned to a
+                    different person.
+
+                    A Google account arrives with **no phone number**, which is what a null
+                    `phone_e164` on `/auth/me` means. Send the user to add one before
+                    checkout; `POST /auth/me/phone` fills it.
+
+                    `401 INVALID_GOOGLE_TOKEN` covers every verification failure and the
+                    case where Google sign-in is not configured here. `409
+                    EMAIL_ALREADY_REGISTERED` when a password account already holds that
+                    address - linking the two is a deliberate action, not something this
+                    endpoint does silently.""")
+    public ResponseEntity<TokenResponse> google(@Valid @RequestBody GoogleLoginRequest request,
+                                                HttpServletRequest http) {
+        return issued(authService.loginWithGoogle(request.idToken(), http.getHeader("User-Agent")),
+                HttpStatus.OK);
+    }
+
+    @PostMapping("/me/phone")
+    @Operation(
+            summary = "Add the phone number a Google account signed up without",
+            description = """
+                    Fills `phone_e164` when it is null. It cannot replace one: the number is
+                    the login identifier and the access token's subject, so changing it
+                    would invalidate every token its owner holds.
+
+                    `409 PHONE_NUMBER_REQUIRED` if the account already has a number,
+                    `409 PHONE_ALREADY_REGISTERED` if it belongs to someone else.""")
+    public MeResponse setPhone(@CurrentUserId Long actorUserId,
+                               @Valid @RequestBody SetPhoneRequest request) {
+        return authService.setPhone(actorUserId, request);
     }
 
     /**

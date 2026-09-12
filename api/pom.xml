@@ -238,6 +238,27 @@
             <version>${kotlin.version}</version>
             <scope>test</scope>
         </dependency>
+        <!--
+            Verifying Google's ID token, and only that.
+
+            Hand-rolling it is tempting - the token is a JWT and jjwt is already
+            here - but the checks that matter are the ones easy to leave out:
+            the audience must equal our own client id, or any Google token
+            issued to any other application signs in as that user; the issuer
+            must be Google; and the signing keys rotate, so a cached JWKS has to
+            expire. GoogleIdTokenVerifier does all three and is maintained by
+            the people who rotate the keys.
+
+            This does NOT bring in an OAuth2 login flow. The browser gets the ID
+            token from Google Identity Services and posts it here; the server
+            verifies it and issues its own pair, exactly as /auth/login does.
+        -->
+        <dependency>
+            <groupId>com.google.api-client</groupId>
+            <artifactId>google-api-client</artifactId>
+            <version>2.7.0</version>
+        </dependency>
+
     </dependencies>
 
 

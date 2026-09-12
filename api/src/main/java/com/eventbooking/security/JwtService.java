@@ -64,9 +64,18 @@ public class JwtService {
     /**
      * Mints an access token for a user who has already proven who they are.
      *
-     * <p>The subject is {@code phone_e164} rather than the numeric id, so it
-     * matches what {@link AppUserDetailsService#loadUserByUsername} expects and
-     * the filter can hand it straight back without a translation step.
+     * <p>The subject is {@code app_user.id}. It used to be {@code phone_e164},
+     * which read nicely and was wrong in two ways. A phone number is a business
+     * value, not an identity: it is nullable since V9, so a Google account -
+     * which arrives with an email and no phone - was issued a token with a
+     * <b>null subject</b> that no later request could resolve. And even for a
+     * local account it is mutable in principle, so a token would outlive the
+     * fact it names. The primary key is neither.
+     *
+     * <p>Tokens minted before this change carry a phone number and no longer
+     * resolve. That self-heals: they expire in 15 minutes, and a refresh issues
+     * a new one. {@link AppUserDetailsService} treats an unparseable subject as
+     * "no such user" rather than letting it escape as a 500.
      *
      * <p>Role travels as a claim purely to save a database read on requests that
      * only need to check authority. It is a snapshot from issue time: promote a
@@ -74,10 +83,10 @@ public class JwtService {
      * For a 15-minute token that is an acceptable trade; anything sensitive
      * should re-read the user.
      */
-    public String generateAccessToken(String phoneE164, String role) {
+    public String generateAccessToken(String subject, String role) {
         Instant now = Instant.now();
         return Jwts.builder()
-                .subject(phoneE164)
+                .subject(subject)
                 .claim("role", role)
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(now.plusMillis(accessExpirationMs)))
@@ -86,7 +95,7 @@ public class JwtService {
     }
 
     /**
-     * Returns the phone number this token was issued for, or null if the token
+     * Returns the app_user id this token was issued for, or null if the token
      * is unusable for any reason - bad signature, expired, malformed, or simply
      * not a JWT at all.
      *

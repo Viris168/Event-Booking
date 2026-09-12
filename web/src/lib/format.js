@@ -72,6 +72,57 @@ export function isValidPhone(v) {
   return PHONE_RE.test((v || '').trim())
 }
 
+/**
+ * Turns however a Cambodian types their number into the E.164 the API wants.
+ *
+ * Nobody here writes "+85512345678". They write 012 345 678 - that is what is
+ * printed on a business card, said out loud, and saved in a contact list. The
+ * database stores E.164 because that is unambiguous and is what PayWay and any
+ * SMS provider expect, but that is a storage decision and there is no reason to
+ * make a customer perform the conversion.
+ *
+ * Accepts all of these as the same number, spaces and dashes anywhere:
+ *
+ *   012 345 678        the way it is actually written
+ *   012-345-678
+ *   +855 12 345 678    already international
+ *   85512345678        pasted without the plus
+ *   +855 012 345 678   both forms at once, which people do type
+ *   12345678           no trunk zero
+ *
+ * Returns the E.164 string, or null when it cannot be read as a Cambodian
+ * number. Null rather than a best guess: a wrong number silently accepted is a
+ * ticket nobody can be reached about.
+ */
+export function toE164(input) {
+  const raw = (input || '').trim()
+  let digits = raw.replace(/[^\d]/g, '')
+  if (!digits) return null
+
+  /*
+   * An explicit international prefix is a claim about which country this is,
+   * and it has to be honoured. Without this check "+1 555 0100" loses its "+1",
+   * gets read as a local number and is stored as +855 15550100 - a real
+   * Cambodian number belonging to someone else entirely. Refusing is the only
+   * safe answer; this product sells tickets in one country.
+   */
+  const isInternational = raw.startsWith('+') || digits.startsWith('00')
+  if (isInternational && !digits.replace(/^00/, '').startsWith('855')) return null
+
+  // Country code, however it arrived: 855... or 00855...
+  if (digits.startsWith('00855')) digits = digits.slice(5)
+  else if (digits.startsWith('855')) digits = digits.slice(3)
+
+  // The trunk zero belongs to the national format and is dropped in E.164.
+  // Checked AFTER the country code so "+855 012..." works too.
+  if (digits.startsWith('0')) digits = digits.slice(1)
+
+  // The schema's CHECK constraint, applied here so the caller never sends
+  // something the database is going to refuse.
+  if (!/^[0-9]{8,9}$/.test(digits)) return null
+  return `+855${digits}`
+}
+
 export function seatLabel(seat) {
   return `${seat.section_label} · ${seat.row_label}${seat.seat_number}`
 }

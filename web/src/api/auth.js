@@ -117,3 +117,33 @@ export function changePassword({ current_password, new_password }) {
       return r.data
     })
 }
+
+/**
+ * Sign in with Google. Returns the same pair shape /auth/login does, so the
+ * access token lands in memory and the refresh token in its httpOnly cookie.
+ *
+ * The ID token is the whole credential: the email and name are read out of it
+ * server-side after the signature is checked, never sent from here. A payload
+ * carrying its own email would be a way to sign in as anyone.
+ *
+ * A brand-new Google account comes back with `phone_e164: null` on /auth/me -
+ * that is the signal to send the user to add one, not an error.
+ */
+export function googleLogin(idToken) {
+  return client.post('/auth/google', { id_token: idToken }).then((r) => {
+    storeTokens(r.data)
+    return r.data
+  })
+}
+
+/**
+ * Fill in the phone number a Google account signed up without.
+ *
+ * Fills a null only; it cannot replace an existing number, because that is the
+ * login identifier and the access token's subject. Resolves with the updated
+ * record in the shape `me()` returns.
+ *
+ * Rejects 409 PHONE_ALREADY_REGISTERED when the number belongs to someone else.
+ */
+export const setPhone = (phone_e164) =>
+  client.post('/auth/me/phone', { phone_e164 }).then((r) => r.data)
