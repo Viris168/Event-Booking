@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import Icon from './Icon.jsx'
+import ConfirmDialog from './ConfirmDialog.jsx'
 import { Alert, Field } from './ui.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
@@ -38,6 +39,7 @@ export default function AccountPanel({ open, onClose }) {
      scroll before; as a menu they are two taps from anywhere and the panel
      opens on something readable rather than on three sets of inputs. */
   const [view, setView] = useState('menu')
+  const [confirmSignOut, setConfirmSignOut] = useState(false)
 
   const closeRef = useRef(null)
   const openerRef = useRef(null)
@@ -89,6 +91,7 @@ export default function AccountPanel({ open, onClose }) {
     openerRef.current = document.activeElement
     setClosing(false)
     setView('menu')
+    setConfirmSignOut(false)
 
     const onKey = (e) => {
       if (e.key === 'Escape') beginClose()
@@ -160,14 +163,7 @@ export default function AccountPanel({ open, onClose }) {
               km={km}
               t={t}
               onGo={setView}
-              onSignOut={() => {
-                // Close first: signing out unmounts the chip this panel would
-                // otherwise try to hand focus back to, and re-renders the shell
-                // underneath. No exit animation on a session change.
-                onClose()
-                logout()
-                navigate('/')
-              }}
+              onSignOut={() => setConfirmSignOut(true)}
             />
           ) : view === 'details' ? (
             /*
@@ -189,6 +185,28 @@ export default function AccountPanel({ open, onClose }) {
           )}
         </div>
       </aside>
+
+      <ConfirmDialog
+        open={confirmSignOut}
+        title={km ? 'ចេញពីគណនី?' : 'Sign out?'}
+        confirmLabel={km ? 'ចេញពីគណនី' : 'Sign out'}
+        cancelLabel={km ? 'បោះបង់' : 'Cancel'}
+        tone="danger"
+        onClose={() => setConfirmSignOut(false)}
+        onConfirm={() => {
+          // Close first: signing out unmounts the chip this panel would
+          // otherwise try to hand focus back to, and re-renders the shell
+          // underneath. No exit animation on a session change.
+          setConfirmSignOut(false)
+          onClose()
+          logout()
+          navigate('/')
+        }}
+      >
+        {km
+          ? 'អ្នកនឹងត្រូវចូលប្រើម្តងទៀតនៅលើឧបករណ៍នេះ។'
+          : "You'll need to sign in again on this device."}
+      </ConfirmDialog>
     </div>,
     document.body,
   )
@@ -201,7 +219,7 @@ const TITLES = {
 }
 
 /** One row of the settings list. Static rows show a value instead of a chevron. */
-function Row({ icon, tone, title, sub, value, onClick, danger }) {
+function Row({ icon, tone, title, sub, value, onClick }) {
   const body = (
     <>
       <span className={`acct-row-icon${tone ? ` tone-${tone}` : ''}`} aria-hidden="true">
@@ -220,7 +238,7 @@ function Row({ icon, tone, title, sub, value, onClick, danger }) {
   )
   if (!onClick) return <div className="acct-row is-static">{body}</div>
   return (
-    <button type="button" className={`acct-row${danger ? ' is-danger' : ''}`} onClick={onClick}>
+    <button type="button" className="acct-row" onClick={onClick}>
       {body}
     </button>
   )
@@ -296,16 +314,15 @@ function AccountMenu({ user, km, t, onGo, onSignOut }) {
             sub={km ? 'លេខសម្រាប់ចូលប្រើ មិនអាចប្តូរបានទេ' : 'How you sign in. Cannot be changed here.'}
             value={<span className="mono">{user.phone_e164}</span>}
           />
-          <Row
-            icon="logout"
-            tone="danger"
-            danger
-            title={km ? 'ចេញពីគណនី' : 'Sign out'}
-            sub={km ? 'ចេញពីឧបករណ៍នេះ' : 'Sign out on this device'}
-            onClick={onSignOut}
-          />
         </div>
       </section>
+
+      <div className="acct-signout">
+        <button type="button" className="acct-btn acct-btn-signout" onClick={onSignOut}>
+          <Icon name="logout" size={15} />
+          {km ? 'ចេញពីគណនី' : 'Sign out'}
+        </button>
+      </div>
     </>
   )
 }
@@ -662,9 +679,15 @@ button.acct-row:focus-visible { outline: 2px solid var(--color-brand-500);
 .acct-row-value { flex: none; font-size: .82rem; color: var(--color-muted); }
 .acct-row-chev { flex: none; color: var(--color-muted); }
 
-/* Signing out ends the session, so it reads as its own kind of action rather
-   than one more setting - without being alarming about it. */
-.acct-row.is-danger .acct-row-title { color: var(--color-danger); }
+/* Signing out ends the session rather than configuring anything, so it is a
+   button, not one more row in a settings list. The auto margin drops it to the
+   foot of the panel on short accounts and simply follows the last section once
+   the body is tall enough to scroll. */
+.acct-signout { margin-top: auto; padding-top: var(--acct-2); }
+.acct-btn-signout { width: 100%; background: var(--color-surface);
+                    border-color: var(--color-line); color: var(--color-danger); }
+.acct-btn-signout:hover { background: var(--color-danger-soft);
+                          border-color: var(--color-danger); }
 
 /* --------------------------------------------------------------- forms */
 .acct-card { border: 1px solid var(--color-line);
