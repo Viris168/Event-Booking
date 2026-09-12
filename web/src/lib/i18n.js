@@ -31,8 +31,8 @@ const dict = {
   },
   heroTitleAccent: { en: "Cambodia", km: "កម្ពុជា" },
   heroSub: {
-    en: "Concerts, festivals and conferences — reserve your seat, pay with ABA PayWay, show your QR at the door.",
-    km: "ការប្រគំតន្ត្រី ពិធីបុណ្យ និងសន្និសីទ — កក់កៅអី ទូទាត់ប្រាក់តាមរយៈ ABA PayWay រួចបង្ហាញ QR កូដនៅច្រកចូល។",
+    en: "Concerts, festivals and conferences. Pick a seat or buy general admission, and show your QR at the door.",
+    km: "ការប្រគំតន្ត្រី ពិធីបុណ្យ និងសន្និសីទ។ ជ្រើសរើសកៅអី ឬទិញសំបុត្រចូលទូទៅ រួចបង្ហាញ QR កូដនៅច្រកចូល។",
   },
   search: { en: "Search events", km: "ស្វែងរកព្រឹត្តិការណ៍" },
   searchLabel: { en: "Search", km: "ស្វែងរក" },
