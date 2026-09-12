@@ -5,7 +5,7 @@ import Icon from '../../components/Icon.jsx'
 import { Alert, Badge, Empty, Field, Pager } from '../../components/ui.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
-import { formatDateTime, timeAgo, usd } from '../../lib/format.js'
+import { formatDate, formatDateTime, timeAgo, usd } from '../../lib/format.js'
 import {
   approveEvent,
   getReviewQueue,
@@ -239,7 +239,12 @@ export default function AdminReviewPage() {
                   <tr>
                     <th>{km ? 'ព្រឹត្តិការណ៍' : 'Event'}</th>
                     <th>{km ? 'ទីកន្លែង' : 'Venue'}</th>
-                    <th>{t('status')}</th>
+                    {/* Not Status. Every row in a queue filtered to one status
+                        carries that status, so the column would repeat the
+                        dropdown above it on every line and tell the reviewer
+                        nothing. When the event happens does inform the
+                        decision - next week reads differently from next year. */}
+                    <th>{km ? 'ចាប់ផ្តើម' : 'Starts'}</th>
                     <th className="rq-num">{km ? 'រង់ចាំ' : 'Waiting'}</th>
                   </tr>
                 </thead>
@@ -278,11 +283,14 @@ export default function AdminReviewPage() {
                           {event.title_km && <div className="km rq-qsub">{event.title_km}</div>}
                         </td>
                         <td className="rq-qmuted">{venueName ?? '—'}</td>
-                        <td>
-                          <Badge status={event.status} />
+                        <td className="rq-qmuted">
+                          {event.starts_at ? formatDate(event.starts_at, locale) : '—'}
                         </td>
+                        {/* "ago" is dropped: the column is headed Waiting, and
+                            repeating the unit on every row is the sort of noise
+                            that makes a table feel machine-filled. */}
                         <td className="rq-num rq-qmuted">
-                          {stamp ? timeAgo(stamp) : <em>{km ? 'គ្មាន' : 'none'}</em>}
+                          {stamp ? timeAgo(stamp).replace(' ago', '') : '—'}
                         </td>
                       </tr>
                     )
@@ -704,28 +712,42 @@ const RQ_CSS = `
 .rq-queue thead th { text-align: start; font-size: .78rem; font-weight: 500;
                      color: var(--color-muted); padding: 0 var(--rq-3) var(--rq-2);
                      white-space: nowrap; border-bottom: 1px solid var(--color-line); }
-.rq-queue thead th:first-child { padding-inline-start: 0; }
-.rq-queue thead th.rq-num { text-align: end; padding-inline-end: 0; }
+.rq-queue thead th:first-child { padding-inline-start: var(--rq-3); }
+.rq-queue thead th.rq-num { text-align: end; padding-inline-end: var(--rq-3); }
 
-/* Ruled, not boxed. The selected row is marked by a solid accent edge and a
-   faint tint - one signal in one place, rather than a border tracing every
-   cell. */
+/*
+ * Ruled, not boxed, and one signal for "current": a solid edge on the leading
+ * side plus a quiet fill. No ring, no border tracing the row.
+ */
 .rq-qrow { cursor: pointer; }
 .rq-qrow > td { padding: var(--rq-3); vertical-align: baseline;
                 border-bottom: 1px solid var(--color-line-2);
-                box-shadow: inset 3px 0 0 0 transparent; }
-.rq-qrow > td:first-child { padding-inline-start: var(--rq-3); }
-.rq-qrow > td:last-child { padding-inline-end: 0; }
+                box-shadow: inset 3px 0 0 0 transparent;
+                transition: background .1s; }
+/* Breathing room at both ends so the first title and the last number are not
+   flush against the edge of the scroll container. */
+.rq-qrow > td:last-child { padding-inline-end: var(--rq-3); }
 .rq-qrow:hover > td { background: var(--color-surface-2); }
 .rq-qrow.is-on > td { background: var(--color-surface-2); }
 .rq-qrow.is-on > td:first-child { box-shadow: inset 3px 0 0 0 var(--color-ink); }
-/* One ring around the row, not one per cell - what the previous rule did. */
-.rq-qrow:focus-visible { outline: 2px solid var(--color-brand-500);
-                         outline-offset: -2px; }
-.rq-qrow:focus-visible > td { background: var(--color-surface-2); }
+.rq-qrow.is-on .rq-qtitle { color: var(--color-ink); }
 
-.rq-qtitle { font-size: .95rem; font-weight: 600; letter-spacing: -.01em; }
-.rq-qsub { font-size: .8rem; color: var(--color-muted); margin-top: 1px; }
+/*
+ * Focus is deliberately quiet.
+ *
+ * A row carries tabindex so the queue is keyboard-workable, and a browser keeps
+ * that focus after a click - so a 2px bright ring stayed painted around the row
+ * you had just clicked, competing with the selection mark beside it and reading
+ * as an error state. One hairline in the text colour says "keyboard is here"
+ * without shouting it.
+ */
+.rq-qrow:focus-visible { outline: 1px solid var(--color-muted);
+                         outline-offset: -1px; }
+
+.rq-qtitle { font-size: .95rem; font-weight: 600; letter-spacing: -.012em;
+             color: var(--color-ink-2); }
+.rq-qsub { font-size: .78rem; color: var(--color-muted); margin-top: 2px;
+           line-height: 1.45; }
 .rq-qmuted { color: var(--color-muted); font-size: .85rem; }
 
 /* --------------------------------------------------------------- the rail */
