@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import EventCard from '../components/EventCard.jsx'
 import Icon, { CATEGORY_ICON } from '../components/Icon.jsx'
@@ -15,6 +15,11 @@ import { getEvents } from '../api/events.js'
 // the two-letter abbreviations the retired mock store used. Those old 'PP' /
 // 'SR' values matched no row once the filter started hitting the real
 // endpoint, so both chips returned an empty grid.
+/* Hero backdrop, served from web/public. If the file is missing the banner
+   falls back to its gradient rather than breaking, so swapping the art is just
+   a change to this one constant. */
+const HERO_IMAGE = '/event.png'
+
 const QUICK_SEARCHES = [
   { q: 'pp', en: 'Phnom Penh', km: 'ភ្នំពេញ', icon: 'mapPin', params: { province: '12' } },
   { q: 'sr', en: 'Siem Reap', km: 'សៀមរាប', icon: 'mapPin', params: { province: '17' } },
@@ -23,21 +28,10 @@ const QUICK_SEARCHES = [
   { q: 'cheap', en: 'Under $20', km: 'ក្រោម $20', icon: 'wallet', params: { maxUsd: '20' } },
 ]
 
-/** Whole days from now until an ISO date, floored at 0. */
-function daysUntil(iso) {
-  return Math.max(0, Math.ceil((new Date(iso).getTime() - Date.now()) / 86400000))
-}
-
-function getScarcity(event) {
-  const capacity = event.totalCapacity ?? event.total_capacity ?? 0
-  if (!capacity) return { level: 'none' }
-  const remaining = capacity - (event.totalSold ?? event.total_sold ?? 0) - (event.totalHeld ?? event.total_held ?? 0)
-  if (remaining <= 0) return { level: 'sold-out' }
-  const pct = remaining / capacity
-  if (remaining <= 12) return { level: 'almost-full' }
-  if (pct <= 0.2) return { level: 'filling', remaining }
-  return { level: 'ok', remaining }
-}
+/** How often the hero rail advances, in ms. */
+const ROTATE_MS = 5000
+/** Cards in the rail. More than this and the dots stop being scannable. */
+const RAIL_SIZE = 5
 
 function getMinPriceCents(event) {
   let min = Infinity
@@ -49,98 +43,129 @@ function getMinPriceCents(event) {
 }
 
 /**
- * "Next up" card in the hero. Fills the empty half of the banner with the
- * soonest event on sale, and gives the page a single obvious first action.
+ * The rail's card. Deliberately NOT the grid's EventCard: this one sits on a
+ * photographic banner, so it is a single piece of artwork with the detail laid
+ * over it, rather than a picture stacked on a white body. That also makes it
+ * shorter, which is what lets it sit beside the headline without crowding.
  */
-function Spotlight({ event }) {
-  const { t, locale, date, time } = useLocale()
+function RailCard({ event }) {
+  const { t, locale } = useLocale()
   const art = eventArt(event, 'cover')
   const venue = event.venue
   const price = getMinPriceCents(event)
-  const start = event.startsAt ?? event.starts_at
-  const left = daysUntil(start)
-  const scarce = getScarcity(event)
-
-  const countdown =
-    left === 0
-      ? locale === 'km'
-        ? 'ថ្ងៃនេះ'
-        : 'Tonight'
-      : left === 1
-        ? locale === 'km'
-          ? 'ថ្ងៃស្អែក'
-          : 'Tomorrow'
-        : locale === 'km'
-          ? `ក្នុងរយៈពេល ${left} ថ្ងៃ`
-          : `In ${left} days`
+  const start = new Date(event.startsAt ?? event.starts_at)
+  const title = locale === 'km' ? (event.titleKm ?? event.title_km) : (event.titleEn ?? event.title_en)
+  const venueName = locale === 'km' ? (venue?.nameKm ?? venue?.name_km) : (venue?.nameEn ?? venue?.name_en)
 
   return (
-    <aside className="spotlight" aria-label={locale === 'km' ? 'ព្រឹត្តិការណ៍បន្ទាប់' : 'Next event'}>
-      <div className="spot-head">
+    <Link
+      to={`/events/${event.id}`}
+      className={`rail-card ${art.className}${art.hasImage ? ' has-photo' : ''}`}
+    >
+      {art.hasImage ? (
+        <img className="ev-photo" src={art.url} alt="" decoding="async"
+          onError={(e) => { e.currentTarget.remove() }} />
+      ) : (
+        <Icon name={CATEGORY_ICON[event.category] || 'ticket'} size={44} strokeWidth={1.3} className="rail-icon" />
+      )}
+
+      <span className="rail-date">
+        {start.toLocaleDateString('en-GB', { month: 'short' }).toUpperCase()}
+        <b>{start.getDate()}</b>
+      </span>
+
+      <div className="rail-body">
+        <strong>{title}</strong>
+        {venueName && (
+          <span className="rail-meta">
+            <Icon name="mapPin" size={13} />
+            {venueName}
+          </span>
+        )}
+        <span className="rail-price">
+          {t('from_price')} <b><Money cents={price} /></b>
+        </span>
+      </div>
+    </Link>
+  )
+}
+
+/**
+ * The upcoming events, one card at a time, advancing on its own.
+ *
+ * Auto-advancing content has to be stoppable (WCAG 2.2.2), so the timer pauses
+ * while the pointer is over the rail and while focus is inside it — otherwise
+ * the card can slide out from under someone mid-click or mid-read. The dots are
+ * real buttons, so there is a manual way through regardless.
+ */
+function HeroRail({ events }) {
+  const { locale } = useLocale()
+  const [index, setIndex] = useState(0)
+  const [paused, setPaused] = useState(false)
+  const count = events.length
+
+  // Derived, not stored: if the list shrinks, a stale index would otherwise
+  // translate the track into empty space. Wrapping here beats correcting it in
+  // an effect, which would cost an extra render every time.
+  const active = count ? index % count : 0
+
+  // Re-keyed on `active` too, so choosing a dot restarts the full interval
+  // instead of inheriting whatever was left of the previous one.
+  useEffect(() => {
+    if (paused || count < 2) return undefined
+    const id = setTimeout(() => setIndex((i) => (i + 1) % count), ROTATE_MS)
+    return () => clearTimeout(id)
+  }, [active, paused, count])
+
+  const hold = useCallback(() => setPaused(true), [])
+  const release = useCallback(() => setPaused(false), [])
+
+  if (!count) return null
+
+  return (
+    <div
+      className="hero-rail"
+      onMouseEnter={hold}
+      onMouseLeave={release}
+      onFocusCapture={hold}
+      onBlurCapture={release}
+      aria-roledescription="carousel"
+      aria-label={locale === 'km' ? 'ព្រឹត្តិការណ៍ជិតមកដល់' : 'Upcoming events'}
+    >
+      <div className="hero-rail-head">
         <span className="tiny">
           <Icon name="clock" size={13} /> {locale === 'km' ? 'ជិតមកដល់' : 'Next up'}
         </span>
-        <span className="spot-when">{countdown}</span>
       </div>
 
-      <Link
-        to={`/events/${event.id}`}
-        className={`spot-art ${art.className}${art.hasImage ? ' has-photo' : ''}`}
-      >
-        {art.hasImage ? (
-          <img
-            className="ev-photo"
-            src={art.url}
-            alt=""
-            decoding="async"
-            onError={(e) => {
-              e.currentTarget.remove()
-            }}
-          />
-        ) : (
-          <Icon
-            name={CATEGORY_ICON[event.category] || 'ticket'}
-            size={48}
-            strokeWidth={1.3}
-            className="cat-icon"
-          />
-        )}
-        {(scarce.level === 'almost-full' || scarce.level === 'filling') && (
-          <span className="spot-flag badge badge-solid badge-hot">
-            <Icon name="trending" size={12} />
-            {scarce.level === 'almost-full'
-              ? t('almostFull')
-              : `${scarce.remaining} ${t('seatsLeft')}`}
-          </span>
-        )}
-      </Link>
-
-      <div className="spot-body">
-        <strong>{locale === 'km' ? (event.titleKm ?? event.title_km) : (event.titleEn ?? event.title_en)}</strong>
-        <span className={locale === 'km' ? 'spot-alt' : 'spot-alt km'}>
-          {locale === 'km' ? (event.titleEn ?? event.title_en) : (event.titleKm ?? event.title_km)}
-        </span>
-        <span className="spot-meta">
-          <Icon name="mapPin" size={14} />
-          {locale === 'km' ? venue?.nameKm : venue?.nameEn}
-        </span>
-        <span className="spot-meta">
-          <Icon name="calendar" size={14} />
-          {date(event.startsAt ?? event.starts_at)} · {time(event.doorsOpenAt ?? event.doors_open_at)} {t('doorsOpen').toLowerCase()}
-        </span>
+      <div className="hero-viewport">
+        <div className="hero-track" style={{ transform: `translateX(-${active * 100}%)` }}>
+          {events.map((e, i) => (
+            /* Off-screen slides keep their links in the tab order unless they
+               are inerted — the classic carousel focus trap, where tabbing
+               walks into cards nobody can see. */
+            <div className="hero-slide" key={e.id} inert={i !== active ? '' : undefined}>
+              <RailCard event={e} />
+            </div>
+          ))}
+        </div>
       </div>
 
-      <div className="spot-foot">
-        <span className="price-tag">
-          <span className="tiny">{t('from_price')}</span>
-          <Money cents={price} stacked />
-        </span>
-        <Link className="btn btn-accent btn-sm" to={`/events/${event.id}`}>
-          {locale === 'km' ? 'មើលព្រឹត្តិការណ៍' : 'View event'}
-          <Icon name="arrowRight" size={14} />
-        </Link>
-      </div>
-    </aside>
+      {count > 1 && (
+        <div className="hero-dots">
+          {events.map((e, i) => (
+            <button
+              key={e.id}
+              type="button"
+              className={`hero-dot${i === active ? ' on' : ''}`}
+              aria-current={i === active}
+              aria-label={`${locale === 'km' ? 'ព្រឹត្តិការណ៍' : 'Event'} ${i + 1}`}
+              onClick={() => setIndex(i)}
+            />
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -166,7 +191,7 @@ export default function HomePage() {
       .finally(() => setLoading(false))
   }, [])
 
-  const spotlight = published[0]
+  const rail = published.slice(0, RAIL_SIZE)
   const featured = published.slice(0, 4)
   const upcoming = published.slice(4, 12)
 
@@ -195,12 +220,22 @@ export default function HomePage() {
   return (
     <>
       <section className="hero">
+        {/* Decorative backdrop, so it carries no alt text. The gradient beneath
+            is what shows while this decodes — and what remains if the file is
+            missing, since the image removes itself on error. That fallback is
+            the reason the banner still looks finished with no art in place. */}
+        <img
+          className="hero-bg"
+          src={HERO_IMAGE}
+          alt=""
+          fetchPriority="high"
+          decoding="async"
+          onError={(e) => {
+            e.currentTarget.remove()
+          }}
+        />
         <div className="hero-inner hero-grid">
           <div className="hero-copy">
-          <span className="hero-kicker">
-            <Icon name="qr" size={14} />
-            {locale === 'km' ? 'បង់ប្រាក់តាមបាគង និង ABA' : 'Pay with Bakong KHQR & ABA PayWay'}
-          </span>
           <h1>
             {t('heroTitleLead')} <span className="hero-accent">{t('heroTitleAccent')}</span>
           </h1>
@@ -251,25 +286,31 @@ export default function HomePage() {
             ))}
           </div>
 
-          <div className="hero-stats">
-            <div>
-              <b>{totalLive}</b>
-              {locale === 'km' ? 'ព្រឹត្តិការណ៍ផ្សាយ' : 'live events'}
-            </div>
-            <div>
-              <b>{ticketsSold.toLocaleString()}</b>
-              {locale === 'km' ? 'សំបុត្រលក់រួច' : 'tickets sold'}
-            </div>
-            <div>
-              <b>{provinces.length}</b>
-              {locale === 'km' ? 'ខេត្ត/ក្រុង' : 'provinces covered'}
-            </div>
-          </div>
           </div>
 
-          {/* The soonest event, sold from the hero itself rather than leaving
-              half the banner empty. */}
-          {loading ? <SpotlightSkeleton /> : spotlight && <Spotlight event={spotlight} />}
+          {loading ? <SpotlightSkeleton /> : <HeroRail events={rail} />}
+        </div>
+
+        {/* The numbers sit on a rule at the foot of the banner. They used to
+            trail off the bottom of the copy column, which left the hero with no
+            base and the right half empty below the card. */}
+        <div className="hero-base">
+          <div className="hero-inner hero-base-inner">
+            <div className="hero-stats">
+              <div>
+                <b>{totalLive}</b>
+                {locale === 'km' ? 'ព្រឹត្តិការណ៍ផ្សាយ' : 'live events'}
+              </div>
+              <div>
+                <b>{ticketsSold.toLocaleString()}</b>
+                {locale === 'km' ? 'សំបុត្រលក់រួច' : 'tickets sold'}
+              </div>
+              <div>
+                <b>{provinces.length}</b>
+                {locale === 'km' ? 'ខេត្ត/ក្រុង' : 'provinces covered'}
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 

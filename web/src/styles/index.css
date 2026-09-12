@@ -677,15 +677,26 @@
      corner: spread wide over navy it turned muddy brown. The third sits behind
      the headline so the type has something to lift off. */
   .hero {
-    @apply relative isolate py-[3.4rem] pb-[4.6rem] text-white;
+    @apply relative isolate overflow-hidden pt-[4.4rem] pb-0 text-white;
     background:
-      radial-gradient(520px 240px at 1% -14%, rgba(224, 123, 57, 0.16), transparent 62%),
-      radial-gradient(700px 380px at 26% 6%, rgba(21, 126, 78, 0.16), transparent 66%),
-      radial-gradient(900px 520px at 95% -16%, rgba(45, 164, 104, 0.20), transparent 64%),
       radial-gradient(820px 500px at 74% 120%, rgba(8, 46, 29, 0.5), transparent 62%),
-      radial-gradient(1400px 180px at 50% 100%, rgba(158, 220, 187, 0.07), transparent 72%),
       linear-gradient(168deg, #04140c 0%, #052117 50%, #072b1b 100%);
     box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.12);
+  }
+
+  /* The backdrop photo, and the scrim that makes type survivable on top of it.
+     The scrim is a left-weighted gradient rather than a flat wash: the copy
+     needs the contrast, the right side of the picture does not, and a uniform
+     overlay flattens the image into grey. */
+  .hero-bg {
+    @apply pointer-events-none absolute inset-0 -z-20 h-full w-full object-cover;
+  }
+  .hero::before {
+    content: '';
+    @apply pointer-events-none absolute inset-0 -z-10;
+    background:
+      linear-gradient(100deg, rgba(3, 16, 9, 0.82) 0%, rgba(4, 22, 13, 0.68) 38%, rgba(5, 30, 18, 0.34) 72%, rgba(6, 36, 22, 0.2) 100%),
+      linear-gradient(180deg, rgba(4, 20, 12, 0.34) 0%, transparent 34%, rgba(4, 18, 11, 0.62) 100%);
   }
   /* Fine dot grid for texture, faded out before it reaches the content. */
   .hero::after {
@@ -713,32 +724,136 @@
   .hero p {
     @apply mt-[0.7rem] max-w-[58ch] text-white/[0.82];
   }
-  .hero-kicker {
-    @apply mb-[0.9rem] inline-flex items-center gap-[0.4rem] rounded-full border border-white/20
-      bg-white/15 px-[0.7rem] py-[0.28rem] text-[0.78rem] font-semibold;
-  }
   /* Copy on the left, the next event on sale on the right. Below 1080px the
      card drops under the search rather than squeezing both. */
+  /* Copy on the left, the rotating rail on the right. Below 1080px the rail
+     goes rather than stacking: it is a browsing aid, and pushing the search
+     below a 400px card is the wrong trade on a phone. */
   .hero-grid {
     @apply grid items-center gap-10;
-    grid-template-columns: minmax(0, 1fr) 360px;
+    grid-template-columns: minmax(0, 1fr) 320px;
   }
   @media (max-width: 1080px) {
     .hero-grid {
-      @apply grid-cols-1 gap-8;
+      @apply block;
     }
-    /* Desktop-only flourish: on medium and small screens the hero should get
-       straight to the search rather than pushing it below a big card. */
-    .spotlight {
+    .hero-rail {
       @apply hidden;
     }
   }
   .hero-copy {
-    @apply min-w-0;
+    @apply min-w-0 max-w-[720px];
   }
 
+  /* -------------------------------------------------- hero rotating rail */
+  .hero-viewport {
+    @apply overflow-hidden rounded-card;
+  }
+  .hero-track {
+    @apply flex items-stretch;
+    transition: transform 0.62s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  /* The slide, not the card, carries the width — so all five stay the height of
+     the tallest and the rail does not resize as it advances. */
+  .hero-slide {
+    @apply w-full flex-none;
+  }
+  .hero-slide > .rail-card {
+    @apply h-full;
+  }
+
+  /* One piece of artwork with the detail laid over it — the banner's card, not
+     the grid's. The scrim is what keeps the type legible whatever the photo
+     underneath happens to be. */
+  .rail-card {
+    @apply relative isolate block overflow-hidden rounded-card border border-white/[0.16] shadow-pop;
+    aspect-ratio: 1 / 1;
+  }
+  .rail-card:hover {
+    @apply border-white/35 no-underline;
+  }
+  .rail-card::after {
+    content: '';
+    @apply absolute inset-0 z-[1];
+    background: linear-gradient(
+      180deg,
+      rgba(3, 12, 8, 0.22) 0%,
+      transparent 30%,
+      rgba(4, 16, 10, 0.82) 72%,
+      rgba(3, 11, 7, 0.95) 100%
+    );
+  }
+  .rail-card .rail-icon {
+    @apply absolute left-1/2 top-[38%] z-0 -translate-x-1/2 -translate-y-1/2 text-white/90;
+  }
+  .rail-date {
+    @apply absolute left-[0.75rem] top-[0.75rem] z-[2] min-w-[42px] rounded-[10px] bg-white/[0.96]
+      px-2 py-[0.3rem] text-center text-[0.66rem] font-extrabold leading-[1.2] tracking-[0.04em] text-ink;
+  }
+  .rail-date b {
+    @apply block text-[1.05rem] tracking-[-0.01em];
+  }
+  .rail-body {
+    @apply absolute inset-x-0 bottom-0 z-[2] flex flex-col gap-[0.28rem] px-[0.95rem] pb-[0.95rem] text-white;
+  }
+  .rail-body strong {
+    @apply line-clamp-2 text-[1.02rem] font-bold leading-[1.32];
+  }
+  .rail-meta {
+    @apply inline-flex items-center gap-[0.32rem] truncate text-[0.78rem] text-white/70;
+  }
+  .rail-price {
+    @apply mt-[0.15rem] text-[0.72rem] uppercase tracking-[0.05em] text-white/60;
+  }
+  .rail-price b {
+    @apply ml-[0.25rem] text-[1.05rem] normal-case tracking-normal text-white;
+  }
+  .hero-rail-head {
+    @apply mb-[0.6rem] flex items-center gap-3;
+  }
+  .hero-rail-head .tiny {
+    @apply inline-flex items-center gap-[0.35rem] text-[0.68rem] font-bold uppercase
+      tracking-[0.07em] text-white/65;
+  }
+  .hero-dots {
+    @apply mt-[0.65rem] flex items-center justify-center gap-[0.3rem];
+  }
+  .hero-dot {
+    @apply h-[5px] w-[5px] cursor-pointer rounded-full border-0 bg-white/30 p-0;
+    transition: width 0.25s ease, background-color 0.25s ease;
+  }
+  .hero-dot:hover {
+    @apply bg-white/60;
+  }
+  .hero-dot.on {
+    @apply w-[13px] bg-white/90;
+  }
+  /* Respect a stated preference for less motion: the rail still advances, it
+     just cuts rather than slides. */
+  @media (prefers-reduced-motion: reduce) {
+    .hero-track {
+      transition: none;
+    }
+    .hero-dot {
+      transition: none;
+    }
+  }
+
+  /* The spotlight card is taller than the copy column, so the grid row already
+     leaves air under the quick links — the rule does not need much more. */
+  .hero-base {
+    @apply mt-[1.75rem] border-t border-white/[0.12];
+  }
+  @media (max-width: 1080px) {
+    .hero-base {
+      @apply mt-[2.4rem];
+    }
+  }
+  .hero-base-inner {
+    @apply flex flex-wrap items-center gap-x-8 gap-y-3 py-[1.05rem];
+  }
   .hero-stats {
-    @apply mt-[1.9rem] flex flex-wrap gap-y-4;
+    @apply flex flex-wrap gap-y-4;
   }
   .hero-stats div {
     @apply pr-7 text-[0.8rem] text-white/70;
@@ -760,12 +875,14 @@
     }
   }
   .hero-stats b {
-    @apply block text-[1.35rem] leading-[1.2] text-white;
+    @apply block text-[1.3rem] leading-[1.2] text-white;
+    font-variant-numeric: tabular-nums;
   }
 
   /* ------------------------------------------------ hero "next up" card */
   .spotlight {
-    @apply overflow-hidden rounded-card border border-white/15 bg-white/10 shadow-pop backdrop-blur-[6px];
+    @apply overflow-hidden rounded-card border border-white/[0.16] shadow-pop backdrop-blur-[6px];
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(4, 22, 13, 0.55));
   }
   .spot-head {
     @apply flex items-center justify-between gap-2 px-[0.9rem] pt-[0.8rem] pb-[0.6rem];
