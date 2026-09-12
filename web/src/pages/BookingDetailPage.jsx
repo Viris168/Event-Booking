@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useDocumentTitle } from '../lib/useDocumentTitle.js'
 import { Link, useParams } from 'react-router-dom'
-import HoldBar from '../components/HoldBar.jsx'
 import Icon from '../components/Icon.jsx'
 import TicketWallet from '../components/TicketWallet.jsx'
 import { BookingDetailSkeleton } from '../components/Skeleton.jsx'
@@ -11,16 +10,12 @@ import { useLocale } from '../context/LocaleContext.jsx'
 import { useToast } from '../context/ToastContext.jsx'
 import { countdown, usd } from '../lib/format.js'
 import {
-  cancelBooking,
-  extendHold,
   getBooking,
   getEvent,
-  getHold,
   getVenue,
   historyOf,
   itemsOf,
   paymentsForBooking,
-  requestRefund,
   ticketsOf,
   useStore,
 } from '../mock/store.js'
@@ -92,7 +87,7 @@ const TONE = {
   CANCELLED: 'warn',
 }
 
-import { getBooking as getApiBooking } from '../api/bookings.js'
+import { getBooking as getApiBooking, cancelBooking, requestRefund } from '../api/bookings.js'
 import { getBookingPayments } from '../api/payment.js'
 import { mapBooking, mapTicket } from '../api/adapters.js'
 import { getEvent as getApiEvent } from '../api/events.js'
@@ -112,6 +107,10 @@ export default function BookingDetailPage() {
   const [bookingLoading, setBookingLoading] = useState(true)
   const [apiPayments, setApiPayments] = useState(null)
   const [now, setNow] = useState(() => Date.now())
+  // Guards both lifecycle buttons while a request is in flight. Cancel is not
+  // undoable, so a double-click has to be impossible rather than merely
+  // idempotent on the server.
+  const [acting, setActing] = useState(false)
 
   /*
    * The open attempt's deadline, and how long is left on it.
@@ -222,17 +221,71 @@ export default function BookingDetailPage() {
   // The API has no endpoint for either yet, so a real booking simply shows
   // neither rather than something invented.
   const history = apiBooking ? [] : historyOf(booking.id)
-  const hold = apiBooking ? null : getHold(booking.hold_id)
-  // Cancel and refund still only exist in the prototype store: the API has no
-  // endpoint for either, so on a real booking those buttons would mutate mock
-  // data and toast "Booking cancelled" while the actual booking sat untouched.
-  // Offering nothing is honest; offering a button that lies is not. Remove this
-  // override once the booking API grows the transition endpoints.
-  const act = (() => {
-    const a = actionsFor(booking.state)
-    return apiBooking ? { ...a, canCancel: false, canRefund: false } : a
-  })()
+  // Cancel and refund now hit POST /bookings/{id}/cancel and /refund, so the
+  // override that used to blank both buttons on a real booking is gone. What it
+  // was protecting against was real: before those endpoints existed the buttons
+  // called into the prototype store and toasted "Booking cancelled" while the
+  // actual booking sat untouched.
+  const act = actionsFor(booking.state)
   const mine = booking.user_id === user?.id
+
+  /**
+   * Shared tail for both lifecycle actions. Each endpoint answers with the
+   * updated booking, so the new state is adopted from the response instead of
+   * refetching — and the tickets/payments effect below re-runs on the state
+   * change, which is what repaints a cancelled booking's payment rows.
+   */
+  function applyBookingResult(res, message, tone = 'info') {
+    setApiBooking(mapBooking(res))
+    toast(message, tone)
+  }
+
+  function onActionError(err, fallback) {
+    const data = err.response?.data
+    // 409 means the state moved under us — a payment confirmed while this page
+    // was open, or the window lapsed. The message names the actual states, so
+    // it is more use to the customer than a generic failure.
+    const detail = data?.detail || data?.message || err.message
+    toast(`${fallback} (${detail})`, 'error')
+  }
+
+  function onCancel() {
+    if (acting) return
+    setActing(true)
+    cancelBooking(booking.id)
+      .then((res) =>
+        applyBookingResult(
+          res,
+          locale === 'km' ? 'បានបោះបង់ការកក់' : 'Booking cancelled — those seats are back on sale.',
+        ),
+      )
+      .catch((err) =>
+        onActionError(err, locale === 'km' ? 'មិនអាចបោះបង់បានទេ' : 'Could not cancel this booking'),
+      )
+      .finally(() => setActing(false))
+  }
+
+  function onRequestRefund() {
+    if (acting) return
+    setActing(true)
+    requestRefund(booking.id)
+      .then((res) =>
+        applyBookingResult(
+          res,
+          locale === 'km'
+            ? 'បានស្នើសុំសងប្រាក់វិញ — សំបុត្រនៅតែប្រើបានរហូតដល់មានការសម្រេច។'
+            : 'Refund requested. Your tickets stay valid until it is decided.',
+          'success',
+        ),
+      )
+      .catch((err) =>
+        onActionError(
+          err,
+          locale === 'km' ? 'មិនអាចស្នើសុំសងប្រាក់បានទេ' : 'Could not request a refund',
+        ),
+      )
+      .finally(() => setActing(false))
+  }
 
   function labelForTicket(ticket) {
     // An API ticket already carries its seat location and tier, and labels
@@ -260,10 +313,14 @@ export default function BookingDetailPage() {
         <Steps current={2} labels={[t('pickSeats'), t('checkoutPay'), t('yourTickets')]} />
       )}
 
-      {hold?.status === 'ACTIVE' && (
-        <HoldBar hold={hold} onExtend={() => extendHold(hold.id)} />
-      )}
-
+      {/*
+        No hold bar here. A booking exists precisely because its hold was
+        converted, which leaves that hold CONSUMED - so a countdown on this page
+        could only ever come from the prototype store, and the "Extend hold"
+        button beside it called into that store and reported success against a
+        hold the server had already closed. The extension lives on the event
+        page, where the hold is still ACTIVE and extending it means something.
+      */}
       <div className="page-head" style={{ marginTop: '1rem' }}>
         <div>
           <div className="tiny">{t('bookingRef')}</div>
@@ -307,27 +364,12 @@ export default function BookingDetailPage() {
             </>
           )}
           {act.canCancel && (
-            <button
-              className="btn btn-danger"
-              onClick={() => {
-                const r = cancelBooking(booking.id, user.id)
-                toast(r.error ? r.error : locale === 'km' ? 'បានបោះបង់' : 'Booking cancelled', r.error ? 'error' : 'info')
-              }}
-            >
+            <button className="btn btn-danger" onClick={onCancel} disabled={acting}>
               {t('cancelBooking')}
             </button>
           )}
           {act.canRefund && (
-            <button
-              className="btn btn-outline"
-              onClick={() => {
-                const r = requestRefund(booking.id, user.id)
-                toast(
-                  r.error ? r.error : locale === 'km' ? 'បានស្នើសុំសងប្រាក់វិញ' : 'Refund requested',
-                  r.error ? 'error' : 'success',
-                )
-              }}
-            >
+            <button className="btn btn-outline" onClick={onRequestRefund} disabled={acting}>
               {t('requestRefund')}
             </button>
           )}
@@ -471,17 +513,25 @@ export default function BookingDetailPage() {
                 <dd className="mono">{booking.buyer_phone_e164}</dd>
                 <dt>{t('email')}</dt>
                 <dd>{booking.buyer_email || '—'}</dd>
-                <dt>
-                  <span className="with-icon">
-                    <Icon name="mapPin" size={14} />
-                    {locale === 'km' ? 'ទីកន្លែង' : 'Venue'}
-                  </span>
-                </dt>
+                {/* No map pin on this one label. Four labels, one of them
+                    iconed, reads as an oversight rather than emphasis - and
+                    the row sits under a heading that already says what these
+                    are. */}
+                <dt>{locale === 'km' ? 'ទីកន្លែង' : 'Venue'}</dt>
                 <dd>{(locale === 'km' ? venue?.name_km : venue?.name_en) || '—'}</dd>
               </dl>
             </div>
           </div>
 
+          {/*
+            Hidden rather than shown empty. `history` is always [] on a real
+            booking - the server records every transition in
+            booking_status_history but exposes no endpoint to read it back - so
+            this rendered a titled card with a blank body on every live booking,
+            which looks like the page failed to load rather than like there is
+            nothing to show. It returns on its own once that endpoint exists.
+          */}
+          {history.length > 0 && (
           <div className="panel" style={{ marginTop: '1rem' }}>
             <div className="panel-head">
               <h3>{t('timeline')}</h3>
@@ -503,6 +553,7 @@ export default function BookingDetailPage() {
               </ul>
             </div>
           </div>
+          )}
         </div>
       </div>
     </div>

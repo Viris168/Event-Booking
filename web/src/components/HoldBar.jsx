@@ -1,23 +1,35 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Icon from './Icon.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
 import { useToast } from '../context/ToastContext.jsx'
 import { countdown } from '../lib/format.js'
-import { useStore } from '../mock/store.js'
 
 /**
  * The hold countdown. Always visible while a hold exists, on the event page and
  * through checkout and payment — nothing here implies the seats are already the
  * customer's.
+ *
+ * The clock used to tick by calling useStore(), subscribing to the prototype
+ * store purely for its one-second re-render. That made a component rendering
+ * live API data depend on the mock store staying in the bundle, and meant the
+ * countdown stopped if that store ever went away. It owns its own interval now.
  */
 export default function HoldBar({ hold, onExtend, onRelease, checkoutTo }) {
   const { t, locale } = useLocale()
   const toast = useToast()
-  useStore() // one-second re-render for the clock
+  const [now, setNow] = useState(() => Date.now())
   const warned = useRef(null)
 
-  const msLeft = hold ? new Date(hold.expires_at).getTime() - Date.now() : 0
+  // Only ticks while a hold is actually on screen: an interval left running
+  // against no hold is a timer nothing reads.
+  useEffect(() => {
+    if (!hold?.expires_at) return undefined
+    const timer = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(timer)
+  }, [hold?.expires_at])
+
+  const msLeft = hold ? new Date(hold.expires_at).getTime() - now : 0
 
   // One nudge as the hold enters its last minute — the countdown alone is easy
   // to miss while filling in the checkout form.
@@ -58,7 +70,14 @@ export default function HoldBar({ hold, onExtend, onRelease, checkoutTo }) {
           title={hold.extended ? t('extended') : t('extendHold')}
         >
           <Icon name={hold.extended ? 'check' : 'refresh'} size={14} />
-          {hold.extended ? t('extended') : `${t('extendHold')} +5:00`}
+          {/*
+            No "+5:00" on the label. How much the extension adds is a server
+            setting (app.hold.extension-minutes, 3 by default), so a number
+            hardcoded here was already wrong and would drift again on any
+            config change. The countdown jumps when the call succeeds, which
+            tells the customer what they actually got.
+          */}
+          {hold.extended ? t('extended') : t('extendHold')}
         </button>
       )}
       {onRelease && (

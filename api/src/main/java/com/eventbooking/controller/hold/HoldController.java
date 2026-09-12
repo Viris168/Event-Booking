@@ -37,6 +37,23 @@ public class HoldController {
         return ResponseEntity.ok(holdService.getHold(holdId, userId));
     }
 
+    /**
+     * The one-time extension behind the countdown bar's "Extend hold" button.
+     *
+     * <p>Returns the whole hold rather than 204, because the client's next act
+     * is to redraw a countdown: handing back the new {@code expires_at} saves a
+     * follow-up GET, and means the clock can never disagree with the server
+     * about when the seats go back on sale.
+     *
+     * <p>409 on a second attempt is deliberate - see HoldAlreadyExtendedException.
+     */
+    @PostMapping("/{holdId}/extend")
+    public ResponseEntity<HoldResponse> extendHold(
+            @PathVariable Long holdId,
+            @CurrentUserId Long userId) {
+        return ResponseEntity.ok(holdService.extendHold(holdId, userId));
+    }
+
     @DeleteMapping("/{holdId}")
     public ResponseEntity<Void> releaseHold(
             @PathVariable Long holdId,

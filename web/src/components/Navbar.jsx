@@ -57,7 +57,7 @@ export default function Navbar() {
     }
     import('../api/holds.js').then(({ getMyActiveHold }) => {
       const fetchHold = () => {
-        getMyActiveHold(user.id)
+        getMyActiveHold()
           .then((holds) => setHold(holds && holds.length > 0 ? holds[0] : null))
           .catch(() => setHold(null))
       }

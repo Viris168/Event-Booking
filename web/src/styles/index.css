@@ -2438,15 +2438,29 @@
   }
 
   /* ------------------------------------------------------------------- misc */
+  /*
+   * Label above value, not beside it. The two-column version gave the value a
+   * 130px-narrower track inside an already narrow sidebar card, and an email
+   * address is a single unbreakable token - so it did not wrap, it ran out
+   * past the card's right edge. Stacking hands every value the full width,
+   * which a long address or a long Khmer venue name both need.
+   */
   .kv {
-    @apply grid gap-x-[0.8rem] gap-y-[0.35rem] text-[0.88rem];
-    grid-template-columns: 130px minmax(0, 1fr);
+    @apply grid text-[0.88rem];
   }
   .kv dt {
-    @apply text-muted;
+    /* The micro-label already used for BOOKING REFERENCE and the table heads,
+       so these read as labels rather than as a second column of values. */
+    @apply mb-[0.15rem] text-[0.72rem] font-bold uppercase tracking-[0.05em] text-muted;
   }
   .kv dd {
     @apply font-semibold;
+    /* Insurance for the pathological case the stacking alone does not cover:
+       a 40-character address still has nowhere to break on its own. */
+    overflow-wrap: anywhere;
+  }
+  .kv dd:not(:last-of-type) {
+    @apply mb-[0.85rem];
   }
 
   .timeline {
