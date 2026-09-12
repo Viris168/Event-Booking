@@ -15,7 +15,7 @@ import { useProvinces } from '../lib/useProvinces.js'
 import { eventArt, artUrl } from '../lib/eventArt.js'
 import { getEvent } from '../api/events.js'
 import { getSeatMap, getZoneAvailability } from '../api/availability.js'
-import { createHold, releaseHold, getHold } from '../api/holds.js'
+import { createHold, releaseHold, getHold, extendHold } from '../api/holds.js'
 import { mapEvent, mapSeatMap, mapZone, mapHoldResponse } from '../api/adapters.js'
 import QrLightbox from '../components/QrLightbox.jsx'
 
@@ -80,7 +80,7 @@ export default function EventDetailPage() {
     // Fetch active hold if in session
     const storedHoldId = sessionStorage.getItem(`activeHoldId_${id}`)
     if (storedHoldId && user?.id) {
-      getHold(id, storedHoldId, user.id)
+      getHold(id, storedHoldId)
         .then((res) => {
           if (active && res) {
             if (res.status === 'EXPIRED') {
@@ -288,9 +288,9 @@ export default function EventDetailPage() {
     createHold(event.id, { 
       seat_ids: selectedSeats, 
       seatIds: selectedSeats, 
-      zone_qty: zoneQty, 
-      zoneQty: zoneQty 
-    }, user.id)
+      zone_qty: zoneQty,
+      zoneQty: zoneQty
+    })
       .then((res) => {
         sessionStorage.setItem(`activeHoldId_${event.id}`, res.id)
         setApiHoldData(mapHoldResponse(res))
@@ -317,14 +317,54 @@ export default function EventDetailPage() {
       })
   }
 
+  /**
+   * The one-time hold extension.
+   *
+   * The new deadline comes back from the server and replaces the hold wholesale
+   * — adding minutes locally would put a clock on screen that disagrees with
+   * when the seats actually go back on sale, which is the failure this button
+   * used to have: it toasted success and changed nothing.
+   */
   function onExtend() {
-    // Optional: Call real extend endpoint here if it existed.
-    toast(t('extended'), 'info')
+    if (!hold) return
+    extendHold(event.id, hold.id)
+      .then((res) => {
+        setApiHoldData(mapHoldResponse(res))
+        toast(t('extended'), 'success')
+      })
+      .catch((err) => {
+        const code = err.response?.data?.errorCode
+        if (code === 'HOLD_ALREADY_EXTENDED') {
+          toast(
+            locale === 'km'
+              ? 'អ្នកបានបន្ថែមម៉ោងកក់រួចហើយ។'
+              : 'This hold has already been extended once.',
+            'error',
+          )
+          return
+        }
+        // 410: the clock ran out first and the seats are already back on sale,
+        // so keeping the bar on screen would be the same lie in a new place.
+        if (err.response?.status === 410) {
+          sessionStorage.removeItem(`activeHoldId_${event.id}`)
+          setApiHoldData(null)
+          setSelectedSeats([])
+          toast(
+            locale === 'km'
+              ? 'ការកក់បានផុតកំណត់ ហើយកៅអីត្រូវបានដាក់លក់វិញ។'
+              : 'The hold expired — those seats are back on sale.',
+            'error',
+          )
+          return
+        }
+        const detail = err.response?.data?.detail || err.response?.data?.message || err.message
+        toast(`Could not extend the hold (${detail})`, 'error')
+      })
   }
 
   function onRelease() {
     if (!hold) return
-    releaseHold(event.id, hold.id, user.id).then(() => {
+    releaseHold(event.id, hold.id).then(() => {
       sessionStorage.removeItem(`activeHoldId_${event.id}`)
       setApiHoldData(null)
       toast(locale === 'km' ? 'បានលែងកៅអីវិញ។' : 'Hold released.', 'info')

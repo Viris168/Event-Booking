@@ -2,6 +2,7 @@ package com.eventbooking.booking;
 
 import com.eventbooking.Enumeration.BookingStatus;
 import com.eventbooking.Enumeration.HoldStatus;
+import com.eventbooking.Enumeration.PaymentStatus;
 import com.eventbooking.Enumeration.SeatStatus;
 import com.eventbooking.booking.error.BookingNotFoundException;
 import com.eventbooking.booking.error.EmptyHoldException;
@@ -17,11 +18,13 @@ import com.eventbooking.model.EventSeat;
 import com.eventbooking.model.EventZone;
 import com.eventbooking.model.Hold;
 import com.eventbooking.model.HoldZoneLine;
+import com.eventbooking.model.PaymentTransaction;
 import com.eventbooking.repository.BookingRepository;
 import com.eventbooking.repository.EventSeatRepository;
 import com.eventbooking.repository.EventZoneRepository;
 import com.eventbooking.repository.HoldRepository;
 import com.eventbooking.repository.HoldZoneLineRepository;
+import com.eventbooking.repository.PaymentTransactionRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
@@ -62,6 +65,7 @@ public class BookingService {
     private final HoldZoneLineRepository holdZoneLineRepository;
     private final EventSeatRepository eventSeatRepository;
     private final EventZoneRepository eventZoneRepository;
+    private final PaymentTransactionRepository paymentTransactionRepository;
     private final BookingStateMachine stateMachine;
     private final BookingRefGenerator refGenerator;
     private final BookingMapper mapper;
@@ -72,6 +76,7 @@ public class BookingService {
                           HoldZoneLineRepository holdZoneLineRepository,
                           EventSeatRepository eventSeatRepository,
                           EventZoneRepository eventZoneRepository,
+                          PaymentTransactionRepository paymentTransactionRepository,
                           BookingStateMachine stateMachine,
                           BookingRefGenerator refGenerator,
                           BookingMapper mapper,
@@ -81,6 +86,7 @@ public class BookingService {
         this.holdZoneLineRepository = holdZoneLineRepository;
         this.eventSeatRepository = eventSeatRepository;
         this.eventZoneRepository = eventZoneRepository;
+        this.paymentTransactionRepository = paymentTransactionRepository;
         this.stateMachine = stateMachine;
         this.refGenerator = refGenerator;
         this.mapper = mapper;
@@ -259,6 +265,146 @@ public class BookingService {
         }
 
         return booking;
+    }
+
+    /**
+     * The customer cancelling their own unpaid booking.
+     *
+     * <p>Ownership is checked first and reported as "not found", matching
+     * {@link #getForUser} - a 403 here would confirm that somebody else's
+     * booking id is real.
+     *
+     * <p>Only the unpaid states are reachable: the state machine has no
+     * CONFIRMED -> CANCELLED edge, because money has changed hands and
+     * uq_payment_txn_one_success_per_booking means it cannot be un-charged. A
+     * paid booking goes down the refund path instead, so this answers 409 and
+     * says so rather than pretending to cancel.
+     *
+     * <p>Any still-open payment attempt is closed alongside it. Leaving one
+     * CREATED would keep the poller asking the provider about a QR nobody can
+     * pay any more, and on a Bakong account capped at 100 requests a day that
+     * is not a cosmetic leak.
+     *
+     * <p>The hold is deliberately left CONSUMED. Its inventory stopped being
+     * the hold's at checkout - the seats went HELD -> SOLD and the zone
+     * capacity moved held -> sold - so it is releaseBookingInventory below,
+     * fired by the terminal transition, that actually puts the seats back on
+     * sale. Releasing the hold as well would double-decrement the zone
+     * counters.
+     */
+    @Transactional
+    public BookingResponse cancelForUser(Long bookingId, Long actorUserId, String reason) {
+        // Ownership off an unlocked read first: findByIdForUpdate cannot filter
+        // by user, and locking a stranger's row before refusing it would let an
+        // attacker block a booking they cannot see.
+        getForUser(bookingId, actorUserId);
+
+        Booking booking = bookingRepository.findByIdForUpdate(bookingId)
+                .orElseThrow(() -> new BookingNotFoundException("Booking " + bookingId + " does not exist."));
+
+        if (booking.getState() == BookingStatus.CANCELLED) {
+            log.debug("Booking {} is already cancelled; treating as a no-op", bookingId);
+            return mapper.toResponse(booking);
+        }
+
+        String note = (reason == null || reason.isBlank())
+                ? "Cancelled by customer"
+                : "Cancelled by customer: " + reason.strip();
+
+        stateMachine.transition(booking, BookingStatus.CANCELLED, actorUserId, note);
+        releaseBookingInventory(booking);
+        closeOpenPaymentAttempts(booking, "Booking cancelled by customer");
+
+        return mapper.toResponse(booking);
+    }
+
+    /**
+     * The customer asking for their money back on a paid booking.
+     *
+     * <p>REFUND_REQUESTED is not terminal, so nothing is released here: the
+     * tickets stay valid and scannable while an admin decides. That is the
+     * point of the intermediate state - a request that freed the seats
+     * immediately would let a customer walk in on a ticket they had already
+     * asked to be refunded, and would resell a seat the refund might be
+     * refused for. Inventory comes back only on REFUNDED.
+     */
+    @Transactional
+    public BookingResponse requestRefundForUser(Long bookingId, Long actorUserId, String reason) {
+        getForUser(bookingId, actorUserId);
+
+        Booking booking = bookingRepository.findByIdForUpdate(bookingId)
+                .orElseThrow(() -> new BookingNotFoundException("Booking " + bookingId + " does not exist."));
+
+        if (booking.getState() == BookingStatus.REFUND_REQUESTED) {
+            log.debug("Booking {} already has a refund request open; treating as a no-op", bookingId);
+            return mapper.toResponse(booking);
+        }
+
+        String note = (reason == null || reason.isBlank())
+                ? "Refund requested by customer"
+                : "Refund requested by customer: " + reason.strip();
+
+        stateMachine.transition(booking, BookingStatus.REFUND_REQUESTED, actorUserId, note);
+        return mapper.toResponse(booking);
+    }
+
+    // ------------------------------------------------------------------
+    // Refund moderation (admin)
+    // ------------------------------------------------------------------
+
+    /** The refund queue, oldest request first so nobody's is left to rot. */
+    @Transactional(readOnly = true)
+    public List<BookingResponse> listRefundRequests(int page, int size) {
+        return bookingRepository
+                .findByStateOrderByStateChangedAtAsc(
+                        BookingStatus.REFUND_REQUESTED, PageRequest.of(page, size))
+                .map(mapper::toResponse)
+                .getContent();
+    }
+
+    /**
+     * Grants a refund. REFUNDED is terminal, so this is the point at which the
+     * seats and zone capacity go back on sale.
+     *
+     * <p>What this does <em>not</em> do is move money - there is no refund call
+     * to Bakong or PayWay here, and the payment_transaction rows are left as
+     * the record of what was charged. Settling with the provider is still
+     * manual, so treat this as "we have refunded you out of band, and the
+     * booking now says so".
+     */
+    @Transactional
+    public BookingResponse approveRefund(Long bookingId, Long adminUserId, String note) {
+        Booking booking = bookingRepository.findByIdForUpdate(bookingId)
+                .orElseThrow(() -> new BookingNotFoundException("Booking " + bookingId + " does not exist."));
+
+        if (booking.getState() == BookingStatus.REFUNDED) {
+            return mapper.toResponse(booking);
+        }
+
+        stateMachine.transition(booking, BookingStatus.REFUNDED, adminUserId,
+                (note == null || note.isBlank()) ? "Refund approved" : "Refund approved: " + note.strip());
+        releaseBookingInventory(booking);
+
+        return mapper.toResponse(booking);
+    }
+
+    /**
+     * Turns a refund request down, returning the booking to CONFIRMED. The
+     * tickets were never invalidated, so there is nothing to restore.
+     */
+    @Transactional
+    public BookingResponse rejectRefund(Long bookingId, Long adminUserId, String note) {
+        Booking booking = bookingRepository.findByIdForUpdate(bookingId)
+                .orElseThrow(() -> new BookingNotFoundException("Booking " + bookingId + " does not exist."));
+
+        if (booking.getState() == BookingStatus.CONFIRMED) {
+            return mapper.toResponse(booking);
+        }
+
+        stateMachine.transition(booking, BookingStatus.CONFIRMED, adminUserId,
+                (note == null || note.isBlank()) ? "Refund declined" : "Refund declined: " + note.strip());
+
+        return mapper.toResponse(booking);
     }
 
     /**
@@ -450,6 +596,32 @@ public class BookingService {
 
         log.info("Booking {} reached {}; released {} line(s) back to inventory",
                 booking.getId(), booking.getState(), liveItems.size());
+    }
+
+    /**
+     * Closes any payment attempt still open on a booking that has just died.
+     *
+     * <p>Uses PaymentStatus.CANCELLED rather than EXPIRED: the customer
+     * abandoned this attempt, which is exactly what that value documents, and
+     * EXPIRED is reserved for the QR's own clock running out.
+     */
+    private void closeOpenPaymentAttempts(Booking booking, String reason) {
+        List<PaymentTransaction> open = paymentTransactionRepository
+                .findByBookingIdOrderByCreatedAtDesc(booking.getId()).stream()
+                .filter(txn -> txn.getStatus().isOpen())
+                .toList();
+
+        Instant now = Instant.now();
+        for (PaymentTransaction txn : open) {
+            txn.setStatus(PaymentStatus.CANCELLED);
+            txn.setResolvedAt(now);
+            txn.setNote(reason);
+        }
+
+        if (!open.isEmpty()) {
+            paymentTransactionRepository.saveAll(open);
+            log.info("Booking {} cancelled; closed {} open payment attempt(s)", booking.getId(), open.size());
+        }
     }
 
     /**

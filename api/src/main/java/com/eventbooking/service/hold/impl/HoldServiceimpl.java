@@ -9,6 +9,9 @@ import com.eventbooking.catalog.error.EventZoneNotFoundException;
 import com.eventbooking.dto.hold.HeldSeatItem;
 import com.eventbooking.dto.hold.HeldZoneItem;
 import com.eventbooking.dto.hold.HoldResponse;
+import com.eventbooking.inventory.HoldProperties;
+import com.eventbooking.inventory.error.HoldAlreadyExtendedException;
+import com.eventbooking.inventory.error.HoldExpiredException;
 import com.eventbooking.inventory.error.HoldNotActiveException;
 import com.eventbooking.inventory.error.HoldNotFoundException;
 import com.eventbooking.inventory.error.InsufficientZoneCapacityException;
@@ -43,27 +46,28 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException;
 @Service
 public class HoldServiceimpl implements HoldService {
 
-    private static final int HOLD_TTL_MINUTES = 10;
-
     private final EventRepository eventRepository;
     private final AppUserRepository appUserRepository;
     private final HoldRepository holdRepository;
     private final EventSeatRepository eventSeatRepository;
     private final EventZoneRepository eventZoneRepository;
     private final HoldZoneLineRepository holdZoneLineRepository;
+    private final HoldProperties properties;
 
     public HoldServiceimpl(EventRepository eventRepository,
                            AppUserRepository appUserRepository,
                            HoldRepository holdRepository,
                            EventSeatRepository eventSeatRepository,
                            EventZoneRepository eventZoneRepository,
-                           HoldZoneLineRepository holdZoneLineRepository) {
+                           HoldZoneLineRepository holdZoneLineRepository,
+                           HoldProperties properties) {
         this.eventRepository = eventRepository;
         this.appUserRepository = appUserRepository;
         this.holdRepository = holdRepository;
         this.eventSeatRepository = eventSeatRepository;
         this.eventZoneRepository = eventZoneRepository;
         this.holdZoneLineRepository = holdZoneLineRepository;
+        this.properties = properties;
     }
 
     @Override
@@ -84,7 +88,7 @@ public class HoldServiceimpl implements HoldService {
             throw new InvalidHoldTargetException("Cart must contain at least one seat or zone");
         }
 
-        Instant expiresAt = now.plus(HOLD_TTL_MINUTES, ChronoUnit.MINUTES);
+        Instant expiresAt = now.plus(properties.ttlMinutes(), ChronoUnit.MINUTES);
 
         // --- Seats: load + validate ---
         List<EventSeat> selectedSeats = uniqueSeatIds.isEmpty()
@@ -204,6 +208,68 @@ public class HoldServiceimpl implements HoldService {
         return holdRepository.findActiveByUserId(userId, HoldStatus.ACTIVE).stream()
                 .map(this::toResponse)
                 .toList();
+    }
+
+    /**
+     * The one-time extension behind the "Extend hold" button.
+     *
+     * <p><b>On noRollbackFor:</b> a hold whose clock ran out while the customer
+     * was reaching for this button is released here and then reported as 410,
+     * exactly as {@code BookingService.convertHold} does mid-checkout. Without
+     * the annotation Spring would roll that release back out and the seats
+     * would stay stranded until the sweeper came round.
+     *
+     * <p>The new deadline is measured from the existing {@code expiresAt}, not
+     * from now. Measuring from now would quietly punish extending with eight
+     * minutes still on the clock by throwing those minutes away.
+     */
+    @Override
+    @Transactional(noRollbackFor = HoldExpiredException.class)
+    public HoldResponse extendHold(Long holdId, Long userId) {
+        Hold hold = holdRepository.findOwnedByIdForUpdate(holdId, userId)
+                .orElseThrow(() -> new HoldNotFoundException(holdId));
+
+        switch (hold.getStatus()) {
+            case ACTIVE -> {
+                // carry on
+            }
+            case EXPIRED -> throw new HoldExpiredException(holdId);
+            case CONSUMED -> throw new HoldNotActiveException(
+                    "Hold " + holdId + " has already been checked out; there is nothing left to extend.");
+            case RELEASED -> throw new HoldNotActiveException(
+                    "Hold " + holdId + " was released; start a new one.");
+        }
+
+        // expires_at is the authority, not status: the sweeper runs on an
+        // interval, so a hold is routinely still flagged ACTIVE for a few
+        // seconds after its clock has actually run out.
+        Instant now = Instant.now();
+        if (!hold.getExpiresAt().isAfter(now)) {
+            releaseHoldInventory(hold);
+            hold.setStatus(HoldStatus.EXPIRED);
+            throw new HoldExpiredException(holdId);
+        }
+
+        if (Boolean.TRUE.equals(hold.getExtended())) {
+            throw new HoldAlreadyExtendedException(holdId);
+        }
+
+        Instant extendedTo = hold.getExpiresAt().plus(properties.extensionMinutes(), ChronoUnit.MINUTES);
+        hold.setExtended(true);
+        hold.setExpiresAt(extendedTo);
+
+        // event_seat carries its own copy of the deadline for the seat-map
+        // query, so leaving it on the old value would have the map hand these
+        // seats to someone else while the hold is still live.
+        List<EventSeat> seats = eventSeatRepository.findByHoldIdForUpdate(holdId);
+        for (EventSeat seat : seats) {
+            seat.setHoldExpiresAt(extendedTo);
+        }
+        if (!seats.isEmpty()) {
+            eventSeatRepository.saveAll(seats);
+        }
+
+        return toResponse(hold);
     }
 
     @Override

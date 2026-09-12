@@ -2,6 +2,7 @@ package com.eventbooking.controller;
 
 import com.eventbooking.security.CurrentUserId;
 import com.eventbooking.booking.BookingService;
+import com.eventbooking.dto.booking.BookingReasonRequest;
 import com.eventbooking.dto.booking.BookingResponse;
 import com.eventbooking.dto.booking.CheckoutRequest;
 import io.swagger.v3.oas.annotations.Operation;
@@ -77,6 +78,61 @@ public class BookingController {
             @RequestParam(defaultValue = "20") int size) {
 
         return bookingService.listForUser(actorUserId, page, size);
+    }
+
+    @PostMapping("/{bookingId}/cancel")
+    @Operation(
+            summary = "Cancel an unpaid booking",
+            description = """
+                    Releases the seats and zone capacity back on sale and closes any
+                    payment attempt still open against the booking.
+
+                    Only the unpaid states can be cancelled - PENDING_PAYMENT,
+                    AWAITING_CONFIRMATION and PAYMENT_FAILED. A CONFIRMED booking has
+                    been paid for and cannot be un-charged, so it answers 409; ask for
+                    a refund instead.
+
+                    Idempotent: cancelling an already-cancelled booking returns it
+                    unchanged rather than answering 409.""")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Booking is now CANCELLED"),
+            @ApiResponse(responseCode = "404", description = "No such booking, or it is not yours", content = @io.swagger.v3.oas.annotations.media.Content),
+            @ApiResponse(responseCode = "409", description = "This state cannot be cancelled - a paid booking must go through refund", content = @io.swagger.v3.oas.annotations.media.Content)
+    })
+    public BookingResponse cancel(
+            @PathVariable Long bookingId,
+            @CurrentUserId Long actorUserId,
+            @Valid @RequestBody(required = false) BookingReasonRequest request) {
+
+        return bookingService.cancelForUser(bookingId, actorUserId,
+                request == null ? null : request.reason());
+    }
+
+    @PostMapping("/{bookingId}/refund")
+    @Operation(
+            summary = "Ask for a refund on a paid booking",
+            description = """
+                    Moves a CONFIRMED booking to REFUND_REQUESTED and leaves it there for
+                    an admin to decide.
+
+                    Nothing is released yet and the tickets stay valid and scannable: the
+                    seats only go back on sale if the refund is granted. Any other
+                    starting state answers 409.
+
+                    Idempotent: asking twice returns the open request rather than
+                    stacking a second one.""")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Booking is now REFUND_REQUESTED"),
+            @ApiResponse(responseCode = "404", description = "No such booking, or it is not yours", content = @io.swagger.v3.oas.annotations.media.Content),
+            @ApiResponse(responseCode = "409", description = "Only a CONFIRMED booking can be refunded", content = @io.swagger.v3.oas.annotations.media.Content)
+    })
+    public BookingResponse requestRefund(
+            @PathVariable Long bookingId,
+            @CurrentUserId Long actorUserId,
+            @Valid @RequestBody(required = false) BookingReasonRequest request) {
+
+        return bookingService.requestRefundForUser(bookingId, actorUserId,
+                request == null ? null : request.reason());
     }
 
     @GetMapping("/{bookingId}")

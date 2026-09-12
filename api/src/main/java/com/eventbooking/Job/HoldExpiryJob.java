@@ -17,7 +17,7 @@ public class HoldExpiryJob {
         this.clock = clock;
     }
 
-    @Scheduled(fixedDelay = 30_000)
+    @Scheduled(fixedDelayString = "${app.hold.sweeper-interval-ms}")
     public void expireHolds() {
         int expired = holdService.expireActiveHolds(clock.instant());
         // log expired here — the metric that tells you the job is still running

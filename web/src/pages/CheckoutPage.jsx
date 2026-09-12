@@ -61,7 +61,7 @@ export default function CheckoutPage() {
 
     setLoading(true)
     Promise.allSettled([
-      getHold(foundEventId, holdId, user.id)
+      getHold(foundEventId, holdId)
         .then((res) => {
           if (active && res) setApiHoldData(mapHoldResponse(res))
         })
