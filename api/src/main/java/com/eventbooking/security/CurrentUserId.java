@@ -18,8 +18,8 @@ import java.lang.annotation.Target;
  * where the id comes from without touching a single line of the logic that uses
  * it. A header the caller typed becomes a claim we signed.
  *
- * <p>Never null in a handler. If there is no authentication the resolver raises
- * a 401 rather than passing null down - a controller that receives null would
+ * <p>Never null in a handler <b>unless {@link #optional()} is set</b>. If there
+ * is no authentication the resolver raises a 401 rather than passing null down - a controller that receives null would
  * hand it to {@code OrganizerResolver}, which would look up "the organiser whose
  * user id is null", find nothing, and report 403 NOT_AN_ORGANIZER. That answer
  * is wrong and the wrong shape: the caller is not forbidden, they are
@@ -35,4 +35,20 @@ import java.lang.annotation.Target;
 @Documented
 @Hidden
 public @interface CurrentUserId {
+
+    /**
+     * When true, an anonymous caller yields {@code null} instead of a 401.
+     *
+     * <p>For the handful of reads that are legitimately public but show MORE to
+     * someone signed in - a draft event's zones are hidden from the world and
+     * visible to the organiser who owns them. Those endpoints are in
+     * {@code SecurityConfig.PUBLIC_GETS}, so the filter chain lets an anonymous
+     * request through and the decision has to be made here, with an actor that
+     * may or may not exist.
+     *
+     * <p>Leave it false everywhere else. A handler that takes an optional actor
+     * and then forgets to branch on null is how a guard silently stops
+     * guarding.
+     */
+    boolean optional() default false;
 }

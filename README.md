@@ -125,6 +125,29 @@ web/src/
 └── styles/       global CSS
 ```
 
+## Deploying to a VPS
+
+`deploy/` holds a production stack that is separate from the `docker-compose.yml`
+at this root — that one runs only Postgres and the local monitoring stack and
+expects the API to run on your laptop. The deployment stack containerises
+everything and puts Caddy in front for TLS:
+
+```bash
+sudo ./deploy/scripts/provision.sh     # Docker, ufw, swap, fail2ban — once per server
+cd deploy
+cp env.prod.example .env.prod
+./scripts/gen-secrets.sh
+$EDITOR .env.prod                      # DOMAIN, ACME_EMAIL, Cloudinary, Bakong, PayWay
+./scripts/deploy.sh
+```
+
+The SPA and the API end up on one origin (Caddy routes `/api/*` to the backend
+and everything else to nginx), so the browser makes no cross-origin request and
+CORS never comes into it. Postgres publishes no port at all.
+
+Full runbook — backups, secret rotation, monitoring over an SSH tunnel,
+troubleshooting: **[deploy/README.md](deploy/README.md)**.
+
 ## Next steps
 
 Done: the schema and entities, checkout with real concurrency handling, Bakong KHQR

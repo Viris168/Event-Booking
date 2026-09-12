@@ -1,0 +1,58 @@
+# Caddy gets a certificate from Let's Encrypt on first start and renews it on
+# its own — there is no certbot, no cron job, and no renewal to forget. The
+# only prerequisite is that DOMAIN's A/AAAA record already points at this VPS
+# before the container starts, because the ACME challenge is served on :80.
+
+{
+	email {$ACME_EMAIL}
+	# Caddy answers its own admin API on 2019 by default. Nothing here uses it,
+	# and an unauthenticated endpoint that can rewrite the reverse proxy's
+	# routes is not something to leave listening.
+	admin off
+}
+
+{$DOMAIN} {
+	encode zstd gzip
+
+	# ── API ──────────────────────────────────────────────────────────────
+	# Only /api/* crosses the edge. /actuator is deliberately NOT routed:
+	# /actuator/prometheus and /actuator/health are permitAll in SecurityConfig
+	# so Prometheus can scrape them over the private network, and the way to
+	# keep that from also meaning "the internet can scrape them" is to give the
+	# internet no path to /actuator at all.
+	handle /api/* {
+		reverse_proxy api:8080 {
+			# The app builds absolute URLs and logs client IPs; without these
+			# every request appears to come from the Caddy container over
+			# plain http.
+			header_up X-Real-IP {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+		}
+	}
+
+	# ── SPA ──────────────────────────────────────────────────────────────
+	handle {
+		reverse_proxy web:80
+	}
+
+	header {
+		# Two years, and preload-eligible. Only meaningful once the site is
+		# actually serving HTTPS everywhere — which it is, since Caddy redirects
+		# :80 to :443 automatically.
+		Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		# The gate-scanning page uses the camera (html5-qrcode); everything else
+		# the browser could hand out, it should not.
+		Permissions-Policy "camera=(self), microphone=(), geolocation=(), payment=()"
+		-Server
+	}
+
+	# Access logs go to stdout, which means `docker compose logs caddy` and, if
+	# the monitoring overlay is running, Loki.
+	log {
+		output stdout
+		format json
+	}
+}

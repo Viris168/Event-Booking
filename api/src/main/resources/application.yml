@@ -36,8 +36,20 @@ spring:
   # on startup and records what it has already applied.
   flyway:
     enabled: true
+    # Schema only. The demo identities (V6, V13, V19) live in classpath:db/seed
+    # and are added to this list by application-dev.yml alone - so they load by
+    # OPTING IN, exactly like the dev-only signing keys. A deploy that forgets to
+    # set a profile gets a schema with no accounts in it, which is the failure
+    # anyone would rather have: those rows share one published password, and one
+    # of them is a PLATFORM_ADMIN.
     locations: classpath:db/migration
     baseline-on-migrate: false
+    # A database seeded under `dev` records V6/V13/V19 in flyway_schema_history.
+    # Boot it without the profile - testing a prod config locally, say - and
+    # Flyway finds three applied versions it cannot resolve and refuses to start.
+    # They are absent on purpose, so that particular complaint is noise; every
+    # other validation (checksum drift, out-of-order, failed) still applies.
+    ignore-migration-patterns: "versioned:missing"
 
   jpa:
     hibernate:
@@ -73,6 +85,28 @@ app:
     # 15-minute access token, 14-day refresh token (see architecture doc, auth design)
     access-expiration-ms: ${JWT_ACCESS_EXPIRATION_MS:900000}
     refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS:1209600000}
+
+  auth:
+    login-rate-limit:
+      per-account:
+        # Five wrong passwords against one phone number, then fifteen minutes of
+        # refusal. A person who has forgotten their password does not need more;
+        # a password list needs very many more.
+        max-failures: ${LOGIN_RATE_LIMIT_ACCOUNT_MAX:5}
+        window: ${LOGIN_RATE_LIMIT_ACCOUNT_WINDOW:15m}
+      per-address:
+        # Looser, because a mobile network or an office can put a great many
+        # legitimate users behind one address. This is the limit that catches
+        # one password tried against a hundred different numbers.
+        max-failures: ${LOGIN_RATE_LIMIT_ADDRESS_MAX:20}
+        window: ${LOGIN_RATE_LIMIT_ADDRESS_WINDOW:5m}
+
+    refresh-cookie:
+      # Secure by default, so the refresh cookie is only ever sent over HTTPS.
+      # application-dev.yml turns it off, because localhost is plain HTTP and a
+      # browser silently drops a Secure cookie there - sign-in would appear to
+      # work right up until the first refresh.
+      secure: ${REFRESH_COOKIE_SECURE:true}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
   hold:

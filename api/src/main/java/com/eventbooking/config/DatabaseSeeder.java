@@ -6,6 +6,7 @@ import com.eventbooking.Enumeration.Role;
 import com.eventbooking.model.*;
 import com.eventbooking.repository.*;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
@@ -17,6 +18,20 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.List;
 
+/**
+ * Demo venues, events and seat inventory for a laptop.
+ *
+ * <p>{@code @Profile("dev")} because this is not only fixture data - it CREATES
+ * AN ACCOUNT. The organiser fallback below is saved with the same BCrypt hash of
+ * "password" that V19 gives the seeded users, and the guard it runs behind
+ * ({@code venueRepository.count() > 0}) is satisfied by nothing on a fresh
+ * database, so an ungated deploy would mint that login on its first boot.
+ *
+ * <p>Gating it leaves a deployment with no venues and no events, which is
+ * correct: those are an organiser's to create through the app. Provinces are not
+ * lost with them - V17 loads the real list as part of the schema.
+ */
+@Profile("dev")
 @Component
 public class DatabaseSeeder implements CommandLineRunner {
 

@@ -1,0 +1,13 @@
+# .env first and deliberately: Vite reads a .env in the build context and its
+# values would silently win over the VITE_* build args, so a stray local file
+# would point the deployed SPA at http://localhost:8080.
+.env
+.env.*
+!.env.example
+node_modules/
+dist/
+.git/
+.gitignore
+.vscode/
+.idea/
+*.log

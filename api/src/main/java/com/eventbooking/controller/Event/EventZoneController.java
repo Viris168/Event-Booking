@@ -5,6 +5,7 @@ import com.eventbooking.security.CurrentUserId;
 import com.eventbooking.dto.eventzone.CreateEventZoneRequest;
 import com.eventbooking.dto.eventzone.EventZoneResponse;
 import com.eventbooking.dto.eventzone.UpdateZoneRequest;
+import com.eventbooking.security.EventVisibilityGuard;
 import com.eventbooking.security.OrganizerResolver;
 import com.eventbooking.service.event.EventZoneService;
 import jakarta.validation.Valid;
@@ -37,10 +38,13 @@ public class EventZoneController {
 
     private final EventZoneService eventZoneService;
     private final OrganizerResolver organizerResolver;
+    private final EventVisibilityGuard eventVisibilityGuard;
 
-    public EventZoneController(EventZoneService eventZoneService, OrganizerResolver organizerResolver) {
+    public EventZoneController(EventZoneService eventZoneService, OrganizerResolver organizerResolver,
+                                 EventVisibilityGuard eventVisibilityGuard) {
         this.eventZoneService = eventZoneService;
         this.organizerResolver = organizerResolver;
+        this.eventVisibilityGuard = eventVisibilityGuard;
     }
 
     @PostMapping("/events/{eventId}/zone")
@@ -54,13 +58,25 @@ public class EventZoneController {
 
     }
 
+    /**
+     * A zone names its event's prices and capacity, so it is only as public as
+     * the event it belongs to - which is checked after the lookup, because the
+     * zone is what tells us which event to ask about.
+     */
     @GetMapping("/zone/{id}")
-    public ResponseEntity<EventZoneResponse> getEventZone(@PathVariable Long id) {
-        return new ResponseEntity<>(eventZoneService.getZone(id), HttpStatus.OK);
+    public ResponseEntity<EventZoneResponse> getEventZone(
+            @CurrentUserId(optional = true) Long actorUserId,
+            @PathVariable Long id) {
+        EventZoneResponse zone = eventZoneService.getZone(id);
+        eventVisibilityGuard.requireReadable(zone.eventId(), actorUserId);
+        return new ResponseEntity<>(zone, HttpStatus.OK);
     }
 
     @GetMapping("/events/{eventId}/zone")
-    public ResponseEntity<List<EventZoneResponse>> getAllEventZones(@PathVariable Long eventId){
+    public ResponseEntity<List<EventZoneResponse>> getAllEventZones(
+            @CurrentUserId(optional = true) Long actorUserId,
+            @PathVariable Long eventId){
+        eventVisibilityGuard.requireReadable(eventId, actorUserId);
         return new ResponseEntity<>(eventZoneService.findByEvent(eventId), HttpStatus.OK);
     }
 

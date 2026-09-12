@@ -1,5 +1,6 @@
 package com.eventbooking.dto.auth;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
@@ -16,6 +17,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  * @param expiresIn    seconds until the ACCESS token expires, so a client can
  *                     refresh ahead of time instead of waiting for a 401
  */
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public record TokenResponse(
 
         @JsonProperty("access_token") String accessToken,
@@ -28,6 +30,20 @@ public record TokenResponse(
 
         @JsonProperty("expires_in") long expiresIn
 ) {
+
+    /**
+     * The same pair with the refresh token withheld from the body, for the one
+     * place it is already travelling as an httpOnly cookie.
+     *
+     * <p>Without this the cookie would be decoration: a script could call
+     * /auth/refresh - the cookie rides along by itself - and read the next
+     * refresh token straight out of the JSON, which is precisely what HttpOnly
+     * exists to prevent. The field is omitted entirely rather than sent as
+     * null, via @JsonInclude above.
+     */
+    public TokenResponse inCookie() {
+        return new TokenResponse(accessToken, null, tokenType, expiresIn);
+    }
 
     public static TokenResponse bearer(String accessToken, String refreshToken, long expiresInSeconds) {
         return new TokenResponse(accessToken, refreshToken, "Bearer", expiresInSeconds);

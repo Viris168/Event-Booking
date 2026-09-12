@@ -1018,29 +1018,6 @@
     @apply block text-[0.72rem] not-italic text-muted;
   }
 
-  /* Demo accounts, as a pickable list rather than a row of chips. */
-  .auth-demo {
-    @apply flex flex-col gap-2;
-  }
-  .demo-list {
-    @apply mt-1 grid gap-1;
-  }
-  .demo-row {
-    @apply flex w-full items-center gap-2 rounded-[10px] border border-dashed
-      bg-surface/60 px-[0.6rem] py-[0.45rem] text-left text-[0.82rem] text-ink;
-    border-color: color-mix(in oklab, var(--color-gold-600) 30%, transparent);
-  }
-  .demo-row:hover {
-    @apply bg-surface;
-    border-color: color-mix(in oklab, var(--color-gold-600) 55%, transparent);
-  }
-  .demo-row b {
-    @apply block font-semibold;
-  }
-  .demo-row em {
-    @apply block text-[0.72rem] not-italic text-muted;
-  }
-
   /* ------------------------------------------------------------ event card */
   .ev-card {
     @apply flex h-full flex-col overflow-hidden rounded-card border border-line bg-surface shadow-card;
@@ -2460,11 +2437,6 @@
   }
   .footer-lang button[aria-pressed='true'] {
     @apply bg-white/[0.18] text-white;
-  }
-
-  .demo-note {
-    @apply rounded-ui border border-dashed bg-gold-100 px-[0.85rem] py-[0.6rem] text-[0.8rem] text-gold-600;
-    border-color: color-mix(in oklab, var(--color-gold-600) 40%, transparent);
   }
 
   /* ------------------------------------------------------------ event hero */

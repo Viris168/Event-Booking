@@ -1,7 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { refreshTokens } from '../api/client.js'
 import {
   clearTokens,
-  getAccessToken,
+  hadSession,
   login as apiLogin,
   logout as apiLogout,
   me as apiMe,
@@ -36,10 +37,10 @@ function toErrorCode(error) {
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
-  // Distinct from `!user`: on a reload we hold a token but do not yet know who
-  // it belongs to, and a router that reads !user during that window bounces a
-  // signed-in person to the login screen.
-  const [loading, setLoading] = useState(() => !!getAccessToken())
+  // Distinct from `!user`: on a reload we may still have a session but not yet
+  // know who it belongs to, and a router that reads !user during that window
+  // bounces a signed-in person to the login screen.
+  const [loading, setLoading] = useState(() => hadSession())
 
   const loadMe = useCallback(async () => {
     const profile = await apiMe()
@@ -47,16 +48,24 @@ export function AuthProvider({ children }) {
     return profile
   }, [])
 
-  // Resume a session across a page load. The token survives in localStorage;
-  // the user record does not, and must not - it would go stale the moment an
-  // admin changed a role.
+  // Resume a session across a page load.
+  //
+  // Nothing survives the reload on this side any more - the access token is a
+  // module variable that died with the old page - so the session is rebuilt
+  // from the httpOnly cookie: refresh first for a new access token, then ask
+  // who it belongs to. The user record is deliberately not cached either; it
+  // would go stale the moment an admin changed a role.
+  //
+  // Guarded by the session hint so the common case, a visitor who has never
+  // signed in, does not pay for a refresh that can only 401.
   useEffect(() => {
-    if (!getAccessToken()) return
+    if (!hadSession()) return
     let cancelled = false
-    loadMe()
+    refreshTokens()
+      .then(() => loadMe())
       .catch(() => {
-        // Expired past refreshing, revoked, or the account is gone. The
-        // interceptor has already tried; there is nothing to recover.
+        // Expired past refreshing, revoked, or the account is gone. There is
+        // nothing to recover.
         clearTokens()
         if (!cancelled) setUser(null)
       })

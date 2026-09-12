@@ -218,7 +218,6 @@ const dict = {
   registerTitle: { en: "Create your account", km: "បង្កើតគណនីរបស់អ្នក" },
   displayName: { en: "Display name", km: "ឈ្មោះបង្ហាញ" },
   preferredLanguage: { en: "Preferred language", km: "ភាសាដែលអ្នកចង់ប្រើ" },
-  demoAccounts: { en: "Demo accounts", km: "គណនីសាកល្បង" },
 
   // organizer
   organizerDashboard: {

@@ -1,10 +1,16 @@
 import axios from 'axios'
-import { clearTokens, getAccessToken, getRefreshToken, storeTokens } from './auth.js'
+import { clearTokens, getAccessToken, storeTokens } from './auth.js'
 
 // Central axios instance. Reads the API base URL from .env (VITE_API_BASE_URL).
 const client = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api/v1',
   headers: { 'Content-Type': 'application/json' },
+  // The refresh token is an httpOnly cookie, so /auth/refresh and /auth/logout
+  // only work if the browser attaches it. Same-origin requests would do that
+  // anyway - Vite proxies /api in development, Caddy routes it in production -
+  // but this keeps working if VITE_API_BASE_URL is ever pointed straight at the
+  // API's own origin, which would then also need allowCredentials in CORS.
+  withCredentials: true,
 })
 
 // Attach the access token to every request. The X-User-Id header this used to
@@ -32,16 +38,15 @@ client.interceptors.request.use((config) => {
  */
 let refreshing = null
 
-function refreshTokens() {
+export function refreshTokens() {
   if (!refreshing) {
-    const refresh_token = getRefreshToken()
-    if (!refresh_token) return Promise.reject(new Error('no refresh token'))
-
-    // A bare axios call, not `client` - going through the instance would put
-    // this request back through the interceptor below and, on a failure, start
-    // refreshing the refresh.
+    // No body: the refresh token is a cookie this code cannot read, and the
+    // browser attaches it on its own. `withCredentials` is set here too because
+    // this is a bare axios call, not `client` - going through the instance
+    // would put the request back through the interceptor below and, on a
+    // failure, start refreshing the refresh.
     refreshing = axios
-      .post(`${client.defaults.baseURL}/auth/refresh`, { refresh_token })
+      .post(`${client.defaults.baseURL}/auth/refresh`, null, { withCredentials: true })
       .then((r) => {
         storeTokens(r.data)
         return r.data.access_token

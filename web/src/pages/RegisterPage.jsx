@@ -107,7 +107,7 @@ export default function RegisterPage() {
         <Field
           label={t('phone')}
           error={errors.phone_e164}
-          hint={locale === 'km' ? 'ឧ. +85512345678' : 'e.g. +85512345678'}
+          hint={locale === 'km' ? 'ឧ. +85512000000' : 'e.g. +85512000000'}
         >
           <span className="field-icon">
             <Icon name="phone" size={16} />

@@ -7,6 +7,7 @@ import com.eventbooking.dto.event.EventResponse;
 import com.eventbooking.dto.event.EventReviewResponse;
 import com.eventbooking.dto.event.EventSearchCriteria;
 import com.eventbooking.dto.event.UpdateEventRequest;
+import com.eventbooking.security.EventVisibilityGuard;
 import com.eventbooking.security.OrganizerResolver;
 import com.eventbooking.service.event.EventService;
 import org.springframework.data.domain.Page;
@@ -26,7 +27,10 @@ import org.springframework.web.multipart.MultipartFile;
 public class EventController {
 
     private final EventService eventService;
+
     private final OrganizerResolver organizerResolver;
+
+    private final EventVisibilityGuard eventVisibilityGuard;
 
     /**
      * The actor id is an app_user id taken from the verified token, never the
@@ -34,9 +38,11 @@ public class EventController {
      * callers who have no profile. Two id spaces that look identical on the
      * wire, which is why the translation lives in one place.
      */
-    public EventController(EventService eventService, OrganizerResolver organizerResolver) {
+    public EventController(EventService eventService, OrganizerResolver organizerResolver,
+                           EventVisibilityGuard eventVisibilityGuard) {
         this.eventService = eventService;
         this.organizerResolver = organizerResolver;
+        this.eventVisibilityGuard = eventVisibilityGuard;
     }
 
     @PostMapping
@@ -156,7 +162,16 @@ public class EventController {
      * resubmission needs to know what was asked for last time.
      */
     @GetMapping("/{id}/review")
-    public ResponseEntity<List<EventReviewResponse>> getReviewHistory(@PathVariable Long id) {
+    public ResponseEntity<List<EventReviewResponse>> getReviewHistory(
+            @CurrentUserId Long actorUserId,
+            @PathVariable Long id) {
+        // The moderation trail is not catalogue data. It names the admin who
+        // decided and the organiser who submitted, carries the message sent back
+        // on a rejection, and lists the field-level before/after of every edit -
+        // for a draft nobody outside the organisation is supposed to know exists.
+        // It used to take nothing but the path variable, so any signed-in
+        // customer could read all of that for any event.
+        eventVisibilityGuard.requireReviewReadable(id, actorUserId);
         return new ResponseEntity<>(eventService.getReviewHistory(id), HttpStatus.OK);
     }
 

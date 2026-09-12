@@ -146,47 +146,9 @@ function transition(booking, toState, byUserId, note) {
   })
 }
 
-// ------------------------------------------------------------------ auth
-export function findUserByLogin(identifier) {
-  const id = (identifier || '').trim().toLowerCase()
-  return db.users.find(
-    (u) => u.phone_e164.toLowerCase() === id || (u.email || '').toLowerCase() === id,
-  )
-}
-
-export function authenticate(identifier, password) {
-  const user = findUserByLogin(identifier)
-  if (!user) return { error: 'NO_SUCH_USER' }
-  if (user.password !== password) return { error: 'BAD_CREDENTIALS' }
-  if (user.is_disabled) return { error: 'ACCOUNT_DISABLED' }
-  return { user }
-}
-
-export function registerUser({ display_name, phone_e164, email, password, locale }) {
-  if (db.users.some((u) => u.phone_e164 === phone_e164)) return { error: 'PHONE_TAKEN' }
-  if (email && db.users.some((u) => u.email === email)) return { error: 'EMAIL_TAKEN' }
-  const user = {
-    id: db.counters.nextUserId(),
-    phone_e164,
-    email: email || null,
-    display_name,
-    locale: locale || 'km',
-    role: 'CUSTOMER',
-    is_disabled: false,
-    created_at: new Date().toISOString(),
-    password,
-  }
-  db.users.push(user)
-  emit()
-  return { user }
-}
-
+// ----------------------------------------------------------------- users
 export function getUserById(id) {
   return db.users.find((u) => u.id === Number(id)) || null
-}
-
-export function getOrganizerProfileForUser(userId) {
-  return db.organizerProfiles.find((p) => p.user_id === Number(userId)) || null
 }
 
 // ---------------------------------------------------------------- lookups

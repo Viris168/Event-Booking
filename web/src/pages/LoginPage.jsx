@@ -7,21 +7,6 @@ import { Alert, Field } from '../components/ui.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
 
-// Phone numbers, not emails. The API identifies an account by phone_e164 -
-// app_user.email is nullable, so it cannot be the login identifier - and these
-// buttons used to fill in addresses that /auth/login has no way to look up.
-//
-// The numbers are the demo rows from V6__seed_demo_users.sql, whose password
-// V19 finally made a real BCrypt hash of "password". Before that migration every
-// one of these failed with "wrong password", because the seeded column held the
-// literal string 'hashed-password'.
-const DEMO = [
-  { label: 'Dara Sok', role: 'Customer', icon: 'user', id: '+85512345678' },
-  { label: 'Chantha Meas', role: 'Organizer', icon: 'building', id: '+85512987654' },
-  { label: 'Sovann Chey', role: 'Organizer', icon: 'building', id: '+85511556677' },
-  { label: 'Platform Admin', role: 'Platform admin', icon: 'shield', id: '+85510111222' },
-]
-
 const ERRORS = {
   // One message for an unknown number AND a wrong password. The API answers the
   // same 401 either way, on purpose: a difference between the two would let
@@ -33,6 +18,14 @@ const ERRORS = {
   NETWORK: {
     en: 'Could not reach the server. Check your connection and try again.',
     km: 'មិនអាចភ្ជាប់ទៅម៉ាស៊ីនមេបានទេ។ សូមពិនិត្យការតភ្ជាប់ ហើយព្យាយាមម្តងទៀត។',
+  },
+  // The API says how many minutes in `details.retry_after_seconds`; this copy
+  // deliberately does not, because AuthContext reduces a failure to its code
+  // and a number that drifts out of date as the window rolls is worse than no
+  // number at all.
+  TOO_MANY_LOGIN_ATTEMPTS: {
+    en: 'Too many sign-in attempts. Please wait a few minutes and try again.',
+    km: 'ការព្យាយាមចូលច្រើនពេក។ សូមរង់ចាំពីរបីនាទី ហើយព្យាយាមម្តងទៀត។',
   },
   ACCOUNT_DISABLED: {
     en: 'This account has been disabled by the platform.',
@@ -66,42 +59,8 @@ export default function LoginPage() {
     navigate(from, { replace: true })
   }
 
-  /** One tap to fill a demo account — the prototype has no real accounts. */
-  function fillFromDemo(id) {
-    setIdentifier(id)
-    setPassword('password')
-    setError(null)
-  }
-
-  const demoPanel = (
-    <div className="demo-note auth-demo">
-      <b className="with-icon">
-        <Icon name="info" size={14} />
-        {t('demoAccounts')}
-      </b>
-      <span className="small">
-        {locale === 'km'
-          ? 'ចុចមួយណាមួយដើម្បីបំពេញ — ពាក្យសម្ងាត់គឺ'
-          : 'Tap one to fill the form — the password is'}{' '}
-        <span className="mono">password</span>
-      </span>
-      <div className="demo-list">
-        {DEMO.map((d) => (
-          <button key={d.id} type="button" className="demo-row" onClick={() => fillFromDemo(d.id)}>
-            <Icon name={d.icon} size={15} />
-            <span>
-              <b>{d.label}</b>
-              <em>{d.role}</em>
-            </span>
-            <Icon name="arrowRight" size={14} className="ml-auto" />
-          </button>
-        ))}
-      </div>
-    </div>
-  )
-
   return (
-    <AuthLayout title={t('loginTitle')} subtitle={t('loginSub')} footer={demoPanel}>
+    <AuthLayout title={t('loginTitle')} subtitle={t('loginSub')}>
       {location.state?.from && (
         <div style={{ marginBottom: '1rem' }}>
           <Alert tone="info">{t('loginRequired')}</Alert>
@@ -109,7 +68,7 @@ export default function LoginPage() {
       )}
 
       <form className="stack" onSubmit={submit} noValidate>
-        <Field label={t('phone')} hint="+85512345678">
+        <Field label={t('phone')} hint="+85512000000">
           <span className="field-icon">
             <Icon name="user" size={16} />
             <input

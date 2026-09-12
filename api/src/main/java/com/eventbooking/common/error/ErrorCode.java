@@ -89,6 +89,11 @@ public enum ErrorCode {
     // 413 Payload Too Large
     FILE_TOO_LARGE(HttpStatus.PAYLOAD_TOO_LARGE),
 
+    // 429 Too Many Requests
+    // Login attempts refused before the password is checked at all - see
+    // LoginRateLimiter. Carries retry_after_seconds in `details`.
+    TOO_MANY_LOGIN_ATTEMPTS(HttpStatus.TOO_MANY_REQUESTS),
+
     // 415 Unsupported Media Type
     UNSUPPORTED_FILE_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE),
     UNSUPPORTED_MEDIA_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE),
