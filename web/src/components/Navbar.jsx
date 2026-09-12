@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { Link, NavLink, useLocation } from 'react-router-dom'
 import Icon from './Icon.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useTheme } from '../context/ThemeContext.jsx'
@@ -13,10 +13,9 @@ const ROLE_LABEL = {
 }
 
 export default function Navbar({ onOpenAccount }) {
-  const { isAuthenticated, user, role, isOrganizer, isAdmin, logout } = useAuth()
+  const { isAuthenticated, user, role, isOrganizer, isAdmin } = useAuth()
   const { t, locale, setLocale } = useLocale()
   const { isDark, toggle: toggleTheme } = useTheme()
-  const navigate = useNavigate()
   const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
   const navRef = useRef(null)
@@ -83,12 +82,6 @@ export default function Navbar({ onOpenAccount }) {
     { to: '/organizer', label: t('organizer'), icon: 'building', show: isOrganizer },
     { to: '/admin', label: t('admin'), icon: 'shield', show: isAdmin },
   ].filter((l) => l.show)
-
-  function onLogout() {
-    logout()
-    setMenuOpen(false)
-    navigate('/')
-  }
 
   const displayPrefs = (
     <div className="pref-group">
@@ -160,9 +153,6 @@ export default function Navbar({ onOpenAccount }) {
                   <span>{ROLE_LABEL[role]}</span>
                 </span>
               </button>
-              <button className="nav-icon-btn" onClick={onLogout} title={t('logout')} aria-label={t('logout')}>
-                <Icon name="logout" size={17} />
-              </button>
             </>
           ) : (
             <>
@@ -216,10 +206,6 @@ export default function Navbar({ onOpenAccount }) {
                     {user.display_name}
                     <span>{ROLE_LABEL[role]}</span>
                   </span>
-                </button>
-                <button className="btn btn-sm ml-auto" onClick={onLogout}>
-                  <Icon name="logout" size={14} />
-                  {t('logout')}
                 </button>
               </div>
             ) : (

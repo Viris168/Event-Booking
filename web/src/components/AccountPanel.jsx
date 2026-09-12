@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useNavigate } from 'react-router-dom'
 import Icon from './Icon.jsx'
-import { Alert, Badge, Field } from './ui.jsx'
+import { Alert, Field } from './ui.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
 import { useToast } from '../context/ToastContext.jsx'
@@ -9,11 +10,6 @@ import { changePassword, updateProfile } from '../api/auth.js'
 
 /** Must match the .is-closing animation in ACCT_CSS below. */
 const CLOSE_MS = 180
-
-const LOCALES = [
-  { value: 'EN', labelEn: 'English', labelKm: 'អង់គ្លេស' },
-  { value: 'KM', labelEn: 'Khmer', labelKm: 'ខ្មែរ' },
-]
 
 /*
  * Your own account, as a panel over whatever you were doing.
@@ -35,7 +31,13 @@ export default function AccountPanel({ open, onClose }) {
   const { t, locale } = useLocale()
   const km = locale === 'km'
   const toast = useToast()
-  const { user, refreshUser } = useAuth()
+  const { user, refreshUser, logout } = useAuth()
+  const navigate = useNavigate()
+
+  /* Which screen the panel is showing. The forms were all stacked on one
+     scroll before; as a menu they are two taps from anywhere and the panel
+     opens on something readable rather than on three sets of inputs. */
+  const [view, setView] = useState('menu')
 
   const closeRef = useRef(null)
   const openerRef = useRef(null)
@@ -86,6 +88,7 @@ export default function AccountPanel({ open, onClose }) {
     // dumps focus on <body> and a keyboard user restarts from the top of the page.
     openerRef.current = document.activeElement
     setClosing(false)
+    setView('menu')
 
     const onKey = (e) => {
       if (e.key === 'Escape') beginClose()
@@ -118,47 +121,71 @@ export default function AccountPanel({ open, onClose }) {
         <style>{ACCT_CSS}</style>
 
         <header className="acct-head">
-          <div>
-            <h1>{km ? 'គណនីរបស់ខ្ញុំ' : 'My account'}</h1>
-            <p className="muted small">
-              {km
-                ? 'ព័ត៌មានរបស់អ្នក និងរបៀបដែលអ្នកចូលប្រើប្រាស់។'
-                : 'Your details, and how you sign in.'}
-            </p>
+          {/* One slot on each side keeps the title optically centred whether or
+              not a back button is present. */}
+          <div className="acct-head-slot">
+            {view !== 'menu' && (
+              <button
+                type="button"
+                className="acct-close"
+                onClick={() => setView('menu')}
+                aria-label={km ? 'ត្រឡប់ក្រោយ' : 'Back'}
+              >
+                <Icon name="arrowLeft" size={18} />
+              </button>
+            )}
           </div>
-          <button
-            ref={closeRef}
-            type="button"
-            className="acct-close"
-            onClick={beginClose}
-            aria-label={km ? 'បិទ' : 'Close'}
-          >
-            <Icon name="close" size={18} />
-          </button>
+
+          <h1>{TITLES[view](km)}</h1>
+
+          <div className="acct-head-slot acct-head-slot-end">
+            <button
+              ref={closeRef}
+              type="button"
+              className="acct-close"
+              onClick={beginClose}
+              aria-label={km ? 'បិទ' : 'Close'}
+            >
+              <Icon name="close" size={18} />
+            </button>
+          </div>
         </header>
 
         <div className="acct-body">
           {!user ? (
             <p className="muted small">{km ? 'កំពុងផ្ទុក…' : 'Loading…'}</p>
+          ) : view === 'menu' ? (
+            <AccountMenu
+              user={user}
+              km={km}
+              t={t}
+              onGo={setView}
+              onSignOut={() => {
+                // Close first: signing out unmounts the chip this panel would
+                // otherwise try to hand focus back to, and re-renders the shell
+                // underneath. No exit animation on a session change.
+                onClose()
+                logout()
+                navigate('/')
+              }}
+            />
+          ) : view === 'details' ? (
+            /*
+             * Keyed on the SAVED values, so the form remounts - and its
+             * useState initialisers re-run - whenever the server record
+             * actually changes. That is the same job an effect full of
+             * setState would do, without the cascading render.
+             */
+            <DetailsForm
+              key={`${user.display_name}|${user.email}`}
+              user={user}
+              km={km}
+              t={t}
+              toast={toast}
+              refreshUser={refreshUser}
+            />
           ) : (
-            <>
-              <IdentityCard user={user} km={km} t={t} />
-              {/*
-                * Keyed on the SAVED values, so the form remounts - and its
-                * useState initialisers re-run - whenever the server record
-                * actually changes. That is the same job an effect full of
-                * setState would do, without the cascading render.
-                */}
-              <DetailsForm
-                key={`${user.display_name}|${user.email}|${user.locale}`}
-                user={user}
-                km={km}
-                t={t}
-                toast={toast}
-                refreshUser={refreshUser}
-              />
-              <PasswordForm km={km} toast={toast} />
-            </>
+            <PasswordForm km={km} toast={toast} />
           )}
         </div>
       </aside>
@@ -167,65 +194,131 @@ export default function AccountPanel({ open, onClose }) {
   )
 }
 
-/**
- * The facts about this account that only the platform can change.
- *
- * <p>Separated from the editable form so the page never implies otherwise. A
- * phone number rendered in a text input next to three that save is a promise
- * the API does not keep - it is the login identity and the token's subject, and
- * changing it would hand someone an account they can no longer sign in to.
- */
-function IdentityCard({ user, km, t }) {
+const TITLES = {
+  menu: (km) => (km ? 'គណនីរបស់ខ្ញុំ' : 'My account'),
+  details: (km) => (km ? 'ព័ត៌មានរបស់អ្នក' : 'Your details'),
+  password: (km) => (km ? 'ពាក្យសម្ងាត់' : 'Password'),
+}
+
+/** One row of the settings list. Static rows show a value instead of a chevron. */
+function Row({ icon, tone, title, sub, value, onClick, danger }) {
+  const body = (
+    <>
+      <span className={`acct-row-icon${tone ? ` tone-${tone}` : ''}`} aria-hidden="true">
+        <Icon name={icon} size={16} />
+      </span>
+      <span className="acct-row-text">
+        <span className="acct-row-title">{title}</span>
+        {sub && <span className="acct-row-sub">{sub}</span>}
+      </span>
+      {value ? (
+        <span className="acct-row-value">{value}</span>
+      ) : onClick ? (
+        <Icon name="chevronRight" size={16} className="acct-row-chev" />
+      ) : null}
+    </>
+  )
+  if (!onClick) return <div className="acct-row is-static">{body}</div>
   return (
-    <div className="acct-id">
-      <div className="acct-avatar" aria-hidden="true">
-        {initials(user.display_name)}
-      </div>
-      <div className="acct-side-name">{user.display_name}</div>
-      <Badge status={user.role} />
-
-      <dl className="acct-facts">
-        <div>
-          <dt>{km ? 'លេខទូរស័ព្ទ' : 'Phone'}</dt>
-          <dd className="mono">{user.phone_e164}</dd>
-        </div>
-        <div>
-          <dt>{km ? 'តួនាទី' : 'Role'}</dt>
-          <dd>{t(user.role) !== user.role ? t(user.role) : user.role}</dd>
-        </div>
-      </dl>
-
-      <p className="acct-note small">
-        {km
-          ? 'លេខទូរស័ព្ទ និងតួនាទី មិនអាចប្តូរដោយខ្លួនឯងបានទេ។ លេខទូរស័ព្ទគឺជាឈ្មោះចូលប្រើរបស់អ្នក។'
-          : 'Phone and role cannot be changed here. Your phone number is how you sign in.'}
-      </p>
-
-      {/* Only when there is one. An empty "Organisation — none" row on every
-          customer's page is noise about something they have not done. */}
-      {user.organizer_profile_id && (
-        <div className="acct-org">
-          <h2>{km ? 'អង្គភាព' : 'Organisation'}</h2>
-          <div className="acct-org-name">{user.org_name_en}</div>
-          {user.org_name_km && <div className="km small muted">{user.org_name_km}</div>}
-        </div>
-      )}
-    </div>
+    <button type="button" className={`acct-row${danger ? ' is-danger' : ''}`} onClick={onClick}>
+      {body}
+    </button>
   )
 }
 
-/** Display name, email and language - the three fields a user owns. */
+/**
+ * The panel's home screen: who you are, then what you can change.
+ *
+ * <p>Phone and role are shown but not editable. The phone number is the login
+ * identity and the token's subject - rendering it in a text input beside three
+ * fields that do save is a promise the API does not keep.
+ */
+function AccountMenu({ user, km, t, onGo, onSignOut }) {
+  const roleLabel = t(user.role) !== user.role ? t(user.role) : user.role
+
+  return (
+    <>
+      <div className="acct-hero">
+        <div className="acct-avatar" aria-hidden="true">
+          {initials(user.display_name)}
+        </div>
+        <div className="acct-hero-text">
+          <div className="acct-hero-name">{user.display_name}</div>
+          {user.email && <div className="acct-hero-sub">{user.email}</div>}
+          <span className="acct-role">
+            <Icon name="shield" size={12} />
+            {roleLabel}
+          </span>
+        </div>
+      </div>
+
+      {/* Only when there is one. An empty "Organisation - none" row on every
+          customer's account is noise about something they have not done. */}
+      {user.organizer_profile_id && (
+        <div className="acct-org">
+          <span className="acct-org-mark" aria-hidden="true">
+            <Icon name="building" size={18} />
+          </span>
+          <span className="acct-org-text">
+            <span className="acct-org-name">{user.org_name_en}</span>
+            {user.org_name_km && <span className="acct-org-alt km">{user.org_name_km}</span>}
+          </span>
+        </div>
+      )}
+
+      <section className="acct-section">
+        <h2>{km ? 'គណនី' : 'Account'}</h2>
+        <div className="acct-rows">
+          <Row
+            icon="user"
+            tone="brand"
+            title={km ? 'ព័ត៌មានផ្ទាល់ខ្លួន' : 'Personal details'}
+            sub={km ? 'ឈ្មោះ និងអ៊ីមែល' : 'Name and email'}
+            onClick={() => onGo('details')}
+          />
+          <Row
+            icon="lock"
+            tone="warning"
+            title={km ? 'ពាក្យសម្ងាត់' : 'Password'}
+            sub={km ? 'ប្តូរពាក្យសម្ងាត់របស់អ្នក' : 'Change your password'}
+            onClick={() => onGo('password')}
+          />
+        </div>
+      </section>
+
+      <section className="acct-section">
+        <h2>{km ? 'ការចូលប្រើប្រាស់' : 'Sign-in'}</h2>
+        <div className="acct-rows">
+          <Row
+            icon="phone"
+            tone="quiet"
+            title={km ? 'លេខទូរស័ព្ទ' : 'Phone number'}
+            sub={km ? 'លេខសម្រាប់ចូលប្រើ មិនអាចប្តូរបានទេ' : 'How you sign in. Cannot be changed here.'}
+            value={<span className="mono">{user.phone_e164}</span>}
+          />
+          <Row
+            icon="logout"
+            tone="danger"
+            danger
+            title={km ? 'ចេញពីគណនី' : 'Sign out'}
+            sub={km ? 'ចេញពីឧបករណ៍នេះ' : 'Sign out on this device'}
+            onClick={onSignOut}
+          />
+        </div>
+      </section>
+    </>
+  )
+}
+
+/** Display name and email - the two fields a user owns. */
 function DetailsForm({ user, km, t, toast, refreshUser }) {
   const [displayName, setDisplayName] = useState(user.display_name ?? '')
   const [email, setEmail] = useState(user.email ?? '')
-  const [userLocale, setUserLocale] = useState(user.locale ?? 'KM')
   const [busy, setBusy] = useState(false)
   const [emailError, setEmailError] = useState('')
 
   const dirty =
-    displayName !== (user.display_name ?? '') ||
-    email !== (user.email ?? '') ||
-    userLocale !== (user.locale ?? 'KM')
+    displayName !== (user.display_name ?? '') || email !== (user.email ?? '')
 
   async function save(e) {
     e.preventDefault()
@@ -236,7 +329,6 @@ function DetailsForm({ user, km, t, toast, refreshUser }) {
       await updateProfile({
         display_name: displayName.trim(),
         email: email.trim(),
-        locale: userLocale,
       })
       // The navbar renders the display name, so the context has to re-read or
       // the change is invisible until the next reload.
@@ -290,20 +382,6 @@ function DetailsForm({ user, km, t, toast, refreshUser }) {
             setEmailError('')
           }}
         />
-      </Field>
-
-      <Field label={t('preferredLanguage')}>
-        <select
-          className="input acct-select"
-          value={userLocale}
-          onChange={(e) => setUserLocale(e.target.value)}
-        >
-          {LOCALES.map((l) => (
-            <option key={l.value} value={l.value}>
-              {km ? l.labelKm : l.labelEn}
-            </option>
-          ))}
-        </select>
       </Field>
 
       <div className="acct-actions">
@@ -477,7 +555,7 @@ const ACCT_CSS = `
 
 .acct-panel { --acct-1: .25rem; --acct-2: .5rem; --acct-3: .75rem; --acct-4: 1rem;
               --acct-5: 1.5rem; --acct-6: 2rem;
-              width: 40%; height: 100%;
+              width: min(30rem, 100%); height: 100%;
               background: var(--color-page); color: var(--color-ink);
               border-inline-start: 1px solid var(--color-line);
               box-shadow: -16px 0 40px rgb(0 0 0 / .18);
@@ -485,7 +563,7 @@ const ACCT_CSS = `
               animation: acct-in .22s cubic-bezier(.32, .72, 0, 1) both; }
 .acct-panel.is-closing { animation: acct-out .18s cubic-bezier(.32, .72, 0, 1) both; }
 
-@media (max-width: 860px) { .acct-panel { width: 100%; } }
+@media (max-width: 560px) { .acct-panel { width: 100%; } }
 
 @keyframes acct-fade { from { opacity: 0 } to { opacity: 1 } }
 @keyframes acct-in  { from { transform: translateX(100%) } to { transform: none } }
@@ -500,13 +578,15 @@ const ACCT_CSS = `
 
 /* Header stays put; only the content scrolls. The close button must never be
    the thing you have to scroll back up to find. */
-.acct-head { flex: none; display: flex; align-items: flex-start; gap: var(--acct-4);
-             justify-content: space-between;
-             padding: var(--acct-5) var(--acct-5) var(--acct-4);
+.acct-head { flex: none; display: grid; align-items: center; gap: var(--acct-3);
+             grid-template-columns: 34px 1fr 34px;
+             padding: var(--acct-4) var(--acct-4);
              border-bottom: 1px solid var(--color-line);
              background: var(--color-surface); }
-.acct-head h1 { margin: 0; font-size: 1.25rem; letter-spacing: -.022em; }
-.acct-head p { margin: var(--acct-1) 0 0; color: var(--color-muted); }
+.acct-head h1 { margin: 0; font-size: 1.05rem; font-weight: 600;
+                letter-spacing: -.02em; text-align: center; }
+.acct-head-slot { display: flex; }
+.acct-head-slot-end { justify-content: flex-end; }
 
 .acct-close { flex: none; display: grid; place-items: center;
               width: 34px; height: 34px; border-radius: 50%;
@@ -523,39 +603,68 @@ const ACCT_CSS = `
              display: flex; flex-direction: column; gap: var(--acct-5); }
 
 /* ----------------------------------------------------------- identity */
-/* A row, not a sidebar. In a 40% column the avatar belongs beside the name,
-   and the two unchangeable facts read as a pair underneath. */
-.acct-id { border: 1px solid var(--color-line);
-           border-radius: var(--radius-card, 16px);
-           background: var(--color-surface); padding: var(--acct-4);
-           display: grid; grid-template-columns: auto 1fr; gap: var(--acct-3);
-           align-items: center; }
-.acct-avatar { grid-row: span 2; width: 48px; height: 48px; border-radius: 50%;
+.acct-hero { display: flex; align-items: center; gap: var(--acct-4); }
+.acct-avatar { flex: none; width: 56px; height: 56px; border-radius: 50%;
                display: grid; place-items: center;
-               background: var(--color-surface-2); color: var(--color-ink-2);
-               font-size: 1.05rem; font-weight: 600; letter-spacing: -.02em; }
-.acct-side-name { font-size: 1.05rem; font-weight: 600; letter-spacing: -.015em;
-                  align-self: end; }
-/* The badge is a grid child, and a grid child stretches to its column by
-   default - so the role pill spanned the whole panel. It should hug its text. */
-.acct-id > .badge { justify-self: start; align-self: start; }
+               background: var(--color-tint-2); color: var(--color-on-tint);
+               font-size: 1.15rem; font-weight: 600; letter-spacing: -.02em; }
+.acct-hero-text { min-width: 0; display: flex; flex-direction: column;
+                  align-items: flex-start; gap: 2px; }
+.acct-hero-name { font-size: 1.15rem; font-weight: 600; letter-spacing: -.02em; }
+.acct-hero-sub { font-size: .85rem; color: var(--color-muted);
+                 overflow-wrap: anywhere; }
+.acct-role { margin-top: var(--acct-1); display: inline-flex; align-items: center;
+             gap: var(--acct-1); padding: 2px var(--acct-2);
+             border-radius: 999px; background: var(--color-tint);
+             color: var(--color-on-tint); font-size: .72rem; font-weight: 600; }
 
-.acct-facts { grid-column: 1 / -1; margin: 0; display: grid;
-              grid-template-columns: repeat(2, minmax(0, 1fr));
-              gap: var(--acct-3); padding-top: var(--acct-3);
-              border-top: 1px solid var(--color-line-2); }
-.acct-facts > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.acct-facts dt { font-size: .78rem; color: var(--color-muted); }
-.acct-facts dd { margin: 0; font-size: .9rem; overflow-wrap: anywhere; }
-
-.acct-note { grid-column: 1 / -1; color: var(--color-muted); margin: 0;
-             line-height: 1.6; }
-
-.acct-org { grid-column: 1 / -1; padding-top: var(--acct-3);
-            border-top: 1px solid var(--color-line-2); }
-.acct-org h2 { margin: 0 0 var(--acct-1); font-size: .78rem; font-weight: 500;
-               color: var(--color-muted); }
+.acct-org { display: flex; align-items: center; gap: var(--acct-3);
+            border: 1px solid var(--color-line);
+            border-radius: var(--radius-card, 16px);
+            background: var(--color-surface); padding: var(--acct-3) var(--acct-4); }
+.acct-org-mark { flex: none; display: grid; place-items: center;
+                 width: 38px; height: 38px; border-radius: var(--radius-ui, 12px);
+                 background: var(--color-surface-2); color: var(--color-ink-2); }
+.acct-org-text { min-width: 0; display: flex; flex-direction: column; }
 .acct-org-name { font-size: .95rem; font-weight: 600; letter-spacing: -.01em; }
+.acct-org-alt { font-size: .82rem; color: var(--color-muted); }
+
+/* ------------------------------------------------------ settings rows */
+.acct-section { display: flex; flex-direction: column; gap: var(--acct-2); }
+.acct-section h2 { margin: 0; font-size: .72rem; font-weight: 600;
+                   text-transform: uppercase; letter-spacing: .07em;
+                   color: var(--color-muted); padding-inline-start: var(--acct-1); }
+
+.acct-rows { border: 1px solid var(--color-line);
+             border-radius: var(--radius-card, 16px);
+             background: var(--color-surface); overflow: hidden; }
+.acct-row { width: 100%; display: flex; align-items: center; gap: var(--acct-3);
+            padding: var(--acct-3) var(--acct-4); text-align: start;
+            font: inherit; color: inherit; background: none; border: 0;
+            border-top: 1px solid var(--color-line-2); }
+.acct-row:first-child { border-top: 0; }
+button.acct-row { cursor: pointer; transition: background .12s; }
+button.acct-row:hover { background: var(--color-surface-2); }
+button.acct-row:focus-visible { outline: 2px solid var(--color-brand-500);
+                                outline-offset: -2px; }
+
+.acct-row-icon { flex: none; display: grid; place-items: center;
+                 width: 34px; height: 34px; border-radius: var(--radius-ui, 12px);
+                 background: var(--color-surface-2); color: var(--color-ink-2); }
+.acct-row-icon.tone-brand { background: var(--color-tint-2); color: var(--color-on-tint); }
+.acct-row-icon.tone-warning { background: var(--color-warning-soft); color: var(--color-warning); }
+.acct-row-icon.tone-danger { background: var(--color-danger-soft); color: var(--color-danger); }
+.acct-row-icon.tone-quiet { background: var(--color-quiet-soft); color: var(--color-quiet); }
+
+.acct-row-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.acct-row-title { font-size: .92rem; font-weight: 600; letter-spacing: -.01em; }
+.acct-row-sub { font-size: .78rem; color: var(--color-muted); line-height: 1.5; }
+.acct-row-value { flex: none; font-size: .82rem; color: var(--color-muted); }
+.acct-row-chev { flex: none; color: var(--color-muted); }
+
+/* Signing out ends the session, so it reads as its own kind of action rather
+   than one more setting - without being alarming about it. */
+.acct-row.is-danger .acct-row-title { color: var(--color-danger); }
 
 /* --------------------------------------------------------------- forms */
 .acct-card { border: 1px solid var(--color-line);
@@ -577,16 +686,7 @@ const ACCT_CSS = `
             border: 1px solid transparent; cursor: pointer;
             transition: background .12s, border-color .12s; }
 .acct-btn:disabled { opacity: .5; cursor: not-allowed; }
-.acct-btn-primary { background: var(--color-ink); color: var(--color-surface); }
-.acct-btn-primary:not(:disabled):hover { background: var(--color-brand-800); }
-[data-theme='dark'] .acct-btn-primary { background: var(--color-ink);
-                                        color: var(--color-page); }
-[data-theme='dark'] .acct-btn-primary:not(:disabled):hover {
-  background: var(--color-brand-100); }
+.acct-btn-primary { background: var(--color-brand-600); color: #fff; }
+.acct-btn-primary:not(:disabled):hover { background: var(--color-brand-700); }
 
-/* The native popup is an OS widget: color-scheme is what makes it readable in
-   dark mode, not any rule aimed at the option elements. Same fix as the review
-   queue's filter. */
-.acct-select { color-scheme: light; }
-[data-theme='dark'] .acct-select { color-scheme: dark; }
 `
