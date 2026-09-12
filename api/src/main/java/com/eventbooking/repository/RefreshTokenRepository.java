@@ -36,8 +36,17 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
      * {@code clearAutomatically} drops stale copies from the persistence
      * context so a later read in the same transaction does not see the old
      * {@code revokedAt}.
+     *
+     * <p>{@code flushAutomatically} is not optional alongside it. Clearing
+     * detaches every managed entity, so any change made earlier in the same
+     * transaction and not yet written is discarded rather than persisted -
+     * silently, with the transaction still committing. Changing a password and
+     * revoking the sessions in one call hit exactly that: the new hash was set,
+     * this query cleared the context, and the user kept their old password
+     * while every token was revoked. Flushing first writes the pending change
+     * before the clear can drop it.
      */
-    @Modifying(clearAutomatically = true)
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
            update RefreshToken r
               set r.revokedAt = :now

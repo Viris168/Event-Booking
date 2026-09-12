@@ -38,3 +38,45 @@ export const requestEventChanges = (id, message) =>
 
 export const takeDownEvent = (id) =>
   client.patch(`/admin/events/${id}/takedown`).then((r) => r.data)
+
+// --- organiser applications -------------------------------------------------
+/*
+ * The admin half of the become-an-organiser flow. The applicant's half lives in
+ * organizerApplications.js, and the two stay apart for the reason that module's
+ * own comment gives: neither audience should have to read the other's calls to
+ * understand its own.
+ */
+
+/**
+ * The pending queue: everyone still waiting, longest wait first.
+ *
+ * A plain array, not a Page - the server takes no paging parameters here. This
+ * is a queue meant to be emptied, and a backlog long enough to need pages is a
+ * signal to work it down rather than to scroll it.
+ *
+ * Decided applications are deliberately unreachable from this endpoint: there
+ * is no status filter, so a screen that wants history needs a different call.
+ */
+export const getOrganizerApplications = () =>
+  client.get('/admin/organizer-applications').then((r) => r.data)
+
+/**
+ * Approve. The moment a customer becomes an organiser.
+ *
+ * No body: an approval has nothing to explain. By the time this resolves the
+ * server has already flipped app_user.role and created the organizer_profile,
+ * so the row that comes back is a record of the decision, not a request for it.
+ */
+export const approveApplication = (id) =>
+  client.patch(`/admin/organizer-applications/${id}/approve`).then((r) => r.data)
+
+/**
+ * Reject, with a reason the applicant can act on.
+ *
+ * The message is required twice over - @Valid on the controller and a DB CHECK
+ * behind it - so a blank one is a 400, not a silent rejection nobody can
+ * explain. Rejection is terminal for this row but not for the person: they may
+ * submit a fresh application afterwards.
+ */
+export const rejectApplication = (id, message) =>
+  client.patch(`/admin/organizer-applications/${id}/reject`, { message }).then((r) => r.data)

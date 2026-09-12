@@ -53,6 +53,13 @@ function refreshTokens() {
   return refreshing
 }
 
+const CREDENTIAL_ENDPOINTS = [
+  '/auth/login',
+  '/auth/register',
+  '/auth/refresh',
+  '/auth/change-password',
+]
+
 // On 401, refresh once and replay the request. Only once: `_retried` is what
 // stops a genuinely unauthorized call from looping forever.
 client.interceptors.response.use(
@@ -64,10 +71,16 @@ client.interceptors.response.use(
       error.response?.status === 401 &&
       original &&
       !original._retried &&
-      // A 401 from the auth endpoints means the credentials themselves were
-      // rejected. Refreshing in response to "wrong password" would replace a
-      // clear error with a confusing one.
-      !original.url?.includes('/auth/')
+      // A 401 from these means the credentials just supplied were rejected.
+      // Refreshing in response to "wrong password" would replace a clear error
+      // with a confusing one.
+      //
+      // Named individually rather than matching '/auth/' as a prefix: /auth/me
+      // is an ordinary authenticated endpoint that happens to live there, and
+      // read or written it deserves the same retry as anything else. Excluding
+      // it meant an access token expiring while someone filled in the profile
+      // form threw their edits away instead of refreshing underneath them.
+      !CREDENTIAL_ENDPOINTS.some((path) => original.url?.includes(path))
 
     if (!isRefreshable) {
       return Promise.reject(error)
