@@ -227,7 +227,10 @@ springdoc:
 # payway.close-stale, so keep those in sync if this ever moves.
 payway:
   base-url: ${PAYWAY_BASE_URL:https://checkout-sandbox.payway.com.kh}
-  merchant-id: ${PAYWAY_MERCHANT_ID:ec477769}
+  # No default on purpose. A merchant id baked in here is what talks to ABA on
+  # any deploy that forgets to set the variable, so an unset value must break
+  # the call rather than quietly borrow someone's account.
+  merchant-id: ${PAYWAY_MERCHANT_ID:}
   # Merchant credential. Keep the real value in .env, not here.
   api-key: ${PAYWAY_API_KEY:}
   # MOCK registers /api/v1/dev/payway/**, which settles a transaction without ABA
