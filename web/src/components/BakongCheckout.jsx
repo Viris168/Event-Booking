@@ -5,7 +5,7 @@ import { useLocale } from '../context/LocaleContext.jsx'
 import { countdown } from '../lib/format.js'
 import { MERCHANT_NAME } from '../lib/payway.js'
 
-export default function BakongCheckout({ txn, booking, onSettled, onClose }) {
+export default function BakongCheckout({ txn, booking, onClose }) {
   const { t } = useLocale()
   const sheetRef = useRef(null)
   const [now, setNow] = useState(() => Date.now())

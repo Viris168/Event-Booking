@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import Icon from './Icon.jsx'
 import QrGlyph from './QrGlyph.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
@@ -12,30 +12,18 @@ import KhqrCard from './KhqrCard.jsx'
  * Always the view_type=popup sheet the PayWay plugin opens with
  * AbaPayway.checkout(): a modal on desktop, a bottom sheet on phones.
  *
- * The buyer never leaves this component: it ends by handing a settled status
- * back through onSettled, which is the point the merchant page picks up the
- * return_url half of the flow.
+ * Display only. Settlement is not decided here: the merchant page polls
+ * check-transaction and flips txn.status itself, and this sheet follows that
+ * status into SuccessScreen. Nothing in here can confirm a payment, which is
+ * the correct shape — the buyer's browser is not a source of truth about money.
  */
 export default function PaywayCheckout({
   txn,
   merchant = MERCHANT_NAME,
-  onSettled,
   onClose,
 }) {
-  const { t, locale } = useLocale()
-  const [step, setStep] = useState('method') // method | processing
-  const [processing, setProcessing] = useState(null) // status being confirmed
+  const { t } = useLocale()
   const sheetRef = useRef(null)
-  const [now, setNow] = useState(() => Date.now())
-
-  const left = txn ? Date.parse(txn.expires_at) - now : 0
-  const expired = left <= 0
-
-  // Ticks so the QR stops accepting input the moment its lifetime runs out.
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000)
-    return () => clearInterval(id)
-  }, [])
 
   // Esc closes the popup the way the plugin's own overlay does.
   useEffect(() => {
@@ -47,32 +35,11 @@ export default function PaywayCheckout({
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
-  useEffect(() => {
-    setStep('method')
-  }, [txn?.tran_id])
-
   if (!txn) return null
-
-  /**
-   * Completing payment inside the sheet, then PayWay confirming it.
-   *
-   * Every outcome from in here is driven by the simulate buttons, not by ABA —
-   * flagged as such so the merchant page knows it has to settle the booking on
-   * the server itself rather than waiting for a check-transaction that will
-   * never come back approved.
-   */
-  function complete(status) {
-    setProcessing(status)
-    setStep('processing')
-    setTimeout(() => {
-      setProcessing(null)
-      onSettled?.(status, { simulated: true })
-    }, 1400)
-  }
 
   const amountLine = usd(txn.amount_usd_cents)
 
-  const sheetContent = (txn.status === 'APPROVED' || txn.status === 'SUCCESS') && !processing ? (
+  const sheetContent = txn.status === 'APPROVED' || txn.status === 'SUCCESS' ? (
     <SuccessScreen bookingId={txn.booking_id ?? txn.bookingId} />
   ) : (
     <>
@@ -84,62 +51,58 @@ export default function PaywayCheckout({
       </div>
 
       <div className="pw-body-new">
-        {step === 'processing' ? (
-          <Processing status={processing} locale={locale} t={t} />
-        ) : (
-          <div className="pw-ticket" style={txn.qrImage ? { padding: 0, border: 'none', boxShadow: 'none', background: 'transparent' } : {}}>
-            {txn.qrImage ? (
-              <div style={{ background: '#fff', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 8px 30px rgba(0,0,0,0.14)', border: '1px solid rgba(0,0,0,0.06)' }}>
-                <img src={txn.qrImage} alt="KHQR" style={{ width: '100%', display: 'block', filter: 'contrast(1.22) saturate(1.35) brightness(0.98)', imageRendering: 'high-quality' }} />
-                
-                {txn.abapayDeeplink && (
-                  <div style={{ textAlign: 'center', marginTop: '12px', marginBottom: '12px' }}>
-                    <a href={txn.abapayDeeplink} className="pw-btn-outline" style={{ display: 'inline-block', padding: '8px 16px', fontSize: '0.9rem', textDecoration: 'none' }}>
-                      Open ABA Mobile
-                    </a>
-                  </div>
-                )}
-                
-                <p className="pw-scan-note" style={{ padding: '16px', margin: 0 }}>
-                  Scan with Bakong App or Mobile Banking app<br/>that support KHQR
-                </p>
+        <div className="pw-ticket" style={txn.qrImage ? { padding: 0, border: 'none', boxShadow: 'none', background: 'transparent' } : {}}>
+          {txn.qrImage ? (
+            <div style={{ background: '#fff', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 8px 30px rgba(0,0,0,0.14)', border: '1px solid rgba(0,0,0,0.06)' }}>
+              <img src={txn.qrImage} alt="KHQR" style={{ width: '100%', display: 'block', filter: 'contrast(1.22) saturate(1.35) brightness(0.98)', imageRendering: 'high-quality' }} />
+              
+              {txn.abapayDeeplink && (
+                <div style={{ textAlign: 'center', marginTop: '12px', marginBottom: '12px' }}>
+                  <a href={txn.abapayDeeplink} className="pw-btn-outline" style={{ display: 'inline-block', padding: '8px 16px', fontSize: '0.9rem', textDecoration: 'none' }}>
+                    Open ABA Mobile
+                  </a>
+                </div>
+              )}
+              
+              <p className="pw-scan-note" style={{ padding: '16px', margin: 0 }}>
+                Scan with Bakong App or Mobile Banking app<br/>that support KHQR
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="pw-ticket-red">
+                 <span className="with-icon" style={{ fontWeight: 800 }}>
+                   <Icon name="qr" size={16} strokeWidth={2.5} /> KHQR
+                 </span>
               </div>
-            ) : (
-              <>
-                <div className="pw-ticket-red">
-                   <span className="with-icon" style={{ fontWeight: 800 }}>
-                     <Icon name="qr" size={16} strokeWidth={2.5} /> KHQR
-                   </span>
+              
+              <div className="pw-ticket-amount">
+                <span className="pw-merchant">{merchant}</span>
+                <b>{amountLine.replace('USD', '').trim()}</b>
+              </div>
+              
+              <div className="pw-ticket-dash" />
+              <div className="pw-qr-wrap">
+                <QrGlyph token={txn.tran_id} label="KHQR" />
+                <div className="pw-qr-logo">
+                   <span>$</span>
                 </div>
-                
-                <div className="pw-ticket-amount">
-                  <span className="pw-merchant">{merchant}</span>
-                  <b>{amountLine.replace('USD', '').trim()}</b>
+              </div>
+              
+              {txn.abapayDeeplink && (
+                <div style={{ textAlign: 'center', marginTop: '10px' }}>
+                  <a href={txn.abapayDeeplink} className="pw-btn-outline" style={{ display: 'inline-block', padding: '8px', fontSize: '0.8rem', textDecoration: 'none' }}>
+                    Open ABA Mobile
+                  </a>
                 </div>
-                
-                <div className="pw-ticket-dash" />
-                <div className="pw-qr-wrap">
-                  <QrGlyph token={txn.tran_id} label="KHQR" />
-                  <div className="pw-qr-logo">
-                     <span>$</span>
-                  </div>
-                </div>
-                
-                {txn.abapayDeeplink && (
-                  <div style={{ textAlign: 'center', marginTop: '10px' }}>
-                    <a href={txn.abapayDeeplink} className="pw-btn-outline" style={{ display: 'inline-block', padding: '8px', fontSize: '0.8rem', textDecoration: 'none' }}>
-                      Open ABA Mobile
-                    </a>
-                  </div>
-                )}
-                
-                <p className="pw-scan-note">
-                  Scan with Bakong App or Mobile Banking app<br/>that support KHQR
-                </p>
-              </>
-            )}
-          </div>
-        )}
+              )}
+              
+              <p className="pw-scan-note">
+                Scan with Bakong App or Mobile Banking app<br/>that support KHQR
+              </p>
+            </>
+          )}
+        </div>
       </div>
     </>
   )
@@ -172,19 +135,6 @@ export default function PaywayCheckout({
 
 /* ------------------------------------------------------------------ steps */
 
-function Processing({ status, locale, t }) {
-  return (
-    <div className="pw-processing">
-      <span className="spinner" aria-hidden="true" />
-      <b>{status === 'APPROVED' ? t('completingPayment') : t('contactingBank')}</b>
-      <span className="small muted text-center">
-        {locale === 'km'
-          ? 'សូមកុំបិទផ្ទាំងនេះ។'
-          : 'Do not close this window.'}
-      </span>
-    </div>
-  )
-}
 
 function SuccessScreen({ bookingId }) {
   return (

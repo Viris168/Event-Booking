@@ -254,11 +254,6 @@ export default function PaymentPage() {
       <PaywayCheckout
         txn={checkoutTxn}
         merchant={MERCHANT_NAME}
-        onSettled={(abaStatus, opts) => {
-          // Map ABA's APPROVED back to unified SUCCESS
-          const mappedStatus = abaStatus === 'APPROVED' ? 'SUCCESS' : abaStatus
-          onSettled(mappedStatus, opts)
-        }}
         onClose={() => setSheetOpen(false)}
       />
     )
@@ -267,7 +262,6 @@ export default function PaymentPage() {
       <BakongCheckout
         txn={txn}
         booking={booking}
-        onSettled={onSettled}
         onClose={() => setSheetOpen(false)}
       />
     )
