@@ -2,13 +2,20 @@
 # its own — there is no certbot, no cron job, and no renewal to forget. The
 # only prerequisite is that DOMAIN's A/AAAA record already points at this VPS
 # before the container starts, because the ACME challenge is served on :80.
-
 {
 	email {$ACME_EMAIL}
-	# Caddy answers its own admin API on 2019 by default. Nothing here uses it,
-	# and an unauthenticated endpoint that can rewrite the reverse proxy's
-	# routes is not something to leave listening.
-	admin off
+	# The admin API is left at its default, which is 127.0.0.1:2019 — the
+	# CONTAINER's own loopback. No port publishes it, and a container's loopback
+	# is not reachable from other containers on the network (verified), so there
+	# is nothing here for the internet or a neighbouring service to talk to.
+	#
+	# `admin off` was the first thing tried and it is a bad trade: it buys no
+	# security that the default does not already have, and it breaks
+	# `caddy reload`, which is the zero-downtime way to apply a config change.
+	# Without it the only way to pick up an edit is restarting the container.
+	#
+	# If you ever set this explicitly, never bind it to 0.0.0.0 and never add a
+	# 2019 entry to `ports:` — it can rewrite every route in this file.
 }
 
 {$DOMAIN} {

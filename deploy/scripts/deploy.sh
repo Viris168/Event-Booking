@@ -33,10 +33,31 @@ done
 # A blank required secret fails at JVM startup with a stack trace buried in the
 # container log, several minutes after the deploy appeared to succeed. Catching
 # it here costs nothing and is the difference between a typo and an outage.
+# WHICH keys are required is recorded in env.prod.example, not here: every key
+# with a `#!required` comment on the line above it. That is deliberate. This
+# script used to carry its own list, and a list in a second file is a second
+# thing to remember — BAKONG_ACCOUNT_ID was blank in the template, missing from
+# the list here, and took the API down minutes after a deploy that reported
+# success. Now the only place to mark a key required is the file you are already
+# editing when you add one.
+#
+# Read from the TEMPLATE, not from .env.prod: the template is tracked, so it is
+# always current, while a .env.prod copied months ago is not. A key that the
+# template requires and .env.prod does not mention at all is reported too, which
+# is the point — that is exactly what a stale copy looks like.
+mapfile -t REQUIRED < <(awk '
+  /^#!required$/          { want = 1; next }
+  want && /^[A-Z0-9_]+=/  { key = $0; sub(/=.*/, "", key); print key }
+                          { want = 0 }
+' env.prod.example)
+
+(( ${#REQUIRED[@]} )) || {
+  echo "error: no #!required keys found in env.prod.example — is the file intact?" >&2
+  exit 1
+}
+
 missing=()
-for KEY in DOMAIN ACME_EMAIL DB_NAME DB_USERNAME DB_PASSWORD JWT_SECRET \
-           TICKET_SIGNING_SECRET CLOUDINARY_CLOUD_NAME CLOUDINARY_API_KEY \
-           CLOUDINARY_API_SECRET; do
+for KEY in "${REQUIRED[@]}"; do
   VALUE="$(sed -n "s/^${KEY}=//p" .env.prod | head -n1)"
   [[ -z "$VALUE" ]] && missing+=("$KEY")
 done
