@@ -5,7 +5,7 @@ import { useLocale } from '../context/LocaleContext.jsx'
 import { countdown } from '../lib/format.js'
 import { MERCHANT_NAME } from '../lib/payway.js'
 
-export default function BakongCheckout({ txn, booking, onSettled, onClose }) {
+export default function BakongCheckout({ txn, booking, onClose }) {
   const { t } = useLocale()
   const sheetRef = useRef(null)
   const [now, setNow] = useState(() => Date.now())
@@ -79,18 +79,6 @@ export default function BakongCheckout({ txn, booking, onSettled, onClose }) {
                   <Icon name="clock" size={14} /> Complete within {countdown(left)}
                 </span>
               )}
-            </div>
-
-            <div className="pw-demo mt-6 p-4 rounded-2xl bg-gray-900/80 border border-gray-700 backdrop-blur-md shadow-xl inline-block mx-auto text-left">
-              <span className="text-[11px] text-gray-400 uppercase tracking-wider block mb-3 font-semibold text-center">Simulate (Dev Mode)</span>
-              <div className="flex gap-2 justify-center">
-                <button className="btn btn-sm btn-primary text-xs font-semibold px-4" onClick={() => onSettled('SUCCESS', { simulated: true })}>
-                  Simulate Success
-                </button>
-                <button className="btn btn-sm btn-danger text-xs font-semibold px-4" onClick={() => onSettled('FAILED')}>
-                  Simulate Fail
-                </button>
-              </div>
             </div>
           </div>
         </div>

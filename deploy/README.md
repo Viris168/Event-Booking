@@ -114,9 +114,86 @@ sudo crontab -e
 15 3 * * *  /srv/event-booking/deploy/scripts/backup-db.sh >> /var/log/eb-backup.log 2>&1
 ```
 
+Hourly is more appropriate than nightly once real money is moving through the
+booking flow: the cron above puts a ceiling of 24 hours on how many paid
+bookings a total loss can take with it. `0 * * * *` costs nothing here.
+
+#### Offsite copies
+
 Those dumps sit on the same disk as the database they protect, which covers a
-bad migration but not a dead VPS. Copy them off the box — `rclone` to object
-storage is the usual answer — and do it before you need it.
+bad migration but not a dead VPS. Set `BACKUP_REMOTE` in `.env.prod` and
+`backup-db.sh` uploads each dump to object storage and prunes the bucket on its
+own schedule. Left blank, the script still takes its local dump and warns that
+the dump exists on one disk only.
+
+Cloudflare R2 is the recommended target. A compressed dump of this database is
+tens of megabytes, which fits inside R2's free tier, and R2 charges nothing for
+egress — the fee you would otherwise meet at exactly the moment you are pulling
+everything back down in a hurry. Backblaze B2 works identically.
+
+Do **not** point this at Contabo Object Storage, or at any bucket in the same
+account as the VPS. Backups stored beside the thing they protect share an
+account-level failure mode: one suspension or billing dispute takes the server
+and its backups together.
+
+```bash
+sudo apt install rclone
+
+# R2 appears as S3-compatible. Create the bucket and an API token scoped to it
+# in the Cloudflare dashboard first (Object Read & Write, that bucket only —
+# not an account-wide token).
+sudo rclone config
+#   name      > r2
+#   storage   > s3
+#   provider  > Cloudflare
+#   access_key_id / secret_access_key from the R2 API token
+#   endpoint  > https://<account-id>.r2.cloudflarestorage.com
+#   region    > auto
+
+sudo chmod 600 /root/.config/rclone/rclone.conf
+```
+
+Then, in `.env.prod`:
+
+```
+BACKUP_REMOTE=r2:eb-backups/db
+BACKUP_REMOTE_RETAIN_DAYS=30
+```
+
+The R2 key and secret stay in `rclone.conf`, not in `.env.prod` — that file is
+handed to the application as an env_file, and the app has no business holding a
+credential that can delete every backup you own. `backup-db.sh` locates the
+config explicitly (`RCLONE_CONFIG`) because cron does not run with your `HOME`.
+
+Verify before trusting it:
+
+```bash
+sudo /srv/event-booking/deploy/scripts/backup-db.sh
+sudo rclone ls r2:eb-backups/db
+```
+
+Retention is 14 days locally and 30 in the bucket. The bucket keeps more because
+it can: corruption introduced by a bad release is frequently noticed a week or
+more after it shipped, by which point the local copy from before the release is
+already gone.
+
+#### What is not in these dumps
+
+Postgres is the only irreplaceable state on the VPS, which is what makes this
+small enough to do yourself:
+
+| State | Where it lives | On total loss |
+|---|---|---|
+| Bookings, users, payments | `pgdata` | restored from the dump |
+| Event images | Cloudinary | unaffected, never on the box |
+| TLS certificates | `caddy_data` | re-issued by ACME, mind the rate limit |
+| The server build | `provision.sh`, `deploy.sh` | rebuilt from this repo |
+| Secrets | `.env.prod` | **not backed up — see below** |
+
+`.env.prod` is deliberately excluded. Uploading it would put every credential the
+platform has into the backup bucket, and `TICKET_SIGNING_SECRET` in particular
+cannot be regenerated without invalidating every ticket QR already in a
+customer's hand. Keep a copy in a password manager instead.
 
 Restoring: `./scripts/restore-db.sh /var/backups/event-booking/<file>.dump`. It
 stops the API first, because restoring underneath a live connection pool gives

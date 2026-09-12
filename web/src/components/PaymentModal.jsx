@@ -142,17 +142,12 @@ export default function PaymentModal({ bookingId, option, onSuccess, onClose }) 
         <PaywayCheckout
           txn={checkoutTxn}
           merchant={MERCHANT_NAME}
-          onSettled={(abaStatus, opts) => {
-            const mappedStatus = abaStatus === 'APPROVED' ? 'SUCCESS' : abaStatus
-            onSettled(mappedStatus, opts)
-          }}
           onClose={onClose}
         />
       ) : txn.provider === 'BAKONG_KHQR' ? (
         <BakongCheckout
           txn={txn}
           booking={apiBooking}
-          onSettled={onSettled}
           onClose={onClose}
         />
       ) : null}
