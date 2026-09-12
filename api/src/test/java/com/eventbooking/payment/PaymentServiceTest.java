@@ -22,6 +22,7 @@ import com.eventbooking.repository.PaymentTransactionRepository;
 import com.eventbooking.ticket.TicketService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -79,7 +80,7 @@ class PaymentServiceTest {
         service = new PaymentService(
                 paymentRepository,
                 bookingRepository,
-                new BookingStateMachine(historyRepository),
+                new BookingStateMachine(historyRepository, mock(ApplicationEventPublisher.class)),
                 new KhqrGenerator(properties),
                 new PaymentMapper(properties),
                 ticketService,

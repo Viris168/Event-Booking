@@ -527,6 +527,130 @@
     @apply flex items-center justify-between gap-[0.6rem] border-t border-white/10 pt-[0.6rem];
   }
 
+  /* ---------------------------------------------------------- notifications */
+  /* The bell lives on the dark bar; the panel it opens is a light surface, so
+     the two halves take their colours from opposite ends of the palette and
+     nothing here inherits the navbar's white text by accident. */
+  .notif-wrap {
+    @apply relative flex-none;
+  }
+  .notif-btn {
+    @apply relative;
+  }
+  /* Gold, not red: red is the danger tone in this palette and most of what
+     lands in the inbox is good news. Sits on the bell's rim, which is drawn
+     open-bottomed so the count does not cross a stroke. */
+  .notif-count {
+    @apply absolute -right-1 -top-1 grid min-w-[17px] place-items-center rounded-full
+           bg-gold-500 px-[3px] text-[0.62rem] font-extrabold leading-[17px] text-brand-900;
+  }
+
+  .notif-panel {
+    @apply absolute right-0 top-[calc(100%+0.5rem)] z-50 flex flex-col overflow-hidden
+           rounded-card border border-line bg-surface text-ink shadow-float;
+    width: min(370px, calc(100vw - 1.6rem));
+    animation: rise 0.14s ease-out;
+  }
+  .notif-head {
+    @apply flex items-center justify-between gap-2 border-b border-line px-[0.85rem] py-[0.6rem] text-[0.92rem];
+  }
+  .notif-clear {
+    @apply cursor-pointer border-0 bg-transparent p-0 text-[0.78rem] font-semibold text-link;
+  }
+  .notif-clear:hover {
+    @apply underline;
+  }
+
+  .notif-tabs {
+    @apply flex gap-[0.3rem] border-b border-line px-[0.6rem] pb-[0.5rem] pt-[0.45rem];
+  }
+  .notif-tabs button {
+    @apply inline-flex cursor-pointer items-center gap-[0.35rem] rounded-full border-0 bg-transparent
+           px-[0.6rem] py-[0.25rem] text-[0.8rem] font-semibold text-muted;
+  }
+  .notif-tabs button:hover {
+    @apply bg-surface-2 text-ink-2;
+  }
+  .notif-tabs button[aria-selected='true'] {
+    @apply bg-tint text-on-tint;
+  }
+  .notif-tab-count {
+    @apply rounded-full bg-gold-500 px-[0.3rem] text-[0.65rem] font-extrabold text-brand-900;
+  }
+  /* On the full page the tabs are not inside a bordered panel, so they carry
+     their own spacing instead of the panel's. */
+  .notif-tabs.page {
+    @apply mb-[0.9rem] border-0 px-0 pt-0;
+  }
+
+  .notif-list {
+    @apply flex flex-col overflow-y-auto;
+    max-height: min(60vh, 430px);
+  }
+  .notif-empty {
+    @apply px-[0.9rem] py-[1.6rem] text-center text-[0.85rem] text-muted;
+  }
+
+  .notif-row {
+    @apply flex items-start gap-[0.6rem] border-b border-line-2 px-[0.85rem] py-[0.65rem] text-ink;
+  }
+  .notif-row:last-child {
+    @apply border-b-0;
+  }
+  a.notif-row:hover {
+    @apply bg-surface-2 no-underline;
+  }
+  /* The tint is the quiet half of the unread signal; .notif-dot is the half
+     that survives being unable to tell the two backgrounds apart. */
+  .notif-row.is-unread {
+    @apply bg-tint/40;
+  }
+
+  .notif-glyph {
+    @apply mt-[1px] grid size-[26px] flex-none place-items-center rounded-full;
+  }
+  .notif-glyph.t-ok {
+    @apply bg-success-soft text-success;
+  }
+  .notif-glyph.t-bad {
+    @apply bg-danger-soft text-danger;
+  }
+  .notif-glyph.t-warn {
+    @apply bg-warning-soft text-warning;
+  }
+  .notif-glyph.t-info {
+    @apply bg-info-soft text-info;
+  }
+  .notif-glyph.t-quiet {
+    @apply bg-quiet-soft text-quiet;
+  }
+
+  .notif-body {
+    @apply flex min-w-0 flex-col gap-[0.1rem];
+  }
+  .notif-title {
+    @apply text-[0.86rem] font-bold leading-[1.35];
+  }
+  .notif-text {
+    @apply text-[0.8rem] leading-[1.45] text-ink-2;
+  }
+  .notif-when {
+    @apply mt-[0.1rem] text-[0.7rem] text-muted;
+  }
+  .notif-dot {
+    @apply mt-[0.45rem] size-[7px] flex-none rounded-full bg-gold-500;
+  }
+
+  .notif-foot {
+    @apply flex items-center justify-center gap-[0.25rem] border-t border-line bg-surface-2
+           py-[0.55rem] text-[0.82rem] font-semibold text-link;
+  }
+
+  /* The full page: same rows, given a card to sit in rather than a dropdown. */
+  .notif-page-list {
+    @apply overflow-hidden rounded-card border border-line bg-surface shadow-card;
+  }
+
   .role-switch {
     @apply border-t border-white/10 bg-brand-800;
   }

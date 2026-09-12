@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import Icon from './Icon.jsx'
+import NotificationBell from './NotificationBell.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useTheme } from '../context/ThemeContext.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
@@ -71,16 +72,39 @@ export default function Navbar({ onOpenAccount }) {
   const holdMsLeft = hold ? new Date(hold.expires_at || hold.expiresAt).getTime() - now : 0
   const showHold = hold && holdMsLeft > 0
 
+  /*
+   * Two lists, because the bar and the drawer are answering different
+   * questions.
+   *
+   * The bar is what you reach for repeatedly, and every permanent item in it
+   * costs the ones beside it some attention. So it carries only destinations:
+   * Home is not one, because the brand lockup to its left already goes there,
+   * and "Become an organizer" is not one either - it is a thing you do once,
+   * which is why it now lives in the account panel.
+   *
+   * The drawer has room and no such competition, so it keeps both: there is no
+   * brand link to press inside it, and a phone user should not have to know the
+   * account panel exists to find the organiser application.
+   */
   const links = [
-    { to: '/', label: t('home'), icon: 'home', end: true, show: true },
     { to: '/events', label: t('events'), icon: 'calendar', show: true },
     { to: '/my-bookings', label: t('myBookings'), icon: 'ticket', show: isAuthenticated },
+    { to: '/organizer', label: t('organizer'), icon: 'building', show: isOrganizer },
+    { to: '/admin', label: t('admin'), icon: 'shield', show: isAdmin },
+  ].filter((l) => l.show)
+
+  const drawerLinks = [
+    { to: '/', label: t('home'), icon: 'home', end: true, show: true },
+    ...links,
     // Never shown beside the /organizer link: isOrganizer covers ORGANIZER and
     // PLATFORM_ADMIN, so exactly one of these two rows is ever visible and they
     // can share the building icon without ambiguity.
-    { to: '/become-an-organizer', label: t('becomeOrganizer'), icon: 'building', show: isAuthenticated && !isOrganizer },
-    { to: '/organizer', label: t('organizer'), icon: 'building', show: isOrganizer },
-    { to: '/admin', label: t('admin'), icon: 'shield', show: isAdmin },
+    {
+      to: '/become-an-organizer',
+      label: t('becomeOrganizer'),
+      icon: 'building',
+      show: isAuthenticated && !isOrganizer,
+    },
   ].filter((l) => l.show)
 
   const displayPrefs = (
@@ -130,10 +154,16 @@ export default function Navbar({ onOpenAccount }) {
 
           <span className="nav-sep" aria-hidden="true" />
 
-          {displayPrefs}
+          {/* Only for visitors with no account to keep them in. Signed in, both
+              of these live in the account panel: they are set once and then
+              never touched, and two permanent controls in the bar for that is
+              most of what made it feel crowded. */}
+          {!isAuthenticated && displayPrefs}
 
           {isAuthenticated ? (
             <>
+              <NotificationBell />
+
               {/* Your own name and face are the way into your account -
                   clicking them is what people try first, and a chip that
                   looks like a person but does nothing reads as broken.
@@ -169,6 +199,9 @@ export default function Navbar({ onOpenAccount }) {
 
         {/* --------------------------------------------------- narrow screens */}
         <div className="nav-compact">
+          {/* Outside the drawer, like the hold countdown: a badge folded behind
+              a burger cannot tell you there is anything to open it for. */}
+          {isAuthenticated && <NotificationBell />}
           {showHold && (
             <Link to={`/events/${hold.eventId || hold.event_id}`} className="nav-link nav-hold" aria-label={t('holdActive')}>
               <Icon name="clock" size={14} />
@@ -221,7 +254,7 @@ export default function Navbar({ onOpenAccount }) {
             )}
 
             <div className="drawer-links">
-              {links.map((l) => (
+              {drawerLinks.map((l) => (
                 <NavLink key={l.to} to={l.to} end={l.end} className="drawer-link">
                   <Icon name={l.icon} size={17} />
                   {l.label}

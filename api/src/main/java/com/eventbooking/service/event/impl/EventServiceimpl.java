@@ -18,10 +18,12 @@ import com.eventbooking.dto.seatclass.SeatClassResponse;
 import com.eventbooking.mapper.Event.EventMapper;
 import com.eventbooking.mapper.Event.EventZoneMapper;
 import com.eventbooking.mapper.SeatClass.SeatClassMapper;
+import com.eventbooking.notification.NotificationEvents;
 import com.eventbooking.service.Image.CloudinaryResponse;
 import com.eventbooking.service.Image.CloudinaryService;
 import com.eventbooking.security.OrganizerResolver;
 import com.eventbooking.service.event.EventService;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.transaction.annotation.Transactional;
@@ -56,8 +58,9 @@ public class EventServiceimpl implements EventService {
     private final AppUserRepository appUserRepository;
     private final EventSeatRepository eventSeatRepository;
     private final EventSnapshotter eventSnapshotter;
+    private final ApplicationEventPublisher events;
 
-    public EventServiceimpl(VenueRepository venueRepository, EventRepository eventRepository, SeatClassRepository seatClassRepository, EventZoneRepository eventZoneRepository, CloudinaryService cloudinaryService, OrganizerResolver organizerResolver, EventStateMachine stateMachine, EventReviewRepository eventReviewRepository, AppUserRepository appUserRepository, EventSeatRepository eventSeatRepository, EventSnapshotter eventSnapshotter) {
+    public EventServiceimpl(VenueRepository venueRepository, EventRepository eventRepository, SeatClassRepository seatClassRepository, EventZoneRepository eventZoneRepository, CloudinaryService cloudinaryService, OrganizerResolver organizerResolver, EventStateMachine stateMachine, EventReviewRepository eventReviewRepository, AppUserRepository appUserRepository, EventSeatRepository eventSeatRepository, EventSnapshotter eventSnapshotter, ApplicationEventPublisher events) {
         this.organizerResolver = organizerResolver;
         this.stateMachine = stateMachine;
         this.eventReviewRepository = eventReviewRepository;
@@ -69,6 +72,7 @@ public class EventServiceimpl implements EventService {
         this.cloudinaryService = cloudinaryService;
         this.eventSeatRepository = eventSeatRepository;
         this.eventSnapshotter = eventSnapshotter;
+        this.events = events;
     }
 
     @Override
@@ -270,6 +274,17 @@ public class EventServiceimpl implements EventService {
         event.setStatus(stateMachine.requireTransition(
                 event.getStatus(), EventTransition.TAKE_DOWN));
         eventRepository.save(event);
+
+        // Announced here rather than in transitionAndLog because a take-down is
+        // not a review decision and writes no event_review row - see the note on
+        // EventTransition. The organiser still has to be told: their event left
+        // the catalogue without them doing anything.
+        // No review id: a take-down writes no event_review row. It is terminal
+        // by construction - publishEvent only accepts DRAFT - so the event id
+        // alone already identifies the one occurrence there can ever be.
+        events.publishEvent(new NotificationEvents.EventReviewed(
+                event.getId(), EventTransition.TAKE_DOWN, null, null));
+
         return toEventResponse(event);
     }
 
@@ -696,6 +711,14 @@ public class EventServiceimpl implements EventService {
                 .snapshot(snapshot)
                 .build();
         eventReviewRepository.save(review);
+
+        // Every review verb passes through here, so this is the one place that
+        // has to announce them. NotificationListener decides which of them
+        // anybody hears about - WITHDRAW, for instance, is the organiser's own
+        // action on their own event and notifies no one.
+        events.publishEvent(new NotificationEvents.EventReviewed(
+                event.getId(), transition, message, review.getId()));
+
         return toEventResponse(event);
     }
 }

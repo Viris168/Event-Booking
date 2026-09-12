@@ -6,6 +6,7 @@ import ConfirmDialog from './ConfirmDialog.jsx'
 import { Alert, Field } from './ui.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
+import { useTheme } from '../context/ThemeContext.jsx'
 import { useToast } from '../context/ToastContext.jsx'
 import { changePassword, updateProfile } from '../api/auth.js'
 
@@ -164,6 +165,10 @@ export default function AccountPanel({ open, onClose }) {
               t={t}
               onGo={setView}
               onSignOut={() => setConfirmSignOut(true)}
+              onLeave={(path) => {
+                onClose()
+                navigate(path)
+              }}
             />
           ) : view === 'details' ? (
             /*
@@ -245,14 +250,49 @@ function Row({ icon, tone, title, sub, value, onClick }) {
 }
 
 /**
+ * A two-way choice, shown as the row's value.
+ *
+ * <p>Both options stay on screen rather than a switch that flips between them.
+ * A toggle labelled "Dark" leaves you working out whether that is the state you
+ * are in or the one you would get by pressing it; two buttons with one pressed
+ * have no such ambiguity, and the same control then handles language, where
+ * there is no on and off to lean on at all.
+ */
+function SegToggle({ options, value, onChange, ariaLabel }) {
+  return (
+    <span className="acct-seg" role="group" aria-label={ariaLabel}>
+      {options.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          className={o.className}
+          aria-pressed={value === o.value}
+          onClick={() => onChange(o.value)}
+        >
+          {o.label}
+        </button>
+      ))}
+    </span>
+  )
+}
+
+/**
  * The panel's home screen: who you are, then what you can change.
  *
  * <p>Phone and role are shown but not editable. The phone number is the login
  * identity and the token's subject - rendering it in a text input beside three
  * fields that do save is a promise the API does not keep.
  */
-function AccountMenu({ user, km, t, onGo, onSignOut }) {
+function AccountMenu({ user, km, t, onGo, onSignOut, onLeave }) {
   const roleLabel = t(user.role) !== user.role ? t(user.role) : user.role
+
+  const { locale, setLocale } = useLocale()
+  const { theme, setTheme } = useTheme()
+
+  // Only a plain customer can apply. An organiser already has the area, and an
+  // admin applying would overwrite their own role - OrganizerService refuses it
+  // outright, so offering the row here would be an invitation to a 403.
+  const canApply = user.role === 'CUSTOMER'
 
   return (
     <>
@@ -303,6 +343,64 @@ function AccountMenu({ user, km, t, onGo, onSignOut }) {
           />
         </div>
       </section>
+
+      {/* Language and appearance used to sit in the navbar. They are settings
+          you change once and then never look at again, and two permanent
+          controls in the top bar for that is what made it feel crowded. They
+          stay in the bar for signed-out visitors, who have no panel to keep
+          them in, and in the mobile drawer. */}
+      <section className="acct-section">
+        <h2>{km ? 'ការបង្ហាញ' : 'Display'}</h2>
+        <div className="acct-rows">
+          <Row
+            icon="globe"
+            tone="brand"
+            title={km ? 'ភាសា' : 'Language'}
+            value={
+              <SegToggle
+                ariaLabel={km ? 'ភាសា' : 'Language'}
+                options={[
+                  { value: 'en', label: 'EN' },
+                  { value: 'km', label: 'ខ្មែរ', className: 'km' },
+                ]}
+                value={locale}
+                onChange={setLocale}
+              />
+            }
+          />
+          <Row
+            icon="sun"
+            tone="quiet"
+            title={km ? 'រូបរាង' : 'Appearance'}
+            value={
+              <SegToggle
+                ariaLabel={km ? 'រូបរាង' : 'Appearance'}
+                options={[
+                  { value: 'light', label: km ? 'ភ្លឺ' : 'Light' },
+                  { value: 'dark', label: km ? 'ងងឹត' : 'Dark' },
+                ]}
+                value={theme}
+                onChange={setTheme}
+              />
+            }
+          />
+        </div>
+      </section>
+
+      {canApply && (
+        <section className="acct-section">
+          <h2>{km ? 'អ្នករៀបចំកម្មវិធី' : 'Organizing'}</h2>
+          <div className="acct-rows">
+            <Row
+              icon="building"
+              tone="brand"
+              title={t('becomeOrganizer')}
+              sub={km ? 'រៀបចំ និងលក់សំបុត្រព្រឹត្តិការណ៍ផ្ទាល់ខ្លួន' : 'Run your own events and sell tickets'}
+              onClick={() => onLeave('/become-an-organizer')}
+            />
+          </div>
+        </section>
+      )}
 
       <section className="acct-section">
         <h2>{km ? 'ការចូលប្រើប្រាស់' : 'Sign-in'}</h2>
@@ -678,6 +776,21 @@ button.acct-row:focus-visible { outline: 2px solid var(--color-brand-500);
 .acct-row-sub { font-size: .78rem; color: var(--color-muted); line-height: 1.5; }
 .acct-row-value { flex: none; font-size: .82rem; color: var(--color-muted); }
 .acct-row-chev { flex: none; color: var(--color-muted); }
+
+/* Both choices visible, one pressed - see the note on SegToggle. Sized to sit
+   in a row's value slot without making the row taller than its neighbours. */
+.acct-seg { display: inline-flex; flex: none; padding: 2px; gap: 2px;
+            border: 1px solid var(--color-line);
+            border-radius: 999px; background: var(--color-surface-2); }
+.acct-seg button { border: 0; background: none; cursor: pointer;
+                   padding: .22rem .6rem; border-radius: 999px;
+                   font: inherit; font-size: .78rem; font-weight: 600;
+                   color: var(--color-muted); transition: background .12s, color .12s; }
+.acct-seg button:hover { color: var(--color-ink-2); }
+.acct-seg button[aria-pressed='true'] { background: var(--color-tint-2);
+                                        color: var(--color-on-tint); }
+.acct-seg button:focus-visible { outline: 2px solid var(--color-brand-500);
+                                 outline-offset: 1px; }
 
 /* Signing out ends the session rather than configuring anything, so it is a
    button, not one more row in a settings list. The auto margin drops it to the

@@ -269,6 +269,21 @@ const dict = {
     km: "ការទូទាត់ប្រាក់ជាប់គាំងយូរ",
   },
 
+  // notifications
+  notifications: { en: "Notifications", km: "ការជូនដំណឹង" },
+  notificationsAll: { en: "All", km: "ទាំងអស់" },
+  notificationsUnread: { en: "Unread", km: "មិនទាន់អាន" },
+  markAllRead: { en: "Mark all read", km: "សម្គាល់ថាបានអានទាំងអស់" },
+  noNotifications: {
+    en: "Nothing to catch up on",
+    km: "គ្មានដំណឹងថ្មីទេ",
+  },
+  noUnreadNotifications: {
+    en: "You are all caught up",
+    km: "អ្នកបានអានទាំងអស់ហើយ",
+  },
+  viewAllNotifications: { en: "See all", km: "មើលទាំងអស់" },
+
   // misc
   loading: { en: "Loading…", km: "កំពុងដំណើរការ…" },
   notFoundTitle: { en: "Page not found", km: "រកមិនឃើញទំព័រ" },
@@ -326,4 +341,152 @@ export function statusLabel(status, locale) {
   const entry = STATUS_LABELS[status];
   if (!entry) return status;
   return entry[locale] || entry.en;
+}
+
+/**
+ * The wording for every notification type, in both languages.
+ *
+ * The server stores a type and a bag of nouns, never a sentence — so this is
+ * where a row becomes words, at render time, in whichever language the viewer
+ * has selected. Flipping the toggle re-reads history rather than only affecting
+ * what arrives next.
+ *
+ * Placeholders are filled from the row's `params`:
+ *   {title}   the event, in the reader's language (titleEn / titleKm)
+ *   {ref}     booking reference
+ *   {org}     organisation name (orgNameEn / orgNameKm)
+ *   {reason}  the admin's message or note — the part a refusal is owed
+ */
+export const NOTIFICATION_TEXT = {
+  // ---------------------------------------------------------------- customer
+  BOOKING_CONFIRMED: {
+    en: { title: "Booking confirmed", body: "Your tickets for {title} are ready to show at the door." },
+    km: {
+      title: "ការកក់បានបញ្ជាក់",
+      body: "សំបុត្ររបស់អ្នកសម្រាប់ {title} រួចរាល់សម្រាប់បង្ហាញនៅច្រកចូល។",
+    },
+  },
+  BOOKING_PAYMENT_FAILED: {
+    en: { title: "Payment did not go through", body: "Nothing was charged for {ref}. You can try paying again." },
+    km: {
+      title: "ការទូទាត់មិនបានសម្រេច",
+      body: "មិនមានការកាត់ប្រាក់សម្រាប់ការកក់ {ref} ទេ។ អ្នកអាចព្យាយាមទូទាត់ម្តងទៀត។",
+    },
+  },
+  BOOKING_CANCELLED: {
+    en: { title: "Booking cancelled", body: "{ref} for {title} was cancelled." },
+    km: { title: "ការកក់ត្រូវបានបោះបង់", body: "ការកក់ {ref} សម្រាប់ {title} ត្រូវបានបោះបង់។" },
+  },
+  BOOKING_EXPIRED: {
+    en: {
+      title: "Booking expired",
+      body: "{ref} ran out of time before payment, and the seats went back on sale.",
+    },
+    km: {
+      title: "ការកក់ផុតកំណត់",
+      body: "ការកក់ {ref} ផុតកំណត់មុនពេលទូទាត់ ហើយកៅអីត្រូវបានដាក់លក់វិញ។",
+    },
+  },
+  BOOKING_REFUNDED: {
+    en: { title: "Refund approved", body: "The money for {ref} is on its way back to you." },
+    km: { title: "ការសងប្រាក់បានអនុម័ត", body: "ប្រាក់សម្រាប់ការកក់ {ref} កំពុងត្រឡប់ទៅអ្នកវិញ។" },
+  },
+  BOOKING_REFUND_DECLINED: {
+    en: {
+      title: "Refund declined",
+      body: "{ref} was not refunded, and your tickets for {title} are still valid.",
+    },
+    km: {
+      title: "សំណើសុំសងប្រាក់មិនត្រូវបានទទួលយក",
+      body: "ការកក់ {ref} មិនត្រូវបានសងប្រាក់ទេ ហើយសំបុត្ររបស់អ្នកសម្រាប់ {title} នៅតែប្រើបាន។",
+    },
+  },
+  ORGANIZER_APPLICATION_APPROVED: {
+    en: { title: "You can now run events", body: "{org} was approved. The organiser area is open." },
+    km: {
+      title: "អ្នកអាចរៀបចំព្រឹត្តិការណ៍បានហើយ",
+      body: "{org} ត្រូវបានអនុម័ត។ ផ្ទាំងអ្នករៀបចំបើកឱ្យប្រើហើយ។",
+    },
+  },
+  ORGANIZER_APPLICATION_REJECTED: {
+    en: { title: "Application turned down", body: "{org} was not approved. {reason}" },
+    km: { title: "ពាក្យស្នើសុំមិនត្រូវបានអនុម័ត", body: "{org} មិនត្រូវបានអនុម័តទេ។ {reason}" },
+  },
+
+  // --------------------------------------------------------------- organizer
+  EVENT_APPROVED: {
+    en: { title: "Event approved", body: "{title} cleared review. You can publish it now." },
+    km: {
+      title: "ព្រឹត្តិការណ៍បានអនុម័ត",
+      body: "{title} បានឆ្លងកាត់ការត្រួតពិនិត្យ។ អ្នកអាចផ្សព្វផ្សាយវាបានហើយ។",
+    },
+  },
+  EVENT_REJECTED: {
+    en: { title: "Event rejected", body: "{title} was turned down. {reason}" },
+    km: { title: "ព្រឹត្តិការណ៍ត្រូវបានបដិសេធ", body: "{title} មិនត្រូវបានទទួលយកទេ។ {reason}" },
+  },
+  EVENT_CHANGES_REQUESTED: {
+    en: { title: "Changes requested", body: "{title} needs edits before it can go live. {reason}" },
+    km: { title: "ត្រូវការកែប្រែ", body: "{title} ត្រូវការកែប្រែមុនពេលអាចដាក់ផ្សាយ។ {reason}" },
+  },
+  EVENT_TAKEN_DOWN: {
+    en: { title: "Event taken down", body: "{title} was removed from the catalogue by a platform admin." },
+    km: {
+      title: "ព្រឹត្តិការណ៍ត្រូវបានដកចេញ",
+      body: "{title} ត្រូវបានដកចេញពីបញ្ជីដោយអ្នកគ្រប់គ្រងប្រព័ន្ធ។",
+    },
+  },
+  EVENT_TICKETS_SOLD: {
+    en: { title: "Tickets sold", body: "{ref} was paid for {title}." },
+    km: { title: "លក់សំបុត្របាន", body: "ការកក់ {ref} បានទូទាត់រួចសម្រាប់ {title}។" },
+  },
+
+  // ------------------------------------------------------------------- admin
+  EVENT_SUBMITTED_FOR_REVIEW: {
+    en: { title: "Event waiting for review", body: "{title} is in the review queue." },
+    km: { title: "ព្រឹត្តិការណ៍រង់ចាំការត្រួតពិនិត្យ", body: "{title} កំពុងនៅក្នុងជួរត្រួតពិនិត្យ។" },
+  },
+  ORGANIZER_APPLICATION_SUBMITTED: {
+    en: { title: "New organiser application", body: "{org} applied to run events." },
+    km: { title: "ពាក្យស្នើសុំធ្វើជាអ្នករៀបចំថ្មី", body: "{org} បានស្នើសុំរៀបចំព្រឹត្តិការណ៍។" },
+  },
+  REFUND_REQUESTED: {
+    en: { title: "Refund requested", body: "{ref} for {title} is waiting on a decision." },
+    km: { title: "សំណើសុំសងប្រាក់", body: "ការកក់ {ref} សម្រាប់ {title} កំពុងរង់ចាំការសម្រេច។" },
+  },
+};
+
+/**
+ * Render one notification into { title, body }.
+ *
+ * An unknown type falls back to the type name rather than throwing: the server
+ * can ship a new NotificationType before the client learns the wording for it,
+ * and an inbox that renders a bare constant is recoverable, while one that
+ * throws takes the whole list down with it.
+ */
+export function notificationText(type, params, locale) {
+  const entry = NOTIFICATION_TEXT[type];
+  if (!entry) return { title: type, body: "" };
+
+  const copy = entry[locale] || entry.en;
+  const p = params || {};
+
+  // params keys stay camelCase: the API's SNAKE_CASE strategy renames record
+  // fields, not the contents of a JSON object.
+  const fills = {
+    "{title}": (locale === "km" ? p.titleKm : p.titleEn) || p.titleEn || "",
+    "{ref}": p.bookingRef || "",
+    "{org}": (locale === "km" ? p.orgNameKm : p.orgNameEn) || p.orgNameEn || "",
+    "{reason}": p.message || p.note || "",
+  };
+
+  const fill = (s) =>
+    Object.entries(fills)
+      .reduce((out, [token, value]) => out.split(token).join(value), s)
+      // {reason} is often absent, which leaves a double space and a dangling
+      // full stop where the sentence used to continue.
+      .replace(/\s+/g, " ")
+      .trim();
+
+  return { title: fill(copy.title), body: fill(copy.body) };
 }

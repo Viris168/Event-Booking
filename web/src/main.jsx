@@ -6,6 +6,7 @@ import { AuthProvider } from './context/AuthContext.jsx'
 import { LocaleProvider } from './context/LocaleContext.jsx'
 import { ThemeProvider } from './context/ThemeContext.jsx'
 import { ToastProvider } from './context/ToastContext.jsx'
+import { NotificationProvider } from './context/NotificationContext.jsx'
 import './styles/index.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
@@ -15,7 +16,11 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <LocaleProvider>
         <ToastProvider>
           <AuthProvider>
-            <App />
+            {/* Inside AuthProvider: the inbox is per-user, and the poller has to
+                stop the moment there is no session to poll for. */}
+            <NotificationProvider>
+              <App />
+            </NotificationProvider>
           </AuthProvider>
         </ToastProvider>
         </LocaleProvider>

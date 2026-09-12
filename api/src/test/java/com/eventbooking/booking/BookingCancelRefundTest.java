@@ -23,6 +23,7 @@ import com.eventbooking.repository.HoldZoneLineRepository;
 import com.eventbooking.repository.PaymentTransactionRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationEventPublisher;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
@@ -83,7 +84,7 @@ class BookingCancelRefundTest {
                 mock(EventSeatRepository.class),
                 eventZoneRepository,
                 paymentTransactionRepository,
-                new BookingStateMachine(historyRepository),
+                new BookingStateMachine(historyRepository, mock(ApplicationEventPublisher.class)),
                 mock(BookingRefGenerator.class),
                 new BookingMapper(),
                 new BookingProperties(new BigDecimal("4100.0000"), 15));
