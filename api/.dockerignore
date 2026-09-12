@@ -1,0 +1,13 @@
+# Everything the build does not read. Keeping the context small is not just
+# speed: .env is in here, and a COPY that sweeps it in bakes the JWT secret,
+# the ticket signing key and the Cloudinary credentials into an image layer.
+.env
+.env.*
+!.env.example
+target/
+logs/
+*.log
+.idea/
+.vscode/
+.git/
+.gitignore

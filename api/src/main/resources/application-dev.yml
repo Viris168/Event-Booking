@@ -12,8 +12,21 @@ app:
     # is exactly why it must never be the value a deployment falls back to.
     signing-secret: ${TICKET_SIGNING_SECRET:dev-only-ticket-secret-not-for-any-real-event}
 
+  auth:
+    refresh-cookie:
+      # http://localhost. The one place this may be false.
+      secure: false
+
   jwt:
     # Dev-only, and public by virtue of being in this file. Anyone with the repo
     # can forge a token signed with it - fine for a laptop, and exactly why
     # JwtSecretGuard makes it impossible for a deployment to fall back here.
     secret: ${JWT_SECRET:dev-only-jwt-secret-not-for-any-deployment-32+}
+
+spring:
+  flyway:
+    # The demo identities, on top of the schema. Dev only, and dev is the only
+    # place they are safe: V19 gives all fifteen the BCrypt of "password" and V6
+    # makes +85510111222 a PLATFORM_ADMIN. Never add classpath:db/seed to a
+    # deployment's locations.
+    locations: classpath:db/migration,classpath:db/seed

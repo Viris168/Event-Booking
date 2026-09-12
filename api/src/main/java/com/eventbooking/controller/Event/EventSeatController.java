@@ -1,5 +1,6 @@
 package com.eventbooking.controller.Event;
 
+import com.eventbooking.security.EventVisibilityGuard;
 import com.eventbooking.security.CurrentUserId;
 import com.eventbooking.dto.eventseat.GenerateEventSeatsRequest;
 import com.eventbooking.dto.eventseat.SeatMapResponse;
@@ -31,10 +32,14 @@ public class EventSeatController {
 
     private final EventSeatService eventSeatService;
     private final OrganizerResolver organizerResolver;
+    private final EventVisibilityGuard eventVisibilityGuard;
 
-    public EventSeatController(EventSeatService eventSeatService, OrganizerResolver organizerResolver) {
+    public EventSeatController(EventSeatService eventSeatService,
+                               OrganizerResolver organizerResolver,
+                               EventVisibilityGuard eventVisibilityGuard) {
         this.eventSeatService = eventSeatService;
         this.organizerResolver = organizerResolver;
+        this.eventVisibilityGuard = eventVisibilityGuard;
     }
 
     @PostMapping("/api/v1/events/{eventId}/seats")
@@ -51,8 +56,10 @@ public class EventSeatController {
 
     @GetMapping("/api/v1/events/{eventId}/seat-map")
     public ResponseEntity<SeatMapResponse> getSeatMap(
+            @CurrentUserId(optional = true) Long actorUserId,
             @PathVariable Long eventId
     ) {
+        eventVisibilityGuard.requireReadable(eventId, actorUserId);
         return ResponseEntity.ok(eventSeatService.getSeatMap(eventId));
     }
 

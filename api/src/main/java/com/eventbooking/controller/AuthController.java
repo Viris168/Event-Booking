@@ -8,13 +8,18 @@ import com.eventbooking.dto.auth.TokenResponse;
 import com.eventbooking.dto.auth.UpdateProfileRequest;
 import com.eventbooking.security.AuthService;
 import com.eventbooking.security.CurrentUserId;
+import com.eventbooking.security.LoginRateLimiter;
+import com.eventbooking.security.RefreshCookie;
+import com.eventbooking.security.error.InvalidCredentialsException;
+import com.eventbooking.security.error.InvalidRefreshTokenException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -22,17 +27,21 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-
 @RestController
 @RequestMapping("/api/v1/auth")
 @Tag(name = "Auth", description = "Registration, sign-in, and token lifecycle")
 public class AuthController {
 
     private final AuthService authService;
+    private final RefreshCookie refreshCookie;
+    private final LoginRateLimiter loginRateLimiter;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService,
+                          RefreshCookie refreshCookie,
+                          LoginRateLimiter loginRateLimiter) {
         this.authService = authService;
+        this.refreshCookie = refreshCookie;
+        this.loginRateLimiter = loginRateLimiter;
     }
 
     @PostMapping("/register")
@@ -46,8 +55,8 @@ public class AuthController {
                     password they just chose. `409` if the phone or email is already taken.""")
     public ResponseEntity<TokenResponse> register(@Valid @RequestBody RegisterRequest request,
                                                   HttpServletRequest http) {
-        TokenResponse tokens = authService.register(request, http.getHeader("User-Agent"));
-        return ResponseEntity.status(HttpStatus.CREATED).body(tokens);
+        return issued(authService.register(request, http.getHeader("User-Agent")),
+                HttpStatus.CREATED);
     }
 
     @PostMapping("/login")
@@ -60,9 +69,25 @@ public class AuthController {
 
                     Put `access_token` in the **Authorize** box above to call protected
                     endpoints. It lasts 15 minutes; `refresh_token` lasts 14 days.""")
-    public TokenResponse login(@Valid @RequestBody LoginRequest request,
-                               HttpServletRequest http) {
-        return authService.login(request, http.getHeader("User-Agent"));
+    public ResponseEntity<TokenResponse> login(@Valid @RequestBody LoginRequest request,
+                                               HttpServletRequest http) {
+        String address = http.getRemoteAddr();
+
+        // Before the password is checked, so a refused attempt costs a map
+        // lookup instead of a BCrypt hash.
+        loginRateLimiter.check(address, request.phoneE164());
+
+        try {
+            TokenResponse tokens = authService.login(request, http.getHeader("User-Agent"));
+            loginRateLimiter.recordSuccess(request.phoneE164());
+            return issued(tokens, HttpStatus.OK);
+        } catch (InvalidCredentialsException e) {
+            // Only a wrong credential counts. A disabled account is not a
+            // guess, and locking it out would let anyone freeze an account they
+            // know the number of by failing against it repeatedly.
+            loginRateLimiter.recordFailure(address, request.phoneE164());
+            throw e;
+        }
     }
 
     @PostMapping("/refresh")
@@ -75,9 +100,16 @@ public class AuthController {
 
                     The access token is not sent here; it has usually expired, which is why
                     the client is calling this at all.""")
-    public TokenResponse refresh(@Valid @RequestBody RefreshRequest request,
-                                 HttpServletRequest http) {
-        return authService.refresh(request.refreshToken(), http.getHeader("User-Agent"));
+    public ResponseEntity<TokenResponse> refresh(
+            @CookieValue(name = RefreshCookie.NAME, required = false) String refreshToken,
+            HttpServletRequest http) {
+        // No cookie is the same answer as a bad one. A client that lost it has
+        // no session, which is exactly what an expired or revoked token means.
+        if (refreshToken == null || refreshToken.isBlank()) {
+            throw new InvalidRefreshTokenException();
+        }
+        return issued(authService.refresh(refreshToken, http.getHeader("User-Agent")),
+                HttpStatus.OK);
     }
 
     @PostMapping("/logout")
@@ -90,9 +122,16 @@ public class AuthController {
 
                     The access token keeps working until it expires, up to 15 more minutes.
                     That is the cost of not storing access tokens server-side.""")
-    public ResponseEntity<Void> logout(@Valid @RequestBody RefreshRequest request) {
-        authService.logout(request.refreshToken());
-        return ResponseEntity.noContent().build();
+    public ResponseEntity<Void> logout(
+            @CookieValue(name = RefreshCookie.NAME, required = false) String refreshToken) {
+        if (refreshToken != null && !refreshToken.isBlank()) {
+            authService.logout(refreshToken);
+        }
+        // Cleared even when there was nothing to revoke: a browser holding a
+        // cookie the server does not recognise should not keep sending it.
+        return ResponseEntity.noContent()
+                .header(HttpHeaders.SET_COOKIE, refreshCookie.clear().toString())
+                .build();
     }
 
     @GetMapping("/me")
@@ -140,20 +179,27 @@ public class AuthController {
 
                     Every outstanding refresh token is revoked, then a fresh pair is issued
                     for this request - so the browser doing the change stays signed in and
-                    every other device is signed out within 15 minutes. **Store the returned
-                    pair**: the refresh token you arrived with is dead by the time this
-                    responds.
+                    every other device is signed out within 15 minutes. The new refresh
+                    token arrives as a `Set-Cookie`, like every other issuing endpoint; the
+                    one the browser arrived with is dead by the time this responds.
 
                     `401 INVALID_CREDENTIALS` if the current password is wrong, or if this
                     is a Google account with no local password to replace.""")
-    public TokenResponse changePassword(@CurrentUserId Long actorUserId,
-                                        @Valid @RequestBody ChangePasswordRequest request,
-                                        HttpServletRequest http) {
-        return authService.changePassword(actorUserId, request, http.getHeader("User-Agent"));
+    public ResponseEntity<TokenResponse> changePassword(@CurrentUserId Long actorUserId,
+                                                        @Valid @RequestBody ChangePasswordRequest request,
+                                                        HttpServletRequest http) {
+        return issued(authService.changePassword(actorUserId, request, http.getHeader("User-Agent")),
+                HttpStatus.OK);
     }
 
-    /** Shared by refresh and logout - both identify a session by its refresh token. */
-    public record RefreshRequest(
-            @NotBlank @JsonProperty("refresh_token") String refreshToken) {
+    /**
+     * Sends the pair the only way a browser should receive it: the access token
+     * in the body for the Authorization header, the refresh token in an
+     * httpOnly cookie the page's own scripts cannot read.
+     */
+    private ResponseEntity<TokenResponse> issued(TokenResponse tokens, HttpStatus status) {
+        return ResponseEntity.status(status)
+                .header(HttpHeaders.SET_COOKIE, refreshCookie.issue(tokens.refreshToken()).toString())
+                .body(tokens.inCookie());
     }
 }

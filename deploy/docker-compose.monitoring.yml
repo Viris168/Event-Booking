@@ -1,0 +1,87 @@
+# Optional monitoring overlay: Prometheus, Loki, Promtail, Grafana.
+#
+# It is an OVERLAY, not a stack of its own — it needs the networks and the
+# api_logs volume from docker-compose.prod.yml, so always pass both files:
+#
+#   docker compose --env-file .env.prod \
+#     -f docker-compose.prod.yml -f docker-compose.monitoring.yml up -d
+#
+# ── How you look at it ─────────────────────────────────────────────────────
+# Every port here binds to 127.0.0.1, so none of it is on the internet and
+# Caddy does not route to it. Reach Grafana over an SSH tunnel:
+#
+#   ssh -L 3000:localhost:53000 you@your-vps
+#   # then http://localhost:3000
+#
+# That is deliberate. Grafana ships with admin/admin, Prometheus has no
+# authentication whatsoever, and a dashboard showing booking volume and error
+# rates is a reconnaissance gift. A tunnel costs one flag and closes all of it.
+services:
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: eb-prometheus
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${PROMETHEUS_PORT:-59090}:9090"
+    volumes:
+      - ./monitoring/prometheus.prod.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+    networks: [frontend]
+
+  loki:
+    image: grafana/loki:latest
+    container_name: eb-loki
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${LOKI_PORT:-53100}:3100"
+    volumes:
+      - ../monitoring/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - loki_data:/loki
+    command: -config.file=/etc/loki/loki-config.yml
+    networks: [frontend]
+
+  promtail:
+    image: grafana/promtail:latest
+    container_name: eb-promtail
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/promtail.prod.yml:/etc/promtail/promtail-config.yml:ro
+      # The API's log volume, read-only. Same volume the api service writes to.
+      - api_logs:/host-logs:ro
+      - promtail_positions:/tmp
+    command: -config.file=/etc/promtail/promtail-config.yml
+    depends_on: [loki]
+    networks: [frontend]
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: eb-grafana
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${GRAFANA_PORT:-53000}:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      # Set this in .env.prod. The default below exists so the container starts;
+      # it is not a password.
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_UNIFIED_ALERTING_ENABLED: "true"
+      GF_ALERTING_ENABLED: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      # Reuses the development stack's dashboards and alert rules verbatim —
+      # they query by the `application` label, which prometheus.prod.yml sets to
+      # the same value.
+      - ../monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on: [prometheus, loki]
+    networks: [frontend]
+
+volumes:
+  prometheus_data:
+  loki_data:
+  grafana_data:
+  promtail_positions:

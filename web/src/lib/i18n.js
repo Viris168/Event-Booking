@@ -219,7 +219,6 @@ const dict = {
   myAccount: { en: "My account", km: "គណនីរបស់ខ្ញុំ" },
   displayName: { en: "Display name", km: "ឈ្មោះបង្ហាញ" },
   preferredLanguage: { en: "Preferred language", km: "ភាសាដែលអ្នកចង់ប្រើ" },
-  demoAccounts: { en: "Demo accounts", km: "គណនីសាកល្បង" },
 
   // organizer
   organizerDashboard: {

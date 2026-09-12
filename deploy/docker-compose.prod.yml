@@ -1,0 +1,159 @@
+# Production stack for a single VPS.
+#
+# Run it through deploy/scripts/deploy.sh, or by hand from this directory:
+#
+#   docker compose --env-file .env.prod -f docker-compose.prod.yml up -d
+#
+# The --env-file is not optional. Compose reads `.env` by default, and this
+# stack's file is `.env.prod` so it can never be confused with the repo-root
+# `.env` that drives the DEVELOPMENT compose file one directory up.
+#
+# ── What is published ──────────────────────────────────────────────────────
+# Caddy publishes 80 and 443. Nothing else publishes anything. This matters
+# more than a firewall rule does: Docker writes its own iptables chain AHEAD of
+# ufw, so a published port is reachable from the internet whether or not ufw
+# claims to be blocking it. Postgres has no `ports:` key at all — it is reached
+# by container name over the private `backend` network and is not addressable
+# from outside the host by any route.
+name: event-booking
+
+services:
+  # ── Database ─────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: eb-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:?DB_NAME is required}
+      POSTGRES_USER: ${DB_USERNAME:?DB_USERNAME is required}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      # Postgres only applies this on first init, which is exactly when it
+      # matters: scram-sha-256 instead of md5 for every role created after.
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+      TZ: UTC
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks: [backend]
+    logging: &default-logging
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  # ── API ──────────────────────────────────────────────────────────────────
+  api:
+    build:
+      context: ../api
+      dockerfile: Dockerfile
+    image: event-booking-api:${IMAGE_TAG:-latest}
+    container_name: eb-api
+    restart: unless-stopped
+    # Everything in .env.prod reaches the JVM as an environment variable, which
+    # is where application.yml's ${DB_URL}, ${JWT_SECRET}, ${BAKONG_*} and the
+    # rest resolve from. The in-container working directory has no .env file,
+    # so the `optional:file:./.env` import in application.yml simply no-ops.
+    env_file:
+      - .env.prod
+    environment:
+      # Not `dev`. JwtSecretGuard and TicketSecretGuard are @Profile("!dev"),
+      # so they only refuse to start on the repo's placeholder secrets when the
+      # dev profile is absent. Setting it here makes that explicit rather than
+      # incidental.
+      SPRING_PROFILES_ACTIVE: prod
+      # Overrides whatever .env.prod says: inside the network the database is
+      # `postgres` on its real port 5432, never the 55432 the dev compose file
+      # publishes to the host.
+      DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME}
+      # A named volume, not a host path — the log file needs to be writable by
+      # uid 10001 inside the container, and Promtail reads the same volume.
+      LOGGING_FILE_PATH: /app/logs/app.log
+      TZ: UTC
+    volumes:
+      - api_logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      # Explicit priorities rather than the list form. The API is the only
+      # container on both networks, and it needs an outbound route to Bakong,
+      # PayWay and Cloudinary. `backend` is internal:true and offers no default
+      # gateway, so Docker should pick `frontend` on its own — pinning the order
+      # means it does not depend on "should".
+      frontend:
+        priority: 100
+      backend:
+        priority: 10
+    # Graceful shutdown drains in-flight requests for up to 25s (see
+    # spring.lifecycle.timeout-per-shutdown-phase in application-prod.yml).
+    # Docker's default stop timeout is 10s, which would SIGKILL through the
+    # middle of that and make the whole arrangement decorative.
+    stop_grace_period: 40s
+    # Flyway migrates on startup and Hibernate then validates every entity
+    # against the result, so the first boot after a schema change is the slow
+    # one. mem_limit has to leave room for that plus the heap.
+    mem_limit: ${API_MEM_LIMIT:-1500m}
+    logging: *default-logging
+
+  # ── SPA ──────────────────────────────────────────────────────────────────
+  web:
+    build:
+      context: ../web
+      dockerfile: Dockerfile
+      args:
+        # Relative, so the browser calls back to the same origin it loaded the
+        # page from and Caddy routes it. Do not put the full https://host here
+        # unless you are deliberately splitting the two onto separate domains —
+        # at which point CORS_ALLOWED_ORIGINS has to match.
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api/v1}
+        VITE_APP_NAME: ${VITE_APP_NAME:-Event Booking Cambodia}
+        VITE_DEFAULT_CURRENCY: ${VITE_DEFAULT_CURRENCY:-USD}
+    image: event-booking-web:${IMAGE_TAG:-latest}
+    container_name: eb-web
+    restart: unless-stopped
+    networks: [frontend]
+    logging: *default-logging
+
+  # ── Edge: TLS, routing ───────────────────────────────────────────────────
+  caddy:
+    image: caddy:2-alpine
+    container_name: eb-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"   # HTTP/3
+    environment:
+      DOMAIN: ${DOMAIN:?DOMAIN is required}
+      ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL is required}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Certificates and ACME account keys live here. Losing this volume means
+      # re-issuing from Let's Encrypt, which is rate-limited to 5 duplicate
+      # certificates per week — enough to lock the site out of HTTPS if you are
+      # also rebuilding repeatedly. Keep the volume.
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+      - web
+    networks: [frontend]
+    logging: *default-logging
+
+networks:
+  # Only the API is on both. The SPA container has no route to Postgres, and
+  # Postgres has no route to the internet-facing side.
+  frontend:
+  backend:
+    internal: true
+
+volumes:
+  pgdata:
+  api_logs:
+  caddy_data:
+  caddy_config:

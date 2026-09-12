@@ -1,0 +1,40 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  # The API writes logs/app.log inside its own container, onto the `api_logs`
+  # named volume. Promtail mounts that same volume read-only — no Docker socket
+  # and no host bind mount, so nothing here depends on file ownership on the VPS.
+  - job_name: event-booking-api
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          application: event-booking-api
+          env: prod
+          __path__: /host-logs/app*.log
+
+    pipeline_stages:
+      # A stack trace is one event, not forty. Entries start with a timestamp.
+      - multiline:
+          firstline: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}'
+          max_wait_time: 3s
+
+      - regex:
+          expression: '^(?P<timestamp>\S+)\s+(?P<level>\w+)\s+(?P<pid>\d+)\s+---\s+\[(?P<thread>[^\]]+)\]\s+(?P<logger>\S+)\s*:\s+(?P<message>.*)'
+
+      - labels:
+          level:
+
+      # application-prod.yml already keeps the app at INFO, so this is a
+      # backstop for a library that logs DEBUG regardless.
+      - drop:
+          source: level
+          expression: "DEBUG|TRACE"

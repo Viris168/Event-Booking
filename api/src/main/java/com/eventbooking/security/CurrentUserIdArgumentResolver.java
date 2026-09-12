@@ -43,6 +43,13 @@ public class CurrentUserIdArgumentResolver implements HandlerMethodArgumentResol
         // separates "nobody is signed in" from "someone is", and skipping that
         // is how anonymousUser ends up cast to a principal at runtime.
         if (authentication == null || !(authentication.getPrincipal() instanceof AppUserPrincipal principal)) {
+            // A 401 is right for the endpoints that require an actor. For the
+            // public reads that merely show MORE to a signed-in owner, null is
+            // the honest answer and the handler decides what it means.
+            CurrentUserId annotation = parameter.getParameterAnnotation(CurrentUserId.class);
+            if (annotation != null && annotation.optional()) {
+                return null;
+            }
             throw new NotAuthenticatedException();
         }
 

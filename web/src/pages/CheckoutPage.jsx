@@ -245,7 +245,7 @@ export default function CheckoutPage() {
                 <Field
                   label={t('phone')}
                   error={errors.phone}
-                  hint="+85512345678"
+                  hint="+85512000000"
                 >
                   <input
                     className="input"

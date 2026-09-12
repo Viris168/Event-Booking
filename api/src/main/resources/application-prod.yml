@@ -1,0 +1,72 @@
+# Production overrides. Activated by SPRING_PROFILES_ACTIVE=prod, which the
+# deployment compose file sets.
+#
+# Everything here is a non-secret default that should hold regardless of what
+# .env.prod says or forgets to say. Credentials stay in the environment; this
+# file is committed and must never carry one.
+#
+# Note what this profile does NOT do: it is not what makes the app safe. The
+# secret guards are @Profile("!dev"), so they are armed by the ABSENCE of the
+# dev profile, not by the presence of this one. A deploy that sets no profile
+# at all is still guarded — it just loses the settings below.
+
+server:
+  # Caddy terminates TLS and forwards over plain HTTP. Without this, Tomcat
+  # believes every request arrived on http:// and any absolute URL the app
+  # builds — redirects, the PayWay return URL — comes out pointing at a scheme
+  # the browser will refuse to follow from an HTTPS page.
+  forward-headers-strategy: framework
+  # In-flight requests finish before the JVM exits. A container restart during
+  # a checkout otherwise drops the request mid-transaction, leaving a hold that
+  # only the sweeper will clean up minutes later.
+  shutdown: graceful
+  error:
+    # An RFC 7807 body from ApiException is the contract; a stack trace is an
+    # implementation detail that tells a caller which library versions to look
+    # up known CVEs for.
+    include-stacktrace: never
+    include-message: never
+
+spring:
+  lifecycle:
+    # Must stay below the container's stop_grace_period (40s in
+    # docker-compose.prod.yml) or Docker SIGKILLs mid-drain and graceful
+    # shutdown buys nothing.
+    timeout-per-shutdown-phase: 25s
+  jpa:
+    # Every statement Hibernate emits, at INFO, on a server taking real
+    # traffic — it is a log volume problem and a slow one.
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+
+# Off unless APP_DOCS_PUBLIC says otherwise. SecurityConfig's `app.docs.public`
+# only controls whether the paths are PERMITTED; this controls whether springdoc
+# publishes them at all. Both read the same variable so they cannot disagree.
+springdoc:
+  api-docs:
+    enabled: ${APP_DOCS_PUBLIC:false}
+  swagger-ui:
+    enabled: ${APP_DOCS_PUBLIC:false}
+
+management:
+  endpoint:
+    health:
+      # /actuator/health is permitAll so Compose and Prometheus can reach it.
+      # `always` would publish the database URL, disk paths and component
+      # internals to anyone who found the path.
+      show-details: never
+  endpoints:
+    web:
+      exposure:
+        include: health, prometheus
+
+logging:
+  level:
+    root: INFO
+    com.eventbooking: INFO
+    # These are the pair that turn DEBUG logging into SQL-with-parameters —
+    # i.e. customer names and payment references written to disk in clear text.
+    org.hibernate.SQL: WARN
+    org.hibernate.orm.jdbc.bind: WARN

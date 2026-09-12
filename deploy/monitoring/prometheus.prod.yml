@@ -1,0 +1,16 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'event-booking-api'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      # The container name on the private Compose network, not
+      # host.docker.internal — the API runs in Docker here, not on the host as
+      # it does in the development stack. Port 8080 is the container's own port;
+      # nothing publishes it to the host.
+      - targets: ['api:8080']
+        labels:
+          application: 'event-booking-api'
+          env: 'prod'

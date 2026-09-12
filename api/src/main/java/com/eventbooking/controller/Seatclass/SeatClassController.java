@@ -4,6 +4,7 @@ import com.eventbooking.security.CurrentUserId;
 import com.eventbooking.dto.seatclass.CreateSeatClassRequest;
 import com.eventbooking.dto.seatclass.SeatClassResponse;
 import com.eventbooking.dto.seatclass.UpdateSeatClassRequest;
+import com.eventbooking.security.EventVisibilityGuard;
 import com.eventbooking.security.OrganizerResolver;
 import com.eventbooking.service.Seatclass.SeatClassService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -41,10 +42,14 @@ public class SeatClassController {
 
     private final SeatClassService seatClassService;
     private final OrganizerResolver organizerResolver;
+    private final EventVisibilityGuard eventVisibilityGuard;
 
-    public SeatClassController(SeatClassService seatClassService, OrganizerResolver organizerResolver) {
+    public SeatClassController(SeatClassService seatClassService,
+                               OrganizerResolver organizerResolver,
+                               EventVisibilityGuard eventVisibilityGuard) {
         this.seatClassService = seatClassService;
         this.organizerResolver = organizerResolver;
+        this.eventVisibilityGuard = eventVisibilityGuard;
     }
 
     @PostMapping
@@ -61,13 +66,29 @@ public class SeatClassController {
 
     @GetMapping
     @Operation(summary = "This event's pricing tiers")
-    public List<SeatClassResponse> list(@PathVariable Long eventId) {
+    public List<SeatClassResponse> list(
+            @CurrentUserId(optional = true) Long actorUserId,
+            @PathVariable Long eventId) {
+        eventVisibilityGuard.requireReadable(eventId, actorUserId);
         return seatClassService.findByEvent(eventId);
     }
 
+    /**
+     * Two checks, not one. The event must be readable by this caller, AND the
+     * tier must actually belong to it - the lookup is by seat class id alone, so
+     * without the second check /events/1/seat-class/9 happily served event 6's
+     * pricing under event 1's name, and /events/99/... served it under an event
+     * that does not exist.
+     */
     @GetMapping("/{seatClassId}")
-    public SeatClassResponse get(@PathVariable Long eventId, @PathVariable Long seatClassId) {
-        return seatClassService.getSeatClass(seatClassId);
+    public SeatClassResponse get(
+            @CurrentUserId(optional = true) Long actorUserId,
+            @PathVariable Long eventId,
+            @PathVariable Long seatClassId) {
+        eventVisibilityGuard.requireReadable(eventId, actorUserId);
+        SeatClassResponse seatClass = seatClassService.getSeatClass(seatClassId);
+        eventVisibilityGuard.requireBelongsToEvent(eventId, seatClass.eventId());
+        return seatClass;
     }
 
     @PatchMapping("/{seatClassId}")
