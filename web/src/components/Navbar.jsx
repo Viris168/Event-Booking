@@ -116,7 +116,7 @@ export default function Navbar() {
     <nav className="nav" ref={navRef}>
       <div className="nav-inner">
         <Link to="/" className="nav-brand" aria-label={t('brand')}>
-          <img className="nav-mark" src="/logo/EBC-logo.svg" alt="" width="1110" height="504" aria-hidden="true" />
+          <img className="nav-mark" src="/logo/CB-mark.png" alt="" width="280" height="320" aria-hidden="true" />
           <span className="nav-brand-text">{t('brand')}</span>
         </Link>
 

@@ -93,7 +93,7 @@ function SeatMapPreview({ seats }) {
                 height="22"
                 rx="6"
                 className="seat"
-                fill="#4054c8"
+                fill="#12613c"
               >
                 <title>{`${s.section_label} ${s.row_label}${s.seat_number}`}</title>
               </rect>
