@@ -105,6 +105,11 @@ export default function EventCard({ event }) {
           <ScarcityFlag event={event} />
         </span>
 
+        <span className="ev-mode">
+          <Icon name={(event.inventoryMode ?? event.inventory_mode) === 'ZONED' ? 'users' : 'seat'} size={11} />
+          {event.inventoryMode ?? event.inventory_mode}
+        </span>
+
         {event.category && (
           <span className="ev-cat">
             <Icon name={CATEGORY_ICON[event.category] || 'ticket'} size={12} />
@@ -114,13 +119,11 @@ export default function EventCard({ event }) {
       </div>
 
       <div className="ev-body">
-        <div className="row row-tight">
-          <span className="badge badge-mode">
-            <Icon name={(event.inventoryMode ?? event.inventory_mode) === 'ZONED' ? 'users' : 'seat'} size={12} />
-            {event.inventoryMode ?? event.inventory_mode}
-          </span>
-          {event.status !== 'PUBLISHED' && <span className={`badge s-${event.status}`}>{event.status}</span>}
-        </div>
+        {event.status !== 'PUBLISHED' && (
+          <div className="row row-tight">
+            <span className={`badge s-${event.status}`}>{event.status}</span>
+          </div>
+        )}
         <div className="ev-title">{title}</div>
         <div className={locale === 'km' ? 'ev-title-km' : 'ev-title-km km'}>{subtitle}</div>
         <div className="ev-meta">

@@ -2,7 +2,8 @@ import { useMemo } from 'react'
 import { useLocale } from '../context/LocaleContext.jsx'
 import { usd } from '../lib/format.js'
 
-const CLASS_COLORS = ['#4054c8', '#0d9488', '#c2410c', '#7e22ce', '#0f766e']
+// Kept in step with the .seat.tier-* fills in index.css — same five, same order.
+const CLASS_COLORS = ['#12613c', '#0e6f8a', '#c2410c', '#6b3aa0', '#7a5c12']
 
 export default function SeatMap({ seats, seatClasses, selected, onToggle, disabled = false }) {
   const { t, locale } = useLocale()

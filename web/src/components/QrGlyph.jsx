@@ -62,7 +62,7 @@ export default function QrGlyph({ token, className = 'qr-canvas', label }) {
     >
       <rect width={SIZE} height={SIZE} fill="#fff" />
       {modules.map(([r, c]) => (
-        <rect key={`${r}-${c}`} x={c} y={r} width="1" height="1" fill="#131a2b" />
+        <rect key={`${r}-${c}`} x={c} y={r} width="1" height="1" fill="#1d1a16" />
       ))}
     </svg>
   )

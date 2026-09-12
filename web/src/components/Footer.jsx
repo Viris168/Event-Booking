@@ -15,10 +15,10 @@ export default function Footer() {
           <div className="footer-brand">
             <img
               className="footer-mark"
-              src="/logo/EBC-logo.svg"
+              src="/logo/CB-mark.png"
               alt=""
-              width="1110"
-              height="504"
+              width="280"
+              height="320"
               loading="lazy"
               aria-hidden="true"
             />

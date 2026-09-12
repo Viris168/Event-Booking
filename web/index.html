@@ -4,20 +4,25 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <!-- Icons. The SVG scales to any size and wins wherever it is supported;
-         the 32px PNG is the fallback for browsers that refuse SVG icons, and
-         apple-touch-icon must be a PNG at 180×180. -->
-    <link rel="icon" type="image/svg+xml" href="/logo/EBC-icon.svg" />
+    <!-- Icons. The 32px PNG is the tab favicon, the 192px one is what desktop
+         browsers pick for bookmarks and shortcuts, and apple-touch-icon must be
+         a PNG at 180×180. -->
     <link
       rel="icon"
       type="image/png"
       sizes="32x32"
-      href="/logo/EBC-favicon-32.png"
+      href="/logo/CB-favicon-32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="192x192"
+      href="/logo/CB-icon-192.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="180x180"
-      href="/logo/EBC-icon-180.png"
+      href="/logo/CB-icon-180.png"
     />
     <link rel="manifest" href="/site.webmanifest" />
 
@@ -25,12 +30,12 @@
     <meta
       name="theme-color"
       media="(prefers-color-scheme: light)"
-      content="#131a3a"
+      content="#062718"
     />
     <meta
       name="theme-color"
       media="(prefers-color-scheme: dark)"
-      content="#0d1222"
+      content="#14120e"
     />
     <meta name="color-scheme" content="light dark" />
 
@@ -46,8 +51,10 @@
       property="og:description"
       content="Reserved seats or general admission across all 8 provinces — pay with Bakong KHQR or ABA PayWay."
     />
-    <meta property="og:image" content="/logo/EBC-icon-512.png" />
-    <meta name="twitter:card" content="summary" />
+    <meta property="og:image" content="/logo/CB-og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
     <!-- Latin + Khmer faces: Khmer script needs its own family, not a fallback. -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

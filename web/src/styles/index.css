@@ -25,45 +25,52 @@
 
 /* ---------------------------------------------------------------- tokens */
 @theme {
-  /* brand */
-  --color-brand-900: #131a3a;
-  --color-brand-800: #1b2450;
-  --color-brand-700: #24306c;
-  --color-brand-600: #303f92;
-  --color-brand-500: #4054c8;
-  --color-brand-100: #e8ecfb;
-  --color-brand-50: #f2f5ff;
+  /* Brand — deep jade. 500 is the lightest rung and still carries white text
+     (.count-pill), so it cannot go brighter than this without failing contrast;
+     600 is the button fill, 900 the navbar and footer ground. */
+  --color-brand-900: #062718;
+  --color-brand-800: #0a3a24;
+  --color-brand-700: #0d4a2d;
+  --color-brand-600: #12613c;
+  --color-brand-500: #157e4e;
+  --color-brand-100: #d5e9dd;
+  --color-brand-50: #edf5f0;
 
-  --color-gold-600: #c97f06;
-  --color-gold-500: #f2a71b;
-  --color-gold-100: #fdf0d5;
+  /* The warm accent. It paints solid chips that carry dark text on top
+     (.hero-step, .ticket-strip), so it has to stay light — the deep burnt tone
+     lives at 600, for text on the 100 fill. */
+  --color-gold-600: #b0450e;
+  --color-gold-500: #e07b39;
+  --color-gold-100: #f8e6d5;
 
-  /* neutrals */
-  --color-ink: #131a2b;
-  --color-ink-2: #3c4661;
-  --color-muted: #6b7794;
-  --color-line: #e5e8f0;
-  --color-line-2: #f0f2f8;
-  --color-surface: #ffffff;
-  --color-surface-2: #f7f8fd;
-  --color-page: #f5f6fa;
+  /* Neutrals are warm — paper and greige rather than blue-grey. This is what
+     stops the UI reading as one flat wash of tinted blue at every level. */
+  --color-ink: #1d1a16;
+  --color-ink-2: #4a443b;
+  --color-muted: #756d61;
+  --color-line: #e3ddd0;
+  --color-line-2: #efeae1;
+  --color-surface: #fffdf9;
+  --color-surface-2: #f9f6ef;
+  --color-page: #f6f3ec;
 
   /* Semantic status colours, named by meaning rather than by hue so they do not
-     shadow Tailwind's own palettes, which all stay available. */
-  --color-success: #0f7b52;
-  --color-success-soft: #d9f5e6;
-  --color-warning: #a76500;
-  --color-warning-soft: #fdeecd;
-  --color-danger: #c02a2a;
-  --color-danger-soft: #fde3e3;
-  --color-info: #1e63c4;
-  --color-info-soft: #ddeaff;
-  --color-refund: #6d33bd;
-  --color-refund-soft: #ece0fc;
-  --color-settled: #0d6f74;
-  --color-settled-soft: #d5f1f2;
-  --color-quiet: #566079;
-  --color-quiet-soft: #e7eaf2;
+     shadow Tailwind's own palettes, which all stay available. Each solid tone
+     clears 4.5:1 on its own -soft fill. */
+  --color-success: #0f6b46;
+  --color-success-soft: #dcefe0;
+  --color-warning: #96540a;
+  --color-warning-soft: #f7e9d0;
+  --color-danger: #b02b1f;
+  --color-danger-soft: #f8e0d9;
+  --color-info: #1057b8;
+  --color-info-soft: #dde8f8;
+  --color-refund: #6b3aa0;
+  --color-refund-soft: #e9e0f2;
+  --color-settled: #0e6266;
+  --color-settled-soft: #d9eced;
+  --color-quiet: #6a6256;
+  --color-quiet-soft: #ece7dd;
 
   /* Page shell: navbar, sub-nav, hero, page body and footer all measure their
      content against these two, so every edge lines up vertically. 1360px fits
@@ -77,10 +84,12 @@
   --radius-card: 16px;
   --radius-hero: 22px;
 
-  --shadow-card: 0 1px 2px rgba(19, 26, 58, 0.04);
-  --shadow-float: 0 6px 20px -6px rgba(19, 26, 58, 0.14), 0 2px 6px -2px rgba(19, 26, 58, 0.06);
-  --shadow-pop: 0 24px 60px -18px rgba(19, 26, 58, 0.28);
-  --shadow-focus: 0 0 0 3px rgba(64, 84, 200, 0.18);
+  /* Shadows are cast in the warm ink, not a blue-black — a cool shadow on warm
+     paper is the thing that reads as grey haze rather than depth. */
+  --shadow-card: 0 1px 2px rgba(41, 34, 24, 0.05);
+  --shadow-float: 0 6px 20px -6px rgba(41, 34, 24, 0.16), 0 2px 6px -2px rgba(41, 34, 24, 0.07);
+  --shadow-pop: 0 24px 60px -18px rgba(41, 34, 24, 0.3);
+  --shadow-focus: 0 0 0 3px rgba(18, 97, 60, 0.26);
 
   /* type */
   --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -93,17 +102,17 @@
   /* Brand-as-text and brand-as-tint. Separate from the brand-* scale because
      those paint solid surfaces (navbar, primary button) and must NOT invert,
      while these must. */
-  --color-link: #303f92;
-  --color-on-tint: #24306c;
-  --color-tint: #f2f5ff;
-  --color-tint-2: #e8ecfb;
+  --color-link: #12613c;
+  --color-on-tint: #0d4a2d;
+  --color-tint: #edf5f0;
+  --color-tint-2: #d5e9dd;
 
   /* CANCELLED needs its own pair: the brief wants all eight booking states
      visually distinct, so it cannot just reuse the quiet tokens. */
-  --color-cancelled: #4a4f5e;
-  --color-cancelled-soft: #e2e4ea;
+  --color-cancelled: #57514a;
+  --color-cancelled-soft: #e6e1d8;
 
-  --color-placeholder: #9aa4bd;
+  --color-placeholder: #a49a8c;
 }
 
 /* ------------------------------------------------------------------- dark */
@@ -112,42 +121,45 @@
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 
 [data-theme='dark'] {
-  --color-page: #0c111f;
-  --color-surface: #141a2b;
-  --color-surface-2: #1a2136;
-  --color-line: #273049;
-  --color-line-2: #1f2740;
-  --color-ink: #e9edf7;
-  --color-ink-2: #b9c2d8;
-  --color-muted: #8b96b1;
-  --color-placeholder: #6a7691;
+  /* Dark is the same warm family turned down, not a separate blue-black one:
+     the surfaces carry the paper's warmth so the two themes read as one product
+     rather than two. */
+  --color-page: #14120e;
+  --color-surface: #1c1915;
+  --color-surface-2: #23201a;
+  --color-line: #322c24;
+  --color-line-2: #272219;
+  --color-ink: #f2ece0;
+  --color-ink-2: #cdc3b3;
+  --color-muted: #a39889;
+  --color-placeholder: #7d7365;
 
-  --color-link: #9db0ff;
-  --color-on-tint: #c6d0ff;
-  --color-tint: #19203a;
-  --color-tint-2: #26325a;
+  --color-link: #6fc99a;
+  --color-on-tint: #9edcbb;
+  --color-tint: #17251d;
+  --color-tint-2: #23392c;
 
   /* Soft status fills become dark tints; the solid ones lighten so they stay
      legible as text on those tints. */
-  --color-success: #5fd4a0;
-  --color-success-soft: #12301f;
-  --color-warning: #f0b45a;
-  --color-warning-soft: #2f2413;
-  --color-danger: #f38f8f;
-  --color-danger-soft: #331a1c;
-  --color-info: #86b3ff;
-  --color-info-soft: #16233d;
-  --color-refund: #c6a6f7;
-  --color-refund-soft: #241a3a;
-  --color-settled: #6ed2d8;
-  --color-settled-soft: #103033;
-  --color-quiet: #a5afc6;
-  --color-quiet-soft: #222a3d;
-  --color-cancelled: #9aa4ba;
-  --color-cancelled-soft: #1e2434;
+  --color-success: #63c894;
+  --color-success-soft: #16291c;
+  --color-warning: #e8ad5c;
+  --color-warning-soft: #2d2314;
+  --color-danger: #ef9481;
+  --color-danger-soft: #32201a;
+  --color-info: #8ab4f7;
+  --color-info-soft: #1a2336;
+  --color-refund: #c1a8e8;
+  --color-refund-soft: #261f33;
+  --color-settled: #6cc9ce;
+  --color-settled-soft: #16292b;
+  --color-quiet: #b0a696;
+  --color-quiet-soft: #2a251d;
+  --color-cancelled: #a09789;
+  --color-cancelled-soft: #262119;
 
   /* Tints used on the dark hero/footer keep their light values on purpose. */
-  --color-gold-100: #3a2c10;
+  --color-gold-100: #362415;
 }
 
 /* ------------------------------------------------------------------ base */
@@ -156,10 +168,10 @@
     @apply bg-page text-ink font-sans antialiased;
     font-size: 15px;
     line-height: 1.65;
-    /* Faint indigo wash under the navbar so inner pages are not a flat slab of
-       grey. Anchored to the document, not the viewport: `fixed` would drag the
+    /* Faint brand wash under the navbar so inner pages are not a flat slab of
+       paper. Anchored to the document, not the viewport: `fixed` would drag the
        tint down the screen as you scroll and read as a smudge. */
-    background-image: radial-gradient(1100px 460px at 50% 0%, rgba(48, 63, 146, 0.045), transparent 72%);
+    background-image: radial-gradient(1100px 460px at 50% 0%, rgba(18, 97, 60, 0.055), transparent 72%);
     background-repeat: no-repeat;
   }
 
@@ -358,22 +370,23 @@
   /* ---------------------------------------------------------------- navbar */
   .nav {
     @apply sticky top-0 z-40 text-white backdrop-blur-[8px];
-    background: color-mix(in srgb, var(--color-brand-900) 96%, transparent);
-    @apply border-b border-white/10;
+    background: color-mix(in srgb, #041b10 94%, transparent);
+    @apply border-b border-white/[0.09];
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04);
   }
   .nav-inner {
     @apply mx-auto flex max-w-shell items-center gap-4 px-page py-[0.7rem];
   }
   .nav-brand {
-    @apply flex flex-none items-center gap-[0.55rem] text-[1rem] font-extrabold text-white tracking-[-0.01em];
+    @apply flex flex-none items-center gap-[0.5rem] text-[1.02rem] font-extrabold text-white tracking-[-0.015em];
   }
   .nav-brand:hover {
     @apply no-underline;
   }
-  /* The lockup is navy-on-white artwork, so it sits on a white plate against the
-     dark bar. Height drives the size; the width follows the logo's own ratio. */
+  /* The mark is cut out, so it sits straight on the dark bar with no plate.
+     Height drives the size; the width follows the logo's own ratio. */
   .nav-mark {
-    @apply h-[34px] w-auto rounded-[9px] bg-white;
+    @apply h-[30px] w-auto;
   }
   .nav-links {
     @apply ml-auto flex flex-wrap items-center gap-[0.15rem];
@@ -404,22 +417,25 @@
   }
 
   .lang-toggle {
-    @apply inline-flex flex-none rounded-full bg-white/10 p-[2px];
+    @apply inline-flex flex-none rounded-full border border-white/[0.14] bg-white/[0.06] p-[2px];
   }
   .lang-toggle button {
-    @apply rounded-full border-0 bg-transparent px-[0.6rem] py-[0.22rem] text-[0.78rem] font-bold text-white/70;
+    @apply rounded-full border-0 bg-transparent px-[0.58rem] py-[0.24rem] text-[0.78rem] font-bold text-white/60;
+  }
+  .lang-toggle button:hover {
+    @apply text-white/90;
   }
   .lang-toggle button[aria-pressed='true'] {
-    @apply bg-white text-brand-900;
+    @apply bg-white/[0.18] text-white;
   }
 
   .nav-hold {
     @apply inline-flex items-center gap-[0.3rem] font-bold tabular-nums;
-    background: rgba(242, 167, 27, 0.18);
-    color: #ffdca1 !important;
+    background: rgba(224, 123, 57, 0.20);
+    color: #f5d3ab !important;
   }
   .nav-hold:hover {
-    background: rgba(242, 167, 27, 0.28);
+    background: rgba(224, 123, 57, 0.30);
   }
 
   /* Icon-only navbar control. */
@@ -455,8 +471,10 @@
     .nav-brand-text {
       @apply hidden;
     }
+    /* The wordmark is gone below this width, so the mark is the only brand on
+       screen — it grows rather than shrinks. */
     .nav-mark {
-      @apply h-[30px];
+      @apply h-[34px];
     }
     .nav-inner {
       @apply gap-2;
@@ -554,12 +572,10 @@
   }
 
   .btn-accent {
-    @apply shadow-card;
-    background: linear-gradient(135deg, var(--color-gold-500), #ee8f14);
-    color: #3a2603;
+    @apply bg-gold-600 text-white shadow-card;
   }
   .btn-accent:hover:not(:disabled) {
-    filter: brightness(1.04);
+    background: #963a0b;
   }
 
   .btn-outline {
@@ -640,18 +656,20 @@
   }
 
   /* ------------------------------------------------------------------ hero */
-  /* Blooms over a navy→indigo base. The warm one stays small and high in the
+  /* Blooms over a near-black jade base. Kept low: at full strength the
+     blooms turned the whole band emerald, and the hero is a third of the fold -
+     that much saturation left nothing for the warm accent to carry. The warm one stays small and high in the
      corner: spread wide over navy it turned muddy brown. The third sits behind
      the headline so the type has something to lift off. */
   .hero {
     @apply relative isolate py-[3.4rem] pb-[4.6rem] text-white;
     background:
-      radial-gradient(520px 240px at 1% -14%, rgba(242, 167, 27, 0.22), transparent 62%),
-      radial-gradient(700px 380px at 26% 6%, rgba(72, 96, 224, 0.34), transparent 66%),
-      radial-gradient(900px 520px at 95% -16%, rgba(99, 122, 248, 0.52), transparent 64%),
-      radial-gradient(820px 500px at 74% 120%, rgba(129, 62, 208, 0.34), transparent 62%),
-      radial-gradient(1400px 180px at 50% 100%, rgba(150, 170, 255, 0.14), transparent 72%),
-      linear-gradient(168deg, #0d1330 0%, #161f46 50%, #1f295a 100%);
+      radial-gradient(520px 240px at 1% -14%, rgba(224, 123, 57, 0.16), transparent 62%),
+      radial-gradient(700px 380px at 26% 6%, rgba(21, 126, 78, 0.16), transparent 66%),
+      radial-gradient(900px 520px at 95% -16%, rgba(45, 164, 104, 0.20), transparent 64%),
+      radial-gradient(820px 500px at 74% 120%, rgba(8, 46, 29, 0.5), transparent 62%),
+      radial-gradient(1400px 180px at 50% 100%, rgba(158, 220, 187, 0.07), transparent 72%),
+      linear-gradient(168deg, #04140c 0%, #052117 50%, #072b1b 100%);
     box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.12);
   }
   /* Fine dot grid for texture, faded out before it reaches the content. */
@@ -666,10 +684,7 @@
 
   /* One accented word carries the eye; the rest of the headline stays white. */
   .hero-accent {
-    background: linear-gradient(100deg, #ffdf9b, var(--color-gold-500) 48%, #ff9f45);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+    color: #f0a05a;
   }
   /* Same box shape as .nav-inner / .container / .footer-inner: the max-width
      carries its own horizontal padding, so all four content edges are flush. */
@@ -745,7 +760,7 @@
   }
   .spot-when {
     @apply rounded-full bg-gold-500/20 px-[0.55rem] py-[0.15rem] text-[0.74rem] font-bold;
-    color: #ffdca1;
+    color: #f5d3ab;
   }
   .spot-art {
     @apply relative mx-[0.9rem] grid h-[104px] place-items-center rounded-ui text-white/95;
@@ -921,10 +936,10 @@
   }
   .filter-pill button {
     @apply grid size-5 place-items-center rounded-full border-0 text-inherit;
-    background: rgba(48, 63, 146, 0.1);
+    background: rgba(18, 97, 60, 0.1);
   }
   .filter-pill button:hover {
-    background: rgba(48, 63, 146, 0.22);
+    background: rgba(18, 97, 60, 0.22);
   }
 
   /* ----------------------------------------------------------------- auth */
@@ -1118,6 +1133,14 @@
     @apply relative z-[1] opacity-95;
     filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.2));
   }
+  .ev-media:not(.has-photo)::after {
+    content: '';
+    @apply pointer-events-none absolute inset-0 z-0;
+    background-image: radial-gradient(rgba(255, 255, 255, 0.11) 1px, transparent 1px);
+    background-size: 16px 16px;
+    mask-image: radial-gradient(110% 80% at 12% 0%, rgba(0, 0, 0, 0.9), transparent 68%);
+    -webkit-mask-image: radial-gradient(110% 80% at 12% 0%, rgba(0, 0, 0, 0.9), transparent 68%);
+  }
   .ev-media .ev-date {
     @apply absolute bottom-[0.7rem] left-[0.7rem] z-[2] min-w-[40px] rounded-[10px] bg-white/[0.96]
       px-2 py-[0.3rem] text-center text-[0.7rem] font-extrabold leading-[1.2] tracking-[0.04em] text-ink shadow-card;
@@ -1127,6 +1150,11 @@
   }
   .ev-media .ev-flag {
     @apply absolute right-[0.7rem] top-[0.7rem] z-[2];
+  }
+  .ev-media .ev-mode {
+    @apply absolute left-[0.7rem] top-[0.7rem] z-[2] inline-flex items-center gap-[0.25rem]
+      rounded-full bg-black/45 px-[0.5rem] py-[0.2rem] text-[0.62rem] font-bold uppercase
+      tracking-[0.06em] text-white/95 backdrop-blur-sm;
   }
   .ev-body {
     @apply flex flex-auto flex-col gap-[0.35rem] px-4 pt-[0.95rem];
@@ -1165,6 +1193,7 @@
   /* The arrow is decoration - the whole card is the link - so it only picks
      up the brand colour on hover instead of competing as a second target. */
   .ev-go {
+    @apply border-line-2 bg-surface-2 text-ink-2;
     transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease;
   }
   .ev-card:hover .ev-go {
@@ -1327,33 +1356,38 @@
     }
   }
 
-  /* Cover gradients stand in for event photography. */
+  /* Cover gradients stand in for event photography. Each runs a saturated
+     mid-tone into a deeper one of a neighbouring hue, so a wall of them reads
+     as nine distinguishable events and not as a spectrum swatch. Pulled off
+     the electric end deliberately — these sit behind white title text. */
   .cover-sunset {
-    background: linear-gradient(135deg, #f97316, #b91c5c);
+    background: linear-gradient(135deg, #e2622a, #8f2246);
   }
   .cover-river {
-    background: linear-gradient(135deg, #0ea5a4, #1d4ed8);
+    background: linear-gradient(135deg, #146a86, #0c3a4a);
   }
   .cover-gold {
-    background: linear-gradient(135deg, #f2a71b, #b45309);
+    background: linear-gradient(135deg, #d99520, #8a4a0c);
   }
   .cover-teal {
-    background: linear-gradient(135deg, #0d9488, #0f4c81);
+    background: linear-gradient(135deg, #0e8a7e, #0a4048);
   }
   .cover-plum {
-    background: linear-gradient(135deg, #7e22ce, #be185d);
+    background: linear-gradient(135deg, #6b3aa0, #9c2d5c);
   }
+  /* `indigo` is a stored data key (mock/seed.js, EventFormPage), not a claim
+     about the hue — it paints the brand jade since the palette moved. */
   .cover-indigo {
-    background: linear-gradient(135deg, #4054c8, #1b2450);
+    background: linear-gradient(135deg, #12613c, #062718);
   }
   .cover-lime {
-    background: linear-gradient(135deg, #65a30d, #0f766e);
+    background: linear-gradient(135deg, #6f9c1a, #3d5c0e);
   }
   .cover-cyan {
-    background: linear-gradient(135deg, #06b6d4, #3730a3);
+    background: linear-gradient(135deg, #1b9fb8, #14556b);
   }
   .cover-rose {
-    background: linear-gradient(135deg, #f43f5e, #7f1d1d);
+    background: linear-gradient(135deg, #d33f4c, #6d1a1a);
   }
 
   /* --------------------------------------------------------- chart fills */
@@ -1369,16 +1403,16 @@
      Numbered rather than named: they are assigned by position in a ranking,
      and a name like `.bar-revenue` would imply a meaning the colour does not
      carry. */
-  .bar-1 { background: linear-gradient(90deg, #3446b8 0%, #6d7ff0 100%); }
-  .bar-2 { background: linear-gradient(90deg, #0d9488 0%, #2fd4b4 100%); }
-  .bar-3 { background: linear-gradient(90deg, #e2960d 0%, #ffc75a 100%); }
-  .bar-4 { background: linear-gradient(90deg, #d62e70 0%, #ff77a8 100%); }
-  .bar-5 { background: linear-gradient(90deg, #7322c2 0%, #a855f7 100%); }
+  .bar-1 { background: linear-gradient(90deg, #12613c 0%, #45b183 100%); }
+  .bar-2 { background: linear-gradient(90deg, #0e7d72 0%, #37bda8 100%); }
+  .bar-3 { background: linear-gradient(90deg, #c06a18 0%, #eda44f 100%); }
+  .bar-4 { background: linear-gradient(90deg, #b23464 0%, #e8749c 100%); }
+  .bar-5 { background: linear-gradient(90deg, #6b3aa0 0%, #a37ad6 100%); }
 
   /* The month chart is one series, so it takes one colour - but vertically,
      brightest at the top, so the bars read as growing rather than as blocks. */
-  .bar-month { background: linear-gradient(180deg, #6d7ff0 0%, #3446b8 100%); }
-  .bar-month:hover { background: linear-gradient(180deg, #8b9aff 0%, #4054c8 100%); }
+  .bar-month { background: linear-gradient(180deg, #45b183 0%, #12613c 100%); }
+  .bar-month:hover { background: linear-gradient(180deg, #6cc79f 0%, #16744a 100%); }
 
   /* ---------------------------------------------------------------- badges */
   .badge {
@@ -1519,11 +1553,11 @@
      locally re-themes every descendant utility in one place. */
   [data-theme='dark'] :is(.qr-frame, .ev-media .ev-date) {
     /* Re-declaring the tokens fixes descendants that apply a colour utility… */
-    --color-ink: #131a2b;
-    --color-ink-2: #3c4661;
-    --color-muted: #6b7794;
+    --color-ink: #1d1a16;
+    --color-ink-2: #4a443b;
+    --color-muted: #756d61;
     /* …but an inherited colour is already computed, so it needs setting too. */
-    color: #131a2b;
+    color: #1d1a16;
   }
   /* Cards need a visible edge against a dark page, and the toast needs to
      separate from it. */
@@ -1966,7 +2000,7 @@
     background: linear-gradient(135deg, var(--color-brand-800), var(--color-brand-600));
   }
   .holdbar.warn {
-    background: linear-gradient(135deg, #9a1e1e, #d4432f);
+    background: linear-gradient(135deg, #8e2418, #c8492f);
     animation: pulse 1.6s ease-in-out infinite;
   }
   .hold-clock {
@@ -2220,7 +2254,7 @@
   /* ---------------------------------------------------------------- scanner */
   .scanner {
     @apply relative grid aspect-[4/3] place-items-center overflow-hidden rounded-ui text-white/60;
-    background: #0d1220;
+    background: #14120e;
   }
   .scan-frame {
     @apply relative aspect-square w-[58%] rounded-2xl border-2 border-white/85;
@@ -2238,13 +2272,13 @@
     @apply flex items-center gap-[0.9rem] rounded-ui px-[1.2rem] py-[1.1rem] text-white;
   }
   .scan-result.ok {
-    background: linear-gradient(135deg, #0f7b52, #14a06a);
+    background: linear-gradient(135deg, #0f6b46, #17915f);
   }
   .scan-result.bad {
-    background: linear-gradient(135deg, #9a1e1e, #cd3a3a);
+    background: linear-gradient(135deg, #8e2418, #c24433);
   }
   .scan-result.warn {
-    background: linear-gradient(135deg, #a76500, #d98a12);
+    background: linear-gradient(135deg, #96540a, #cc8420);
   }
   .scan-result > .icon {
     @apply grid size-[46px] flex-none place-items-center rounded-[14px] bg-white/[0.18];
@@ -2337,10 +2371,10 @@
     animation: rise 0.18s ease-out;
   }
   .toast.bad {
-    background: #8c1c1c;
+    background: #8a2417;
   }
   .toast.ok {
-    background: #0c5f40;
+    background: #0e5e3e;
   }
 
   /* ----------------------------------------------------------------- footer */
@@ -2373,7 +2407,7 @@
     @apply flex max-w-[46ch] flex-col items-start gap-[0.8rem];
   }
   .footer-mark {
-    @apply h-[38px] w-auto rounded-[10px] bg-white;
+    @apply h-[38px] w-auto;
   }
   .footer-brand strong {
     @apply block text-[1rem] tracking-[-0.01em] text-white;
@@ -2389,8 +2423,10 @@
   .footer-col {
     @apply flex min-w-0 flex-col items-start gap-[0.45rem];
   }
+  /* 0.72rem uppercase is small text, so it needs the full 4.5:1 — at white/45
+     it measured 4.27:1 on the brand ground. */
   .footer-col h4 {
-    @apply mb-[0.15rem] text-[0.72rem] font-bold uppercase tracking-[0.07em] text-white/45;
+    @apply mb-[0.15rem] text-[0.72rem] font-bold uppercase tracking-[0.07em] text-white/[0.56];
   }
   .footer-col a {
     @apply text-white/[0.74];
@@ -2416,14 +2452,14 @@
     @apply inline-flex items-center gap-[0.35rem];
   }
   .footer-lang {
-    @apply inline-flex gap-[2px] rounded-full bg-white/10 p-[2px];
+    @apply inline-flex gap-[2px] rounded-full border border-white/[0.14] bg-white/[0.06] p-[2px];
   }
   .footer-lang button {
     @apply rounded-full border-0 bg-transparent px-[0.7rem] py-[0.22rem] text-[0.76rem] text-white/60;
     font-weight: 650;
   }
   .footer-lang button[aria-pressed='true'] {
-    @apply bg-white text-brand-900;
+    @apply bg-white/[0.18] text-white;
   }
 
   .demo-note {
@@ -2611,11 +2647,13 @@
   }
   .seat:hover:not(:disabled) { @apply -translate-y-[2px]; }
   .seat:focus-visible { @apply outline-none shadow-focus; }
-  .seat.tier-0 { background: #4054c8; }
-  .seat.tier-1 { background: #0d9488; }
+  /* Five tiers that must stay apart at ~14px. Pulled off one hue family on
+     purpose: jade, steel, clay, plum, bronze. */
+  .seat.tier-0 { background: #12613c; }
+  .seat.tier-1 { background: #0e6f8a; }
   .seat.tier-2 { background: #c2410c; }
-  .seat.tier-3 { background: #7e22ce; }
-  .seat.tier-4 { background: #0f766e; }
+  .seat.tier-3 { background: #6b3aa0; }
+  .seat.tier-4 { background: #7a5c12; }
   .seat.sold {
     @apply cursor-not-allowed line-through;
     background: color-mix(in oklab, var(--color-muted) 40%, var(--color-surface-2));
@@ -2742,7 +2780,7 @@
   place-items: center;
   padding: 2.5rem 1rem 1rem;
   overflow-y: auto;
-  background: rgba(5, 11, 30, 0.72);
+  background: rgba(14, 11, 8, 0.74);
 }
 .pw-scrim-logo {
   position: absolute;
@@ -2921,7 +2959,7 @@
 }
 
 .qr-zoom-trigger:focus-visible {
-  outline: 2px solid var(--accent, #2563eb);
+  outline: 2px solid var(--accent, #12613c);
   outline-offset: 3px;
 }
 
@@ -2936,8 +2974,8 @@
   font-size: 0.68rem;
   font-weight: 600;
   letter-spacing: 0.01em;
-  color: #1f2937;
-  background: rgba(255, 255, 255, 0.86);
+  color: #2b2620;
+  background: rgba(255, 253, 249, 0.86);
   padding: 0.15rem 0.4rem;
   border-radius: 0.35rem;
   pointer-events: none;
@@ -3008,13 +3046,13 @@
   height: 2.1rem;
   border: 0;
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.06);
-  color: #374151;
+  background: rgba(41, 34, 24, 0.07);
+  color: #4a443b;
   cursor: pointer;
 }
 
 .qr-lightbox-close:focus-visible {
-  outline: 2px solid var(--accent, #2563eb);
+  outline: 2px solid var(--accent, #12613c);
   outline-offset: 2px;
 }
 
@@ -3040,21 +3078,21 @@
   margin: 0.3rem 0 0;
   font-weight: 700;
   font-size: 1rem;
-  color: #111827;
+  color: #1d1a16;
   text-align: center;
 }
 
 .qr-lightbox-sub {
   margin: 0;
   font-size: 0.85rem;
-  color: #4b5563;
+  color: #57514a;
   text-align: center;
 }
 
 .qr-lightbox-hint {
   margin: 0.35rem 0 0;
   font-size: 0.75rem;
-  color: #6b7280;
+  color: #756d61;
   text-align: center;
 }
 
@@ -3068,10 +3106,10 @@
   justify-content: center;
   gap: 0.4rem;
   padding: 0.7rem;
-  border: 1px dashed rgba(148, 163, 184, 0.35);
+  border: 1px dashed rgba(163, 152, 137, 0.4);
   border-radius: 0.6rem;
   font-size: 0.78rem;
-  color: rgba(148, 163, 184, 0.85);
+  color: rgba(163, 152, 137, 0.9);
 }
 
 
@@ -3700,7 +3738,7 @@
   position: relative;
   flex: 1 1 auto;
   min-height: 320px;
-  background: #0d1220;
+  background: #14120e;
 }
 
 .crop-zoom {
