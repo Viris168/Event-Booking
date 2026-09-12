@@ -82,6 +82,13 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     Page<Booking> findByUserIdAndStateOrderByCreatedAtDesc(Long userId, BookingStatus state, Pageable pageable);
 
     /**
+     * Every booking in one state, oldest change first. Backs the admin refund
+     * queue, where FIFO is the point: newest-first would leave the customer who
+     * has waited longest permanently at the bottom of the list.
+     */
+    Page<Booking> findByStateOrderByStateChangedAtAsc(BookingStatus state, Pageable pageable);
+
+    /**
      * Serialises concurrent state changes on one booking - the classic race
      * being a payment webhook confirming while the expiry sweeper cancels.
      * Both paths must take this lock before calling BookingStateMachine.

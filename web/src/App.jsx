@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import Navbar from './components/Navbar.jsx'
 import ScrollToTop from './components/ScrollToTop.jsx'
 import Footer from './components/Footer.jsx'
 import ProtectedRoute from './routes/ProtectedRoute.jsx'
+import AccountPanel from './components/AccountPanel.jsx'
 
 import HomePage from './pages/HomePage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
@@ -30,9 +32,17 @@ import AdminDashboardPage from './pages/admin/AdminDashboardPage.jsx'
 import AdminUsersPage from './pages/admin/AdminUsersPage.jsx'
 import AdminEventsPage from './pages/admin/AdminEventsPage.jsx'
 import AdminReviewPage from './pages/admin/AdminReviewPage.jsx'
+import AdminApplicationsPage from './pages/admin/AdminApplicationsPage.jsx'
 import AdminPaymentsPage from './pages/admin/AdminPaymentsPage.jsx'
 
 export default function App() {
+  /*
+   * The account panel lives here rather than in Navbar because it is portalled
+   * to <body> and overlays every route - it is the shell's, not the nav's. The
+   * nav only owns the thing you click to open it.
+   */
+  const [accountOpen, setAccountOpen] = useState(false)
+
   return (
     <>
       {/* Keyboard users should not have to tab through the whole nav. */}
@@ -40,7 +50,7 @@ export default function App() {
         Skip to content
       </a>
       <ScrollToTop />
-      <Navbar />
+      <Navbar onOpenAccount={() => setAccountOpen(true)} />
       <main id="main" tabIndex={-1}>
         <Routes>
           {/* ------------------------------------------------ public */}
@@ -83,6 +93,9 @@ export default function App() {
               {/* The queue you work through, vs. /admin/events which is the
                   directory you browse. Different sort, default and action. */}
               <Route path="review" element={<AdminReviewPage />} />
+              {/* Applications gate who may run events at all; /admin/review
+                  judges what an already-trusted organiser submitted. */}
+              <Route path="applications" element={<AdminApplicationsPage />} />
               <Route path="events" element={<AdminEventsPage />} />
               <Route path="payments" element={<AdminPaymentsPage />} />
             </Route>
@@ -91,6 +104,7 @@ export default function App() {
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </main>
+      <AccountPanel open={accountOpen} onClose={() => setAccountOpen(false)} />
       <Footer />
     </>
   )

@@ -31,8 +31,8 @@ const dict = {
   },
   heroTitleAccent: { en: "Cambodia", km: "កម្ពុជា" },
   heroSub: {
-    en: "Concerts, festivals and conferences — reserve your seat, pay with ABA PayWay, show your QR at the door.",
-    km: "ការប្រគំតន្ត្រី ពិធីបុណ្យ និងសន្និសីទ — កក់កៅអី ទូទាត់ប្រាក់តាមរយៈ ABA PayWay រួចបង្ហាញ QR កូដនៅច្រកចូល។",
+    en: "Concerts, festivals and conferences. Pick a seat or buy general admission, and show your QR at the door.",
+    km: "ការប្រគំតន្ត្រី ពិធីបុណ្យ និងសន្និសីទ។ ជ្រើសរើសកៅអី ឬទិញសំបុត្រចូលទូទៅ រួចបង្ហាញ QR កូដនៅច្រកចូល។",
   },
   search: { en: "Search events", km: "ស្វែងរកព្រឹត្តិការណ៍" },
   searchLabel: { en: "Search", km: "ស្វែងរក" },
@@ -216,6 +216,7 @@ const dict = {
   noAccount: { en: "No account yet?", km: "មិនទាន់មានគណនីមែនទេ?" },
   haveAccount: { en: "Already have an account?", km: "មានគណនីរួចហើយមែនទេ?" },
   registerTitle: { en: "Create your account", km: "បង្កើតគណនីរបស់អ្នក" },
+  myAccount: { en: "My account", km: "គណនីរបស់ខ្ញុំ" },
   displayName: { en: "Display name", km: "ឈ្មោះបង្ហាញ" },
   preferredLanguage: { en: "Preferred language", km: "ភាសាដែលអ្នកចង់ប្រើ" },
 
@@ -252,6 +253,10 @@ const dict = {
   payments: { en: "Payments", km: "ប្រតិបត្តិការទូទាត់ប្រាក់" },
   moderation: { en: "Event moderation", km: "ការត្រួតពិនិត្យព្រឹត្តិការណ៍" },
   reviewQueue: { en: "Review queue", km: "ជួរត្រួតពិនិត្យ" },
+  organizerApplications: {
+    en: "Organiser applications",
+    km: "ពាក្យសុំធ្វើជាអ្នករៀបចំ",
+  },
   disable: { en: "Disable", km: "បិទដំណើរការ" },
   enable: { en: "Enable", km: "បើកដំណើរការ" },
   takeDown: { en: "Take down", km: "ដកចេញពីប្រព័ន្ធ" },

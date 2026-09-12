@@ -63,6 +63,10 @@ public enum ErrorCode {
     SEAT_UNAVAILABLE(HttpStatus.CONFLICT),
     INSUFFICIENT_ZONE_CAPACITY(HttpStatus.CONFLICT),
     HOLD_NOT_ACTIVE(HttpStatus.CONFLICT),
+    /* hold.extended is already true. The schema allows exactly one extension
+       per hold, so this is a refusal rather than a no-op: silently returning
+       success would let a client stretch a hold indefinitely by retrying. */
+    HOLD_ALREADY_EXTENDED(HttpStatus.CONFLICT),
     INVALID_BOOKING_STATE_TRANSITION(HttpStatus.CONFLICT),
     EMPTY_HOLD(HttpStatus.CONFLICT),
     DUPLICATE_SEAT_CLASS_NAME(HttpStatus.CONFLICT),

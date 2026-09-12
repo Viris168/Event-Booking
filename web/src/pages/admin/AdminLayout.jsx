@@ -11,6 +11,7 @@ export default function AdminLayout() {
           { to: '/admin', label: t('adminDashboard'), end: true },
           { to: '/admin/users', label: t('users') },
           { to: '/admin/review', label: t('reviewQueue') },
+          { to: '/admin/applications', label: t('organizerApplications') },
           { to: '/admin/events', label: t('moderation') },
           { to: '/admin/payments', label: t('payments') },
         ]}

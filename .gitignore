@@ -30,3 +30,5 @@ Thumbs.db
 
 ### Stray build output at the root ###
 *.class
+logs/
+api/logs/

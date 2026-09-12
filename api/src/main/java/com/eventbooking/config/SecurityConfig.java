@@ -146,6 +146,36 @@ public class SecurityConfig {
                         auth.requestMatchers(DOCS).permitAll();
                     }
 
+                    /*
+                     * Role gates by path prefix.
+                     *
+                     * Every admin endpoint already calls AdminResolver, and
+                     * every organiser endpoint calls OrganizerResolver, so
+                     * these rules refuse nobody who is not refused today. What
+                     * they add is that the guarantee stops depending on each
+                     * new method remembering the call: the prefix is closed,
+                     * and an endpoint added here tomorrow is admin-only before
+                     * anyone writes a line of its body.
+                     *
+                     * PLATFORM_ADMIN is allowed through the organiser prefix
+                     * because the client grants admins organiser access;
+                     * OrganizerResolver still decides whether they actually own
+                     * the row, so this widens reachability, not authority.
+                     *
+                     * The trailing slash matters. /api/v1/organizer/** does not
+                     * match /api/v1/organizer-applications, which is the path a
+                     * CUSTOMER uses to apply to become an organiser - gating it
+                     * here would lock everyone out of the only door into the
+                     * role.
+                     *
+                     * The resolvers stay. This chain answers "what are you";
+                     * they answer "is this row yours" and hand back the
+                     * app_user id an event_review row has to name.
+                     */
+                    auth.requestMatchers("/api/v1/admin/**").hasRole("PLATFORM_ADMIN");
+                    auth.requestMatchers("/api/v1/organizer/**")
+                            .hasAnyRole("ORGANIZER", "PLATFORM_ADMIN");
+
                     auth.anyRequest().authenticated();
                 })
 

@@ -53,7 +53,13 @@ function ScarcityFlag({ event }) {
   return null
 }
 
-export default function EventCard({ event }) {
+/**
+ * @param {boolean} compact  Drops the second-language title, the date row and
+ *   the arrow. The hero rail sits beside the headline and the search, so it
+ *   cannot afford the full record — and the date is already on the artwork
+ *   chip, so showing it again was pure duplication.
+ */
+export default function EventCard({ event, compact = false }) {
   const { locale, t, date } = useLocale()
   const { provinceName } = useProvinces()
   const venue = event.venue
@@ -71,7 +77,10 @@ export default function EventCard({ event }) {
   const venueName = locale === 'km' ? venue?.nameKm ?? venue?.name_km : venue?.nameEn ?? venue?.name_en
 
   return (
-    <Link to={`/events/${event.id}`} className={`ev-card${soldOut ? ' is-soldout' : ''}`}>
+    <Link
+      to={`/events/${event.id}`}
+      className={`ev-card${soldOut ? ' is-soldout' : ''}${compact ? ' ev-card-compact' : ''}`}
+    >
       {/* The gradient class stays on the box even when a photo loads: it is the
           colour behind a decoding image and the fallback if the URL 404s. */}
       <div className={`ev-media ${art.className}${art.hasImage ? ' has-photo' : ''}`}>
@@ -125,7 +134,9 @@ export default function EventCard({ event }) {
           </div>
         )}
         <div className="ev-title">{title}</div>
-        <div className={locale === 'km' ? 'ev-title-km' : 'ev-title-km km'}>{subtitle}</div>
+        {!compact && (
+          <div className={locale === 'km' ? 'ev-title-km' : 'ev-title-km km'}>{subtitle}</div>
+        )}
         <div className="ev-meta">
           <span className="meta-row">
             <Icon name="mapPin" size={14} />
@@ -134,10 +145,12 @@ export default function EventCard({ event }) {
               {province && <span className="meta-dim"> · {province}</span>}
             </span>
           </span>
-          <span className="meta-row">
-            <Icon name="calendar" size={14} />
-            <span>{date(event.startsAt ?? event.starts_at)}</span>
-          </span>
+          {!compact && (
+            <span className="meta-row">
+              <Icon name="calendar" size={14} />
+              <span>{date(event.startsAt ?? event.starts_at)}</span>
+            </span>
+          )}
         </div>
       </div>
 
@@ -146,9 +159,11 @@ export default function EventCard({ event }) {
           <span className="tiny">{t('from_price')}</span>
           <Money cents={price} stacked />
         </span>
-        <span className="btn btn-sm btn-outline ev-go" aria-hidden="true">
-          <Icon name="arrowRight" size={15} />
-        </span>
+        {!compact && (
+          <span className="btn btn-sm btn-outline ev-go" aria-hidden="true">
+            <Icon name="arrowRight" size={15} />
+          </span>
+        )}
       </div>
     </Link>
   )

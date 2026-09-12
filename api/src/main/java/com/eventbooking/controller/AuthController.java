@@ -1,9 +1,11 @@
 package com.eventbooking.controller;
 
+import com.eventbooking.dto.auth.ChangePasswordRequest;
 import com.eventbooking.dto.auth.LoginRequest;
 import com.eventbooking.dto.auth.MeResponse;
 import com.eventbooking.dto.auth.RegisterRequest;
 import com.eventbooking.dto.auth.TokenResponse;
+import com.eventbooking.dto.auth.UpdateProfileRequest;
 import com.eventbooking.security.AuthService;
 import com.eventbooking.security.CurrentUserId;
 import com.eventbooking.security.LoginRateLimiter;
@@ -19,6 +21,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -145,6 +148,48 @@ public class AuthController {
                     signature that makes it trustworthy.""")
     public MeResponse me(@CurrentUserId Long actorUserId) {
         return authService.me(actorUserId);
+    }
+
+    @PatchMapping("/me")
+    @Operation(
+            summary = "Edit your own record",
+            description = """
+                    Display name, email and language. Everything else about an account is
+                    deliberately absent: `phone_e164` is the login identity and the token's
+                    subject, and `role` and `is_disabled` are the platform's decisions about
+                    a user rather than the user's about themselves.
+
+                    The row edited is always the one the token names - there is no id in the
+                    body to point somewhere else.
+
+                    `409 EMAIL_ALREADY_REGISTERED` if the address belongs to another account.
+                    Keeping your own address is not a conflict.""")
+    public MeResponse updateProfile(@CurrentUserId Long actorUserId,
+                                    @Valid @RequestBody UpdateProfileRequest request) {
+        return authService.updateProfile(actorUserId, request);
+    }
+
+    @PostMapping("/change-password")
+    @Operation(
+            summary = "Replace your password",
+            description = """
+                    Requires the current password as well as the new one. An access token is
+                    a bearer credential, so a lifted one must not be enough on its own to
+                    lock the real owner out.
+
+                    Every outstanding refresh token is revoked, then a fresh pair is issued
+                    for this request - so the browser doing the change stays signed in and
+                    every other device is signed out within 15 minutes. The new refresh
+                    token arrives as a `Set-Cookie`, like every other issuing endpoint; the
+                    one the browser arrived with is dead by the time this responds.
+
+                    `401 INVALID_CREDENTIALS` if the current password is wrong, or if this
+                    is a Google account with no local password to replace.""")
+    public ResponseEntity<TokenResponse> changePassword(@CurrentUserId Long actorUserId,
+                                                        @Valid @RequestBody ChangePasswordRequest request,
+                                                        HttpServletRequest http) {
+        return issued(authService.changePassword(actorUserId, request, http.getHeader("User-Agent")),
+                HttpStatus.OK);
     }
 
     /**

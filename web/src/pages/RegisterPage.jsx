@@ -15,7 +15,7 @@ const ERRORS = {
 }
 
 export default function RegisterPage() {
-  const { t, locale, setLocale } = useLocale()
+  const { t, locale } = useLocale()
   useDocumentTitle(t('register'))
   const { register } = useAuth()
   const navigate = useNavigate()
@@ -26,7 +26,6 @@ export default function RegisterPage() {
     phone_e164: '+855',
     email: '',
     password: '',
-    locale,
   })
   const [errors, setErrors] = useState({})
   const [serverError, setServerError] = useState(null)
@@ -76,7 +75,6 @@ export default function RegisterPage() {
       setServerError(result.error)
       return
     }
-    setLocale(form.locale)
     toast(locale === 'km' ? 'សូមស្វាគមន៍!' : 'Account created — welcome!', 'success')
     navigate('/')
   }
@@ -143,33 +141,6 @@ export default function RegisterPage() {
             autoComplete="new-password"
             invalid={!!errors.password}
           />
-        </Field>
-
-        <Field label={t('preferredLanguage')}>
-          {/* Segmented control, mirroring the navbar language toggle. Real radio
-              inputs keep native arrow-key behaviour; the labels are the UI. */}
-          <div className="seg">
-            {[
-              { code: 'EN', value: 'en', label: 'English', sub: 'អង់គ្លេស' },
-              { code: 'ខ្មែរ', value: 'km', label: 'ភាសាខ្មែរ', sub: 'Khmer' },
-            ].map((o) => (
-              <label key={o.value} className={`seg-opt ${form.locale === o.value ? 'on' : ''}`}>
-                <input
-                  type="radio"
-                  name="locale"
-                  className="sr-only"
-                  checked={form.locale === o.value}
-                  onChange={() => set('locale', o.value)}
-                />
-                <span className={`seg-code ${o.value === 'km' ? 'km' : ''}`}>{o.code}</span>
-                <span className="seg-text">
-                  <b className={o.value === 'km' ? 'km' : ''}>{o.label}</b>
-                  <em>{o.sub}</em>
-                </span>
-                {form.locale === o.value && <Icon name="check" size={15} className="ml-auto" />}
-              </label>
-            ))}
-          </div>
         </Field>
 
         {serverError && (
