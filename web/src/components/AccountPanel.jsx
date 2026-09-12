@@ -535,6 +535,40 @@ function PasswordForm({ km, toast }) {
   )
 }
 
+/**
+ * What stands in for the password form on an account that has no password.
+ *
+ * <p>Saying "you sign in with Google" is not decoration - it answers the
+ * question the missing form would otherwise raise, and it tells someone who
+ * cannot get in where to go. Their password is Google's problem, changed at
+ * Google, and nothing here can help with it.
+ */
+function NoPasswordCard({ km, user }) {
+  return (
+    <section className="acct-card">
+      <h2>{km ? 'របៀបដែលអ្នកចូលប្រើ' : 'How you sign in'}</h2>
+
+      <div className="acct-signin">
+        <span className="acct-signin-icon" aria-hidden="true">
+          <Icon name="lock" size={18} />
+        </span>
+        <div>
+          <div className="acct-signin-name">
+            {km ? 'ចូលដោយ Google' : 'Google'}
+          </div>
+          {user.email && <div className="small muted">{user.email}</div>}
+        </div>
+      </div>
+
+      <p className="muted small acct-note">
+        {km
+          ? 'គណនីនេះគ្មានពាក្យសម្ងាត់នៅលើ CamboBook ទេ ដូច្នេះគ្មានអ្វីត្រូវប្តូរនៅទីនេះឡើយ។ ដើម្បីប្តូរពាក្យសម្ងាត់ ឬពិនិត្យសុវត្ថិភាព សូមធ្វើនៅក្នុងគណនី Google របស់អ្នក។'
+          : 'This account has no CamboBook password, so there is nothing to change here. Your password lives with Google — change it, or review which apps you have connected, in your Google account.'}
+      </p>
+    </section>
+  )
+}
+
 /** First letters of the first two words, which is all an avatar needs. */
 function initials(name) {
   if (!name) return '?'
@@ -688,6 +722,16 @@ button.acct-row:focus-visible { outline: 2px solid var(--color-brand-500);
                     border-color: var(--color-line); color: var(--color-danger); }
 .acct-btn-signout:hover { background: var(--color-danger-soft);
                           border-color: var(--color-danger); }
+
+/* How you sign in, when there is no password to change. */
+.acct-signin { display: flex; align-items: center; gap: var(--acct-3);
+               padding: var(--acct-3); border-radius: var(--radius-ui, 12px);
+               background: var(--color-surface-2); }
+.acct-signin-icon { flex: none; width: 36px; height: 36px; border-radius: 50%;
+                    display: grid; place-items: center;
+                    background: var(--color-surface); color: var(--color-ink-2);
+                    border: 1px solid var(--color-line); }
+.acct-signin-name { font-size: .95rem; font-weight: 600; letter-spacing: -.01em; }
 
 /* --------------------------------------------------------------- forms */
 .acct-card { border: 1px solid var(--color-line);

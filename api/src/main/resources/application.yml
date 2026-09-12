@@ -87,6 +87,17 @@ app:
     refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS:1209600000}
 
   auth:
+    google:
+      # The OAuth 2.0 Web client id from Google Cloud Console. Empty by default,
+      # and an empty value switches Google sign-in OFF rather than starting with
+      # a broken one: GoogleTokenVerifier refuses every token and the endpoint
+      # answers 401 instead of throwing.
+      #
+      # It is not a secret - the browser sends it to Google in the open - but it
+      # IS the audience every ID token is checked against, so a deployment that
+      # sets the wrong one accepts tokens minted for somebody else's app.
+      client-id: ${GOOGLE_CLIENT_ID:}
+
     login-rate-limit:
       per-account:
         # Five wrong passwords against one phone number, then fifteen minutes of

@@ -5,6 +5,7 @@ import {
   hadSession,
   login as apiLogin,
   logout as apiLogout,
+  googleLogin as apiGoogleLogin,
   me as apiMe,
   register as apiRegister,
   storeTokens,
@@ -31,6 +32,7 @@ function toErrorCode(error) {
   if (code === 'ACCOUNT_DISABLED') return 'ACCOUNT_DISABLED'
   if (code === 'PHONE_ALREADY_REGISTERED') return 'PHONE_TAKEN'
   if (code === 'EMAIL_ALREADY_REGISTERED') return 'EMAIL_TAKEN'
+  if (code === 'INVALID_GOOGLE_TOKEN') return 'GOOGLE_FAILED'
   if (!error?.response) return 'NETWORK'
   return code || 'UNKNOWN'
 }
@@ -104,6 +106,30 @@ export function AuthProvider({ children }) {
     [loadMe],
   )
 
+  /**
+   * Google's ID token in, our own session out.
+   *
+   * Shaped exactly like `login` on purpose - the caller gets {user} or {error}
+   * either way, so a screen does not need to know which button was pressed.
+   *
+   * EMAIL_TAKEN here means a password account already holds that address.
+   * Adopting it would let anyone holding a Google token for the address take
+   * over the password account, so the server refuses and the copy has to send
+   * the user to the ordinary sign-in form instead.
+   */
+  const loginWithGoogle = useCallback(
+    async (idToken) => {
+      try {
+        await apiGoogleLogin(idToken)
+        return { user: await loadMe() }
+      } catch (error) {
+        clearTokens()
+        return { error: toErrorCode(error) }
+      }
+    },
+    [loadMe],
+  )
+
   const register = useCallback(
     async (payload) => {
       try {
@@ -147,11 +173,12 @@ export function AuthProvider({ children }) {
           }
         : null,
       login,
+      loginWithGoogle,
       register,
       logout,
       refreshUser: loadMe,
     }
-  }, [user, loading, login, register, logout, loadMe])
+  }, [user, loading, login, loginWithGoogle, register, logout, loadMe])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

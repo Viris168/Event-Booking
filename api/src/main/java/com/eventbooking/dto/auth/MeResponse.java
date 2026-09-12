@@ -1,6 +1,7 @@
 package com.eventbooking.dto.auth;
 
 import com.eventbooking.Enumeration.Locale;
+import com.eventbooking.Enumeration.Provider;
 import com.eventbooking.Enumeration.Role;
 import com.eventbooking.model.AppUser;
 import com.eventbooking.model.OrganizerProfile;
@@ -42,6 +43,24 @@ public record MeResponse(
 
         @JsonProperty("locale") Locale locale,
 
+        /** LOCAL or GOOGLE. How this person signs in, so a screen can say so. */
+        @JsonProperty("provider") Provider provider,
+
+        /**
+         * Whether a local password exists at all.
+         *
+         * <p>Deliberately a boolean and not the hash - the account screen needs
+         * to know whether to offer "change your password", and that is the whole
+         * question. A Google account has no hash, so the form would ask for a
+         * current password that never existed and answer "that is not your
+         * current password", which is both confusing and untrue.
+         *
+         * <p>Separate from {@code provider} because the two can disagree later:
+         * a Google user who sets a local password for recovery is still
+         * {@code GOOGLE}, but by then has a password.
+         */
+        @JsonProperty("has_password") boolean hasPassword,
+
         @JsonProperty("is_disabled") boolean isDisabled,
 
         @JsonProperty("image_url") String imageUrl,
@@ -61,6 +80,8 @@ public record MeResponse(
                 user.getDisplayName(),
                 user.getRole(),
                 user.getLocale(),
+                user.getProvider(),
+                user.getPasswordHash() != null && !user.getPasswordHash().isBlank(),
                 Boolean.TRUE.equals(user.getIsDisabled()),
                 user.getCloudinaryImageId(),
                 profile == null ? null : profile.getId(),

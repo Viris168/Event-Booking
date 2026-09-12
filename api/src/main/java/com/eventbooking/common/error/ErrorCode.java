@@ -98,6 +98,18 @@ public enum ErrorCode {
     // LoginRateLimiter. Carries retry_after_seconds in `details`.
     TOO_MANY_LOGIN_ATTEMPTS(HttpStatus.TOO_MANY_REQUESTS),
 
+    // Google sign-in: a token we could not verify, for any reason. 401 rather
+    // than 400 - the caller presented a credential and it was not accepted.
+    // Also raised when Google sign-in is switched off, so a missing client id
+    // reads as "that did not work" rather than exposing which half is absent.
+    INVALID_GOOGLE_TOKEN(HttpStatus.UNAUTHORIZED),
+
+    // A Google account has no phone until its owner adds one, and this is the
+    // refusal that says so. 409 because the request is coherent and the account
+    // state is what makes it impossible, and because the client acts on it by
+    // sending the user to the phone screen rather than by editing the payload.
+    PHONE_NUMBER_REQUIRED(HttpStatus.CONFLICT),
+
     // 415 Unsupported Media Type
     UNSUPPORTED_FILE_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE),
     UNSUPPORTED_MEDIA_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE),

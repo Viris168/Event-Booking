@@ -5,25 +5,33 @@ import AuthLayout, { PasswordField } from '../components/AuthLayout.jsx'
 import Icon from '../components/Icon.jsx'
 import { Alert, Field } from '../components/ui.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
+import GoogleSignInButton from '../components/GoogleSignInButton.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
 import { useToast } from '../context/ToastContext.jsx'
-import { isValidPhone } from '../lib/format.js'
+import { toE164 } from '../lib/format.js'
 
 const ERRORS = {
   PHONE_TAKEN: { en: 'That phone number is already registered.', km: 'លេខទូរស័ព្ទនេះមានគណនីរួចហើយ។' },
   EMAIL_TAKEN: { en: 'That email is already registered.', km: 'អ៊ីមែលនេះមានគណនីរួចហើយ។' },
+  // Google's own answer was fine and ours was not. Vague on purpose: the API
+  // returns one code for a bad signature, a wrong audience and an expired
+  // token alike, so detail here would be invented.
+  GOOGLE_FAILED: {
+    en: 'Could not complete that Google sign-in. Try again, or fill in the form.',
+    km: 'មិនអាចបញ្ចប់ការចូលដោយ Google បានទេ។ សូមព្យាយាមម្តងទៀត ឬបំពេញទម្រង់។',
+  },
 }
 
 export default function RegisterPage() {
   const { t, locale } = useLocale()
   useDocumentTitle(t('register'))
-  const { register } = useAuth()
+  const { register, loginWithGoogle } = useAuth()
   const navigate = useNavigate()
   const toast = useToast()
 
   const [form, setForm] = useState({
     display_name: '',
-    phone_e164: '+855',
+    phone_e164: '',
     email: '',
     password: '',
   })
@@ -39,9 +47,9 @@ export default function RegisterPage() {
     const next = {}
     if (!form.display_name.trim())
       next.display_name = locale === 'km' ? 'ត្រូវការឈ្មោះ' : 'Display name is required'
-    if (!isValidPhone(form.phone_e164))
+    if (!toE164(form.phone_e164))
       next.phone_e164 =
-        locale === 'km' ? 'ទម្រង់៖ +855 និងលេខ ៨–៩ តួ' : 'Format: +855 followed by 8–9 digits'
+        locale === 'km' ? 'ឧទាហរណ៍៖ 012 345 678' : 'For example 012 345 678'
     if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
       next.email = locale === 'km' ? 'អ៊ីមែលមិនត្រឹមត្រូវ' : 'Enter a valid email'
     if (form.password.length < 8) next.password = t('passwordHint')
@@ -66,10 +74,31 @@ export default function RegisterPage() {
     // would collide with each other.
     const result = await register({
       display_name: form.display_name.trim(),
-      phone_e164: form.phone_e164.trim(),
+      // validate() has already proved this converts; toE164 is what the
+      // API's CHECK constraint accepts, not the 012... the user typed.
+      phone_e164: toE164(form.phone_e164),
       email: form.email.trim() || null,
       password: form.password,
     })
+    setBusy(false)
+    if (result.error) {
+      setServerError(result.error)
+      return
+    }
+    toast(locale === 'km' ? 'សូមស្វាគមន៍!' : 'Account created — welcome!', 'success')
+    navigate('/')
+  }
+
+  /*
+   * Signing up with Google IS signing in - there is no separate "create
+   * account" call, because the first verified token creates the row. So this is
+   * the same handler the login screen uses, and it lands in the same place.
+   */
+  async function onGoogleToken(idToken) {
+    if (busy) return
+    setBusy(true)
+    setServerError(null)
+    const result = await loginWithGoogle(idToken)
     setBusy(false)
     if (result.error) {
       setServerError(result.error)
@@ -105,7 +134,7 @@ export default function RegisterPage() {
         <Field
           label={t('phone')}
           error={errors.phone_e164}
-          hint={locale === 'km' ? 'ឧ. +85512000000' : 'e.g. +85512000000'}
+          hint={locale === 'km' ? 'ឧ. 012 345 678' : 'e.g. 012 345 678'}
         >
           <span className="field-icon">
             <Icon name="phone" size={16} />
@@ -154,6 +183,8 @@ export default function RegisterPage() {
           {t('register')}
         </button>
       </form>
+
+      <GoogleSignInButton disabled={busy} onToken={onGoogleToken} />
 
       <p className="auth-switch">
         {t('haveAccount')} <Link to="/login">{t('login')}</Link>

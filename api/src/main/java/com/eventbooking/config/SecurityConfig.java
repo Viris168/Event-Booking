@@ -118,7 +118,11 @@ public class SecurityConfig {
                             "/api/v1/auth/register",
                             "/api/v1/auth/login",
                             "/api/v1/auth/refresh",
-                            "/api/v1/auth/logout").permitAll();
+                            "/api/v1/auth/logout",
+                            // Sign-in itself, so it cannot require being signed
+                            // in. /auth/me/phone is deliberately NOT here: it
+                            // edits an account and needs the token that names it.
+                            "/api/v1/auth/google").permitAll();
 
                     // The browser sends a credential-less OPTIONS before any
                     // cross-origin request with an Authorization header. Rejecting

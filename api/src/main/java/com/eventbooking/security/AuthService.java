@@ -5,6 +5,7 @@ import com.eventbooking.Enumeration.Role;
 import com.eventbooking.dto.auth.LoginRequest;
 import com.eventbooking.dto.auth.MeResponse;
 import com.eventbooking.dto.auth.ChangePasswordRequest;
+import com.eventbooking.dto.auth.SetPhoneRequest;
 import com.eventbooking.dto.auth.RegisterRequest;
 import com.eventbooking.dto.auth.UpdateProfileRequest;
 import com.eventbooking.dto.auth.TokenResponse;
@@ -17,6 +18,7 @@ import com.eventbooking.security.error.InvalidCredentialsException;
 import com.eventbooking.security.error.InvalidRefreshTokenException;
 import com.eventbooking.security.error.NotAuthenticatedException;
 import com.eventbooking.security.error.PhoneAlreadyRegisteredException;
+import com.eventbooking.security.error.PhoneAlreadySetException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -44,6 +46,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final RefreshTokenService refreshTokenService;
+    private final GoogleTokenVerifier googleTokenVerifier;
     private final long accessExpirationMs;
 
     public AuthService(AppUserRepository appUserRepository,
@@ -51,12 +54,14 @@ public class AuthService {
                        PasswordEncoder passwordEncoder,
                        JwtService jwtService,
                        RefreshTokenService refreshTokenService,
+                       GoogleTokenVerifier googleTokenVerifier,
                        @Value("${app.jwt.access-expiration-ms}") long accessExpirationMs) {
         this.appUserRepository = appUserRepository;
         this.organizerProfileRepository = organizerProfileRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.refreshTokenService = refreshTokenService;
+        this.googleTokenVerifier = googleTokenVerifier;
         this.accessExpirationMs = accessExpirationMs;
     }
 
@@ -149,7 +154,7 @@ public class AuthService {
         }
 
         return new TokenResponse(
-                jwtService.generateAccessToken(user.getPhoneE164(), user.getRole().name()),
+                jwtService.generateAccessToken(String.valueOf(user.getId()), user.getRole().name()),
                 rotated.rawToken(),
                 "Bearer",
                 accessExpirationMs / 1000);
@@ -278,11 +283,97 @@ public class AuthService {
         return issuePair(user, userAgent);
     }
 
+    /**
+     * Sign in with Google, creating the account on first use.
+     *
+     * <p>Matched on {@code provider_subject}, never on email. Google's {@code sub}
+     * is permanent and belongs to exactly one account; an email address can be
+     * renamed, and inside a Workspace domain it can be reassigned to a different
+     * person entirely. Keying on the address would hand that person the previous
+     * owner's bookings.
+     *
+     * <p>An existing LOCAL account with the same address is <b>not</b> adopted.
+     * That would be account linking, and doing it silently means anyone who can
+     * obtain a Google token for an address takes over the password account
+     * holding it - the classic pre-hijack. It is refused as a conflict instead,
+     * and joining the two is a deliberate action for a signed-in user, which is
+     * work this does not do yet.
+     *
+     * <p>The row is created with no phone and no password hash. Both are
+     * nullable since V9, and {@link #setPhone} is how the gap is filled - the
+     * client sends the user there when {@code phone_e164} comes back null.
+     */
+    @Transactional
+    public TokenResponse loginWithGoogle(String idToken, String userAgent) {
+        GoogleTokenVerifier.GoogleIdentity identity = googleTokenVerifier.verify(idToken);
+
+        AppUser user = appUserRepository
+                .findByProviderAndProviderSubject(Provider.GOOGLE, identity.subject())
+                .orElseGet(() -> {
+                    if (identity.email() != null
+                            && appUserRepository.existsByEmail(identity.email())) {
+                        throw new EmailAlreadyRegisteredException();
+                    }
+                    AppUser created = appUserRepository.save(AppUser.builder()
+                            .email(identity.email())
+                            .displayName(identity.displayName())
+                            .role(Role.CUSTOMER)
+                            .provider(Provider.GOOGLE)
+                            .providerSubject(identity.subject())
+                            .isDisabled(false)
+                            .build());
+                    log.info("Created Google user {}", created.getId());
+                    return created;
+                });
+
+        // Checked after the account is resolved, exactly as login does, so the
+        // answer does not depend on whether the row already existed.
+        if (Boolean.TRUE.equals(user.getIsDisabled())) {
+            throw new AccountDisabledException();
+        }
+
+        log.info("User {} signed in with Google", user.getId());
+        return issuePair(user, userAgent);
+    }
+
+    /**
+     * Adds the phone number a Google account arrived without.
+     *
+     * <p>Set once, never edited. {@code phone_e164} is the login identifier and
+     * the access token's subject, so changing it would invalidate every token
+     * its owner holds and, worse, let someone move their number onto an account
+     * and off it again to probe which numbers are registered. Filling a null is
+     * a different operation from replacing a value, and only the first is safe
+     * to expose.
+     */
+    @Transactional
+    public MeResponse setPhone(Long actorUserId, SetPhoneRequest request) {
+        if (actorUserId == null) {
+            throw new NotAuthenticatedException();
+        }
+        AppUser user = appUserRepository.findById(actorUserId)
+                .orElseThrow(NotAuthenticatedException::new);
+
+        if (user.getPhoneE164() != null && !user.getPhoneE164().isBlank()) {
+            throw new PhoneAlreadySetException();
+        }
+        if (appUserRepository.existsByPhoneE164(request.phoneE164())) {
+            throw new PhoneAlreadyRegisteredException();
+        }
+
+        user.setPhoneE164(request.phoneE164());
+        appUserRepository.save(user);
+        log.info("User {} added a phone number", user.getId());
+
+        return MeResponse.of(user,
+                organizerProfileRepository.findByUserId(user.getId()).orElse(null));
+    }
+
     // ------------------------------------------------------------------
 
     private TokenResponse issuePair(AppUser user, String userAgent) {
         return TokenResponse.bearer(
-                jwtService.generateAccessToken(user.getPhoneE164(), user.getRole().name()),
+                jwtService.generateAccessToken(String.valueOf(user.getId()), user.getRole().name()),
                 refreshTokenService.issue(user, userAgent),
                 accessExpirationMs / 1000);
     }
