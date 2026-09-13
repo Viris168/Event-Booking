@@ -5,11 +5,14 @@ import com.eventbooking.Enumeration.EventTransition;
 import com.eventbooking.Enumeration.NotificationType;
 import com.eventbooking.Enumeration.OrganizerApplicationStatus;
 import com.eventbooking.model.Booking;
+import com.eventbooking.model.AppUser;
 import com.eventbooking.model.Event;
 import com.eventbooking.model.OrganizerApplication;
 import com.eventbooking.repository.BookingRepository;
 import com.eventbooking.repository.EventRepository;
 import com.eventbooking.repository.OrganizerApplicationRepository;
+import com.eventbooking.repository.AppUserRepository;
+import com.eventbooking.service.notification.telegram.TelegramNotifier;
 import com.eventbooking.repository.OrganizerProfileRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,17 +52,42 @@ public class NotificationListener {
     private final EventRepository eventRepository;
     private final OrganizerApplicationRepository organizerApplicationRepository;
     private final OrganizerProfileRepository organizerProfileRepository;
+    private final AppUserRepository appUserRepository;
+    private final TelegramNotifier telegram;
 
     public NotificationListener(NotificationService notificationService,
                                 BookingRepository bookingRepository,
                                 EventRepository eventRepository,
                                 OrganizerApplicationRepository organizerApplicationRepository,
-                                OrganizerProfileRepository organizerProfileRepository) {
+                                OrganizerProfileRepository organizerProfileRepository,
+                                AppUserRepository appUserRepository,
+                                TelegramNotifier telegram) {
         this.notificationService = notificationService;
         this.bookingRepository = bookingRepository;
         this.eventRepository = eventRepository;
         this.organizerApplicationRepository = organizerApplicationRepository;
         this.organizerProfileRepository = organizerProfileRepository;
+        this.appUserRepository = appUserRepository;
+        this.telegram = telegram;
+    }
+
+    /**
+     * The organisation behind an event, for a message a person reads.
+     *
+     * <p>Falls back to the owner's own name, and then to nothing: a Telegram
+     * nudge naming no organiser is still worth sending, where one that threw
+     * because a profile row was missing would lose the notification entirely.
+     */
+    private String organizerName(Long organizerProfileId) {
+        return organizerProfileRepository.findById(organizerProfileId)
+                .map(profile -> {
+                    String org = profile.getOrgNameEn();
+                    if (org != null && !org.isBlank()) return org;
+                    return appUserRepository.findById(profile.getUserId())
+                            .map(AppUser::getDisplayName)
+                            .orElse("");
+                })
+                .orElse("");
     }
 
     /**
@@ -245,6 +273,27 @@ public class NotificationListener {
                     key,
                     "/admin/review",
                     params);
+
+            /*
+             * The other thing that waits on a human: an event in the review
+             * queue cannot go on sale until somebody decides it, and until then
+             * the organiser is blocked.
+             *
+             * Only on SUBMIT. The other transitions here are decisions an admin
+             * has just made themselves, and messaging a group to report what one
+             * of its own members did a second ago is how a channel gets muted.
+             */
+            StringBuilder msg = new StringBuilder()
+                    .append("<b>Event waiting for review</b>\n\n")
+                    .append("<b>").append(TelegramNotifier.escape(event.getTitleEn())).append("</b>\n")
+                    .append(TelegramNotifier.escape(organizerName(event.getOrganizerId()))).append('\n');
+
+            if (event.getVenue() != null) {
+                msg.append(TelegramNotifier.escape(event.getVenue().getNameEn())).append('\n');
+            }
+            msg.append("\nDecide it in the admin review queue.");
+
+            telegram.send(msg.toString());
         }
     }
 
@@ -266,6 +315,39 @@ public class NotificationListener {
                 Map.of(
                         "orgNameEn", application.getOrgNameEn(),
                         "orgNameKm", application.getOrgNameKm()));
+
+        /*
+         * The same news, to a phone.
+         *
+         * An organiser application sits in the queue until a human decides it,
+         * and the in-app bell only reaches somebody already looking at the admin
+         * console. This is the nudge that gets them there.
+         *
+         * After the in-app notification, never instead of it: notifyAdmins has
+         * written the durable record by this point, so a Telegram outage costs
+         * the nudge and nothing else. TelegramNotifier swallows its own failures
+         * for the same reason - see its class comment.
+         */
+        String applicant = appUserRepository.findById(application.getUserId())
+                .map(AppUser::getDisplayName)
+                .orElse("Someone");
+
+        StringBuilder msg = new StringBuilder()
+                .append("<b>New organiser application</b>\n\n")
+                .append(TelegramNotifier.escape(applicant))
+                .append(" wants to run events as <b>")
+                .append(TelegramNotifier.escape(application.getOrgNameEn()))
+                .append("</b>.\n");
+
+        if (application.getTelegramHandle() != null && !application.getTelegramHandle().isBlank()) {
+            msg.append("Telegram: ").append(TelegramNotifier.escape(application.getTelegramHandle())).append('\n');
+        }
+        if (application.getMessage() != null && !application.getMessage().isBlank()) {
+            msg.append('\n').append("<i>").append(TelegramNotifier.escape(application.getMessage())).append("</i>\n");
+        }
+        msg.append("\nDecide it under Organiser applications in the admin console.");
+
+        telegram.send(msg.toString());
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)

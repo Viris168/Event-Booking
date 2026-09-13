@@ -41,7 +41,11 @@ public class TelegramNotifier {
         int ms = (int) properties.timeout().toMillis();
         factory.setConnectTimeout(ms);
         factory.setReadTimeout(ms);
-        this.client = RestClient.builder().requestFactory(factory).build();
+        // baseUrl, not a {placeholder} in the uri template below. A template
+        // variable is URL-ENCODED when it is expanded, so passing the host that
+        // way produced "https%3A%2F%2Fapi.telegram.org/bot.../sendMessage" -
+        // a relative URI, which RestClient rejects with "URI is not absolute".
+        this.client = RestClient.builder().baseUrl(API).requestFactory(factory).build();
 
         if (!properties.configured()) {
             // Once, at boot, rather than on every send. A deployment that never
@@ -65,7 +69,7 @@ public class TelegramNotifier {
 
         try {
             client.post()
-                    .uri("{api}/bot{token}/sendMessage", API, properties.botToken())
+                    .uri("/bot{token}/sendMessage", properties.botToken())
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(Map.of(
                             "chat_id", properties.chatId(),
