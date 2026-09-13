@@ -13,6 +13,22 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 COMPOSE=(docker compose --env-file .env.prod -f docker-compose.prod.yml)
 
+# `up -d --remove-orphans` below removes every container in the project that the
+# compose files passed here do not define. The monitoring overlay shares this
+# project name, so a deploy that names only the prod file treats Prometheus,
+# Loki, Promtail and Grafana as orphans and deletes them - quietly, on every
+# deploy, which is how you end up with dashboards you stop trusting.
+#
+# So: if the monitoring stack is running, deploy it too. Named volumes mean the
+# data survived even the deletions that already happened; only the containers
+# went. Grafana is the sentinel because it is the one you would miss.
+if docker ps -a --format '{{.Names}}' | grep -qx 'eb-grafana'; then
+  COMPOSE+=(-f docker-compose.monitoring.yml)
+  MONITORING=true
+else
+  MONITORING=false
+fi
+
 PULL=false
 BUILD=true
 for arg in "$@"; do
@@ -64,6 +80,35 @@ done
 if (( ${#missing[@]} )); then
   echo "error: these are blank in .env.prod and the app will not start without them:" >&2
   printf '  %s\n' "${missing[@]}" >&2
+  exit 1
+fi
+
+# Blank is not the only way to get a value wrong, and it turned out to be the
+# less common one. A required key can be present, non-empty, and still be the
+# template's own placeholder - DOMAIN=booking.example.com asks Let's Encrypt for
+# a certificate on a domain you do not own and spends one of five failed
+# validations per hour; GOOGLE_CLIENT_ID=YOUR_CLIENT_ID builds an SPA whose
+# sign-in button reports "OAuth client was not found". Both passed the check
+# above, both cost an evening.
+#
+# These markers only ever appear in text meant to be replaced. `mock` is
+# deliberately NOT one: it is a legitimate value for BAKONG_ACCOUNT_ID and the
+# PayWay keys when the modes are MOCK.
+placeholders=()
+while IFS= read -r line; do
+  key="${line%%=*}"
+  value="${line#*=}"
+  [[ -z "$value" ]] && continue
+  if [[ "$value" =~ (example\.(com|org)|YOUR_|your-|PASTE_HERE|changeme|change-this|CHANGE_ME|<.*>) ]]; then
+    placeholders+=("$key=$value")
+  fi
+done < <(grep -E '^[A-Z0-9_]+=' .env.prod)
+
+if (( ${#placeholders[@]} )); then
+  echo "error: these still hold template placeholders, not real values:" >&2
+  printf '  %s\n' "${placeholders[@]}" >&2
+  echo >&2
+  echo "A placeholder passes the blank check above and fails later, somewhere less obvious." >&2
   exit 1
 fi
 
