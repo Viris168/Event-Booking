@@ -91,7 +91,7 @@ public class DatabaseSeeder implements CommandLineRunner {
         List<AppUser> organizerUsers = new ArrayList<>(userRepository.findAllByRoleOrderByIdAsc(Role.ORGANIZER));
         if (organizerUsers.isEmpty()) {
             organizerUsers.add(userRepository.save(AppUser.builder()
-                    .phoneE164("+85599990001")
+                    .phoneE164("099990001")
                     .passwordHash("$2a$10$YGBHNV6zrTujC5bIsCGFr.9WojCiuxYzNEX.r3cYdyQfJfxIMIk0K")
                     .displayName("Dev Organizer")
                     .role(Role.ORGANIZER)
