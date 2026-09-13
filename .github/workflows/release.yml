@@ -1,0 +1,112 @@
+name: Release
+
+# Fires only on v* tags — the tag ruleset means only Viris168 can push them.
+# Nothing here touches the server; the job is purely: build → push to GHCR.
+on:
+  push:
+    tags: ['v*']
+
+# One release at a time. A second tag while a build is in flight waits;
+# it does not cancel, because cancelled half-pushed images are misleading.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+# GITHUB_TOKEN needs write access to ghcr.io/viris168/*.
+# No extra secret is required — Actions generates the token automatically.
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  # ── API image ────────────────────────────────────────────────────────────────
+  build-api:
+    name: Build & push API image
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # docker/login-action authenticates against GHCR using the auto-generated
+      # GITHUB_TOKEN. The token is scoped to this run and expires with it.
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Bake two tags:
+      #   ghcr.io/viris168/event-booking-api:v1.2.3   — the human tag
+      #   ghcr.io/viris168/event-booking-api:abc1234  — the commit SHA (7 chars)
+      #
+      # The SHA tag is the stable, deployment-time reference: the human tag is
+      # mutable (you can re-tag), the SHA tag never is.
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/viris168/event-booking-api
+          tags: |
+            type=semver,pattern={{version}}
+            type=sha,format=short
+
+      # BuildKit cache in GitHub's Action cache: the layer that downloads Maven
+      # dependencies is shared across runs so a rebuild after a small source
+      # change finishes in roughly the time of `mvn package` alone.
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push API
+        uses: docker/build-push-action@v6
+        with:
+          context: ./api
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=api
+          cache-to:   type=gha,scope=api,mode=max
+
+  # ── Web image ────────────────────────────────────────────────────────────────
+  build-web:
+    name: Build & push Web image
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/viris168/event-booking-web
+          tags: |
+            type=semver,pattern={{version}}
+            type=sha,format=short
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # VITE_API_BASE_URL stays /api/v1 (the default in the Dockerfile ARG) —
+      # the SPA and the API share one origin through Caddy, so no absolute URL
+      # is needed here. VITE_GOOGLE_CLIENT_ID comes from a repo secret; if the
+      # secret is absent the ARG defaults to '' and the Google button is hidden
+      # rather than broken.
+      - name: Build and push Web
+        uses: docker/build-push-action@v6
+        with:
+          context: ./web
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VITE_GOOGLE_CLIENT_ID=${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+          cache-from: type=gha,scope=web
+          cache-to:   type=gha,scope=web,mode=max
