@@ -106,6 +106,16 @@ public enum ErrorCode {
        editing their own role. Not 403 - the caller has every permission, it is
        the change itself that is impossible. */
     ROLE_CHANGE_BLOCKED(HttpStatus.CONFLICT),
+    /* An action that would leave the platform with no working administrator:
+       disabling or demoting the last enabled PLATFORM_ADMIN, or an admin
+       disabling themselves. There is no way back from zero through the API -
+       enabling an account requires an admin - so the only remedy is SQL against
+       the database, which is exactly what this refusal exists to avoid. */
+    LAST_ADMIN(HttpStatus.CONFLICT),
+    /* A fourth administrator. The cap is small on purpose: every admin sees all
+       platform data and can act on any of it, so the list should stay short
+       enough to read at a glance. */
+    ADMIN_LIMIT_REACHED(HttpStatus.CONFLICT),
 
     // 410 Gone
     HOLD_EXPIRED(HttpStatus.GONE),

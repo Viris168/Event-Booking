@@ -82,15 +82,17 @@ public class AdminUserController {
     public ResponseEntity<AdminUserResponse> disable(
             @CurrentUserId Long actorUserId,
             @PathVariable Long id) {
-        adminResolver.requireAdminUserId(actorUserId);
-        return new ResponseEntity<>(adminUserService.setDisabled(id, true), HttpStatus.OK);
+        // The id, not just the check: the service refuses an admin disabling
+        // their own account, and it can only do that if it knows who is asking.
+        Long adminUserId = adminResolver.requireAdminUserId(actorUserId);
+        return new ResponseEntity<>(adminUserService.setDisabled(adminUserId, id, true), HttpStatus.OK);
     }
 
     @PatchMapping("/{id}/enable")
     public ResponseEntity<AdminUserResponse> enable(
             @CurrentUserId Long actorUserId,
             @PathVariable Long id) {
-        adminResolver.requireAdminUserId(actorUserId);
-        return new ResponseEntity<>(adminUserService.setDisabled(id, false), HttpStatus.OK);
+        Long adminUserId = adminResolver.requireAdminUserId(actorUserId);
+        return new ResponseEntity<>(adminUserService.setDisabled(adminUserId, id, false), HttpStatus.OK);
     }
 }

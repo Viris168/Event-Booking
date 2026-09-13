@@ -27,11 +27,19 @@ BEGIN;
 TRUNCATE TABLE
     notification,
     scan_log,
-    booking_status_history,
     hold_zone_line,
     payment_webhook_event,
     payments
 RESTART IDENTITY;
+
+-- booking_status_history is NOT truncated with the rest.
+--
+-- dev-seed-more.sql writes a history for every booking it creates - some
+-- thousands of rows - and this file only adds the trail for the nine bookings
+-- dev-seed-all.sql makes. Truncating here erased the other file's work
+-- depending on which ran last, which is the kind of order dependency a seed
+-- should not have. So this clears only the rows it owns.
+DELETE FROM booking_status_history WHERE booking_id BETWEEN 1 AND 9;
 
 -- --------------------------------------------------- booking_status_history
 -- The audit trail behind each booking's timeline. Every row in `booking`

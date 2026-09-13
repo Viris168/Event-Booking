@@ -337,7 +337,22 @@ export default function AdminUsersPage() {
                                 icon: 'alert',
                                 label: t('disable'),
                                 tone: 'danger',
-                                hidden: u.disabled,
+                                /*
+                                 * Never offered on your own row. The server
+                                 * refuses it outright - an admin disabling
+                                 * themselves is the one click that locks
+                                 * everybody out, with no way back except SQL -
+                                 * so showing the button would only ever produce
+                                 * an error message.
+                                 *
+                                 * The last-remaining-admin case is deliberately
+                                 * NOT hidden here: this list is filtered and
+                                 * paged, so the browser cannot reliably know
+                                 * whether another enabled admin exists. The
+                                 * server counts and refuses, and the refusal
+                                 * says why.
+                                 */
+                                hidden: u.disabled || (currentUser && u.id === currentUser.id),
                                 onSelect: () => setConfirming(u),
                               },
                             ]}
