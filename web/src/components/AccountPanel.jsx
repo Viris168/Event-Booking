@@ -8,7 +8,16 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
 import { useTheme } from '../context/ThemeContext.jsx'
 import { useToast } from '../context/ToastContext.jsx'
-import { changePassword, updateProfile } from '../api/auth.js'
+import {
+  changePassword,
+  linkGoogle,
+  setPassword,
+  setPhone,
+  unlinkGoogle,
+  updateProfile,
+} from '../api/auth.js'
+import { toE164 } from '../lib/format.js'
+import GoogleSignInButton from './GoogleSignInButton.jsx'
 
 /** Must match the .is-closing animation in ACCT_CSS below. */
 const CLOSE_MS = 180
@@ -140,7 +149,7 @@ export default function AccountPanel({ open, onClose }) {
             )}
           </div>
 
-          <h1>{TITLES[view](km)}</h1>
+          <h1>{titleFor(view, km)}</h1>
 
           <div className="acct-head-slot acct-head-slot-end">
             <button
@@ -185,8 +194,20 @@ export default function AccountPanel({ open, onClose }) {
               toast={toast}
               refreshUser={refreshUser}
             />
-          ) : (
+          ) : view === 'signin' ? (
+            <GoogleLinkCard km={km} user={user} toast={toast} refreshUser={refreshUser} />
+          ) : /*
+               * A Google account has no password_hash, so changePassword
+               * refuses it outright. Showing the form anyway means asking for a
+               * current password that never existed and answering "that is not
+               * your current password" - confusing, and untrue. Offer to create
+               * one instead: it is the only second way into the account, and
+               * there is no password reset here to fall back on.
+               */
+          user.has_password ? (
             <PasswordForm km={km} toast={toast} />
+          ) : (
+            <SetPasswordForm km={km} user={user} toast={toast} refreshUser={refreshUser} />
           )}
         </div>
       </aside>
@@ -221,7 +242,17 @@ const TITLES = {
   menu: (km) => (km ? 'គណនីរបស់ខ្ញុំ' : 'My account'),
   details: (km) => (km ? 'ព័ត៌មានរបស់អ្នក' : 'Your details'),
   password: (km) => (km ? 'ពាក្យសម្ងាត់' : 'Password'),
+  signin: (km) => (km ? 'ការចូលដោយ Google' : 'Google sign-in'),
 }
+
+/*
+ * Every view must have a title, and a missing one used to take the whole panel
+ * down: TITLES[view](km) on an unknown view is "undefined is not a function",
+ * thrown during render, which React answers by unmounting the tree - a blank
+ * page rather than a missing heading. Falling back keeps a typo or a new view
+ * added in a hurry to a cosmetic problem.
+ */
+const titleFor = (view, km) => (TITLES[view] ?? TITLES.menu)(km)
 
 /** One row of the settings list. Static rows show a value instead of a chevron. */
 function Row({ icon, tone, title, sub, value, onClick }) {
@@ -337,8 +368,24 @@ function AccountMenu({ user, km, t, onGo, onSignOut, onLeave }) {
           <Row
             icon="lock"
             tone="warning"
-            title={km ? 'ពាក្យសម្ងាត់' : 'Password'}
-            sub={km ? 'ប្តូរពាក្យសម្ងាត់របស់អ្នក' : 'Change your password'}
+            title={
+              user.has_password
+                ? km
+                  ? 'ពាក្យសម្ងាត់'
+                  : 'Password'
+                : km
+                  ? 'របៀបដែលអ្នកចូលប្រើ'
+                  : 'How you sign in'
+            }
+            sub={
+              user.has_password
+                ? km
+                  ? 'ប្តូរពាក្យសម្ងាត់របស់អ្នក'
+                  : 'Change your password'
+                : km
+                  ? 'ចូលដោយ Google'
+                  : 'Google'
+            }
             onClick={() => onGo('password')}
           />
         </div>
@@ -411,6 +458,24 @@ function AccountMenu({ user, km, t, onGo, onSignOut, onLeave }) {
             title={km ? 'លេខទូរស័ព្ទ' : 'Phone number'}
             sub={km ? 'លេខសម្រាប់ចូលប្រើ មិនអាចប្តូរបានទេ' : 'How you sign in. Cannot be changed here.'}
             value={<span className="mono">{user.phone_e164}</span>}
+          />
+          {/* Under Sign-in, not buried in the password screen - linking Google
+              is a way IN to the account, and this is where someone looks for
+              the ways in. */}
+          <Row
+            icon="login"
+            tone="quiet"
+            title="Google"
+            sub={
+              user.google_linked
+                ? km
+                  ? 'ភ្ជាប់រួចហើយ'
+                  : 'Connected'
+                : km
+                  ? 'ភ្ជាប់ដើម្បីចូលដោយ Google'
+                  : 'Connect to sign in with Google'
+            }
+            onClick={() => onGo('signin')}
           />
         </div>
       </section>
@@ -664,6 +729,269 @@ function NoPasswordCard({ km, user }) {
           : 'This account has no CamboBook password, so there is nothing to change here. Your password lives with Google — change it, or review which apps you have connected, in your Google account.'}
       </p>
     </section>
+  )
+}
+
+/**
+ * Google as a second way in, for an account that registered with a password.
+ *
+ * <p>Linking is deliberately an action taken from inside a signed-in session
+ * rather than something that happens on its own when a Google sign-in presents
+ * a familiar email address. That would be the pre-hijack: anyone able to obtain
+ * a token for an address could claim the password account holding it. Here the
+ * bearer token proves one half and the ID token proves the other.
+ *
+ * <p>Unlinking is offered only when something else can sign this person in. The
+ * server refuses it otherwise, and the button is hidden rather than left to be
+ * clicked and rejected - a control that never works is worse than no control.
+ */
+function GoogleLinkCard({ km, user, toast, refreshUser }) {
+  const [busy, setBusy] = useState(false)
+  const [confirmUnlink, setConfirmUnlink] = useState(false)
+
+  // Google is the only door when there is no password behind it.
+  const canUnlink = user.has_password
+
+  async function onToken(idToken) {
+    if (busy) return
+    setBusy(true)
+    try {
+      await linkGoogle(idToken)
+      await refreshUser()
+      toast(km ? 'បានភ្ជាប់ Google' : 'Google connected', 'success')
+    } catch (e) {
+      const code = e?.response?.data?.errorCode
+      toast(
+        code === 'GOOGLE_ALREADY_LINKED'
+          ? km
+            ? 'គណនី Google នេះត្រូវបានភ្ជាប់រួចហើយ។'
+            : 'That Google account is already connected to an account here.'
+          : km
+            ? 'ភ្ជាប់មិនបានសម្រេច'
+            : 'Could not connect Google',
+        'error',
+      )
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function doUnlink() {
+    setBusy(true)
+    try {
+      await unlinkGoogle()
+      await refreshUser()
+      setConfirmUnlink(false)
+      toast(km ? 'បានផ្តាច់ Google' : 'Google disconnected', 'success')
+    } catch {
+      toast(km ? 'ផ្តាច់មិនបានសម្រេច' : 'Could not disconnect Google', 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <section className="acct-card">
+      <h2>{km ? 'ការចូលដោយ Google' : 'Google sign-in'}</h2>
+
+      {user.google_linked ? (
+        <>
+          <div className="acct-signin">
+            <span className="acct-signin-icon" aria-hidden="true">
+              <Icon name="checkCircle" size={18} />
+            </span>
+            <div>
+              <div className="acct-signin-name">
+                {km ? 'បានភ្ជាប់' : 'Connected'}
+              </div>
+              <div className="small muted">
+                {km
+                  ? 'អ្នកអាចចូលដោយប្រើ Google បាន។'
+                  : 'You can sign in with Google.'}
+              </div>
+            </div>
+          </div>
+
+          {canUnlink ? (
+            <div className="acct-actions">
+              <button
+                type="button"
+                className="acct-btn acct-btn-quiet"
+                disabled={busy}
+                onClick={() => setConfirmUnlink(true)}
+              >
+                {km ? 'ផ្តាច់' : 'Disconnect'}
+              </button>
+            </div>
+          ) : (
+            <p className="muted small acct-note">
+              {km
+                ? 'នេះជាមធ្យោបាយតែមួយគត់ដើម្បីចូលគណនីនេះ ដូច្នេះមិនអាចផ្តាច់បានទេ។'
+                : 'This is the only way into this account, so it cannot be disconnected.'}
+            </p>
+          )}
+        </>
+      ) : (
+        <>
+          <p className="muted small acct-note">
+            {km
+              ? 'ភ្ជាប់គណនី Google របស់អ្នក ដើម្បីអាចចូលដោយវិធីណាមួយក៏បាន។ លេខទូរស័ព្ទ និងពាក្យសម្ងាត់របស់អ្នកនៅតែដំណើរការដដែល។'
+              : 'Connect your Google account to sign in either way. Your phone number and password keep working exactly as they do now.'}
+          </p>
+          <GoogleSignInButton disabled={busy} onToken={onToken} />
+        </>
+      )}
+
+      <ConfirmDialog
+        open={confirmUnlink}
+        tone="warn"
+        busy={busy}
+        title={km ? 'ផ្តាច់ Google?' : 'Disconnect Google?'}
+        confirmLabel={km ? 'ផ្តាច់' : 'Disconnect'}
+        onConfirm={doUnlink}
+        onClose={() => setConfirmUnlink(false)}
+      >
+        <p className="small muted">
+          {km
+            ? 'អ្នកនឹងនៅតែចូលបានដោយប្រើលេខទូរស័ព្ទ និងពាក្យសម្ងាត់របស់អ្នក។'
+            : 'You will still be able to sign in with your phone number and password.'}
+        </p>
+      </ConfirmDialog>
+    </section>
+  )
+}
+
+/**
+ * The first password on an account that has never had one.
+ *
+ * <p>Replaces the card that used to just explain the absence. Explaining is
+ * accurate but leaves someone signed in through Google with exactly one way
+ * into their account - lose it and the bookings are unreachable, and there is
+ * no password reset in this product to fall back on.
+ *
+ * <p>The phone field appears when the account has none, because the API refuses
+ * a password without one and the number is what a person signs in with.
+ * Collecting it here rather than sending them elsewhere is the difference
+ * between a form and a dead end: PhoneGate only fires at checkout, so an
+ * account that has never bought a ticket has no other way to add one.
+ */
+function SetPasswordForm({ km, user, toast, refreshUser }) {
+  const needsPhone = !user.phone_e164
+  const [phone, setPhoneValue] = useState('')
+  const [next, setNext] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  const mismatch = confirm.length > 0 && next !== confirm
+  const tooShort = next.length > 0 && next.length < 8
+  const ready =
+    next.length >= 8 && next === confirm && (!needsPhone || Boolean(toE164(phone)))
+
+  async function submit(e) {
+    e.preventDefault()
+    if (!ready || busy) return
+    setBusy(true)
+    setError('')
+    try {
+      /*
+       * The phone goes first because the password endpoint refuses without
+       * one. Two calls rather than one combined endpoint: setting a phone is
+       * its own operation with its own rules - set once, never replaced - and
+       * folding it into this form would duplicate them.
+       */
+      if (needsPhone) await setPhone(toE164(phone))
+      await setPassword(next)
+      await refreshUser()
+      toast(km ? 'បានកំណត់ពាក្យសម្ងាត់' : 'Password set', 'success')
+    } catch (err) {
+      const code = err?.response?.data?.errorCode
+      setError(
+        code === 'PHONE_ALREADY_REGISTERED'
+          ? km
+            ? 'លេខនេះមានគណនីរួចហើយ។'
+            : 'That number already has an account.'
+          : code === 'PASSWORD_ALREADY_SET'
+            ? km
+              ? 'គណនីនេះមានពាក្យសម្ងាត់រួចហើយ។'
+              : 'This account already has a password.'
+            : km
+              ? 'មិនអាចកំណត់ពាក្យសម្ងាត់បានទេ។'
+              : 'Could not set your password.',
+      )
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <form className="acct-card" onSubmit={submit}>
+      <h2>{km ? 'កំណត់ពាក្យសម្ងាត់' : 'Set a password'}</h2>
+      <p className="muted small acct-lede">
+        {km
+          ? 'បច្ចុប្បន្នអ្នកចូលដោយ Google តែមួយគត់។ ការកំណត់ពាក្យសម្ងាត់អនុញ្ញាតឱ្យអ្នកចូលដោយលេខទូរស័ព្ទផងដែរ ហើយអ្នកនឹងមិនជាប់ខាងក្រៅ ប្រសិនបើបាត់គណនី Google។'
+          : 'Right now Google is the only way into this account. A password lets you sign in with your phone number too, so losing your Google account does not lock you out.'}
+      </p>
+
+      {error && (
+        <Alert tone="danger" title={km ? 'មិនបានសម្រេច' : "That didn't work"}>
+          <span className="small">{error}</span>
+        </Alert>
+      )}
+
+      {needsPhone && (
+        <Field
+          label={km ? 'លេខទូរស័ព្ទ' : 'Phone number'}
+          hint={km ? 'ឧទាហរណ៍ 012 345 678' : 'For example 012 345 678'}
+        >
+          <input
+            className="input"
+            value={phone}
+            onChange={(e) => {
+              setPhoneValue(e.target.value)
+              setError('')
+            }}
+            autoComplete="tel"
+            inputMode="tel"
+            placeholder="012 345 678"
+          />
+        </Field>
+      )}
+
+      <Field
+        label={km ? 'ពាក្យសម្ងាត់' : 'Password'}
+        error={tooShort ? (km ? 'យ៉ាងតិច ៨ តួអក្សរ។' : 'At least 8 characters.') : ''}
+        hint={tooShort ? undefined : km ? 'យ៉ាងតិច ៨ តួអក្សរ។' : 'At least 8 characters.'}
+      >
+        <input
+          className="input"
+          type="password"
+          autoComplete="new-password"
+          value={next}
+          onChange={(e) => setNext(e.target.value)}
+        />
+      </Field>
+
+      <Field
+        label={km ? 'បញ្ជាក់ពាក្យសម្ងាត់' : 'Confirm password'}
+        error={mismatch ? (km ? 'មិនដូចគ្នាទេ។' : 'These do not match.') : ''}
+      >
+        <input
+          className="input"
+          type="password"
+          autoComplete="new-password"
+          value={confirm}
+          onChange={(e) => setConfirm(e.target.value)}
+        />
+      </Field>
+
+      <div className="acct-actions">
+        <button className="acct-btn acct-btn-primary" disabled={busy || !ready}>
+          <Icon name="lock" size={14} />
+          {busy ? (km ? 'កំពុងរក្សាទុក…' : 'Saving…') : km ? 'កំណត់ពាក្យសម្ងាត់' : 'Set password'}
+        </button>
+      </div>
+    </form>
   )
 }
 
