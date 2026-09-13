@@ -16,6 +16,7 @@ import com.eventbooking.repository.OrganizerProfileRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
@@ -120,6 +121,26 @@ public class AdminEventOverviewService {
                     bookings,
                     bookings == 0);
         }).toList();
+    }
+
+    /**
+     * How many events are sitting in each status.
+     *
+     * <p>The review queue shows one status at a time but has to display all
+     * four counts, so a reviewer can see three are waiting while they work
+     * through the rejections. Every status is returned, zeros included - a tab
+     * that vanishes when its queue empties moves the others under the cursor.
+     */
+    @Transactional(readOnly = true)
+    public Map<EventStatus, Long> countsByStatus() {
+        Map<EventStatus, Long> counts = new EnumMap<>(EventStatus.class);
+        for (EventStatus status : EventStatus.values()) {
+            counts.put(status, 0L);
+        }
+        for (Object[] row : eventRepository.countGroupedByStatus()) {
+            counts.put((EventStatus) row[0], ((Number) row[1]).longValue());
+        }
+        return counts;
     }
 
     /**

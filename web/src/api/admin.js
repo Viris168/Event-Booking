@@ -22,6 +22,20 @@ import client from './client.js'
 export const getReviewQueue = (params) =>
   client.get('/admin/events', { params }).then((r) => r.data)
 
+/**
+ * How many events sit in each status, as { PENDING_REVIEW: 2, ... }.
+ *
+ * Every status is present, zeros included - the review queue renders a tab per
+ * status and one that vanished when its queue emptied would shift the others
+ * under the reviewer's cursor mid-click.
+ *
+ * Deliberately not a field on getPlatformStats(): that payload runs a dozen
+ * counts across users, bookings, payments and tickets, and this is polled while
+ * the queue is open. Redrawing four numbers should not cost all of that.
+ */
+export const getEventStatusCounts = () =>
+  client.get('/admin/events/status-counts').then((r) => r.data)
+
 // --- decisions --------------------------------------------------------------
 // One function per transition, mirroring events.js. approve and takedown carry
 // no body; reject and request-changes require a message, because the organiser
@@ -101,11 +115,23 @@ export const updateEventAsAdmin = (id, payload) =>
  * is a queue meant to be emptied, and a backlog long enough to need pages is a
  * signal to work it down rather than to scroll it.
  *
- * Decided applications are deliberately unreachable from this endpoint: there
- * is no status filter, so a screen that wants history needs a different call.
+ * Takes an optional { status }, defaulting to PENDING server-side. Decided
+ * applications used to be unreachable here on the reasoning that history wanted
+ * a different screen - but the columns turned out to be the same ones, so the
+ * status became a parameter rather than a second page.
  */
-export const getOrganizerApplications = () =>
-  client.get('/admin/organizer-applications').then((r) => r.data)
+export const getOrganizerApplications = (params) =>
+  client.get('/admin/organizer-applications', { params }).then((r) => r.data)
+
+/**
+ * How many applications sit in each status, as { PENDING: 2, APPROVED: 5, ... }.
+ *
+ * Same shape and same reasoning as getEventStatusCounts: the tabs show every
+ * count while the list shows one status, so the numbers cannot be derived from
+ * the page being displayed.
+ */
+export const getApplicationStatusCounts = () =>
+  client.get('/admin/organizer-applications/status-counts').then((r) => r.data)
 
 /**
  * Approve. The moment a customer becomes an organiser.

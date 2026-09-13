@@ -168,4 +168,17 @@ public interface EventRepository extends JpaRepository<Event, Long> {
      * constraint violation.
      */
     long countByOrganizerId(Long organizerId);
+
+    /**
+     * How many events sit in each status, in one pass.
+     *
+     * <p>Backs the review queue's status tabs, which show all four counts at
+     * once. Four {@link #countByStatus} calls per refresh would be four round
+     * trips for four integers on a page that polls.
+     *
+     * <p>{@code [status, count]} per row, and only for statuses that have any -
+     * the caller fills the zeros.
+     */
+    @Query("select e.status, count(e) from Event e group by e.status")
+    List<Object[]> countGroupedByStatus();
 }

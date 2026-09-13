@@ -18,6 +18,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Moderation. Separate from EventController on purpose: a different authorizer,
@@ -100,6 +101,24 @@ public class AdminEventController {
      * 404s anything unpublished, deliberately, so nobody can walk sequential
      * ids to read drafts. An admin is the one caller those states are kept for.
      */
+    /**
+     * How many events sit in each status - the numbers on the review queue's tabs.
+     *
+     * <p>Declared BEFORE {@code /{id}} below, and that ordering is load-bearing:
+     * "status-counts" is not a Long, so if the templated mapping wins the match
+     * the request dies as a 400 MALFORMED_REQUEST before reaching any handler.
+     * That is exactly how this endpoint failed once already.
+     *
+     * <p>Its own endpoint rather than a field on /admin/stats, which is the
+     * dashboard's payload: that one runs a dozen counts across users, bookings,
+     * payments and tickets, and this is polled every thirty seconds.
+     */
+    @GetMapping("/status-counts")
+    public ResponseEntity<Map<EventStatus, Long>> statusCounts(@CurrentUserId Long actorUserId) {
+        adminResolver.requireAdminUserId(actorUserId);
+        return new ResponseEntity<>(overviewService.countsByStatus(), HttpStatus.OK);
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<EventResponse> getForAdmin(
             @CurrentUserId Long actorUserId,
