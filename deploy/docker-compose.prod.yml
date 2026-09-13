@@ -113,6 +113,12 @@ services:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api/v1}
         VITE_APP_NAME: ${VITE_APP_NAME:-Event Booking Cambodia}
         VITE_DEFAULT_CURRENCY: ${VITE_DEFAULT_CURRENCY:-USD}
+        # Must match GOOGLE_CLIENT_ID on the api service - it is the audience
+        # GoogleTokenVerifier checks every ID token against. Two variables
+        # because one is compiled into the bundle and the other is read at
+        # runtime; they are the same value and disagreeing silently breaks
+        # sign-in with a 401 that names nothing.
+        VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID:-}
     image: event-booking-web:${IMAGE_TAG:-latest}
     container_name: eb-web
     restart: unless-stopped
