@@ -3,7 +3,7 @@ package com.eventbooking.security;
 import com.eventbooking.Enumeration.Role;
 import com.eventbooking.model.AppUser;
 import com.eventbooking.repository.AppUserRepository;
-import com.eventbooking.security.error.NotAnAdminException;
+import com.eventbooking.exception.security.NotAnAdminException;
 import org.springframework.stereotype.Component;
 
 /**

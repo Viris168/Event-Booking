@@ -1,5 +1,6 @@
 package com.eventbooking.payment;
 
+import com.eventbooking.config.PaymentProperties;
 import com.eventbooking.Enumeration.PaymentProvider;
 import org.junit.jupiter.api.Test;
 

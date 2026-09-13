@@ -13,7 +13,7 @@ import {
 import { useLocale } from '../../context/LocaleContext.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
 import { timeAgo, usd } from '../../lib/format.js'
-import { listPayments, useStore } from '../../mock/store.js'
+import { getPayments } from '../../api/admin.js'
 import { getRefundQueue, approveRefund, rejectRefund } from '../../api/refunds.js'
 import { mapBooking } from '../../api/adapters.js'
 
@@ -21,7 +21,6 @@ const PROVIDERS = ['BAKONG_KHQR', 'ABA_PAYWAY']
 const STATUSES = ['CREATED', 'PENDING', 'SUCCESS', 'FAILED', 'CANCELLED', 'EXPIRED']
 
 export default function AdminPaymentsPage() {
-  useStore()
   const { t, locale, dateTime } = useLocale()
   useDocumentTitle(t('payments'))
   const toast = useToast()
@@ -31,7 +30,41 @@ export default function AdminPaymentsPage() {
   const [status, setStatus] = useState('')
   const [stuckOnly, setStuckOnly] = useState(params.get('stuck') === '1')
 
-  const payments = listPayments({ provider, status, stuckOnly })
+  /*
+   * Payment attempts, from payment_transaction via /admin/payments.
+   *
+   * Filtering is the server's: "stuck" in particular is a comparison against
+   * the clock, and a tab left open overnight would answer it from whenever it
+   * last rendered. Provider and status go the same way so the three controls
+   * behave alike.
+   */
+  const [payments, setPayments] = useState([])
+  const [loadingPayments, setLoadingPayments] = useState(true)
+  const [paymentsError, setPaymentsError] = useState(false)
+  const [paymentsVersion, setPaymentsVersion] = useState(0)
+
+  useEffect(() => {
+    let live = true
+    getPayments({
+      ...(provider ? { provider } : {}),
+      ...(status ? { status } : {}),
+      ...(stuckOnly ? { stuckOnly: true } : {}),
+    })
+      .then((res) => {
+        if (!live) return
+        setPaymentsError(false)
+        setPayments(Array.isArray(res) ? res : [])
+      })
+      .catch(() => {
+        if (!live) return
+        setPaymentsError(true)
+        setPayments([])
+      })
+      .finally(() => live && setLoadingPayments(false))
+    return () => {
+      live = false
+    }
+  }, [provider, status, stuckOnly, paymentsVersion])
 
   const km = locale === 'km'
   const chips = [
@@ -57,12 +90,10 @@ export default function AdminPaymentsPage() {
   }
 
   /*
-   * The refund queue is live, unlike the payments table above it, which still
-   * reads the prototype store because there is no admin payments endpoint yet.
-   *
-   * It had to be: the approve button below used to call the prototype store's
-   * approveRefund, so an admin saw "Refund approved" while the customer's
-   * booking stayed CONFIRMED and nobody was ever refunded.
+   * The refund queue, alongside the payments table above it. Both are live now;
+   * this one had to be first, because the approve button below used to call the
+   * prototype store's approveRefund, so an admin saw "Refund approved" while
+   * the customer's booking stayed CONFIRMED and nobody was ever refunded.
    */
   const [refundRequests, setRefundRequests] = useState([])
   const [deciding, setDeciding] = useState(null)
@@ -225,7 +256,24 @@ export default function AdminPaymentsPage() {
         </div>
       </div>
 
-      {payments.length === 0 ? (
+      {paymentsError && (
+        <Alert tone="danger" style={{ marginBottom: '1.2rem' }}>
+          {km ? 'មិនអាចផ្ទុកការទូទាត់បានទេ។' : 'Could not load payments.'}{' '}
+          <button
+            className="btn btn-sm btn-outline"
+            onClick={() => {
+              setLoadingPayments(true)
+              setPaymentsVersion((v) => v + 1)
+            }}
+          >
+            {km ? 'ព្យាយាមម្ដងទៀត' : 'Try again'}
+          </button>
+        </Alert>
+      )}
+
+      {loadingPayments ? (
+        <p className="muted small">{km ? 'កំពុងផ្ទុក…' : 'Loading…'}</p>
+      ) : payments.length === 0 && !paymentsError ? (
         <Empty
           icon={stuckOnly ? 'checkCircle' : 'search'}
           title={
@@ -276,10 +324,10 @@ export default function AdminPaymentsPage() {
                   <td className="mono small">{p.provider_ref || '—'}</td>
                   <td>
                     <Link className="mono small" to={`/bookings/${p.booking_id}`}>
-                      {p.booking?.booking_ref}
+                      {p.booking_ref}
                     </Link>
                     <div className="small muted">
-                      {locale === 'km' ? p.event?.title_km : p.event?.title_en}
+                      {locale === 'km' ? p.event_title_km : p.event_title_en}
                     </div>
                   </td>
                   <td>

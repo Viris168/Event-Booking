@@ -1,7 +1,8 @@
 package com.eventbooking.booking;
 
+import com.eventbooking.service.booking.BookingStateMachine;
 import com.eventbooking.Enumeration.BookingStatus;
-import com.eventbooking.booking.error.IllegalBookingTransitionException;
+import com.eventbooking.exception.booking.IllegalBookingTransitionException;
 import com.eventbooking.model.Booking;
 import com.eventbooking.model.BookingStatusHistory;
 import com.eventbooking.repository.BookingStatusHistoryRepository;

@@ -119,4 +119,42 @@ public interface EventRepository extends JpaRepository<Event, Long> {
      * callers, which is the exact regression its comment above describes.
      */
     Page<Event> findByStatus(EventStatus status, Pageable pageable);
+
+    /** Admin dashboard counters, one status at a time. */
+    long countByStatus(EventStatus status);
+
+    /**
+     * The moderation table: every event on the platform, any owner, filtered by
+     * the three controls the screen offers.
+     *
+     * <p>Distinct from {@link #findByStatus} (one status, the review queue) and
+     * from the public catalogue search, which is fixed to the publicly visible
+     * statuses by design. A null status here means "every status", which is
+     * exactly what must never be possible on the public endpoint.
+     *
+     * <p>venue is fetched because each row prints a venue name and province.
+     *
+     * <p>status carries no {@code cast(...)} while the two String parameters
+     * do. The casts exist because Postgres cannot infer a bare parameter's type
+     * in {@code :p is null}, but spelling one out for the enum made Hibernate
+     * render {@code cast(? as smallint)} - an ordinal - against a column mapped
+     * {@code EnumType.STRING}, so every filtered call died on "invalid input
+     * syntax for type smallint". Hibernate infers the enum correctly on its
+     * own; it is only the Strings that need the help.
+     */
+    @Query("""
+            select e from Event e
+            join fetch e.venue v
+            where (:status is null or e.status = :status)
+              and (cast(:provinceCode as String) is null or v.provinceCode = :provinceCode)
+              and (cast(:q as String) is null
+                   or lower(e.titleEn) like :q escape '!'
+                   or lower(e.titleKm) like :q escape '!'
+                   or lower(v.nameEn) like :q escape '!'
+                   or lower(v.nameKm) like :q escape '!')
+            order by e.startsAt asc
+            """)
+    List<Event> searchForAdmin(@Param("q") String q,
+                               @Param("status") EventStatus status,
+                               @Param("provinceCode") String provinceCode);
 }

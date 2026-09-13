@@ -1,8 +1,8 @@
 package com.eventbooking.security;
 
 import com.eventbooking.repository.OrganizerProfileRepository;
-import com.eventbooking.security.error.NotAnOrganizerException;
-import com.eventbooking.security.error.NotResourceOwnerException;
+import com.eventbooking.exception.security.NotAnOrganizerException;
+import com.eventbooking.exception.security.NotResourceOwnerException;
 import org.springframework.stereotype.Component;
 
 /**

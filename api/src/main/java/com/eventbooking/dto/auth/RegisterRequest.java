@@ -16,10 +16,12 @@ import jakarta.validation.constraints.Size;
 public record RegisterRequest(
 
         /* Mirrors the CHECK on app_user.phone_e164, so a bad number is a clean
-           422 from validation rather than a 23514 raised by Postgres. */
+           422 from validation rather than a 23514 raised by Postgres. Both
+           spellings of the same line are accepted since V24 - people register
+           with the 0 they say out loud, not the +855 the column was named for. */
         @NotBlank
-        @Pattern(regexp = "^\\+855[0-9]{8,9}$",
-                message = "must be a Cambodian E.164 number, e.g. +85512345678")
+        @Pattern(regexp = "^(\\+855|0)[0-9]{8,9}$",
+                message = "must be a Cambodian number, e.g. 012345678 or +85512345678")
         @JsonProperty("phone_e164") String phoneE164,
 
         /* Only a floor is enforced. Composition rules ("one capital, one

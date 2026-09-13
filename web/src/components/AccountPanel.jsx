@@ -16,7 +16,7 @@ import {
   unlinkGoogle,
   updateProfile,
 } from '../api/auth.js'
-import { toE164 } from '../lib/format.js'
+import { toLocalPhone } from '../lib/format.js'
 import GoogleSignInButton from './GoogleSignInButton.jsx'
 
 /** Must match the .is-closing animation in ACCT_CSS below. */
@@ -886,7 +886,7 @@ function SetPasswordForm({ km, user, toast, refreshUser }) {
   const mismatch = confirm.length > 0 && next !== confirm
   const tooShort = next.length > 0 && next.length < 8
   const ready =
-    next.length >= 8 && next === confirm && (!needsPhone || Boolean(toE164(phone)))
+    next.length >= 8 && next === confirm && (!needsPhone || Boolean(toLocalPhone(phone)))
 
   async function submit(e) {
     e.preventDefault()
@@ -900,7 +900,7 @@ function SetPasswordForm({ km, user, toast, refreshUser }) {
        * its own operation with its own rules - set once, never replaced - and
        * folding it into this form would duplicate them.
        */
-      if (needsPhone) await setPhone(toE164(phone))
+      if (needsPhone) await setPhone(toLocalPhone(phone))
       await setPassword(next)
       await refreshUser()
       toast(km ? 'បានកំណត់ពាក្យសម្ងាត់' : 'Password set', 'success')

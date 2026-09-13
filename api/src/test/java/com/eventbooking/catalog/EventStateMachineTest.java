@@ -1,8 +1,9 @@
 package com.eventbooking.catalog;
 
+import com.eventbooking.service.event.EventStateMachine;
 import com.eventbooking.Enumeration.EventStatus;
 import com.eventbooking.Enumeration.EventTransition;
-import com.eventbooking.catalog.error.InvalidEventStatusTransitionException;
+import com.eventbooking.exception.catalog.InvalidEventStatusTransitionException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;

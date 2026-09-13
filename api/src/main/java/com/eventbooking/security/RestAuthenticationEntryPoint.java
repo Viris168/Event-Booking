@@ -1,6 +1,6 @@
 package com.eventbooking.security;
 
-import com.eventbooking.security.error.NotAuthenticatedException;
+import com.eventbooking.exception.security.NotAuthenticatedException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Qualifier;

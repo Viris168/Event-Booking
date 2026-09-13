@@ -27,6 +27,25 @@ WARN
 read -r -p "type the database name to confirm: " CONFIRM
 [[ "$CONFIRM" == "$DB_NAME" ]] || { echo "aborted"; exit 1; }
 
+# The API is about to be stopped, and `set -e` means any failure below exits the
+# script immediately - which, without this, skips the restart at the bottom and
+# leaves the site down with no API. That is the worst possible moment for it:
+# you are running this script because something is ALREADY wrong, and a failed
+# restore would quietly turn a data problem into an outage as well.
+#
+# Installed AFTER the confirmation prompt, so declining still exits without
+# touching anything. From here down every exit path is one where the API may
+# already be stopped; `start` on a running container is a no-op, so firing it
+# unconditionally is safe.
+API_RESTARTED=false
+restart_api() {
+  $API_RESTARTED && return 0
+  echo "══ restarting the API" >&2
+  "${COMPOSE[@]}" start api \
+    || echo "error: could not restart the API. Do it by hand: ${COMPOSE[*]} start api" >&2
+}
+trap restart_api EXIT
+
 echo "══ stopping the API"
 "${COMPOSE[@]}" stop api
 
@@ -40,6 +59,7 @@ docker exec -i eb-postgres pg_restore \
 
 echo "══ starting the API"
 "${COMPOSE[@]}" start api
+API_RESTARTED=true
 
 echo
 echo "Restored. Watch the log — Flyway will report the schema version it found,"

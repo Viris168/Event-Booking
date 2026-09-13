@@ -1,6 +1,6 @@
 package com.eventbooking.security;
 
-import com.eventbooking.security.error.NotAuthenticatedException;
+import com.eventbooking.exception.security.NotAuthenticatedException;
 import org.springframework.core.MethodParameter;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;

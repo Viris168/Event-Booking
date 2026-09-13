@@ -1,5 +1,7 @@
 package com.eventbooking.ticket;
 
+import com.eventbooking.service.ticket.QrRenderer;
+import com.eventbooking.config.TicketProperties;
 import com.google.zxing.BinaryBitmap;
 import com.google.zxing.LuminanceSource;
 import com.google.zxing.Result;

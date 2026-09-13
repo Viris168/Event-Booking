@@ -1,7 +1,7 @@
 package com.eventbooking.service.Seatclass.impl;
 
-import com.eventbooking.catalog.error.EventNotFoundException;
-import com.eventbooking.catalog.error.SeatClassNotFoundException;
+import com.eventbooking.exception.catalog.EventNotFoundException;
+import com.eventbooking.exception.catalog.SeatClassNotFoundException;
 import com.eventbooking.dto.seatclass.CreateSeatClassRequest;
 import com.eventbooking.dto.seatclass.SeatClassResponse;
 import com.eventbooking.dto.seatclass.UpdateSeatClassRequest;

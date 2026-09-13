@@ -20,7 +20,7 @@ import org.springframework.stereotype.Component;
  * questions and need separate checks; this is the second one.
  *
  * <p>Built as its own bean rather than another {@code if} in {@code JwtService}
- * for the same reason {@link com.eventbooking.ticket.TicketSecretGuard} is:
+ * for the same reason {@link com.eventbooking.service.ticket.TicketSecretGuard} is:
  * {@code JwtService} is constructed directly by tests, and making it
  * profile-aware would drag an {@code Environment} into what is otherwise a
  * small piece of cryptography.
