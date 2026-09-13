@@ -88,7 +88,10 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          # Matches web/Dockerfile. They drifted, which meant CI could pass a
+          # build the image would fail - the gap that matters most once CI is
+          # what gates a deploy.
+          node-version: '22'
           cache: npm
           cache-dependency-path: web/package-lock.json
 
