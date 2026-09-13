@@ -1,0 +1,35 @@
+# Registry override — used by ci-deploy.sh when GitHub Actions deploys.
+#
+# Compose merges this on top of docker-compose.prod.yml:
+#
+#   docker compose \
+#     --env-file .env.prod \
+#     -f docker-compose.prod.yml \
+#     -f docker-compose.registry.yml \
+#     up -d --no-build
+#
+# Why an override instead of editing the prod file:
+#   Compose deep-merges services, so keys in this file win over the base file.
+#   But `build:` cannot be removed by a merge — you can only override it. Setting
+#   `build: {}` (empty) combined with a pre-set `image:` is enough: Compose uses
+#   the image and never calls `docker build`. The `--no-build` flag in deploy.sh
+#   is a second line of defence.
+#
+# The image names here must match what the release workflow pushes to GHCR and
+# what ci-deploy.sh re-tags locally before calling deploy.sh.
+name: event-booking
+
+services:
+  api:
+    # Empty build block overrides the context+dockerfile in the base file.
+    # Compose will use the image: tag below and skip building entirely.
+    build: {}
+    # ci-deploy.sh pulls ghcr.io/.../event-booking-api:$IMAGE_TAG and retags
+    # it to event-booking-api:$IMAGE_TAG before calling deploy.sh, so this
+    # local name is what Compose resolves — no registry credentials needed at
+    # compose-up time.
+    image: event-booking-api:${IMAGE_TAG:-latest}
+
+  web:
+    build: {}
+    image: event-booking-web:${IMAGE_TAG:-latest}
