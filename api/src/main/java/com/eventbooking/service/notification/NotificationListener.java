@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -182,6 +183,7 @@ public class NotificationListener {
             case REJECT -> NotificationType.EVENT_REJECTED;
             case REQUEST_CHANGES -> NotificationType.EVENT_CHANGES_REQUESTED;
             case TAKE_DOWN -> NotificationType.EVENT_TAKEN_DOWN;
+            case RESTORE -> NotificationType.EVENT_RESTORED;
             default -> null;
         };
 
@@ -211,12 +213,21 @@ public class NotificationListener {
          * refusal would be deduplicated away and the organiser would sit waiting
          * for a decision that had already been made.
          *
-         * Take-down has no review row and needs none - it can only happen once
-         * per event.
+         * TAKE_DOWN and RESTORE write no review row, and since RESTORE exists
+         * they are both repeatable: an event can be pulled, put back, and
+         * pulled again. The old key here was eventId + transition, which was
+         * true only while take-down was terminal - the moment it stopped being,
+         * that key silently swallowed every take-down after the first and the
+         * organiser's event left the catalogue with no notification at all.
+         *
+         * So those two are keyed per occurrence. Dedupe exists to absorb a
+         * listener running twice over one event, and this listener fires
+         * AFTER_COMMIT on a transition that has already been applied - so there
+         * is exactly one firing to key, and each genuinely is a new occurrence.
          */
         String key = e.reviewId() != null
                 ? "review:" + e.reviewId()
-                : event.getId() + ":" + e.transition();
+                : event.getId() + ":" + e.transition() + ":" + Instant.now().toEpochMilli();
 
         if (organizerType != null) {
             notificationService.notifyUser(

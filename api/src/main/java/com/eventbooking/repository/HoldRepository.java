@@ -161,4 +161,32 @@ public interface HoldRepository extends JpaRepository<Hold, Long> {
             @Param("expiredStatus") HoldStatus expiredStatus
     );
 
+    /**
+     * Is anyone part-way through checkout on this event? The second half of the
+     * delete guard, next to the booking count.
+     *
+     * <p>A hold that has not been converted yet leaves no booking to find, so
+     * counting bookings alone would let an admin delete the event out from
+     * under a customer on the payment screen.
+     */
+    long countByEvent_IdAndStatus(Long eventId, HoldStatus status);
+
+    /**
+     * Drop this event's finished holds, ahead of deleting the event.
+     *
+     * <p>{@code hold.event_id} has no ON DELETE clause - unlike the inventory
+     * tables, which cascade - so these rows are the one thing standing between
+     * a bookingless event and its delete. {@code hold_zone_line} does cascade
+     * from {@code hold}, and Postgres applies that even though a bulk JPQL
+     * delete bypasses JPA's own cascade.
+     *
+     * <p>Only ever called once the ACTIVE count above is zero, so what this
+     * removes is EXPIRED, RELEASED and CONSUMED rows - carts nobody is standing
+     * in any more. A CONSUMED one implies a booking, and that has already
+     * refused the delete outright.
+     */
+    @Modifying
+    @Query("delete from Hold h where h.event.id = :eventId")
+    int deleteByEventId(@Param("eventId") Long eventId);
+
 }

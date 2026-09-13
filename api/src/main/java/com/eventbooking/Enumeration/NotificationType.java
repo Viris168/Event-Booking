@@ -62,6 +62,15 @@ public enum NotificationType {
     /** A published event was pulled from the catalogue by an admin. */
     EVENT_TAKEN_DOWN,
 
+    /**
+     * An admin put a taken-down event back on sale.
+     *
+     * <p>Its own type rather than reusing EVENT_APPROVED: the organiser did
+     * nothing to trigger either one, and "your event is live again" is the
+     * answer to the take-down they were told about, not a review result.
+     */
+    EVENT_RESTORED,
+
     /** Somebody bought tickets to an event this organiser owns. */
     EVENT_TICKETS_SOLD,
 

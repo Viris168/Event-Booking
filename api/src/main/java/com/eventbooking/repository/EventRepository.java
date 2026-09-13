@@ -157,4 +157,15 @@ public interface EventRepository extends JpaRepository<Event, Long> {
     List<Event> searchForAdmin(@Param("q") String q,
                                @Param("status") EventStatus status,
                                @Param("provinceCode") String provinceCode);
+
+    /**
+     * How much this organiser still owns - the guard on demoting them.
+     *
+     * <p>Losing the ORGANIZER role means losing the {@code organizer_profile}
+     * row, and {@code event.organizer_id} points straight at it. Demoting
+     * somebody who still owns events would leave rows referring to a profile
+     * that no longer exists, which is a moderation click turning into a
+     * constraint violation.
+     */
+    long countByOrganizerId(Long organizerId);
 }

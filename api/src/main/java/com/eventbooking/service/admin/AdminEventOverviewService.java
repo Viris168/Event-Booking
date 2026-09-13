@@ -73,9 +73,16 @@ public class AdminEventOverviewService {
         List<Event> events = eventRepository.searchForAdmin(needle, status, provinceCode);
         if (events.isEmpty()) return List.of();
 
-        // Four aggregate queries for the whole table, not four per row.
+        // Five aggregate queries for the whole table, not five per row.
         Map<Long, int[]> totals = totalsByEvent();
         Map<Long, Long> revenue = bookingRepository.sumRevenueByEvent(REVENUE_STATES).stream()
+                .collect(Collectors.toMap(r -> (Long) r[0], r -> ((Number) r[1]).longValue()));
+
+        // Separate from revenue above, and not derivable from it: revenue counts
+        // CONFIRMED only, while what blocks a delete is a booking row in ANY
+        // state. An event with one expired booking has no revenue and is still
+        // not deletable.
+        Map<Long, Long> bookingCounts = bookingRepository.countByEvent().stream()
                 .collect(Collectors.toMap(r -> (Long) r[0], r -> ((Number) r[1]).longValue()));
 
         Map<Long, OrganizerProfile> profiles = organizerProfileRepository
@@ -90,6 +97,7 @@ public class AdminEventOverviewService {
 
         return events.stream().map(e -> {
             int[] t = totals.getOrDefault(e.getId(), new int[3]);
+            long bookings = bookingCounts.getOrDefault(e.getId(), 0L);
             OrganizerProfile profile = profiles.get(e.getOrganizerId());
             return new AdminEventOverviewResponse(
                     e.getId(),
@@ -108,7 +116,9 @@ public class AdminEventOverviewService {
                     e.getVenue().getNameKm(),
                     e.getVenue().getProvinceCode(),
                     t[0], t[1], t[2],
-                    revenue.getOrDefault(e.getId(), 0L));
+                    revenue.getOrDefault(e.getId(), 0L),
+                    bookings,
+                    bookings == 0);
         }).toList();
     }
 

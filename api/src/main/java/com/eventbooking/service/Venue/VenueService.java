@@ -11,7 +11,8 @@ public interface VenueService {
     // the owning organiser may write.
 
     VenueResponse getVenue(Long venueId);
-    List<VenueResponse> getAllVenues();
+    /** The caller's own venues. Venues are private to the organiser who made them. */
+    List<VenueResponse> getVenuesForOrganizer(Long organizerId);
 
     VenueResponse createVenue(Long organizerId, CreateVenueRequest request);
     VenueResponse updateVenue(Long organizerId, Long venueId, UpdateVenueRequest request);

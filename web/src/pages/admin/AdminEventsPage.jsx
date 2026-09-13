@@ -1,6 +1,8 @@
 import { useDocumentTitle } from '../../lib/useDocumentTitle.js'
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import ActionMenu from '../../components/ActionMenu.jsx'
+import AdminEventEditDialog from '../../components/admin/AdminEventEditDialog.jsx'
 import ConfirmDialog from '../../components/ConfirmDialog.jsx'
 import {
   ActiveFilters,
@@ -16,7 +18,14 @@ import { useLocale } from '../../context/LocaleContext.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
 import { usd } from '../../lib/format.js'
 import { Alert } from '../../components/ui.jsx'
-import { getEventsOverview, takeDownEvent } from '../../api/admin.js'
+import {
+  deleteEvent,
+  getEventForAdmin,
+  getEventsOverview,
+  restoreEvent,
+  takeDownEvent,
+  updateEventAsAdmin,
+} from '../../api/admin.js'
 import { useProvinces } from '../../lib/useProvinces.js'
 
 // Declaration order is lifecycle order, so the filter dropdown reads as the
@@ -47,9 +56,29 @@ export default function AdminEventsPage() {
   const [q, setQ] = useState('')
   const [status, setStatus] = useState('ALL')
   const [province, setProvince] = useState('')
-  // Event awaiting a take-down confirmation. Taking an event down pulls a live
-  // listing off sale, so it asks first; restoring is safe and stays one click.
+  /*
+   * The event awaiting a confirmation, and which one it is awaiting.
+   *
+   * One pair of state rather than two booleans, because the two destructive
+   * actions are mutually exclusive and share a dialog: `confirming` is the row,
+   * `intent` is 'takedown' or 'delete'. Opening again is neither - it puts an
+   * event back on sale and is trivially undone by taking it down again, so it
+   * stays one click.
+   */
   const [confirming, setConfirming] = useState(null)
+  const [intent, setIntent] = useState('takedown')
+
+  /*
+   * The edit dialog. `editing` is the full event from the admin endpoint, not
+   * the table row: the row carries only the columns the table prints, and the
+   * form needs the descriptions and the three secondary timestamps too.
+   * `editingId` is set first so the dialog can open on the loading state rather
+   * than after the round trip.
+   */
+  const [editingId, setEditingId] = useState(null)
+  const [editing, setEditing] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState(null)
 
   // provinceName comes from the hook rather than being written again here: it
   // already falls back to the raw code for a province the list does not know,
@@ -91,6 +120,28 @@ export default function AdminEventsPage() {
 
   const refresh = useCallback(() => setVersion((v) => v + 1), [])
 
+  // Fetches the full event whenever the dialog is opened on a row. Keyed on the
+  // id rather than the row object so re-rendering the table - which rebuilds
+  // every row - does not refetch the event under an open form.
+  //
+  // Clearing `editing` is closeEditor's job, not this effect's: doing it here
+  // would be a synchronous setState in an effect body, which costs an extra
+  // render pass for something the one action that closes the dialog already
+  // knows to do.
+  useEffect(() => {
+    if (!editingId) return undefined
+    let live = true
+    getEventForAdmin(editingId)
+      .then((e) => live && setEditing(e))
+      .catch((e) => {
+        if (!live) return
+        setSaveError(errorText(e, km ? 'មិនអាចផ្ទុកបានទេ' : 'Could not load this event'))
+      })
+    return () => {
+      live = false
+    }
+  }, [editingId, km])
+
   async function takeDown(event) {
     setBusyId(event.id)
     try {
@@ -102,6 +153,68 @@ export default function AdminEventsPage() {
     } finally {
       setBusyId(null)
     }
+  }
+
+  async function openAgain(event) {
+    setBusyId(event.id)
+    try {
+      await restoreEvent(event.id)
+      toast(km ? 'បានបើកលក់ឡើងវិញ' : 'Event is back on sale', 'success')
+      refresh()
+    } catch (e) {
+      toast(errorText(e, km ? 'មិនបានសម្រេច' : 'Could not open this event again'), 'error')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  /*
+   * The one action on this screen that cannot be undone.
+   *
+   * The server refuses it for any event that has ever been booked - the table
+   * hides the button in that case, but the row's `deletable` flag comes from an
+   * aggregate that may be seconds old, so the refusal is what actually decides.
+   * It arrives as a toast naming the reason, which is why the error is not
+   * swallowed into a generic failure message.
+   */
+  async function removeForever(event) {
+    setBusyId(event.id)
+    try {
+      await deleteEvent(event.id)
+      toast(km ? 'បានលុបចោល' : 'Event removed', 'info')
+      refresh()
+    } catch (e) {
+      toast(errorText(e, km ? 'មិនអាចលុបបានទេ' : 'Could not remove this event'), 'error')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function saveEvent(payload) {
+    setSaving(true)
+    setSaveError(null)
+    try {
+      await updateEventAsAdmin(editingId, payload)
+      toast(km ? 'បានរក្សាទុក' : 'Event updated', 'success')
+      closeEditor()
+      refresh()
+    } catch (e) {
+      setSaveError(errorText(e, km ? 'មិនអាចរក្សាទុកបានទេ' : 'Could not save that change'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function confirm(event, which) {
+    setIntent(which)
+    setConfirming(event)
+  }
+
+  /** The one way out of the edit dialog, so all three pieces of its state go together. */
+  function closeEditor() {
+    setEditingId(null)
+    setEditing(null)
+    setSaveError(null)
   }
 
   const chips = [
@@ -261,30 +374,79 @@ export default function AdminEventsPage() {
                   </td>
                   <td className="num font-bold">{usd(e.revenue_usd_cents)}</td>
                   <td>
-                    <div className="row row-tight">
-                      <Link className="btn btn-sm btn-ghost" to={`/organizer/events/${e.id}/sales`}>
-                        {t('sales')}
-                      </Link>
-                      {/*
-                        * Take-down is legal only from PUBLISHED, and TAKEN_DOWN
-                        * is terminal - EventStateMachine gives it no outgoing
-                        * edges. The prototype offered a "Restore" button here
-                        * that put the event back to PUBLISHED; there is no such
-                        * transition, so it is gone rather than left to fail.
-                        */}
-                      {e.status === 'PUBLISHED' && (
-                        <button
-                          className="btn btn-sm btn-danger"
-                          disabled={busyId === e.id}
-                          onClick={() => setConfirming(e)}
-                        >
-                          {t('takeDown')}
-                        </button>
-                      )}
-                      {e.status === 'TAKEN_DOWN' && (
-                        <span className="small muted">{km ? 'ដកចេញហើយ' : 'Taken down'}</span>
-                      )}
-                    </div>
+                    {/*
+                      * One kebab rather than up to four buttons. The actions a
+                      * row offers depend entirely on its status, so laid out
+                      * flat the column's width was set by whichever event
+                      * happened to offer the most - and the two destructive
+                      * ones sat in the open, a mis-click away from a live
+                      * listing.
+                      *
+                      * Every action is written out here and each says when it
+                      * does not apply, which keeps the rules in one readable
+                      * list instead of scattered across nested ternaries.
+                      */}
+                    <ActionMenu
+                      disabled={busyId === e.id}
+                      label={km ? 'សកម្មភាព' : 'Actions'}
+                      items={[
+                        {
+                          key: 'edit',
+                          icon: 'edit',
+                          label: t('edit'),
+                          onSelect: () => {
+                            setSaveError(null)
+                            setEditingId(e.id)
+                          },
+                        },
+                        {
+                          // Legal only from PUBLISHED - the one status where
+                          // there is something on sale to stop.
+                          key: 'takedown',
+                          icon: 'alert',
+                          label: t('takeDown'),
+                          tone: 'danger',
+                          hidden: e.status !== 'PUBLISHED',
+                          onSelect: () => confirm(e, 'takedown'),
+                        },
+                        {
+                          // The undo for take-down, and the reason TAKEN_DOWN
+                          // stopped being a terminal state.
+                          key: 'restore',
+                          icon: 'checkCircle',
+                          label: t('openAgain'),
+                          hidden: e.status !== 'TAKEN_DOWN',
+                          onSelect: () => openAgain(e),
+                        },
+                        {
+                          /*
+                           * The only irreversible action here, and offered only
+                           * where the server would accept it: `deletable` is
+                           * false for any event that has ever been booked.
+                           * Shown disabled rather than hidden in that case, with
+                           * the reason as its label - a button that silently
+                           * vanishes reads as a missing feature, not a refusal.
+                           */
+                          key: 'delete',
+                          icon: 'close',
+                          label: t('removeForever'),
+                          // The reason rides alongside as a hint rather than in
+                          // the label, so the item stays one short line whether
+                          // or not it is available.
+                          hint: e.deletable
+                            ? undefined
+                            : km
+                              ? `កក់ ${e.booking_count}`
+                              : `${e.booking_count} booked`,
+                          tone: 'danger',
+                          disabled: !e.deletable,
+                          // Take-down is the right action for a live listing,
+                          // so removal is not offered alongside it.
+                          hidden: e.status === 'PUBLISHED',
+                          onSelect: () => confirm(e, 'delete'),
+                        },
+                      ]}
+                    />
                   </td>
                 </tr>
               ))}
@@ -294,21 +456,50 @@ export default function AdminEventsPage() {
       </div>
       )}
 
+      <AdminEventEditDialog
+        open={Boolean(editingId)}
+        event={editing}
+        busy={saving}
+        error={saveError}
+        onSave={saveEvent}
+        onClose={closeEditor}
+      />
+
+      {/*
+        * One dialog, two questions. They are never asked at once - an event is
+        * either PUBLISHED (take-down) or not (remove) - and the copy is what
+        * differs, because the two decisions are not equally grave: one is the
+        * reversible action and the other is the only irreversible thing on this
+        * screen. Saying so in the body is the whole job of this dialog.
+        */}
       <ConfirmDialog
         open={Boolean(confirming)}
         tone="danger"
-        title={km ? 'ដកព្រឹត្តិការណ៍នេះចេញ?' : 'Take this event down?'}
-        confirmLabel={t('takeDown')}
+        title={
+          intent === 'delete'
+            ? km
+              ? 'លុបព្រឹត្តិការណ៍នេះជាអចិន្ត្រៃយ៍?'
+              : 'Remove this event permanently?'
+            : km
+              ? 'ដកព្រឹត្តិការណ៍នេះចេញ?'
+              : 'Take this event down?'
+        }
+        confirmLabel={intent === 'delete' ? t('removeForever') : t('takeDown')}
         onConfirm={() => {
-          takeDown(confirming)
+          if (intent === 'delete') removeForever(confirming)
+          else takeDown(confirming)
           setConfirming(null)
         }}
         onClose={() => setConfirming(null)}
       >
         <p className="small muted">
-          {km
-            ? `«${confirming?.title_km}» នឹងបាត់ពីការស្វែងរក ហើយឈប់លក់សំបុត្រភ្លាម។ សំបុត្រដែលបានលក់រួចនៅតែមានសុពលភាព ហើយអ្នកអាចផ្សាយវិញបាន។`
-            : `“${confirming?.title_en}” disappears from search and stops selling immediately. Tickets already sold stay valid, and you can restore it afterwards.`}
+          {intent === 'delete'
+            ? km
+              ? `«${confirming?.title_km}» និងតំបន់ ផែនទីកៅអី និងប្រវត្តិត្រួតពិនិត្យរបស់វា នឹងត្រូវលុបចោល។ សកម្មភាពនេះមិនអាចត្រឡប់វិញបានទេ។`
+              : `“${confirming?.title_en}” and its zones, seat map and review history are deleted for good. This cannot be undone — if you only want it off sale, take it down instead.`
+            : km
+              ? `«${confirming?.title_km}» នឹងបាត់ពីការស្វែងរក ហើយឈប់លក់សំបុត្រភ្លាម។ សំបុត្រដែលបានលក់រួចនៅតែមានសុពលភាព ហើយអ្នកអាចបើកលក់ឡើងវិញបាន។`
+              : `“${confirming?.title_en}” disappears from search and stops selling immediately. Tickets already sold stay valid, and you can open it again afterwards.`}
         </p>
       </ConfirmDialog>
     </div>
