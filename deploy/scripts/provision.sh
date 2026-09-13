@@ -100,6 +100,37 @@ fi
 
 echo "══ 6/6  Automatic security updates + fail2ban"
 dpkg-reconfigure -f noninteractive unattended-upgrades
+
+# Whitelist whoever is running this, before fail2ban starts watching.
+#
+# The sshd jail bans an address after a handful of failed authentications, and
+# the failures that trip it are usually YOURS: a key that has not been copied
+# across yet, an `ssh root@` after root login was disabled, a script retrying.
+# The ban then looks exactly like the server being down - port 22 refuses, the
+# site keeps serving - and the only way back in is a different network or the
+# provider's console. That has already happened once on this stack.
+#
+# SSH_CLIENT is normally stripped by sudo's env_reset, so fall back to utmp,
+# which `who am i` reads and sudo cannot clear.
+CLIENT_IP="${SSH_CLIENT%% *}"
+if [[ -z "$CLIENT_IP" ]]; then
+  CLIENT_IP="$(who am i 2>/dev/null | awk '{gsub(/[()]/, "", $5); print $5}')"
+fi
+
+if [[ "$CLIENT_IP" =~ ^[0-9a-fA-F.:]+$ && "$CLIENT_IP" != "" ]]; then
+  cat > /etc/fail2ban/jail.d/ignore-provisioner.conf <<EOF
+[DEFAULT]
+ignoreip = 127.0.0.1/8 ::1 $CLIENT_IP
+EOF
+  echo "     fail2ban will not ban $CLIENT_IP (the address you provisioned from)"
+  echo "     NOTE: a home connection's IP can change. If you are ever locked out,"
+  echo "     connect from another network and add the new address to"
+  echo "     /etc/fail2ban/jail.d/ignore-provisioner.conf"
+else
+  echo "     could not determine your client IP - fail2ban may ban you after a few" >&2
+  echo "     failed logins. Add your address to /etc/fail2ban/jail.d/ by hand." >&2
+fi
+
 systemctl enable --now fail2ban
 
 cat <<'DONE'
