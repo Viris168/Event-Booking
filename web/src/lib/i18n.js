@@ -135,9 +135,6 @@ const dict = {
     km: "ការទូទាត់ប្រាក់បរាជ័យ។ សូមសាកល្បងម្ដងទៀត។",
   },
   tryAgain: { en: "Try again", km: "សាកល្បងម្ដងទៀត" },
-  simulate: { en: "Demo controls", km: "ការគ្រប់គ្រងសាកល្បង" },
-  simulateSuccess: { en: "Simulate success", km: "សាកល្បង (ជោគជ័យ)" },
-  simulateFail: { en: "Simulate failure", km: "សាកល្បង (បរាជ័យ)" },
 
   // ABA PayWay checkout — the flow at developer.payway.com.kh
   checkoutPay: { en: "Checkout & pay", km: "ទូទាត់ប្រាក់" },

@@ -15,11 +15,8 @@ import {
   startPayment as startApiPayment,
   pollPayment,
   getBookingPayments,
-  simulateAbaPayment,
-  simulateBakongPayment,
 } from '../api/payment.js'
 import { MERCHANT_NAME, PROVIDER } from '../lib/payway.js'
-import { getBooking, useStore } from '../mock/store.js'
 import { getBooking as getApiBooking } from '../api/bookings.js'
 
 // How each payment_status reads on screen.
@@ -34,12 +31,13 @@ const STRIP = {
 export default function PaymentPage() {
   const { bookingId } = useParams()
   const [params] = useSearchParams()
-  useStore()
   const { t } = useLocale()
   const navigate = useNavigate()
 
   const [apiBooking, setApiBooking] = useState(null)
   const [bookingLoading, setBookingLoading] = useState(true)
+  const [bookingError, setBookingError] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
 
   const [txn, setTxn] = useState(null)
   const [sheetOpen, setSheetOpen] = useState(false)
@@ -53,15 +51,21 @@ export default function PaymentPage() {
       .then((res) => {
         if (active && res) setApiBooking(mapBooking(res))
       })
-      .catch(() => {})
+      .catch(() => {
+        // Record it. This page used to swallow the error and fall back to the
+        // mock store, which meant a failed request rendered an invented booking
+        // on the screen where the customer is about to pay - wrong total, wrong
+        // seats, or a booking the server has never heard of. A payment screen
+        // has to fail loudly or not at all.
+        if (active) setBookingError(true)
+      })
       .finally(() => {
         if (active) setBookingLoading(false)
       })
     return () => { active = false }
-  }, [bookingId])
+  }, [bookingId, reloadKey])
 
-  const mockBooking = !bookingLoading && !apiBooking ? getBooking(bookingId) : null
-  const booking = apiBooking ?? mockBooking
+  const booking = apiBooking
   useDocumentTitle(booking ? `${t('checkout')} · ${booking.booking_ref}` : null)
 
   const requestedOption = params.get('option')
@@ -178,7 +182,7 @@ export default function PaymentPage() {
   }, [txn?.status, txn?.expires_at, txn?.expiresAt])
 
   const onSettled = useCallback(
-    (status, { simulated = false } = {}) => {
+    (status) => {
       if (!booking) return
 
       if (status === 'SUCCESS') {
@@ -186,22 +190,9 @@ export default function PaymentPage() {
         setTxn((prev) =>
           prev ? { ...prev, status, resolved_at: new Date().toISOString() } : null,
         )
-        if (simulated && apiBooking && txn?.id) {
-          setChecking(true)
-          const simCall = txn.provider === 'BAKONG_KHQR'
-              ? simulateBakongPayment(txn.id)
-              : simulateAbaPayment(txn.providerRef ?? txn.provider_ref)
-
-          simCall
-            .then(refreshBooking)
-            .then(() => navigate(`/bookings/${booking.id}`))
-            .catch((err) => console.error('Simulated settlement failed', err))
-            .finally(() => setChecking(false))
-        } else {
-          // Real settlement came from polling check-transaction - straight to
-          // the tickets, the way PayWay's skip-success-page flow ends.
-          navigate(`/bookings/${booking.id}`)
-        }
+        // Settlement only ever comes from polling check-transaction now, so go
+        // straight to the tickets, the way PayWay's skip-success-page flow ends.
+        navigate(`/bookings/${booking.id}`)
         return
       }
 
@@ -218,6 +209,35 @@ export default function PaymentPage() {
 
   if (bookingLoading) {
     return <CheckoutSkeleton />
+  }
+
+  // A request that failed is not the same as a booking that does not exist, and
+  // the customer can act on the difference: one is worth retrying, the other is
+  // not.
+  if (bookingError) {
+    return (
+      <div className="container container-narrow">
+        <Alert
+          tone="danger"
+          title="Could not load your booking"
+          actions={
+            <button
+              type="button"
+              className="btn btn-sm btn-primary"
+              onClick={() => {
+                setBookingError(false)
+                setBookingLoading(true)
+                setReloadKey((k) => k + 1)
+              }}
+            >
+              Try again
+            </button>
+          }
+        >
+          <p>We could not reach the server. Your booking has not been changed.</p>
+        </Alert>
+      </div>
+    )
   }
 
   if (!booking) {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { startPayment as startApiPayment, pollPayment, simulateAbaPayment, simulateBakongPayment } from '../api/payment.js'
+import { startPayment as startApiPayment, pollPayment } from '../api/payment.js'
 import PaywayCheckout from './PaywayCheckout.jsx'
 import BakongCheckout from './BakongCheckout.jsx'
 import { MERCHANT_NAME } from '../lib/payway.js'
@@ -10,9 +10,6 @@ import { CheckoutSkeleton } from './Skeleton.jsx'
 export default function PaymentModal({ bookingId, option, onSuccess, onClose }) {
   const [apiBooking, setApiBooking] = useState(null)
   const [txn, setTxn] = useState(null)
-  // Only the setter is used - the flag is written to guard a double submit
-  // and never read back, so naming the value would be a lie.
-  const [, setChecking] = useState(false)
   const onSettledRef = useRef(() => {})
 
   // 1. Fetch booking details when mounted
@@ -75,29 +72,15 @@ export default function PaymentModal({ bookingId, option, onSuccess, onClose }) 
 
   // 4. Handle Settlement
   const onSettled = useCallback(
-    (status, { simulated = false } = {}) => {
+    (status) => {
       if (!apiBooking) return
 
       if (status === 'SUCCESS') {
         setTxn((prev) => prev ? { ...prev, status: 'SUCCESS', resolved_at: new Date().toISOString() } : null)
 
-        if (simulated && txn?.id) {
-          setChecking(true)
-          const simCall = txn.provider === 'BAKONG_KHQR'
-              ? simulateBakongPayment(txn.id)
-              : simulateAbaPayment(txn.providerRef ?? txn.provider_ref)
-
-          simCall
-            .then(refreshBooking)
-            .then(() => {
-              if (txn.provider !== 'ABA_PAYWAY') onSuccess()
-            })
-            .catch((err) => console.error('Simulated settlement failed', err))
-            .finally(() => setChecking(false))
-        } else {
-          if (txn.provider !== 'ABA_PAYWAY') {
-            onSuccess()
-          }
+        // Settlement only ever comes from polling check-transaction now.
+        if (txn.provider !== 'ABA_PAYWAY') {
+          onSuccess()
         }
         return
       }
