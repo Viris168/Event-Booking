@@ -55,9 +55,11 @@ log "Images tagged locally as event-booking-{api,web}:${IMAGE_TAG}"
 # ── Hand off to the existing deploy script ────────────────────────────────────
 # deploy.sh already handles: env validation, rollback tagging, compose up,
 # health wait, rollback on failure, image pruning. No need to duplicate that
-# logic here. We just set IMAGE_TAG so it picks up the right images and skip
-# the build step since we just pulled them.
+# logic here. We pass the registry override so Compose uses the pulled images
+# instead of the build: blocks in docker-compose.prod.yml.
 cd "$DEPLOY_DIR"
 log "Starting deploy.sh --no-build (IMAGE_TAG=${IMAGE_TAG})"
-IMAGE_TAG="$IMAGE_TAG" bash scripts/deploy.sh --no-build
+IMAGE_TAG="$IMAGE_TAG" \
+  COMPOSE_FILE="docker-compose.prod.yml:docker-compose.registry.yml" \
+  bash scripts/deploy.sh --no-build
 log "Deploy complete: IMAGE_TAG=$IMAGE_TAG"
