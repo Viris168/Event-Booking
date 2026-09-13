@@ -1732,6 +1732,13 @@
   .s-TAKEN_DOWN {
     @apply bg-danger-soft text-danger;
   }
+  /* Not a stored status - see displayStatus in lib/salesState.js. A finished
+     event's row used to read "Published", which claims it is live on the site
+     when the catalogue stopped listing it the moment its date passed. Quiet,
+     because a finished event needs nothing from anybody. */
+  .s-FINISHED {
+    @apply bg-quiet-soft text-quiet;
+  }
 
   /* Review lifecycle (V14). Hue carries who is holding the event:
      info   = with the platform, waiting on us
@@ -1854,6 +1861,26 @@
   }
   .input::placeholder {
     @apply text-placeholder;
+  }
+  /* One line-height for every single-line control, so the box height stops
+     depending on which script is in it.
+
+     Left to the fonts, a Khmer field came out 48px against a Latin 44px: `.km`
+     sets line-height 1.9, which is right for a paragraph - the script stacks
+     subscripts below the baseline and needs the room - and wrong inside an
+     input, where it just makes the box taller. Any row pairing "Title (EN)"
+     with "ចំណងជើង (KM)" sat visibly crooked, and the seat-class row worst of
+     all with three fields at two different heights.
+
+     Pinned on both rather than tuning Khmer to chase Inter's metrics, which
+     would drift again the moment either typeface changed. 1.6 is what Inter was
+     already resolving to, so Latin fields are unaffected.
+
+     Textareas are deliberately excluded: they hold actual prose, which is the
+     case 1.9 exists for. */
+  .input,
+  .select {
+    line-height: 1.6;
   }
   /* `type="search"` draws a native clear button in WebKit/Blink, which appeared
      alongside our own <SearchInput> clear button — two X icons in one field. */
@@ -3395,6 +3422,45 @@
    at panel width — which is correct when a viewfinder is live and pure dead
    space when it is not. Reserving it while the camera is off pushed the scan
    verdict below the fold, so a successful scan read as "nothing happened". */
+/* The live viewfinder.
+
+   This class had no rules at all, which is why the scanner filled the screen:
+   html5-qrcode injects a <video> and sizes it from the camera's own resolution,
+   so a 1080p stream rendered 1080px tall and pushed the scan verdict - the one
+   thing the steward at the door needs to read - below the fold.
+
+   A square capped at 320px. Square because the decode region is square
+   (aspectRatio: 1 in CheckInPage), so the box someone aims with is the box
+   actually being read; 320px because a QR held at arm's length is decoded from
+   far fewer pixels than that, and the room on screen is better spent on the
+   verdict. */
+.scan-live {
+  width: min(100%, 320px);
+  aspect-ratio: 1;
+  margin-inline: auto;
+  overflow: hidden;
+  border-radius: 0.7rem;
+  background: #000;
+}
+
+/* The library writes inline width/height onto the elements it injects, so these
+   have to outrank them. Not a preference - a plain rule simply loses. */
+.scan-live video,
+.scan-live canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  /* Fill the square without letterboxing. The decode region is a centred 72% of
+     the frame, so trimming the edges costs nothing that was being read. */
+  object-fit: cover;
+}
+
+/* html5-qrcode's own shaded overlay. Left visible but pinned to the box, so it
+   cannot impose a size of its own on the container. */
+.scan-live #qr-shaded-region {
+  inset: 0 !important;
+}
+
 .scanner-idle {
   display: flex;
   align-items: center;
@@ -3913,6 +3979,221 @@
   gap: 0.6rem;
   padding: 0.85rem 1.15rem;
   border-top: 1px solid var(--color-line-2);
+}
+
+/* Upcoming / Past / All, in the events panel header.
+
+   Small and quiet: it sits beside a count, not above a page, so it borrows the
+   pill shape used for filters elsewhere rather than the underlined tabs the
+   admin queues use for top-level navigation. */
+.scope-tabs {
+  display: inline-flex;
+  gap: 0.15rem;
+  padding: 0.15rem;
+  border: 1px solid var(--color-line);
+  border-radius: 999px;
+  background: var(--color-surface-2);
+}
+
+.scope-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  padding: 0.28rem 0.62rem;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--color-muted);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.scope-tab:hover { color: var(--color-ink); }
+
+.scope-tab.on {
+  background: var(--color-surface);
+  color: var(--color-ink);
+  box-shadow: var(--shadow-card);
+}
+
+/* The count rides along muted, so a two-digit number cannot make the labels
+   jump as events move between the two sets. */
+.scope-tab-n {
+  color: var(--color-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.scope-tab.on .scope-tab-n { color: var(--color-brand-700); }
+
+/* Where an event stands in its sales window, under the lifecycle badge.
+
+   Deliberately quieter than the Badge above it: the lifecycle status is the
+   thing an organiser scans for, and two equally loud pills on one row would
+   make neither of them read. No background - a coloured dot and a label is
+   enough to tell five states apart at a glance. */
+.sales-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  margin-top: 0.3rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+
+.sales-pill::before {
+  content: '';
+  width: 0.42rem;
+  height: 0.42rem;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+
+.sales-pill.ok { color: var(--color-brand-600); }
+.sales-pill.warn { color: var(--color-warning); }
+.sales-pill.bad { color: var(--color-danger); }
+/* quiet keeps the muted default - nothing is happening, and that is the point. */
+
+/* A table row that opens something when clicked.
+
+   The row is the target, but the controls inside it are not - see openEvent's
+   closest() guard. Focusable, so the same thing is reachable from a keyboard;
+   the outline is inset because a focus ring drawn around a <tr> is clipped to
+   nothing by the cells. */
+.row-clickable {
+  cursor: pointer;
+}
+
+.row-clickable:hover {
+  background: var(--color-surface-2);
+}
+
+.row-clickable:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+/* The row-actions kebab and its dropdown.
+
+   The panel is portalled to <body> and positioned fixed by ActionMenu, which
+   sets top/right inline from the trigger's rect. It has to be: every table here
+   sits in .table-wrap, and `overflow-x: auto` makes the other axis scroll too,
+   so an absolutely-positioned panel was clipped by the table on any row near
+   the bottom. */
+.action-menu-trigger {
+  /* Square, so the kebab sits centred rather than in a button shaped for text. */
+  padding-inline: 0.45rem;
+}
+
+.action-menu-pop {
+  position: fixed;
+  z-index: 1200;
+  min-width: 12rem;
+  padding: 0.3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: 0.6rem;
+  box-shadow: 0 10px 28px rgba(9, 11, 16, 0.16);
+}
+
+.action-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  padding: 0.48rem 0.6rem;
+  border: 0;
+  border-radius: 0.42rem;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 0.86rem;
+  text-align: left;
+  cursor: pointer;
+  /* Labels are short by design; this is the guard that keeps them that way -
+     a two-line item in a menu of one-line items reads as broken. */
+  white-space: nowrap;
+}
+
+/* Why a disabled item is disabled, without putting it in the label. Pushed to
+   the right so the labels still form one column on the left. */
+.action-menu-hint {
+  margin-left: auto;
+  padding-left: 0.8rem;
+  font-size: 0.74rem;
+  color: var(--color-muted);
+}
+
+.action-menu-item:hover:not(:disabled),
+.action-menu-item:focus-visible {
+  background: var(--color-surface-2);
+}
+
+.action-menu-item:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Destructive items carry the colour rather than being separated by a rule:
+   the menu is short enough that a divider reads as more furniture than signal. */
+.action-menu-item.danger {
+  color: var(--color-danger);
+}
+
+.action-menu-item.danger:hover:not(:disabled),
+.action-menu-item.danger:focus-visible {
+  background: var(--color-danger-soft);
+}
+
+/* The icon column stays put whether or not an item has one, so the labels line
+   up instead of stepping in and out. */
+.action-menu-item > .icon {
+  flex: none;
+  opacity: 0.75;
+}
+
+/* FormDialog: the same overlay as a confirmation, holding a form instead of a
+   question. Wider, because a one-column stack of labelled fields at
+   confirm-panel's 26rem forces every value onto its own cramped line - and
+   capped by height rather than left to grow, so a form with eight fields
+   scrolls inside the dialog rather than pushing its own buttons off-screen. */
+.form-dialog {
+  width: min(94vw, 40rem);
+  max-height: min(88vh, 46rem);
+  display: flex;
+  flex-direction: column;
+}
+
+.form-dialog-head {
+  padding: 1.15rem 1.15rem 0.75rem;
+  border-bottom: 1px solid var(--color-line-2);
+}
+
+.form-dialog-head h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.form-dialog-head p {
+  margin: 0.25rem 0 0;
+}
+
+/* The only scrolling region. min-height:0 because a flex child defaults to
+   min-content, which here is the full height of the fields - the box would
+   refuse to shrink and overflow the dialog instead of scrolling inside it. */
+.form-dialog-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 1.05rem 1.15rem;
 }
 
 /* The event's two image slots. Sized by aspect ratio rather than a fixed

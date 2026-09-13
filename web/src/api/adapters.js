@@ -88,6 +88,21 @@ export function mapEvent(e) {
     // (without it the colour came from a title hash, not the organiser's pick).
     category: e.category ?? null,
     cover: e.cover ?? null,
+    // The lifecycle pair, and they were being dropped too.
+    //
+    // available_actions is the server's own answer to "what may this organiser
+    // do with this event", built from EventStateMachine; `editable` is whether
+    // its fields may still be changed. The organiser dashboard reads raw
+    // responses and so always had them, but the event form reads a MAPPED event
+    // - so its footer saw an empty action list on every event and offered
+    // nothing but Save, including on an approved one whose whole purpose at
+    // that point is to be published.
+    //
+    // Defaulted rather than left undefined: an empty array is a list you can
+    // call .includes() on, and `editable` falling back to true keeps a response
+    // that predates the field behaving as it used to.
+    available_actions: e.available_actions ?? e.availableActions ?? [],
+    editable: e.editable ?? true,
   }
 }
 

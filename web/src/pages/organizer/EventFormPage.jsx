@@ -18,15 +18,29 @@ import {
   getEventZones,
   getSeatClasses,
   publishEvent as publishApiEvent,
+  submitEventForReview,
+  takeDownOwnEvent,
+  withdrawEventFromReview,
   updateEvent as updateApiEvent,
   updateEventZone,
   updateSeatClass,
   uploadEventImage,
 } from '../../api/events.js'
 import { eventImages, mapEvent, mapVenue } from '../../api/adapters.js'
+import { CATEGORIES } from '../../lib/categories.js'
 
 const COVERS = ['sunset', 'river', 'gold', 'teal', 'plum', 'indigo', 'lime', 'cyan', 'rose']
-const CATEGORIES = ['music', 'festival', 'conference', 'culture', 'sport', 'comedy']
+
+/**
+ * What to say once a transition lands. Keyed by the same verb the server sends
+ * in available_actions, so a new edge needs a line here and nothing else.
+ */
+const TRANSITION_DONE = {
+  PUBLISH: { en: 'Event published - it is on sale now', km: 'ព្រឹត្តិការណ៍ត្រូវបានផ្សាយ — កំពុងលក់សំបុត្រ' },
+  SUBMIT: { en: 'Submitted for review', km: 'បានដាក់ស្នើត្រួតពិនិត្យ' },
+  WITHDRAW: { en: 'Withdrawn - you can edit it again', km: 'បានដកសំណើវិញ — អ្នកអាចកែបានហើយ' },
+  TAKE_DOWN: { en: 'Taken off sale', km: 'បានដកចេញពីការលក់' },
+}
 
 function toInput(iso) {
   if (!iso) return ''
@@ -39,6 +53,15 @@ function toInput(iso) {
 
 function fromInput(value) {
   return value ? new Date(value).toISOString() : ''
+}
+
+/**
+ * A fresh slug for an event that has none yet. Module scope so the timestamp is
+ * nowhere near the render path, and named so the suffix explains itself: two
+ * events called "Rock Riel Live" need different URLs and slug is UNIQUE.
+ */
+function newSlug(titleEn) {
+  return `${slugify(titleEn)}-${Date.now().toString(36).slice(-4)}`
 }
 
 function slugify(text) {
@@ -312,7 +335,15 @@ export default function EventFormPage() {
     return Object.keys(next).length === 0
   }
 
-  async function save(publish) {
+  /**
+   * Write the form, then optionally move the event on.
+   *
+   * @param nextAction 'SUBMIT' to put it in the review queue once saved, or
+   *        null to just save. NOT 'PUBLISH' - publishing is only ever legal
+   *        from APPROVED, and an APPROVED event is not editable, so the save
+   *        before it would be refused. That path goes through runTransition.
+   */
+  async function save(nextAction = null) {
     if (busy) return
     if (!validate()) {
       toast(locale === 'km' ? 'សូមពិនិត្យទម្រង់' : 'Please fix the highlighted fields', 'error')
@@ -335,7 +366,7 @@ export default function EventFormPage() {
       const payload = {
         venue_id: Number(form.venue_id),
         inventory_mode: form.inventory_mode,
-        slug: existing?.slug || `${slugify(form.title_en)}-${Date.now().toString(36).slice(-4)}`,
+        slug: existing?.slug || newSlug(form.title_en),
         title_en: form.title_en.trim(),
         title_km: form.title_km.trim(),
         description_en: form.description_en.trim(),
@@ -414,11 +445,11 @@ export default function EventFormPage() {
         }
       }
 
-      if (publish) await publishApiEvent(eventId)
+      if (nextAction === 'SUBMIT') await submitEventForReview(eventId)
 
       toast(
-        publish
-          ? locale === 'km' ? 'ព្រឹត្តិការណ៍ត្រូវបានផ្សាយ' : 'Event published'
+        nextAction === 'SUBMIT'
+          ? locale === 'km' ? 'បានដាក់ស្នើត្រួតពិនិត្យ' : 'Submitted for review'
           : locale === 'km' ? 'បានរក្សាទុក' : 'Saved',
         'success',
       )
@@ -433,6 +464,68 @@ export default function EventFormPage() {
       setBusy(false)
     }
   }
+
+  /**
+   * Move the event between statuses without writing the form first.
+   *
+   * <p>This is the half of the footer that {@link save} cannot do. PUBLISH is
+   * legal only from APPROVED, and EventStateMachine.isEditable says an APPROVED
+   * event is not editable - so the PATCH that save() always sent first came
+   * back 409 EVENT_NOT_EDITABLE and the publish call was never reached. An
+   * organiser whose event had just been approved could not publish it at all:
+   * the button reported "This event is approved and cannot be edited", which
+   * describes an edit nobody asked for.
+   */
+  async function runTransition(action) {
+    if (busy || !existing) return
+    setBusy(true)
+    try {
+      if (action === 'PUBLISH') await publishApiEvent(existing.id)
+      else if (action === 'WITHDRAW') await withdrawEventFromReview(existing.id)
+      else if (action === 'SUBMIT') await submitEventForReview(existing.id)
+      // The organiser's own, not the admin's: their event, and only while
+      // nothing has sold. The server drops TAKE_DOWN from available_actions
+      // from the first ticket, so reaching here means it is still theirs to do.
+      else if (action === 'TAKE_DOWN') await takeDownOwnEvent(existing.id)
+
+      toast(TRANSITION_DONE[action][locale === 'km' ? 'km' : 'en'], 'success')
+      navigate('/organizer')
+    } catch (err) {
+      const detail = err?.response?.data?.detail || err?.response?.data?.message || err.message
+      toast(`${locale === 'km' ? 'មិនបានសម្រេច' : 'Could not do that'}: ${detail}`, 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /*
+   * What the footer offers, straight from the server.
+   *
+   * available_actions is EventStateMachine.availableTransitions filtered to the
+   * organiser's own verbs, so it already knows a DRAFT may only be SUBMITted
+   * and an APPROVED one only PUBLISHed or WITHDRAWn. The footer used to ignore
+   * it and show "Publish" in every state except PUBLISHED - which on a draft
+   * came back "Cannot PUBLISH an event that is DRAFT", and on an approved one
+   * failed on the save that preceded it.
+   */
+  const actions = existing?.available_actions ?? []
+  // The server's own answer, not a status list copied over here.
+  const editable = existing ? existing.editable !== false : true
+
+  /*
+   * A brand-new event can be submitted straight from this form.
+   *
+   * available_actions is empty while creating, because there is no row yet for
+   * the server to have an opinion about - so the footer offered "Save draft"
+   * and nothing else, and an organiser who had just filled the whole form in
+   * had to save it, find it on the dashboard, and submit it from there.
+   *
+   * save('SUBMIT') already does both halves in the right order: it creates the
+   * event as a DRAFT, writes its zones, pricing and images, and only then
+   * submits - which is exactly the sequence those two clicks performed by hand,
+   * and the reason submitting cannot come first.
+   */
+  const canSubmit = actions.includes('SUBMIT') || !existing
 
   return (
     <div className="container container-wide">
@@ -449,24 +542,80 @@ export default function EventFormPage() {
               <span className="mono small">{existing.slug}</span>
             </p>
           )}
-        </div>
-        <div className="row">
-          <button className="btn btn-outline" onClick={() => save(false)} disabled={busy}>
-            {t('save')}
-          </button>
-          {existing?.status === 'PUBLISHED' ? (
-            /* Taking a published event down is PATCH /admin/events/{id}/takedown -
-               an admin action, not an organiser one, because pulling a show that
-               has sold tickets is a refund decision. The button used to flip the
-               status in the prototype store, which looked like it worked and
-               changed nothing on the server. */
-            <span className="small muted">
+
+          {/* The two notes that explain a missing button. Under the title
+              rather than beside the buttons: they are a sentence, and a
+              sentence in a right-aligned button row either squeezes the buttons
+              or wraps under them looking like a caption for one of them. */}
+          {existing?.status === 'PUBLISHED' && !actions.includes('TAKE_DOWN') && (
+            /* Only once something has sold. Up to that point the organiser has
+               their own take-down and the button is offered instead; from the
+               first ticket it becomes a refund decision, which is the
+               platform's, so the admin's is the only one left. */
+            <p className="small muted">
               {locale === 'km'
-                ? 'ដើម្បីដកព្រឹត្តិការណ៍ចេញ សូមទាក់ទងអ្នកគ្រប់គ្រង'
-                : 'Ask an admin to take a published event down'}
-            </span>
-          ) : (
-            <button className="btn btn-primary" onClick={() => save(true)} disabled={busy}>
+                ? 'លក់សំបុត្របានហើយ — ដើម្បីដកចេញ សូមទាក់ទងអ្នកគ្រប់គ្រង'
+                : 'Tickets have sold, so taking this down is an admin decision — ask one.'}
+            </p>
+          )}
+
+          {!editable && existing?.status !== 'PUBLISHED' && (
+            /* Says why Save is missing. An approved event is deliberately frozen
+               so that what was reviewed is what goes on sale; withdrawing is the
+               way back to editing, and it is offered right here. */
+            <p className="small muted">
+              {locale === 'km'
+                ? 'ព្រឹត្តិការណ៍នេះកំពុងរង់ចាំ ឬបានអនុម័តហើយ ដូច្នេះកែមិនបាន។'
+                : 'This event is under review or already approved, so its fields are locked.'}
+            </p>
+          )}
+        </div>
+        <div className="row row-tight">
+          {editable && (
+            <button className="btn btn-outline" onClick={() => save(null)} disabled={busy}>
+              {existing ? t('save') : t('saveDraft')}
+            </button>
+          )}
+
+          {/* One button per action the server says is legal. WITHDRAW is the
+              way back, so it renders before the two that move forward. */}
+          {actions.includes('WITHDRAW') && (
+            <button className="btn btn-outline" onClick={() => runTransition('WITHDRAW')} disabled={busy}>
+              {t('withdraw')}
+            </button>
+          )}
+
+          {canSubmit && (
+            <button
+              className="btn btn-primary"
+              /* Saves first: the organiser has the form open and expects the
+                 edits in front of them to be what a reviewer sees. */
+              onClick={() => save('SUBMIT')}
+              disabled={busy}
+            >
+              {t('submitForReview')}
+            </button>
+          )}
+
+          {actions.includes('TAKE_DOWN') && (
+            <button
+              className="btn btn-outline"
+              onClick={() => runTransition('TAKE_DOWN')}
+              disabled={busy}
+            >
+              {t('takeOffSale')}
+            </button>
+          )}
+
+          {actions.includes('PUBLISH') && (
+            <button
+              className="btn btn-primary"
+              /* No save first - that is the bug this replaced. APPROVED is not
+                 editable, so the PATCH would be refused and publishing would
+                 never happen. */
+              onClick={() => runTransition('PUBLISH')}
+              disabled={busy}
+            >
               {t('publish')}
             </button>
           )}

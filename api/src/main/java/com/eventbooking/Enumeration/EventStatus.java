@@ -45,7 +45,13 @@ public enum EventStatus {
     /** On sale, subject to the sales window. */
     PUBLISHED,
 
-    /** Pulled after publication. Terminal, and a moderation action. */
+    /**
+     * Pulled after publication by an admin. Not on sale, still readable.
+     *
+     * <p>Reversible: RESTORE puts it back to PUBLISHED. It was terminal until
+     * the admin screens grew an "open again" button, and the reasoning for the
+     * change is on {@link com.eventbooking.Enumeration.EventTransition#RESTORE}.
+     */
     TAKEN_DOWN;
 
     /**
@@ -66,6 +72,27 @@ public enum EventStatus {
 
     public static Set<EventStatus> publiclyVisible() {
         return PUBLICLY_VISIBLE;
+    }
+
+    /**
+     * The statuses a customer may BROWSE. Narrower than {@link #publiclyVisible}
+     * on purpose, and the distinction is the whole point of having two.
+     *
+     * <p>Visible means "may be read": a taken-down event keeps its page so that
+     * the confirmation email in a ticket-holder's inbox still leads somewhere,
+     * which is why TAKEN_DOWN is publicly visible at all.
+     *
+     * <p>Browsable means "may be offered": a taken-down event has been pulled
+     * from sale, so listing it in the catalogue invites people to open a show
+     * they cannot buy and were never meant to be shown. The list and the page
+     * were answering the same question until now, and they are not the same
+     * question.
+     */
+    private static final Set<EventStatus> BROWSABLE =
+            Collections.unmodifiableSet(EnumSet.of(PUBLISHED));
+
+    public static Set<EventStatus> browsable() {
+        return BROWSABLE;
     }
 
     public boolean isPubliclyVisible() {

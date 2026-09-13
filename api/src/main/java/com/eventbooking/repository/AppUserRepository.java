@@ -122,4 +122,14 @@ public interface AppUserRepository extends JpaRepository<AppUser, Long> {
     long countByRole(Role role);
 
     long countByIsDisabledTrue();
+
+    /**
+     * Administrators who can actually sign in right now.
+     *
+     * <p>{@code countByRole} is not the same question: a disabled admin is
+     * refused by AdminResolver, so counting them would let the platform reach
+     * zero WORKING administrators while still reporting three. The guards in
+     * AdminUserService are about who can act, so they count who can act.
+     */
+    long countByRoleAndIsDisabledFalse(Role role);
 }

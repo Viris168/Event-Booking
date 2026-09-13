@@ -191,10 +191,16 @@ export default function OrganizerVenuesPage() {
       <div className="page-head">
         <div>
           <h1>{t('venues')}</h1>
+          {/* Says whose these are, which the old wording left open.
+              "Reused across events" was true and incomplete: it read as though
+              the catalogue were shared, and until V27 it partly was. Venues are
+              private to the organiser who created them now - only they can
+              edit one, retire it, or hold an event there - so the sentence has
+              to carry the ownership as well as the reuse. */}
           <p>
             {locale === 'km'
-              ? 'ទីកន្លែង និងប្លង់កៅអី ត្រូវបានប្រើឡើងវិញនៅគ្រប់ព្រឹត្តិការណ៍។'
-              : 'Venues and their seat maps are reused across events.'}
+              ? 'ទីកន្លែងរបស់អ្នក និងប្លង់កៅអី ប្រើឡើងវិញបាននៅគ្រប់ព្រឹត្តិការណ៍របស់អ្នក។'
+              : 'Your venues and their seat maps, reused across your own events.'}
           </p>
         </div>
         <button className="btn btn-primary" onClick={openNew}>

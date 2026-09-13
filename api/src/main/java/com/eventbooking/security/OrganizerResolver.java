@@ -54,23 +54,15 @@ public class OrganizerResolver {
         }
     }
 
-    /**
-     * Ownership gate for rows that are allowed to have no owner at all.
+    /*
+     * requireOwnerOrShared used to live here: the same check, but treating a
+     * null owner as "anyone may write". It backed V21's shared venues, and it
+     * is gone because venues are private to the organiser who created them -
+     * see V27. requireOwner is now the only ownership gate, which is the
+     * property worth having: an authorization helper with a bypass in it is one
+     * a future caller can reach for by accident.
      *
-     * <p>A {@code null} owner means the row belongs to the platform rather than
-     * to a person - today only {@code venue.organizer_id}, where it marks a
-     * public hall any organiser may host at and maintain. Every organiser passes
-     * that case; an owned row still admits only its owner.
-     *
-     * <p>Separate from {@link #requireOwner} on purpose. Teaching that method to
-     * treat null as "anyone may write" would silently loosen every other
-     * ownership check the moment some unrelated column went nullable - and the
-     * one thing an authorization helper must not do is get quietly weaker.
+     * A venue with no owner therefore admits nobody, which is correct - there is
+     * no organiser it belongs to. V27 retires any that were left.
      */
-    public void requireOwnerOrShared(Long organizerId, Long rowOrganizerId, String resource, Long resourceId) {
-        if (rowOrganizerId == null) {
-            return;
-        }
-        requireOwner(organizerId, rowOrganizerId, resource, resourceId);
-    }
 }

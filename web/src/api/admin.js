@@ -22,6 +22,20 @@ import client from './client.js'
 export const getReviewQueue = (params) =>
   client.get('/admin/events', { params }).then((r) => r.data)
 
+/**
+ * How many events sit in each status, as { PENDING_REVIEW: 2, ... }.
+ *
+ * Every status is present, zeros included - the review queue renders a tab per
+ * status and one that vanished when its queue emptied would shift the others
+ * under the reviewer's cursor mid-click.
+ *
+ * Deliberately not a field on getPlatformStats(): that payload runs a dozen
+ * counts across users, bookings, payments and tickets, and this is polled while
+ * the queue is open. Redrawing four numbers should not cost all of that.
+ */
+export const getEventStatusCounts = () =>
+  client.get('/admin/events/status-counts').then((r) => r.data)
+
 // --- decisions --------------------------------------------------------------
 // One function per transition, mirroring events.js. approve and takedown carry
 // no body; reject and request-changes require a message, because the organiser
@@ -39,6 +53,53 @@ export const requestEventChanges = (id, message) =>
 export const takeDownEvent = (id) =>
   client.patch(`/admin/events/${id}/takedown`).then((r) => r.data)
 
+/**
+ * Put a taken-down event back on sale. The undo for takeDownEvent.
+ *
+ * Take-down used to be the end of the road - TAKEN_DOWN had no outgoing edges,
+ * and this module's own comment on the moderation table said so. It has one
+ * now, because the only remedy for a listing pulled by mistake was asking the
+ * organiser to rebuild the whole event under a new id that every ticket and
+ * link points away from.
+ *
+ * Nothing is re-created: the seat map, pricing and bookings were never touched,
+ * so this is one status going back the way it came.
+ */
+export const restoreEvent = (id) =>
+  client.patch(`/admin/events/${id}/restore`).then((r) => r.data)
+
+/**
+ * Erase an event for good. No body comes back - there is nothing left.
+ *
+ * Not a stronger take-down, a different action. The server refuses this for any
+ * event that has ever been booked, because the rows it would take with it are
+ * somebody's tickets; take-down is what that case wants. What this is for is the
+ * listing that should not exist at all - spam, a duplicate, a test event - where
+ * leaving a TAKEN_DOWN row in the table forever is just clutter.
+ */
+export const deleteEvent = (id) => client.delete(`/admin/events/${id}`).then(() => undefined)
+
+/**
+ * One event in full, any status, for the edit dialog.
+ *
+ * Deliberately not getEvent() from events.js. That one is the public detail
+ * endpoint and 404s anything unpublished - so opening the dialog on a draft or
+ * a queued event would fail on exactly the rows moderation exists to look at.
+ */
+export const getEventForAdmin = (id) =>
+  client.get(`/admin/events/${id}`).then((r) => r.data)
+
+/**
+ * Edit somebody else's event: the descriptive and scheduling fields.
+ *
+ * Same request body as the organiser's own PATCH. What it deliberately cannot
+ * reach is pricing, zones, the seat map and the images - those stay on the
+ * owner-scoped endpoints in events.js, because rewriting an organiser's
+ * inventory underneath sold tickets is not moderation.
+ */
+export const updateEventAsAdmin = (id, payload) =>
+  client.patch(`/admin/events/${id}`, payload).then((r) => r.data)
+
 // --- organiser applications -------------------------------------------------
 /*
  * The admin half of the become-an-organiser flow. The applicant's half lives in
@@ -54,11 +115,23 @@ export const takeDownEvent = (id) =>
  * is a queue meant to be emptied, and a backlog long enough to need pages is a
  * signal to work it down rather than to scroll it.
  *
- * Decided applications are deliberately unreachable from this endpoint: there
- * is no status filter, so a screen that wants history needs a different call.
+ * Takes an optional { status }, defaulting to PENDING server-side. Decided
+ * applications used to be unreachable here on the reasoning that history wanted
+ * a different screen - but the columns turned out to be the same ones, so the
+ * status became a parameter rather than a second page.
  */
-export const getOrganizerApplications = () =>
-  client.get('/admin/organizer-applications').then((r) => r.data)
+export const getOrganizerApplications = (params) =>
+  client.get('/admin/organizer-applications', { params }).then((r) => r.data)
+
+/**
+ * How many applications sit in each status, as { PENDING: 2, APPROVED: 5, ... }.
+ *
+ * Same shape and same reasoning as getEventStatusCounts: the tabs show every
+ * count while the list shows one status, so the numbers cannot be derived from
+ * the page being displayed.
+ */
+export const getApplicationStatusCounts = () =>
+  client.get('/admin/organizer-applications/status-counts').then((r) => r.data)
 
 /**
  * Approve. The moment a customer becomes an organiser.
@@ -110,6 +183,26 @@ export const getUsers = (params) =>
  */
 export const setUserDisabled = (id, disabled) =>
   client.patch(`/admin/users/${id}/${disabled ? 'disable' : 'enable'}`).then((r) => r.data)
+
+/**
+ * Edit an account: name, contact details and role. Returns the updated user.
+ *
+ * Wider than the self-service PATCH /auth/me by two fields, and both are the
+ * point of the screen. Phone is the login identifier, which is exactly why its
+ * owner may not change it and why an admin correcting a mistyped one must be
+ * able to. Role is a decision the platform makes about a person, never the
+ * person about themselves.
+ *
+ * Promoting someone to ORGANIZER also creates the organizer_profile row that
+ * ownership hangs off, which is why org_name_en is required in that one case -
+ * the server refuses the promotion without it rather than inventing a name that
+ * would be printed on every event they publish.
+ *
+ * @param {{ display_name: string, email?: string, phone_e164?: string,
+ *           role: string, org_name_en?: string, org_name_km?: string }} payload
+ */
+export const updateUser = (id, payload) =>
+  client.patch(`/admin/users/${id}`, payload).then((r) => r.data)
 
 // --- payments ---------------------------------------------------------------
 

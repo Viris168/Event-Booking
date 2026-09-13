@@ -33,6 +33,28 @@ public interface EventService {
 
     EventResponse takeDownEvent(Long eventId);
 
+    /**
+     * Organiser: pull their own listing, but only while nothing has sold.
+     *
+     * <p>Once a ticket exists the action becomes a refund decision, and
+     * {@link #takeDownEvent} - the admin's - is the only one left.
+     */
+    EventResponse takeDownOwnEvent(Long organizerId, Long eventId);
+
+    /** Admin: put a taken-down event back on sale. The undo for takeDownEvent. */
+    EventResponse restoreEvent(Long eventId);
+
+    /**
+     * Admin: the same edit an organiser makes, on an event they do not own.
+     *
+     * <p>Takes an app_user id rather than an organizer_profile id, because an
+     * admin has no profile - the id is for the log line, not for a check.
+     */
+    EventResponse updateEventAsAdmin(Long adminUserId, Long eventId, UpdateEventRequest request);
+
+    /** Admin: one event in any status, past the public visibility rule. */
+    EventResponse getEventForAdmin(Long eventId);
+
     EventResponse submitForReview(Long organizerId, Long eventId, Long actorUserId);
     EventResponse withdrawFromReview(Long organizerId, Long eventId, Long actorUserId);
     EventResponse approve(Long adminUserId, Long eventId);

@@ -32,6 +32,36 @@ export const withdrawEventFromReview = (id) =>
 export const getEventReviewHistory = (id) =>
   client.get(`/events/${id}/review`).then((r) => r.data)
 
+/**
+ * Pull your own listing off sale, before anyone has bought a ticket.
+ *
+ * Deliberately not admin.js's takeDownEvent, which hits /admin/events and is
+ * moderation - any event, any owner, at any point. This one is the organiser's
+ * own copy: their event only, and the server refuses it from the first sale
+ * onward, because pulling a show people hold tickets to is a refund decision
+ * rather than a listing one.
+ *
+ * The organiser's list already knows: TAKE_DOWN drops out of available_actions
+ * once anything has sold, so a screen driven by that never offers this where it
+ * would be refused.
+ */
+export const takeDownOwnEvent = (id) =>
+  client.patch(`/events/${id}/takedown`).then((r) => r.data)
+
+/**
+ * Remove your own event for good. No body comes back - there is nothing left.
+ *
+ * Same guard as the admin's delete: refused for any event that has ever been
+ * booked, so this can only ever reach a listing nobody bought. That is what
+ * makes it the organiser's to do - a draft, a rejection, a duplicate posted
+ * twice - rather than something that needs a moderator.
+ *
+ * There is no organiser counterpart to restore, and that is deliberate: it is
+ * the undo for a take-down and carries no record of who made that decision, so
+ * an organiser holding it could reverse an admin's moderation.
+ */
+export const deleteOwnEvent = (id) => client.delete(`/events/${id}`).then(() => undefined)
+
 // --- seat classes ----------------------------------------------------------
 // What a section costs at THIS event. The seats themselves belong to the venue;
 // only the price is the event's business, which is why these hang off an event

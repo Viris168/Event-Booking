@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useDocumentTitle } from '../../lib/useDocumentTitle.js'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import ConfirmDialog from '../../components/ConfirmDialog.jsx'
 import Icon from '../../components/Icon.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
 import { Badge, Empty, Progress, ResponsiveTable } from '../../components/ui.jsx'
@@ -8,10 +9,13 @@ import { OrganizerDashboardSkeleton } from '../../components/Skeleton.jsx'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
 import { usd } from '../../lib/format.js'
+import { SALES_UI, displayStatus, isPast, salesState } from '../../lib/salesState.js'
 import {
+  deleteOwnEvent,
   getOrganizerEvents,
   publishEvent,
   submitEventForReview,
+  takeDownOwnEvent,
   withdrawEventFromReview,
 } from '../../api/events.js'
 import { getMonthlyRevenue } from '../../api/bookings.js'
@@ -62,6 +66,48 @@ export default function OrganizerDashboardPage() {
   // cheaper to reason about than patching one row in place.
   const [reloadKey, setReloadKey] = useState(0)
   const reload = () => setReloadKey((k) => k + 1)
+
+  const navigate = useNavigate()
+
+  /*
+   * Which slice of the list to show. Upcoming by default.
+   *
+   * A dashboard is a place you open to see what needs doing, and a finished
+   * event needs nothing - it just pushes the one selling tickets tomorrow
+   * further down the page. Hiding them beats the alternative that keeps coming
+   * up, which is flipping an expired event to TAKEN_DOWN: that is a moderation
+   * verb, it would tell the organiser an admin pulled their event, and it would
+   * change no behaviour at all because verifyEventIsOnSale already checks the
+   * clock.
+   *
+   * A filter, not a deletion - the count below says how many are hidden, and
+   * one click brings them back.
+   */
+  const [scope, setScope] = useState('upcoming')
+
+  /*
+   * "Past" means the event has happened, not that its sales window shut.
+   *
+   * An event whose sales closed last week but which happens tomorrow is the
+   * most active thing on this list - the organiser is about to run it. Keying
+   * on starts_at is the same line salesState draws, and the same one the seed
+   * draws, so all three agree on what "over" means.
+   */
+  const pastCount = events.filter(isPast).length
+  const shown =
+    scope === 'all' ? events : events.filter((e) => (scope === 'past' ? isPast(e) : !isPast(e)))
+
+  /**
+   * Open a row, unless the click was aimed at something inside it.
+   *
+   * <p>Without the closest() check the row would hijack its own controls: the
+   * actions menu would navigate away the moment it was opened, and the title
+   * link would fire twice.
+   */
+  function openEvent(ev, eventId) {
+    if (ev.target.closest('a, button, [role="menu"]')) return
+    navigate(`/organizer/events/${eventId}/sales`)
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -213,15 +259,41 @@ export default function OrganizerDashboardPage() {
 
           {/* the events themselves */}
           <section className="bg-surface border border-line rounded-card shadow-card p-5">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
               <h2 className="text-base font-bold text-ink m-0">{t('myEvents')}</h2>
-              <span className="text-small text-muted">
-                {events.filter((e) => e.status === 'PUBLISHED').length} {km ? 'កំពុងផ្សាយ' : 'live'} ·{' '}
-                {events.length} {km ? 'សរុប' : 'total'}
-              </span>
+
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className="text-small text-muted">
+                  {events.filter((e) => e.status === 'PUBLISHED').length} {km ? 'កំពុងផ្សាយ' : 'live'} ·{' '}
+                  {events.length} {km ? 'សរុប' : 'total'}
+                </span>
+
+                {/* Only offered once there is something to hide. A toggle that
+                    does nothing on a new organiser's first event is furniture. */}
+                {pastCount > 0 && (
+                  <div className="scope-tabs" role="tablist" aria-label={km ? 'ចន្លោះពេល' : 'Time range'}>
+                    {[
+                      ['upcoming', km ? 'នាពេលខាងមុខ' : 'Upcoming', events.length - pastCount],
+                      ['past', km ? 'កន្លងផុត' : 'Past', pastCount],
+                      ['all', km ? 'ទាំងអស់' : 'All', events.length],
+                    ].map(([key, label, n]) => (
+                      <button
+                        key={key}
+                        type="button"
+                        role="tab"
+                        aria-selected={scope === key}
+                        className={`scope-tab${scope === key ? ' on' : ''}`}
+                        onClick={() => setScope(key)}
+                      >
+                        {label} <span className="scope-tab-n">{n}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
-            {events.length ? (
+            {shown.length ? (
               <ResponsiveTable>
                 <table className="table">
                   <thead>
@@ -235,12 +307,37 @@ export default function OrganizerDashboardPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {events.map((e) => {
+                    {shown.map((e) => {
                       const venue = e.venue
                       return (
-                        <tr key={e.id}>
+                        /*
+                          * The whole row opens the event, not just the title.
+                          * A five-column row whose only target was one line of
+                          * text meant aiming at a link to reach a page the rest
+                          * of the row is already describing.
+                          *
+                          * onRowClick ignores clicks that started on a control -
+                          * the title link and the actions menu keep their own
+                          * behaviour rather than being swallowed by the row.
+                          */
+                        <tr
+                          key={e.id}
+                          className="row-clickable"
+                          tabIndex={0}
+                          onClick={(ev) => openEvent(ev, e.id)}
+                          onKeyDown={(ev) => {
+                            if (ev.key === 'Enter' || ev.key === ' ') {
+                              ev.preventDefault()
+                              navigate(`/organizer/events/${e.id}/sales`)
+                            }
+                          }}
+                        >
                           <td>
-                            <Link to={`/events/${e.id}`} className="font-bold">
+                            {/* Points at the organiser's own view of the event,
+                                not the public page - that one 404s for a draft,
+                                which is exactly the row an organiser is most
+                                likely to click. */}
+                            <Link to={`/organizer/events/${e.id}/sales`} className="font-bold">
                               {km ? e.title_km : e.title_en}
                             </Link>
                             <div className="small muted">
@@ -248,7 +345,23 @@ export default function OrganizerDashboardPage() {
                             </div>
                           </td>
                           <td>
-                            <Badge status={e.status} />
+                            <Badge status={displayStatus(e)} />
+                            {/* The second half of the answer. The lifecycle
+                                badge says what the organiser decided; this says
+                                what is happening now. Stacked rather than
+                                side-by-side so a narrow column does not push
+                                the date out of line. */}
+                            {(() => {
+                              const state = salesState(e)
+                              // The badge says "Finished" already.
+                              if (!state || state === 'over') return null
+                              const ui = SALES_UI[state]
+                              return (
+                                <div className={`sales-pill ${ui.tone}`}>
+                                  {km ? ui.km : ui.en}
+                                </div>
+                              )
+                            })()}
                           </td>
                           <td className="small">{date(e.starts_at)}</td>
                           <td>
@@ -371,6 +484,22 @@ const ACTION_UI = {
     icon: 'check', en: 'Publish', km: 'ផ្សព្វផ្សាយ',
     call: publishEvent,
   },
+  /*
+   * The organiser's own take-down, not the admin's. It reaches this menu only
+   * while nothing has sold - the server drops TAKE_DOWN from available_actions
+   * from the first ticket onward, because pulling a show people hold tickets to
+   * is a refund decision rather than a listing one.
+   *
+   * Confirmed before it runs, and marked danger, because the organiser cannot
+   * undo it: reopening a taken-down event is admin-only, deliberately, so that
+   * an admin's moderation cannot be reversed by the person it was aimed at.
+   */
+  TAKE_DOWN: {
+    icon: 'alert', en: 'Take off sale', km: 'ដកចេញពីការលក់',
+    danger: true,
+    confirm: true,
+    call: takeDownOwnEvent,
+  },
 }
 
 /**
@@ -389,10 +518,70 @@ function RowMenu({ event, onChanged }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
 
+  /*
+   * The action waiting on a yes. Holds the transition name for a confirmable
+   * one, or 'DELETE' for the removal - which is not a transition at all and so
+   * never appears in available_actions.
+   */
+  const [confirming, setConfirming] = useState(null)
+  const [busy, setBusy] = useState(false)
+
+  async function run(fn, done) {
+    setBusy(true)
+    try {
+      await fn(event.id)
+      toast(done, 'success')
+      onChanged()
+    } catch (e) {
+      // The server refuses actions this menu should never have offered.
+      // Surfacing its message rather than a generic one means a disagreement
+      // between the two is visible instead of looking like a dead button.
+      toast(e?.response?.data?.detail || 'Action failed', 'error')
+    } finally {
+      setBusy(false)
+      setConfirming(null)
+    }
+  }
+
+  /*
+   * Removal is offered on anything that has never sold.
+   *
+   * total_sold is a stand-in for the server's real rule, which counts BOOKINGS
+   * in any state - an expired one leaves no sale but does leave a row, and the
+   * delete is refused for it. So this can be offered where it will be refused,
+   * and the refusal says why. The same "hint, not authorization" relationship
+   * the admin table's deletable flag has.
+   */
+  const canRemove = (event.total_sold ?? 0) === 0
+
+
   // The server sends only what this caller may do, so there is no permission
   // rule here - just a guard against an action that has no label yet, which
   // renders nothing rather than a raw enum name.
   const actions = (event.available_actions || []).filter((a) => ACTION_UI[a])
+
+  /*
+   * The one action worth a button of its own on the row.
+   *
+   * Everything used to sit behind the gear, which is right for five actions and
+   * wrong for the one the row is actually waiting on: an approved event exists
+   * to be published, and a draft to be submitted, and neither should need a
+   * menu opened to find out. So the forward-moving action comes out onto the
+   * row and the rest stay in the menu.
+   *
+   * Deliberately only these two. WITHDRAW moves an event backwards, and
+   * TAKE_DOWN and Remove are destructive - none of them should be one stray
+   * click away in a table row, which is the reason the menu exists at all.
+   */
+  const primary = actions.includes('PUBLISH') ? 'PUBLISH'
+    : actions.includes('SUBMIT') ? 'SUBMIT'
+    : null
+  // Short on the row, full in the toast that confirms it happened.
+  const PRIMARY_LABEL = { PUBLISH: t('publish'), SUBMIT: t('submitShort') }
+  const PRIMARY_DONE = {
+    PUBLISH: km ? 'ព្រឹត្តិការណ៍ត្រូវបានផ្សាយ' : 'Event published',
+    SUBMIT: km ? 'បានដាក់ស្នើត្រួតពិនិត្យ' : 'Submitted for review',
+  }
 
   useEffect(() => {
     if (!open) return
@@ -409,7 +598,20 @@ function RowMenu({ event, onChanged }) {
   }, [open])
 
   return (
-    <div className="relative inline-block" ref={ref}>
+    <div className="flex items-center justify-end gap-2" ref={ref}>
+      {/* On the row, not in the menu - see `primary` above. */}
+      {primary && (
+        <button
+          type="button"
+          className="btn btn-sm btn-primary whitespace-nowrap"
+          disabled={busy}
+          onClick={() => run(ACTION_UI[primary].call, PRIMARY_DONE[primary])}
+        >
+          {PRIMARY_LABEL[primary]}
+        </button>
+      )}
+
+      <div className="relative inline-block">
       <button
         type="button"
         className="w-8 h-8 rounded-ui border border-line bg-surface text-muted hover:text-ink hover:bg-surface-2 inline-flex items-center justify-center transition-colors"
@@ -462,8 +664,8 @@ function RowMenu({ event, onChanged }) {
           {/* Rendered from the server's own answer rather than guessed from the
               status. A two-state guess offered "Publish" on a REJECTED event,
               which the API refuses - and could never learn about a new edge. */}
-          {actions.length > 0 && <div className="h-px bg-line-2 my-1" />}
-          {actions.map((action) => {
+          {actions.filter((a) => a !== primary).length > 0 && <div className="h-px bg-line-2 my-1" />}
+          {actions.filter((a) => a !== primary).map((action) => {
             const ui = ACTION_UI[action]
             return (
               <button
@@ -473,18 +675,12 @@ function RowMenu({ event, onChanged }) {
                 className={`w-full flex items-center gap-2 px-3 py-2 text-small text-left ${
                   ui.danger ? 'text-danger hover:bg-danger-soft' : 'text-ink hover:bg-surface-2'
                 }`}
-                onClick={async () => {
+                onClick={() => {
                   setOpen(false)
-                  try {
-                    await ui.call(event.id)
-                    onChanged()
-                  } catch (e) {
-                    // The server refuses transitions this menu should never have
-                    // offered. Surfacing its message rather than a generic one
-                    // means a disagreement between the two is visible instead of
-                    // looking like a dead button.
-                    toast(e?.response?.data?.detail || 'Action failed', 'danger')
-                  }
+                  // Destructive ones ask first; the rest are one click, as they
+                  // were - a submit or a publish is undone by withdrawing.
+                  if (ui.confirm) setConfirming(action)
+                  else run(ui.call, km ? 'រួចរាល់' : 'Done')
                 }}
               >
                 <Icon name={ui.icon} size={15} className={ui.danger ? '' : 'text-muted'} />
@@ -492,8 +688,67 @@ function RowMenu({ event, onChanged }) {
               </button>
             )
           })}
+
+          {/* Not a transition, so it is not in available_actions and cannot come
+              from ACTION_UI. The server refuses it for anything ever booked,
+              which is what makes it the organiser's to do: what is left is the
+              draft, the rejection and the duplicate posted twice. */}
+          {canRemove && (
+            <>
+              {actions.filter((a) => a !== primary).length === 0 && (
+                <div className="h-px bg-line-2 my-1" />
+              )}
+              <button
+                role="menuitem"
+                type="button"
+                className="w-full flex items-center gap-2 px-3 py-2 text-small text-left text-danger hover:bg-danger-soft"
+                onClick={() => {
+                  setOpen(false)
+                  setConfirming('DELETE')
+                }}
+              >
+                <Icon name="close" size={15} />
+                {km ? 'លុបចោល' : 'Remove'}
+              </button>
+            </>
+          )}
         </div>
       )}
+      </div>
+
+      <ConfirmDialog
+        open={Boolean(confirming)}
+        tone="danger"
+        busy={busy}
+        title={
+          confirming === 'DELETE'
+            ? km ? 'លុបព្រឹត្តិការណ៍នេះ?' : 'Remove this event?'
+            : km ? 'ដកចេញពីការលក់?' : 'Take this event off sale?'
+        }
+        confirmLabel={
+          confirming === 'DELETE'
+            ? km ? 'លុបចោល' : 'Remove'
+            : km ? 'ដកចេញ' : 'Take off sale'
+        }
+        onConfirm={() => {
+          if (confirming === 'DELETE') {
+            run(deleteOwnEvent, km ? 'បានលុបចោល' : 'Event removed')
+          } else {
+            run(ACTION_UI[confirming].call, km ? 'បានដកចេញពីការលក់' : 'Taken off sale')
+          }
+        }}
+        onClose={() => setConfirming(null)}
+      >
+        <p className="small muted">
+          {confirming === 'DELETE'
+            ? km
+              ? 'ព្រឹត្តិការណ៍នេះ និងតំបន់ ផែនទីកៅអី និងតម្លៃរបស់វា នឹងត្រូវលុបចោលជាអចិន្ត្រៃយ៍។'
+              : 'This event and its zones, seat map and pricing are deleted for good. This cannot be undone.'
+            : km
+              ? 'ព្រឹត្តិការណ៍នេះនឹងបាត់ពីការស្វែងរក។ មានតែអ្នកគ្រប់គ្រងទេដែលអាចដាក់លក់វិញបាន។'
+              : 'It disappears from the catalogue and stops selling. Only a platform admin can put it back on sale, so ask one if you change your mind.'}
+        </p>
+      </ConfirmDialog>
     </div>
   )
 }

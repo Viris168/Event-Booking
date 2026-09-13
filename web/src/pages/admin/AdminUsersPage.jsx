@@ -1,6 +1,8 @@
 import { useDocumentTitle } from '../../lib/useDocumentTitle.js'
 import { Fragment, useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import ActionMenu from '../../components/ActionMenu.jsx'
+import AdminUserEditDialog from '../../components/admin/AdminUserEditDialog.jsx'
 import ConfirmDialog from '../../components/ConfirmDialog.jsx'
 import {
   ActiveFilters,
@@ -13,9 +15,10 @@ import {
   ResponsiveTable,
   SearchInput,
 } from '../../components/ui.jsx'
+import { useAuth } from '../../context/AuthContext.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
-import { getUsers, setUserDisabled } from '../../api/admin.js'
+import { getUsers, setUserDisabled, updateUser } from '../../api/admin.js'
 
 const ROLES = ['CUSTOMER', 'ORGANIZER', 'PLATFORM_ADMIN']
 
@@ -53,6 +56,18 @@ export default function AdminUsersPage() {
   const [busyId, setBusyId] = useState(null)
 
   /*
+   * The account being edited, plus the save's own in-flight and error state.
+   *
+   * The error lives here rather than going through toast() because it belongs
+   * to the dialog: a refusal like "that email is already registered" is about
+   * the field still on screen, and a toast that fades while the form sits there
+   * unchanged leaves the admin looking at a Save button that did nothing.
+   */
+  const [editing, setEditing] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState(null)
+
+  /*
    * Typing re-queries, so the request is debounced. Without the delay every
    * keystroke in the search box is its own round trip, and the answers race:
    * "sok" can land after "sokh" and leave the wrong rows on screen.
@@ -87,6 +102,39 @@ export default function AdminUsersPage() {
   }, [q, role, disabled, version])
 
   const refresh = useCallback(() => setVersion((v) => v + 1), [])
+
+  /*
+   * Who is signed in, so the dialog can grey out the role control on the
+   * admin's own row. The server refuses that change regardless; this only stops
+   * the click that was always going to be refused.
+   */
+  const { user: currentUser } = useAuth()
+
+  async function saveUser(form) {
+    setSaving(true)
+    setSaveError(null)
+    try {
+      await updateUser(editing.id, {
+        display_name: form.display_name.trim(),
+        // Blank means "clear it", and the server normalises "" to null. Sent
+        // rather than omitted: omitting a field in a PATCH means "leave it
+        // alone", which is a different instruction from "empty it".
+        email: form.email.trim(),
+        phone_e164: form.phone_e164.trim(),
+        role: form.role,
+        ...(form.role === 'ORGANIZER'
+          ? { org_name_en: form.org_name_en.trim(), org_name_km: form.org_name_km.trim() }
+          : {}),
+      })
+      toast(km ? 'បានរក្សាទុក' : 'Account updated', 'success')
+      setEditing(null)
+      refresh()
+    } catch (e) {
+      setSaveError(errorText(e, km ? 'មិនអាចរក្សាទុកបានទេ' : 'Could not save that change'))
+    } finally {
+      setSaving(false)
+    }
+  }
 
   async function applyDisabled(user, next) {
     setBusyId(user.id)
@@ -248,29 +296,67 @@ export default function AdminUsersPage() {
                       </td>
                       <td>
                         <div className="row row-tight">
+                          {/* Stays a button, not a menu item: it toggles the
+                              expander on this same row, so it is navigation
+                              within the table rather than an action on the
+                              account - and it carries the booking count, which
+                              is information the row would otherwise not show. */}
                           <button
                             className="btn btn-sm btn-ghost"
                             onClick={() => setExpanded(expanded === u.id ? null : u.id)}
                           >
                             {u.booking_count} {km ? 'ការកក់' : 'bookings'}
                           </button>
-                          {u.disabled ? (
-                            <button
-                              className="btn btn-sm btn-outline"
-                              disabled={busyId === u.id}
-                              onClick={() => applyDisabled(u, false)}
-                            >
-                              {t('enable')}
-                            </button>
-                          ) : (
-                            <button
-                              className="btn btn-sm btn-danger"
-                              disabled={busyId === u.id}
-                              onClick={() => setConfirming(u)}
-                            >
-                              {t('disable')}
-                            </button>
-                          )}
+
+                          <ActionMenu
+                            disabled={busyId === u.id}
+                            label={km ? 'សកម្មភាព' : 'Actions'}
+                            items={[
+                              {
+                                key: 'edit',
+                                icon: 'edit',
+                                label: t('edit'),
+                                onSelect: () => {
+                                  setSaveError(null)
+                                  setEditing(u)
+                                },
+                              },
+                              {
+                                // Re-enabling is harmless, so it skips the
+                                // confirmation that disabling gets.
+                                key: 'enable',
+                                icon: 'checkCircle',
+                                label: t('enable'),
+                                hidden: !u.disabled,
+                                onSelect: () => applyDisabled(u, false),
+                              },
+                              {
+                                // Locks someone out of an account they may be
+                                // mid-booking on, so it asks first.
+                                key: 'disable',
+                                icon: 'alert',
+                                label: t('disable'),
+                                tone: 'danger',
+                                /*
+                                 * Never offered on your own row. The server
+                                 * refuses it outright - an admin disabling
+                                 * themselves is the one click that locks
+                                 * everybody out, with no way back except SQL -
+                                 * so showing the button would only ever produce
+                                 * an error message.
+                                 *
+                                 * The last-remaining-admin case is deliberately
+                                 * NOT hidden here: this list is filtered and
+                                 * paged, so the browser cannot reliably know
+                                 * whether another enabled admin exists. The
+                                 * server counts and refuses, and the refusal
+                                 * says why.
+                                 */
+                                hidden: u.disabled || (currentUser && u.id === currentUser.id),
+                                onSelect: () => setConfirming(u),
+                              },
+                            ]}
+                          />
                         </div>
                       </td>
                     </tr>
@@ -312,6 +398,19 @@ export default function AdminUsersPage() {
 </ResponsiveTable>
       </div>
       )}
+
+      <AdminUserEditDialog
+        open={Boolean(editing)}
+        user={editing}
+        isSelf={Boolean(editing && currentUser && editing.id === currentUser.id)}
+        busy={saving}
+        error={saveError}
+        onSave={saveUser}
+        onClose={() => {
+          setEditing(null)
+          setSaveError(null)
+        }}
+      />
 
       <ConfirmDialog
         open={Boolean(confirming)}

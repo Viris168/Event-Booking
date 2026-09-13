@@ -33,12 +33,18 @@ public class Venue {
     private Long id;
 
     /**
-     * The organiser who owns this venue, or {@code null} for a shared venue.
+     * The organiser who owns this venue.
      *
-     * <p>A shared venue is part of the platform's catalogue - a public hall or
-     * stadium that any organiser may host at and maintain. Nothing here is
-     * allowed to assume an owner is present; see
-     * {@link com.eventbooking.security.OrganizerResolver#requireOwnerOrShared}.
+     * <p>Venues are private: only their owner may edit one, edit its seat map,
+     * retire it, or host an event at it. V21 made this column nullable so that
+     * a null could mean "a shared platform venue any organiser may use", and
+     * V27 withdrew that meaning - a null owner now means a venue nobody can
+     * reach, which is why V27 also retires the ones that were left.
+     *
+     * <p>Still nullable rather than restored to NOT NULL, because a migration
+     * that tightened it would fail outright on any database still holding one
+     * of those rows. Nothing creates a null owner: createVenue always writes
+     * the caller's organizer_profile id.
      */
     @Column(name = "organizer_id")
     private Long organizerId;

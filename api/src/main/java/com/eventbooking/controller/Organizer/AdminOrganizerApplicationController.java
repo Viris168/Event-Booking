@@ -8,7 +8,9 @@ import com.eventbooking.service.Organizer.OrganizerService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import com.eventbooking.Enumeration.OrganizerApplicationStatus;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -16,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Reviewing organiser applications. The admin half of the flow.
@@ -45,17 +48,34 @@ public class AdminOrganizerApplicationController {
     }
 
     /**
-     * The review queue: everything still waiting, longest wait first.
+     * One status' worth of applications, longest wait first.
      *
-     * <p>No status filter parameter. This endpoint exists to be worked down,
-     * and an admin who wants to read decided applications wants a different
-     * screen with different columns, not the same one with a query string.
+     * <p>Defaults to PENDING, which is the queue an admin opens this screen to
+     * work down. The parameter was added when the screen grew status tabs: the
+     * columns a decided application needs turned out to be the same ones -
+     * who applied, what they want to run, when - so a second screen would have
+     * been the same screen with a different title.
      */
     @GetMapping
-    public ResponseEntity<List<OrganizerApplicationResponse>> pendingQueue(
+    public ResponseEntity<List<OrganizerApplicationResponse>> queue(
+            @CurrentUserId Long actorUserId,
+            @RequestParam(defaultValue = "PENDING") OrganizerApplicationStatus status) {
+        adminResolver.requireAdminUserId(actorUserId);
+        return ResponseEntity.ok(organizerService.queue(status));
+    }
+
+    /**
+     * How many applications sit in each status - the numbers on the tabs.
+     *
+     * <p>Its own endpoint rather than a field on the queue response: the tabs
+     * have to show every count while the list shows one status, and polling the
+     * list to keep three numbers fresh would refetch every application in it.
+     */
+    @GetMapping("/status-counts")
+    public ResponseEntity<Map<OrganizerApplicationStatus, Long>> statusCounts(
             @CurrentUserId Long actorUserId) {
         adminResolver.requireAdminUserId(actorUserId);
-        return ResponseEntity.ok(organizerService.pendingQueue());
+        return ResponseEntity.ok(organizerService.countsByStatus());
     }
 
     /**

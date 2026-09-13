@@ -120,6 +120,19 @@ app:
       secure: ${REFRESH_COOKIE_SECURE:true}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  # Outbound nudges to a Telegram group, so a decision waiting in the admin
+  # queue reaches a phone instead of sitting until somebody opens the console.
+  #
+  # Both values are EMPTY here on purpose and come from api/.env, which is
+  # gitignored. bot-token is a credential: anyone holding it can post as the
+  # bot, so it must never be written into this file. With either one missing the
+  # notifier disables itself and logs once at boot - the in-app notification is
+  # the durable record, and this is only the copy that buzzes.
+  telegram:
+    bot-token: ${TELEGRAM_BOT_TOKEN:}
+    chat-id: ${TELEGRAM_CHAT_ID:}
+    timeout: ${TELEGRAM_TIMEOUT:5s}
+
   hold:
     ttl-minutes: ${HOLD_TTL_MINUTES:10}
     extension-minutes: ${HOLD_EXTENSION_MINUTES:3}

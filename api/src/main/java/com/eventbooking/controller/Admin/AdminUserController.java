@@ -2,9 +2,11 @@ package com.eventbooking.controller.Admin;
 
 import com.eventbooking.Enumeration.Role;
 import com.eventbooking.dto.admin.AdminUserResponse;
+import com.eventbooking.dto.admin.AdminUserUpdateRequest;
 import com.eventbooking.security.AdminResolver;
 import com.eventbooking.security.CurrentUserId;
 import com.eventbooking.service.admin.AdminUserService;
+import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -52,6 +54,27 @@ public class AdminUserController {
     }
 
     /**
+     * Edit an account: name, contact details and role.
+     *
+     * <p>PATCH rather than PUT even though the form sends every field, because
+     * the two it does not send - {@code is_disabled} and the credentials - are
+     * not absent by accident. A PUT would invite a client to think blanking
+     * them was on the table.
+     *
+     * <p>The caller's own id is passed down, not just checked: the service
+     * refuses an admin changing their own role, and it can only do that if it
+     * knows who is asking.
+     */
+    @PatchMapping("/{id}")
+    public ResponseEntity<AdminUserResponse> update(
+            @CurrentUserId Long actorUserId,
+            @PathVariable Long id,
+            @Valid @RequestBody AdminUserUpdateRequest request) {
+        Long adminUserId = adminResolver.requireAdminUserId(actorUserId);
+        return new ResponseEntity<>(adminUserService.update(adminUserId, id, request), HttpStatus.OK);
+    }
+
+    /**
      * Lock an account out. Bookings and tickets are left alone - see
      * AdminUserService.setDisabled.
      */
@@ -59,15 +82,17 @@ public class AdminUserController {
     public ResponseEntity<AdminUserResponse> disable(
             @CurrentUserId Long actorUserId,
             @PathVariable Long id) {
-        adminResolver.requireAdminUserId(actorUserId);
-        return new ResponseEntity<>(adminUserService.setDisabled(id, true), HttpStatus.OK);
+        // The id, not just the check: the service refuses an admin disabling
+        // their own account, and it can only do that if it knows who is asking.
+        Long adminUserId = adminResolver.requireAdminUserId(actorUserId);
+        return new ResponseEntity<>(adminUserService.setDisabled(adminUserId, id, true), HttpStatus.OK);
     }
 
     @PatchMapping("/{id}/enable")
     public ResponseEntity<AdminUserResponse> enable(
             @CurrentUserId Long actorUserId,
             @PathVariable Long id) {
-        adminResolver.requireAdminUserId(actorUserId);
-        return new ResponseEntity<>(adminUserService.setDisabled(id, false), HttpStatus.OK);
+        Long adminUserId = adminResolver.requireAdminUserId(actorUserId);
+        return new ResponseEntity<>(adminUserService.setDisabled(adminUserId, id, false), HttpStatus.OK);
     }
 }

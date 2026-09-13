@@ -5,11 +5,15 @@ import com.eventbooking.Enumeration.EventTransition;
 import com.eventbooking.Enumeration.NotificationType;
 import com.eventbooking.Enumeration.OrganizerApplicationStatus;
 import com.eventbooking.model.Booking;
+import com.eventbooking.model.AppUser;
 import com.eventbooking.model.Event;
 import com.eventbooking.model.OrganizerApplication;
 import com.eventbooking.repository.BookingRepository;
 import com.eventbooking.repository.EventRepository;
 import com.eventbooking.repository.OrganizerApplicationRepository;
+import com.eventbooking.repository.AppUserRepository;
+import com.eventbooking.service.notification.telegram.TelegramMessages;
+import com.eventbooking.service.notification.telegram.TelegramNotifier;
 import com.eventbooking.repository.OrganizerProfileRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -48,17 +53,42 @@ public class NotificationListener {
     private final EventRepository eventRepository;
     private final OrganizerApplicationRepository organizerApplicationRepository;
     private final OrganizerProfileRepository organizerProfileRepository;
+    private final AppUserRepository appUserRepository;
+    private final TelegramNotifier telegram;
 
     public NotificationListener(NotificationService notificationService,
                                 BookingRepository bookingRepository,
                                 EventRepository eventRepository,
                                 OrganizerApplicationRepository organizerApplicationRepository,
-                                OrganizerProfileRepository organizerProfileRepository) {
+                                OrganizerProfileRepository organizerProfileRepository,
+                                AppUserRepository appUserRepository,
+                                TelegramNotifier telegram) {
         this.notificationService = notificationService;
         this.bookingRepository = bookingRepository;
         this.eventRepository = eventRepository;
         this.organizerApplicationRepository = organizerApplicationRepository;
         this.organizerProfileRepository = organizerProfileRepository;
+        this.appUserRepository = appUserRepository;
+        this.telegram = telegram;
+    }
+
+    /**
+     * The organisation behind an event, for a message a person reads.
+     *
+     * <p>Falls back to the owner's own name, and then to nothing: a Telegram
+     * nudge naming no organiser is still worth sending, where one that threw
+     * because a profile row was missing would lose the notification entirely.
+     */
+    private String organizerName(Long organizerProfileId) {
+        return organizerProfileRepository.findById(organizerProfileId)
+                .map(profile -> {
+                    String org = profile.getOrgNameEn();
+                    if (org != null && !org.isBlank()) return org;
+                    return appUserRepository.findById(profile.getUserId())
+                            .map(AppUser::getDisplayName)
+                            .orElse("");
+                })
+                .orElse("");
     }
 
     /**
@@ -182,6 +212,7 @@ public class NotificationListener {
             case REJECT -> NotificationType.EVENT_REJECTED;
             case REQUEST_CHANGES -> NotificationType.EVENT_CHANGES_REQUESTED;
             case TAKE_DOWN -> NotificationType.EVENT_TAKEN_DOWN;
+            case RESTORE -> NotificationType.EVENT_RESTORED;
             default -> null;
         };
 
@@ -211,12 +242,21 @@ public class NotificationListener {
          * refusal would be deduplicated away and the organiser would sit waiting
          * for a decision that had already been made.
          *
-         * Take-down has no review row and needs none - it can only happen once
-         * per event.
+         * TAKE_DOWN and RESTORE write no review row, and since RESTORE exists
+         * they are both repeatable: an event can be pulled, put back, and
+         * pulled again. The old key here was eventId + transition, which was
+         * true only while take-down was terminal - the moment it stopped being,
+         * that key silently swallowed every take-down after the first and the
+         * organiser's event left the catalogue with no notification at all.
+         *
+         * So those two are keyed per occurrence. Dedupe exists to absorb a
+         * listener running twice over one event, and this listener fires
+         * AFTER_COMMIT on a transition that has already been applied - so there
+         * is exactly one firing to key, and each genuinely is a new occurrence.
          */
         String key = e.reviewId() != null
                 ? "review:" + e.reviewId()
-                : event.getId() + ":" + e.transition();
+                : event.getId() + ":" + e.transition() + ":" + Instant.now().toEpochMilli();
 
         if (organizerType != null) {
             notificationService.notifyUser(
@@ -234,6 +274,17 @@ public class NotificationListener {
                     key,
                     "/admin/review",
                     params);
+
+            /*
+             * The other thing that waits on a human: an event in the review
+             * queue cannot go on sale until somebody decides it, and until then
+             * the organiser is blocked.
+             *
+             * Only on SUBMIT. The other transitions here are decisions an admin
+             * has just made themselves, and messaging a group to report what one
+             * of its own members did a second ago is how a channel gets muted.
+             */
+            telegram.send(TelegramMessages.eventSubmitted(event, organizerName(event.getOrganizerId())));
         }
     }
 
@@ -255,6 +306,21 @@ public class NotificationListener {
                 Map.of(
                         "orgNameEn", application.getOrgNameEn(),
                         "orgNameKm", application.getOrgNameKm()));
+
+        /*
+         * The same news, to a phone.
+         *
+         * An organiser application sits in the queue until a human decides it,
+         * and the in-app bell only reaches somebody already looking at the admin
+         * console. This is the nudge that gets them there.
+         *
+         * After the in-app notification, never instead of it: notifyAdmins has
+         * written the durable record by this point, so a Telegram outage costs
+         * the nudge and nothing else. TelegramNotifier swallows its own failures
+         * for the same reason - see its class comment.
+         */
+        AppUser applicant = appUserRepository.findById(application.getUserId()).orElse(null);
+        telegram.send(TelegramMessages.organizerApplication(application, applicant));
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)

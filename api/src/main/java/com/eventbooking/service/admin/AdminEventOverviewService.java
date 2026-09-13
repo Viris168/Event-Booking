@@ -16,6 +16,7 @@ import com.eventbooking.repository.OrganizerProfileRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
@@ -73,9 +74,16 @@ public class AdminEventOverviewService {
         List<Event> events = eventRepository.searchForAdmin(needle, status, provinceCode);
         if (events.isEmpty()) return List.of();
 
-        // Four aggregate queries for the whole table, not four per row.
+        // Five aggregate queries for the whole table, not five per row.
         Map<Long, int[]> totals = totalsByEvent();
         Map<Long, Long> revenue = bookingRepository.sumRevenueByEvent(REVENUE_STATES).stream()
+                .collect(Collectors.toMap(r -> (Long) r[0], r -> ((Number) r[1]).longValue()));
+
+        // Separate from revenue above, and not derivable from it: revenue counts
+        // CONFIRMED only, while what blocks a delete is a booking row in ANY
+        // state. An event with one expired booking has no revenue and is still
+        // not deletable.
+        Map<Long, Long> bookingCounts = bookingRepository.countByEvent().stream()
                 .collect(Collectors.toMap(r -> (Long) r[0], r -> ((Number) r[1]).longValue()));
 
         Map<Long, OrganizerProfile> profiles = organizerProfileRepository
@@ -90,6 +98,7 @@ public class AdminEventOverviewService {
 
         return events.stream().map(e -> {
             int[] t = totals.getOrDefault(e.getId(), new int[3]);
+            long bookings = bookingCounts.getOrDefault(e.getId(), 0L);
             OrganizerProfile profile = profiles.get(e.getOrganizerId());
             return new AdminEventOverviewResponse(
                     e.getId(),
@@ -99,6 +108,8 @@ public class AdminEventOverviewService {
                     e.getStatus(),
                     e.getCategory(),
                     e.getStartsAt(),
+                    e.getSalesOpenAt(),
+                    e.getSalesCloseAt(),
                     e.getOrganizerId(),
                     profile == null ? null : profile.getOrgNameEn(),
                     profile == null ? null : profile.getOrgNameKm(),
@@ -108,8 +119,30 @@ public class AdminEventOverviewService {
                     e.getVenue().getNameKm(),
                     e.getVenue().getProvinceCode(),
                     t[0], t[1], t[2],
-                    revenue.getOrDefault(e.getId(), 0L));
+                    revenue.getOrDefault(e.getId(), 0L),
+                    bookings,
+                    bookings == 0);
         }).toList();
+    }
+
+    /**
+     * How many events are sitting in each status.
+     *
+     * <p>The review queue shows one status at a time but has to display all
+     * four counts, so a reviewer can see three are waiting while they work
+     * through the rejections. Every status is returned, zeros included - a tab
+     * that vanishes when its queue empties moves the others under the cursor.
+     */
+    @Transactional(readOnly = true)
+    public Map<EventStatus, Long> countsByStatus() {
+        Map<EventStatus, Long> counts = new EnumMap<>(EventStatus.class);
+        for (EventStatus status : EventStatus.values()) {
+            counts.put(status, 0L);
+        }
+        for (Object[] row : eventRepository.countGroupedByStatus()) {
+            counts.put((EventStatus) row[0], ((Number) row[1]).longValue());
+        }
+        return counts;
     }
 
     /**
