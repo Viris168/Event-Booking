@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 
@@ -74,8 +75,13 @@ public class NotificationServiceimpl implements NotificationService {
         // Marking a read notification read is not an error: the client fires this
         // on click, and clicking twice is not a mistake worth a 409. Keeping the
         // first timestamp is what makes "when did you see this" stay true.
+        // Truncated to microseconds because that is all timestamptz keeps.
+        // Instant.now() carries nanoseconds, so an untruncated value is one
+        // thing in this object and another once it has been through the
+        // column - the same moment, compared unequal. The second markRead
+        // reads the stored copy, which is exactly where that shows up.
         if (notification.getReadAt() == null) {
-            notification.setReadAt(Instant.now());
+            notification.setReadAt(Instant.now().truncatedTo(ChronoUnit.MICROS));
         }
 
         return NotificationResponse.from(notification);
