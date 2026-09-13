@@ -12,6 +12,7 @@ import com.eventbooking.repository.BookingRepository;
 import com.eventbooking.repository.EventRepository;
 import com.eventbooking.repository.OrganizerApplicationRepository;
 import com.eventbooking.repository.AppUserRepository;
+import com.eventbooking.service.notification.telegram.TelegramMessages;
 import com.eventbooking.service.notification.telegram.TelegramNotifier;
 import com.eventbooking.repository.OrganizerProfileRepository;
 import org.slf4j.Logger;
@@ -283,17 +284,7 @@ public class NotificationListener {
              * has just made themselves, and messaging a group to report what one
              * of its own members did a second ago is how a channel gets muted.
              */
-            StringBuilder msg = new StringBuilder()
-                    .append("<b>Event waiting for review</b>\n\n")
-                    .append("<b>").append(TelegramNotifier.escape(event.getTitleEn())).append("</b>\n")
-                    .append(TelegramNotifier.escape(organizerName(event.getOrganizerId()))).append('\n');
-
-            if (event.getVenue() != null) {
-                msg.append(TelegramNotifier.escape(event.getVenue().getNameEn())).append('\n');
-            }
-            msg.append("\nDecide it in the admin review queue.");
-
-            telegram.send(msg.toString());
+            telegram.send(TelegramMessages.eventSubmitted(event, organizerName(event.getOrganizerId())));
         }
     }
 
@@ -328,26 +319,8 @@ public class NotificationListener {
          * the nudge and nothing else. TelegramNotifier swallows its own failures
          * for the same reason - see its class comment.
          */
-        String applicant = appUserRepository.findById(application.getUserId())
-                .map(AppUser::getDisplayName)
-                .orElse("Someone");
-
-        StringBuilder msg = new StringBuilder()
-                .append("<b>New organiser application</b>\n\n")
-                .append(TelegramNotifier.escape(applicant))
-                .append(" wants to run events as <b>")
-                .append(TelegramNotifier.escape(application.getOrgNameEn()))
-                .append("</b>.\n");
-
-        if (application.getTelegramHandle() != null && !application.getTelegramHandle().isBlank()) {
-            msg.append("Telegram: ").append(TelegramNotifier.escape(application.getTelegramHandle())).append('\n');
-        }
-        if (application.getMessage() != null && !application.getMessage().isBlank()) {
-            msg.append('\n').append("<i>").append(TelegramNotifier.escape(application.getMessage())).append("</i>\n");
-        }
-        msg.append("\nDecide it under Organiser applications in the admin console.");
-
-        telegram.send(msg.toString());
+        AppUser applicant = appUserRepository.findById(application.getUserId()).orElse(null);
+        telegram.send(TelegramMessages.organizerApplication(application, applicant));
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
