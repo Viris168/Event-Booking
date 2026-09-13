@@ -84,13 +84,18 @@ export function isValidPhone(v) {
 }
 
 /**
- * Turns however a Cambodian types their number into the E.164 the API wants.
+ * Turns however a Cambodian types their number into the one spelling stored.
  *
  * Nobody here writes "+85512345678". They write 012 345 678 - that is what is
- * printed on a business card, said out loud, and saved in a contact list. The
- * database stores E.164 because that is unambiguous and is what PayWay and any
- * SMS provider expect, but that is a storage decision and there is no reason to
- * make a customer perform the conversion.
+ * printed on a business card, said out loud, and saved in a contact list, and
+ * since V24 it is also what the database keeps.
+ *
+ * There has to be exactly one stored spelling, whichever it is. phone_e164 is
+ * UNIQUE on the literal string, so "012345678" and "+85512345678" are one line
+ * to a person and two different accounts to Postgres; a client that sometimes
+ * sent one and sometimes the other would let the same phone register twice and
+ * then fail to log either of them in reliably. This function is where that one
+ * spelling is decided, which is why every form runs through it.
  *
  * Accepts all of these as the same number, spaces and dashes anywhere:
  *
@@ -101,11 +106,11 @@ export function isValidPhone(v) {
  *   +855 012 345 678   both forms at once, which people do type
  *   12345678           no trunk zero
  *
- * Returns the E.164 string, or null when it cannot be read as a Cambodian
- * number. Null rather than a best guess: a wrong number silently accepted is a
- * ticket nobody can be reached about.
+ * Returns the local 0-prefixed string, or null when it cannot be read as a
+ * Cambodian number. Null rather than a best guess: a wrong number silently
+ * accepted is a ticket nobody can be reached about.
  */
-export function toE164(input) {
+export function toLocalPhone(input) {
   const raw = (input || '').trim()
   let digits = raw.replace(/[^\d]/g, '')
   if (!digits) return null
@@ -113,9 +118,9 @@ export function toE164(input) {
   /*
    * An explicit international prefix is a claim about which country this is,
    * and it has to be honoured. Without this check "+1 555 0100" loses its "+1",
-   * gets read as a local number and is stored as +855 15550100 - a real
-   * Cambodian number belonging to someone else entirely. Refusing is the only
-   * safe answer; this product sells tickets in one country.
+   * gets read as a local number and is stored as 015550100 - a real Cambodian
+   * number belonging to someone else entirely. Refusing is the only safe
+   * answer; this product sells tickets in one country.
    */
   const isInternational = raw.startsWith('+') || digits.startsWith('00')
   if (isInternational && !digits.replace(/^00/, '').startsWith('855')) return null
@@ -124,14 +129,14 @@ export function toE164(input) {
   if (digits.startsWith('00855')) digits = digits.slice(5)
   else if (digits.startsWith('855')) digits = digits.slice(3)
 
-  // The trunk zero belongs to the national format and is dropped in E.164.
-  // Checked AFTER the country code so "+855 012..." works too.
+  // Strip a trunk zero if one survived the country code, so "+855 012..." and
+  // "012..." both reduce to the same subscriber digits before it is put back.
   if (digits.startsWith('0')) digits = digits.slice(1)
 
   // The schema's CHECK constraint, applied here so the caller never sends
   // something the database is going to refuse.
   if (!/^[0-9]{8,9}$/.test(digits)) return null
-  return `+855${digits}`
+  return `0${digits}`
 }
 
 export function seatLabel(seat) {

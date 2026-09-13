@@ -1,5 +1,6 @@
 package com.eventbooking.repository;
 
+import com.eventbooking.Enumeration.PaymentProvider;
 import com.eventbooking.Enumeration.PaymentStatus;
 import com.eventbooking.model.PaymentTransaction;
 import jakarta.persistence.LockModeType;
@@ -121,4 +122,35 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
     List<Long> findLapsedOpenIds(@Param("statuses") Collection<PaymentStatus> statuses,
                                  @Param("now") Instant now,
                                  Pageable pageable);
+
+    // --- admin ---------------------------------------------------------------
+
+    /**
+     * The admin payments table. Both filters are nullable, meaning "do not
+     * filter on this", so one query serves every combination of the two
+     * controls above the table.
+     *
+     * <p>booking and event are fetched with it because every row prints a
+     * booking reference and an event title. Left as lazy proxies they would be
+     * resolved one at a time during serialisation - the same N+1, just harder
+     * to see in a profiler.
+     *
+     * <p>The "stuck" filter is deliberately not here: it compares createdAt to
+     * a cutoff the service computes from the clock, and a repository that took
+     * a cutoff parameter would still leave the threshold's definition split
+     * across two files.
+     */
+    @Query("""
+            select p from PaymentTransaction p
+            join fetch p.booking b
+            join fetch b.event
+            where (:provider is null or p.provider = :provider)
+              and (:status is null or p.status = :status)
+            order by p.createdAt desc
+            """)
+    List<PaymentTransaction> findForAdmin(@Param("provider") PaymentProvider provider,
+                                          @Param("status") PaymentStatus status);
+
+    /** Open attempts older than the cutoff - the dashboard's stuck counter. */
+    long countByStatusInAndCreatedAtLessThanEqual(Collection<PaymentStatus> statuses, Instant cutoff);
 }

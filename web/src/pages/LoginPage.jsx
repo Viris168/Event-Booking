@@ -5,7 +5,7 @@ import AuthLayout, { PasswordField } from '../components/AuthLayout.jsx'
 import Icon from '../components/Icon.jsx'
 import { Alert, Field } from '../components/ui.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
-import { toE164 } from '../lib/format.js'
+import { toLocalPhone } from '../lib/format.js'
 import GoogleSignInButton from '../components/GoogleSignInButton.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
 
@@ -73,7 +73,7 @@ export default function LoginPage() {
      * Falls back to the raw text when it cannot be read as a Cambodian number,
      * so the server still answers the single INVALID_CREDENTIALS it always did.
      */
-    const result = await login({ identifier: toE164(identifier) ?? identifier, password })
+    const result = await login({ identifier: toLocalPhone(identifier) ?? identifier, password })
     setBusy(false)
     if (result.error) {
       setError(result.error)

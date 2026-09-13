@@ -50,4 +50,19 @@ public interface EventZoneRepository extends JpaRepository<EventZone, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select z from EventZone z where z.id in :ids order by z.id")
     List<EventZone> findAllByIdForUpdate(@Param("ids") List<Long> ids);
+
+    /**
+     * Zone capacity, sold and held totalled per event, for every event at once.
+     *
+     * <p>The moderation table shows a progress bar on each row. Asking per row
+     * is one query per event; this is one query for the page.
+     *
+     * <p>Returns {@code [eventId, capacity, sold, held]} per row.
+     */
+    @org.springframework.data.jpa.repository.Query("""
+            select z.event.id, sum(z.capacity), sum(z.soldQty), sum(z.heldQty)
+            from EventZone z
+            group by z.event.id
+            """)
+    java.util.List<Object[]> totalsByEvent();
 }

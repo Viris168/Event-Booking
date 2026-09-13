@@ -1,5 +1,5 @@
 import { useDocumentTitle } from '../../lib/useDocumentTitle.js'
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import ConfirmDialog from '../../components/ConfirmDialog.jsx'
 import {
@@ -15,18 +15,9 @@ import {
 import { useLocale } from '../../context/LocaleContext.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
 import { usd } from '../../lib/format.js'
-import {
-  PROVINCES,
-  getUserById,
-  getVenue,
-  inventorySummary,
-  listEvents,
-  provinceName,
-  salesSummary,
-  setEventStatus,
-  useStore,
-} from '../../mock/store.js'
-import db from '../../mock/store.js'
+import { Alert } from '../../components/ui.jsx'
+import { getEventsOverview, takeDownEvent } from '../../api/admin.js'
+import { useProvinces } from '../../lib/useProvinces.js'
 
 // Declaration order is lifecycle order, so the filter dropdown reads as the
 // path an event actually takes rather than as an alphabetical list.
@@ -40,8 +31,15 @@ const STATUSES = [
   'TAKEN_DOWN',
 ]
 
+/*
+ * The moderation table, from the database.
+ *
+ * Every number here used to come from mock/store.js, so the sold/capacity bars
+ * and the revenue column described a fixture file rather than the platform -
+ * and "take down" flipped a field in a tab while the event carried on selling.
+ * Both halves now go through /admin/events.
+ */
 export default function AdminEventsPage() {
-  useStore()
   const { t, locale, date } = useLocale()
   const km = locale === 'km'
   useDocumentTitle(t('moderation'))
@@ -53,7 +51,58 @@ export default function AdminEventsPage() {
   // listing off sale, so it asks first; restoring is safe and stays one click.
   const [confirming, setConfirming] = useState(null)
 
-  const events = listEvents({ q, status, province, sort: 'soonest' }).content
+  // provinceName comes from the hook rather than being written again here: it
+  // already falls back to the raw code for a province the list does not know,
+  // which is what makes a data problem visible instead of blank.
+  const { provinces, provinceName } = useProvinces()
+  const [events, setEvents] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
+  const [version, setVersion] = useState(0)
+  const [busyId, setBusyId] = useState(null)
+
+  // Debounced, because typing in the search box re-queries and the answers
+  // would otherwise race - "jaz" can land after "jazz".
+  useEffect(() => {
+    let live = true
+    const timer = setTimeout(() => {
+      getEventsOverview({
+        ...(q.trim() ? { q: q.trim() } : {}),
+        ...(status !== 'ALL' ? { status } : {}),
+        ...(province ? { province } : {}),
+      })
+        .then((res) => {
+          if (!live) return
+          setLoadError(false)
+          setEvents(Array.isArray(res) ? res : [])
+        })
+        .catch(() => {
+          if (!live) return
+          setLoadError(true)
+          setEvents([])
+        })
+        .finally(() => live && setLoading(false))
+    }, 250)
+    return () => {
+      live = false
+      clearTimeout(timer)
+    }
+  }, [q, status, province, version])
+
+  const refresh = useCallback(() => setVersion((v) => v + 1), [])
+
+  async function takeDown(event) {
+    setBusyId(event.id)
+    try {
+      await takeDownEvent(event.id)
+      toast(km ? 'បានដកចេញ' : 'Event taken down', 'info')
+      refresh()
+    } catch (e) {
+      toast(errorText(e, km ? 'មិនបានសម្រេច' : 'Could not take this event down'), 'error')
+    } finally {
+      setBusyId(null)
+    }
+  }
 
   const chips = [
     q && { key: 'q', icon: 'search', label: q, onRemove: () => setQ('') },
@@ -77,13 +126,12 @@ export default function AdminEventsPage() {
     setProvince('')
   }
 
-  function organizerName(organizerId) {
-    const profile = db.organizerProfiles.find((p) => p.id === organizerId)
-    if (!profile) return '—'
-    const owner = getUserById(profile.user_id)
-    return `${locale === 'km' ? profile.org_name_km : profile.org_name_en}${
-      owner ? ` · ${owner.display_name}` : ''
-    }`
+  // The server sends the organisation and its owner separately so the column
+  // can be localised here rather than in SQL.
+  function organizerName(e) {
+    const org = km ? e.organizer_name_km : e.organizer_name_en
+    if (!org) return '—'
+    return e.organizer_owner_name ? `${org} · ${e.organizer_owner_name}` : org
   }
 
   return (
@@ -92,10 +140,15 @@ export default function AdminEventsPage() {
         <div>
           <h1>{t('moderation')}</h1>
           <p>
-            {events.length}{' '}
-            {km
-              ? 'ព្រឹត្តិការណ៍ត្រូវនឹងតម្រង — គ្រប់ម្ចាស់ទាំងអស់។'
-              : 'events match the current filters, across every owner.'}
+            {loading
+              ? km
+                ? 'កំពុងផ្ទុក…'
+                : 'Loading…'
+              : `${events.length} ${
+                  km
+                    ? 'ព្រឹត្តិការណ៍ត្រូវនឹងតម្រង — គ្រប់ម្ចាស់ទាំងអស់។'
+                    : 'events match the current filters, across every owner.'
+                }`}
           </p>
         </div>
       </div>
@@ -130,7 +183,7 @@ export default function AdminEventsPage() {
                 ariaLabel={t('province')}
               >
                 <option value="">{t('allProvinces')}</option>
-                {PROVINCES.map((p) => (
+                {provinces.map((p) => (
                   <option key={p.code} value={p.code}>
                     {km ? p.name_km : p.name_en}
                   </option>
@@ -147,7 +200,18 @@ export default function AdminEventsPage() {
         </div>
       </div>
 
-      {events.length === 0 ? (
+      {loadError && (
+        <Alert tone="danger" style={{ marginBottom: '1.2rem' }}>
+          {km ? 'មិនអាចផ្ទុកព្រឹត្តិការណ៍បានទេ។' : 'Could not load events.'}{' '}
+          <button className="btn btn-sm btn-outline" onClick={refresh}>
+            {km ? 'ព្យាយាមម្ដងទៀត' : 'Try again'}
+          </button>
+        </Alert>
+      )}
+
+      {loading ? (
+        <p className="muted small">{km ? 'កំពុងផ្ទុក…' : 'Loading…'}</p>
+      ) : events.length === 0 && !loadError ? (
         <Empty icon="search" title={km ? 'រកមិនឃើញព្រឹត្តិការណ៍ទេ' : 'No events match'}>
           {km
             ? 'សាកល្បងលុបតម្រងចេញ ឬស្វែងរកពាក្យផ្សេង។'
@@ -174,57 +238,56 @@ export default function AdminEventsPage() {
               </tr>
             </thead>
             <tbody>
-              {events.map((e) => {
-                const inv = inventorySummary(e.id)
-                const venue = getVenue(e.venue_id)
-                return (
-                  <tr key={e.id} className={e.status === 'TAKEN_DOWN' ? 'flagged' : ''}>
-                    <td>
-                      <Link to={`/events/${e.id}`} className="font-bold">
-                        {locale === 'km' ? e.title_km : e.title_en}
+              {events.map((e) => (
+                <tr key={e.id} className={e.status === 'TAKEN_DOWN' ? 'flagged' : ''}>
+                  <td>
+                    <Link to={`/events/${e.id}`} className="font-bold">
+                      {km ? e.title_km : e.title_en}
+                    </Link>
+                    <div className="small muted">
+                      {km ? e.venue_name_km : e.venue_name_en} · {provinceName(e.province_code, locale)}
+                    </div>
+                  </td>
+                  <td className="small">{organizerName(e)}</td>
+                  <td>
+                    <Badge status={e.status} />
+                  </td>
+                  <td className="small">{date(e.starts_at)}</td>
+                  <td>
+                    <div className="small muted">
+                      {e.sold} / {e.capacity}
+                    </div>
+                    <Progress sold={e.sold} held={e.held} capacity={e.capacity} />
+                  </td>
+                  <td className="num font-bold">{usd(e.revenue_usd_cents)}</td>
+                  <td>
+                    <div className="row row-tight">
+                      <Link className="btn btn-sm btn-ghost" to={`/organizer/events/${e.id}/sales`}>
+                        {t('sales')}
                       </Link>
-                      <div className="small muted">
-                        {locale === 'km' ? venue?.name_km : venue?.name_en} ·{' '}
-                        {provinceName(venue?.province_code, locale)}
-                      </div>
-                    </td>
-                    <td className="small">{organizerName(e.organizer_id)}</td>
-                    <td>
-                      <Badge status={e.status} />
-                    </td>
-                    <td className="small">{date(e.starts_at)}</td>
-                    <td>
-                      <div className="small muted">
-                        {inv.sold} / {inv.capacity}
-                      </div>
-                      <Progress sold={inv.sold} held={inv.held} capacity={inv.capacity} />
-                    </td>
-                    <td className="num font-bold">{usd(salesSummary(e.id).revenue_usd_cents)}</td>
-                    <td>
-                      <div className="row row-tight">
-                        <Link className="btn btn-sm btn-ghost" to={`/organizer/events/${e.id}/sales`}>
-                          {t('sales')}
-                        </Link>
-                        {e.status === 'TAKEN_DOWN' ? (
-                          <button
-                            className="btn btn-sm btn-outline"
-                            onClick={() => {
-                              setEventStatus(e.id, 'PUBLISHED')
-                              toast(locale === 'km' ? 'បានផ្សាយវិញ' : 'Event restored', 'success')
-                            }}
-                          >
-                            {locale === 'km' ? 'ផ្សាយវិញ' : 'Restore'}
-                          </button>
-                        ) : (
-                          <button className="btn btn-sm btn-danger" onClick={() => setConfirming(e)}>
-                            {t('takeDown')}
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
+                      {/*
+                        * Take-down is legal only from PUBLISHED, and TAKEN_DOWN
+                        * is terminal - EventStateMachine gives it no outgoing
+                        * edges. The prototype offered a "Restore" button here
+                        * that put the event back to PUBLISHED; there is no such
+                        * transition, so it is gone rather than left to fail.
+                        */}
+                      {e.status === 'PUBLISHED' && (
+                        <button
+                          className="btn btn-sm btn-danger"
+                          disabled={busyId === e.id}
+                          onClick={() => setConfirming(e)}
+                        >
+                          {t('takeDown')}
+                        </button>
+                      )}
+                      {e.status === 'TAKEN_DOWN' && (
+                        <span className="small muted">{km ? 'ដកចេញហើយ' : 'Taken down'}</span>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
 </ResponsiveTable>
@@ -237,8 +300,7 @@ export default function AdminEventsPage() {
         title={km ? 'ដកព្រឹត្តិការណ៍នេះចេញ?' : 'Take this event down?'}
         confirmLabel={t('takeDown')}
         onConfirm={() => {
-          setEventStatus(confirming.id, 'TAKEN_DOWN')
-          toast(km ? 'បានដកចេញ' : 'Event taken down', 'info')
+          takeDown(confirming)
           setConfirming(null)
         }}
         onClose={() => setConfirming(null)}
@@ -251,4 +313,9 @@ export default function AdminEventsPage() {
       </ConfirmDialog>
     </div>
   )
+}
+
+function errorText(e, fallback) {
+  const detail = e?.response?.data?.detail || e?.response?.data?.message
+  return detail ? `${fallback}: ${detail}` : fallback
 }

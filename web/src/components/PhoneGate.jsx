@@ -4,7 +4,7 @@ import { Alert, Field } from './ui.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
 import { setPhone } from '../api/auth.js'
-import { toE164 } from '../lib/format.js'
+import { toLocalPhone } from '../lib/format.js'
 
 /*
  * The one thing a Google account arrives without.
@@ -45,7 +45,7 @@ export default function PhoneGate({ children }) {
      * because that is how the number is written in Cambodia, and the API's
      * CHECK constraint only knows E.164.
      */
-    const phone = toE164(value)
+    const phone = toLocalPhone(value)
     if (busy) return
     if (!phone) {
       setError(km ? 'ឧទាហរណ៍៖ 012 345 678' : 'For example 012 345 678')
@@ -67,8 +67,8 @@ export default function PhoneGate({ children }) {
             : 'That number already has an account.'
           : code === 'VALIDATION_ERROR'
             ? km
-              ? 'សូមបញ្ចូលលេខកម្ពុជា ដូចជា +85512345678។'
-              : 'Enter a Cambodian number, like +85512345678.'
+              ? 'សូមបញ្ចូលលេខកម្ពុជា ដូចជា 012345678។'
+              : 'Enter a Cambodian number, like 012345678.'
             : km
               ? 'មិនអាចរក្សាទុកលេខបានទេ។'
               : 'Could not save that number.',

@@ -8,7 +8,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import GoogleSignInButton from '../components/GoogleSignInButton.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
 import { useToast } from '../context/ToastContext.jsx'
-import { toE164 } from '../lib/format.js'
+import { toLocalPhone } from '../lib/format.js'
 
 const ERRORS = {
   PHONE_TAKEN: { en: 'That phone number is already registered.', km: 'លេខទូរស័ព្ទនេះមានគណនីរួចហើយ។' },
@@ -47,7 +47,7 @@ export default function RegisterPage() {
     const next = {}
     if (!form.display_name.trim())
       next.display_name = locale === 'km' ? 'ត្រូវការឈ្មោះ' : 'Display name is required'
-    if (!toE164(form.phone_e164))
+    if (!toLocalPhone(form.phone_e164))
       next.phone_e164 =
         locale === 'km' ? 'ឧទាហរណ៍៖ 012 345 678' : 'For example 012 345 678'
     if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
@@ -74,9 +74,9 @@ export default function RegisterPage() {
     // would collide with each other.
     const result = await register({
       display_name: form.display_name.trim(),
-      // validate() has already proved this converts; toE164 is what the
+      // validate() has already proved this converts; toLocalPhone is what the
       // API's CHECK constraint accepts, not the 012... the user typed.
-      phone_e164: toE164(form.phone_e164),
+      phone_e164: toLocalPhone(form.phone_e164),
       email: form.email.trim() || null,
       password: form.password,
     })

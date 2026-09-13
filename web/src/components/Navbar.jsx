@@ -76,25 +76,29 @@ export default function Navbar({ onOpenAccount }) {
    * Two lists, because the bar and the drawer are answering different
    * questions.
    *
-   * The bar is what you reach for repeatedly, and every permanent item in it
-   * costs the ones beside it some attention. So it carries only destinations:
-   * Home is not one, because the brand lockup to its left already goes there,
-   * and "Become an organizer" is not one either - it is a thing you do once,
-   * which is why it now lives in the account panel.
+   * The bar is what you reach for repeatedly. Home is an explicit row in it:
+   * the brand lockup to its left goes to the same place, but only people who
+   * have already learned that treat it as navigation, and a labelled Home is
+   * the one every role can find without being told. "Become an organizer"
+   * stays out - it is a thing you do once, which is why it lives in the
+   * account panel.
    *
    * The drawer has room and no such competition, so it keeps both: there is no
    * brand link to press inside it, and a phone user should not have to know the
    * account panel exists to find the organiser application.
    */
   const links = [
+    { to: '/', label: t('home'), icon: 'home', end: true, show: true },
     { to: '/events', label: t('events'), icon: 'calendar', show: true },
     { to: '/my-bookings', label: t('myBookings'), icon: 'ticket', show: isAuthenticated },
-    { to: '/organizer', label: t('organizer'), icon: 'building', show: isOrganizer },
+    // isOrganizer is true for PLATFORM_ADMIN too, so this needs the explicit
+    // !isAdmin: an admin's work lives under /admin, and carrying both put two
+    // different consoles side by side with nothing to say which was theirs.
+    { to: '/organizer', label: t('organizer'), icon: 'building', show: isOrganizer && !isAdmin },
     { to: '/admin', label: t('admin'), icon: 'shield', show: isAdmin },
   ].filter((l) => l.show)
 
   const drawerLinks = [
-    { to: '/', label: t('home'), icon: 'home', end: true, show: true },
     ...links,
     // Never shown beside the /organizer link: isOrganizer covers ORGANIZER and
     // PLATFORM_ADMIN, so exactly one of these two rows is ever visible and they
@@ -208,6 +212,29 @@ export default function Navbar({ onOpenAccount }) {
               {countdown(holdMsLeft)}
             </Link>
           )}
+
+          {/* The account, as an initial and nothing else.
+              It sat only inside the drawer, which made reaching your own
+              account on a phone a two-step guess: open a burger, hope it is in
+              there. It is the destination people reach for most after the
+              links themselves, so it earns a permanent slot - and at this
+              width it can only afford to be one glyph wide, which the avatar
+              already is. Same button and same panel as the wide bar; only the
+              name and role label are dropped. */}
+          {isAuthenticated && (
+            <button
+              type="button"
+              className="nav-avatar-btn"
+              onClick={onOpenAccount}
+              title={t('myAccount')}
+              aria-label={t('myAccount')}
+            >
+              <span className="avatar" aria-hidden="true">
+                {user.display_name.slice(0, 1).toUpperCase()}
+              </span>
+            </button>
+          )}
+
           <button
             className={`nav-icon-btn nav-burger ${menuOpen ? 'on' : ''}`}
             onClick={() => setMenuOpen((v) => !v)}

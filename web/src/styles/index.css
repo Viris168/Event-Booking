@@ -462,7 +462,27 @@
     @apply bg-white/15 text-white;
   }
 
-  /* The title never wraps; on phones the lockup carries the name on its own. */
+  /* The account button in the narrow bar: the avatar and nothing else.
+     Sized to match .nav-icon-btn beside it so the cluster reads as one row of
+     controls rather than an avatar that wandered in - but round, and without
+     the bordered plate, because the initial is already a filled shape. */
+  .nav-avatar-btn {
+    @apply grid size-8 flex-none cursor-pointer place-items-center rounded-full border-0 bg-transparent p-0 transition-colors;
+  }
+  .nav-avatar-btn:hover {
+    @apply bg-white/10;
+  }
+  .nav-avatar-btn:focus-visible {
+    @apply outline-2 outline-offset-2 outline-gold-500;
+  }
+  /* The avatar drives this button's size, so it must not also carry the 30px
+     it uses in the wide bar - that would push the button a pixel proud of the
+     burger next to it. */
+  .nav-avatar-btn .avatar {
+    @apply size-[26px] text-[0.72rem];
+  }
+
+  /* The title never wraps. */
   .nav-brand-text {
     @apply whitespace-nowrap;
     /* Latin wordmark: keep it in Inter even when the UI switches to Khmer, so
@@ -483,16 +503,33 @@
     }
   }
   @media (max-width: 560px) {
+    /* The wordmark stays. A mark on its own is only a name to someone who has
+       already learned it, and this one is not famous enough to assume that -
+       so the lockup keeps its title and pays for the space by shrinking both
+       halves rather than dropping one. */
     .nav-brand-text {
-      @apply hidden;
+      @apply text-[0.9rem];
     }
-    /* The wordmark is gone below this width, so the mark is the only brand on
-       screen — it grows rather than shrinks. */
     .nav-mark {
-      @apply h-[34px];
+      @apply h-[26px];
+    }
+    .nav-brand {
+      @apply gap-[0.35rem];
     }
     .nav-inner {
       @apply gap-2;
+    }
+    .nav-compact {
+      @apply gap-[0.25rem];
+    }
+  }
+
+  /* Below this the title has to go after all: the compact cluster is four
+     controls wide when there is a live hold, and the countdown cannot be the
+     thing that wraps. */
+  @media (max-width: 380px) {
+    .nav-brand-text {
+      @apply hidden;
     }
   }
 

@@ -2,9 +2,11 @@ package com.eventbooking.controller.Event;
 
 import com.eventbooking.Enumeration.EventStatus;
 import com.eventbooking.security.CurrentUserId;
+import com.eventbooking.dto.admin.AdminEventOverviewResponse;
 import com.eventbooking.dto.event.EventResponse;
 import com.eventbooking.dto.event.ReviewDecisionRequest;
 import com.eventbooking.security.AdminResolver;
+import com.eventbooking.service.admin.AdminEventOverviewService;
 import com.eventbooking.service.event.EventService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
@@ -12,6 +14,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * Moderation. Separate from EventController on purpose: a different authorizer,
@@ -30,11 +34,34 @@ import org.springframework.web.bind.annotation.*;
 public class AdminEventController {
 
     private final EventService eventService;
+    private final AdminEventOverviewService overviewService;
     private final AdminResolver adminResolver;
 
-    public AdminEventController(EventService eventService, AdminResolver adminResolver) {
+    public AdminEventController(EventService eventService,
+                                AdminEventOverviewService overviewService,
+                                AdminResolver adminResolver) {
         this.eventService = eventService;
+        this.overviewService = overviewService;
         this.adminResolver = adminResolver;
+    }
+
+    /**
+     * The moderation table: every event, any owner, any status.
+     *
+     * <p>Separate from the queue below rather than a looser version of it. The
+     * queue answers "what is waiting for me" and defaults to PENDING_REVIEW;
+     * this answers "what is on the platform" and defaults to no status filter
+     * at all. Collapsing them would mean one endpoint whose default is either
+     * wrong for the queue or wrong for the table.
+     */
+    @GetMapping("/overview")
+    public ResponseEntity<List<AdminEventOverviewResponse>> overview(
+            @CurrentUserId Long actorUserId,
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) EventStatus status,
+            @RequestParam(required = false) String province) {
+        adminResolver.requireAdminUserId(actorUserId);
+        return new ResponseEntity<>(overviewService.list(q, status, province), HttpStatus.OK);
     }
 
     /**

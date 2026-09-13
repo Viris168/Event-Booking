@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -109,4 +110,48 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     List<Booking> findStaleInStates(
             @Param("states") List<BookingStatus> states,
             @Param("cutoff") Instant cutoff);
+
+    // --- admin ---------------------------------------------------------------
+
+    /**
+     * Every booking belonging to any of these users, newest first.
+     *
+     * <p>One query for the whole page of the admin user list, rather than one
+     * per row. The screen shows a booking count and a lifetime spend against
+     * each account, and asking per user turned a twenty-row table into twenty-
+     * one round trips.
+     */
+    List<Booking> findByUserIdInOrderByCreatedAtDesc(Collection<Long> userIds);
+
+    /**
+     * The dashboard's latest-bookings strip. {@code event} is fetched with it
+     * because the strip prints the event title, and a lazy proxy resolved
+     * during serialisation is the same N+1 by a quieter route.
+     */
+    @Query("""
+            select b from Booking b
+            join fetch b.event
+            order by b.createdAt desc
+            """)
+    List<Booking> findRecentWithEvent(Pageable pageable);
+
+    long countByState(BookingStatus state);
+
+    /** Gross receipts. Only CONFIRMED counts - see PlatformStatsResponse. */
+    @Query("select coalesce(sum(b.totalUsdCents), 0) from Booking b where b.state in :states")
+    long sumTotalUsdCentsByStateIn(@Param("states") Collection<BookingStatus> states);
+
+    /**
+     * Confirmed revenue per event, for every event at once.
+     *
+     * <p>Returns {@code [eventId, sumUsdCents]} per row; events with no
+     * confirmed bookings are simply absent, so the caller defaults to zero.
+     */
+    @Query("""
+            select b.event.id, coalesce(sum(b.totalUsdCents), 0)
+            from Booking b
+            where b.state in :states
+            group by b.event.id
+            """)
+    List<Object[]> sumRevenueByEvent(@Param("states") Collection<BookingStatus> states);
 }
