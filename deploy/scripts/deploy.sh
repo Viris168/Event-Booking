@@ -135,8 +135,13 @@ fi
 #
 # Local builds overwrite the :TAG images in place, so the previous bytes have to
 # be given a second name before the build, or they are gone.
-IMAGE_TAG="$(sed -n 's/^IMAGE_TAG=//p' .env.prod | head -n1)"
-IMAGE_TAG="${IMAGE_TAG:-latest}"
+# IMAGE_TAG can be injected by ci-deploy.sh (the GitHub Actions entry point).
+# If it is already set in the environment, honour it; otherwise fall back to
+# the value in .env.prod, then to "latest".
+if [[ -z "${IMAGE_TAG:-}" ]]; then
+  IMAGE_TAG="$(sed -n 's/^IMAGE_TAG=//p' .env.prod | head -n1)"
+  IMAGE_TAG="${IMAGE_TAG:-latest}"
+fi
 ROLLBACK_READY=false
 for img in event-booking-api event-booking-web; do
   if docker image inspect "$img:$IMAGE_TAG" >/dev/null 2>&1; then
