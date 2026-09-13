@@ -1732,6 +1732,13 @@
   .s-TAKEN_DOWN {
     @apply bg-danger-soft text-danger;
   }
+  /* Not a stored status - see displayStatus in lib/salesState.js. A finished
+     event's row used to read "Published", which claims it is live on the site
+     when the catalogue stopped listing it the moment its date passed. Quiet,
+     because a finished event needs nothing from anybody. */
+  .s-FINISHED {
+    @apply bg-quiet-soft text-quiet;
+  }
 
   /* Review lifecycle (V14). Hue carries who is holding the event:
      info   = with the platform, waiting on us
@@ -3973,6 +3980,84 @@
   padding: 0.85rem 1.15rem;
   border-top: 1px solid var(--color-line-2);
 }
+
+/* Upcoming / Past / All, in the events panel header.
+
+   Small and quiet: it sits beside a count, not above a page, so it borrows the
+   pill shape used for filters elsewhere rather than the underlined tabs the
+   admin queues use for top-level navigation. */
+.scope-tabs {
+  display: inline-flex;
+  gap: 0.15rem;
+  padding: 0.15rem;
+  border: 1px solid var(--color-line);
+  border-radius: 999px;
+  background: var(--color-surface-2);
+}
+
+.scope-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  padding: 0.28rem 0.62rem;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--color-muted);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.scope-tab:hover { color: var(--color-ink); }
+
+.scope-tab.on {
+  background: var(--color-surface);
+  color: var(--color-ink);
+  box-shadow: var(--shadow-card);
+}
+
+/* The count rides along muted, so a two-digit number cannot make the labels
+   jump as events move between the two sets. */
+.scope-tab-n {
+  color: var(--color-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.scope-tab.on .scope-tab-n { color: var(--color-brand-700); }
+
+/* Where an event stands in its sales window, under the lifecycle badge.
+
+   Deliberately quieter than the Badge above it: the lifecycle status is the
+   thing an organiser scans for, and two equally loud pills on one row would
+   make neither of them read. No background - a coloured dot and a label is
+   enough to tell five states apart at a glance. */
+.sales-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  margin-top: 0.3rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+
+.sales-pill::before {
+  content: '';
+  width: 0.42rem;
+  height: 0.42rem;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+
+.sales-pill.ok { color: var(--color-brand-600); }
+.sales-pill.warn { color: var(--color-warning); }
+.sales-pill.bad { color: var(--color-danger); }
+/* quiet keeps the muted default - nothing is happening, and that is the point. */
 
 /* A table row that opens something when clicked.
 

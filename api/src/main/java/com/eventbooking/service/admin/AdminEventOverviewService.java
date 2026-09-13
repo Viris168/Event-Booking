@@ -108,6 +108,8 @@ public class AdminEventOverviewService {
                     e.getStatus(),
                     e.getCategory(),
                     e.getStartsAt(),
+                    e.getSalesOpenAt(),
+                    e.getSalesCloseAt(),
                     e.getOrganizerId(),
                     profile == null ? null : profile.getOrgNameEn(),
                     profile == null ? null : profile.getOrgNameKm(),

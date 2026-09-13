@@ -90,7 +90,11 @@ public class EventServiceimpl implements EventService {
         // event, so an unbounded size is an invitation to ask for the whole
         // catalogue several thousand queries at a time.
         return eventRepository.search(
-                        EventStatus.publiclyVisible(),
+                        // browsable, not publiclyVisible: a taken-down event
+                        // keeps its page for the people holding tickets to it,
+                        // but it has been pulled from sale and has no business
+                        // being offered to somebody browsing.
+                        EventStatus.browsable(),
                         criteria.titleLike(),
                         criteria.provinceCode(),
                         criteria.startsFrom(),
@@ -329,6 +333,12 @@ public class EventServiceimpl implements EventService {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new EventNotFoundException(eventId));
 
+        // Same reasoning as the organiser's copy: a finished event is already
+        // gone from the catalogue, so there is nothing for a take-down to do.
+        if (event.getStartsAt() != null && event.getStartsAt().isBefore(Instant.now())) {
+            throw EventAlreadyFinishedException.cannotTakeDown(eventId);
+        }
+
 
         event.setStatus(stateMachine.requireTransition(
                 event.getStatus(), EventTransition.TAKE_DOWN));
@@ -366,6 +376,27 @@ public class EventServiceimpl implements EventService {
     @Transactional
     public EventResponse takeDownOwnEvent(Long organizerId, Long eventId) {
         Event event = requireOwnedEvent(organizerId, eventId);
+
+        /*
+         * Sales only block this while the show is still ahead of everyone.
+         *
+         * The rule exists because pulling a listing that people hold tickets
+         * to is a refund decision, and refunds are the platform's call. Once
+         * the event has actually happened that reasoning is spent: nobody is
+         * going to turn up to it, the tickets were used or they were not, and
+         * taking the listing down decides nothing for anybody. Leaving it
+         * admin-only past that point just means an organiser has to ask
+         * permission to tidy their own history.
+         */
+        /*
+         * A finished event has nothing left to take down. It dropped out of the
+         * public catalogue the moment its date passed, so pulling it would move
+         * a status and change nothing anybody can see - and offering the action
+         * implied there was still something on sale to stop.
+         */
+        if (event.getStartsAt() != null && event.getStartsAt().isBefore(Instant.now())) {
+            throw EventAlreadyFinishedException.cannotTakeDown(eventId);
+        }
 
         int sold = soldCount(eventId);
         if (sold > 0) {
@@ -418,6 +449,15 @@ public class EventServiceimpl implements EventService {
     public EventResponse restoreEvent(Long eventId) {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new EventNotFoundException(eventId));
+
+        /*
+         * Only an event still ahead of everyone can be put back on sale. See
+         * EventAlreadyFinishedException: past that date the status would be the
+         * only thing that changed, and it would be saying something untrue.
+         */
+        if (event.getStartsAt() != null && event.getStartsAt().isBefore(Instant.now())) {
+            throw EventAlreadyFinishedException.cannotRestore(eventId);
+        }
 
         event.setStatus(stateMachine.requireTransition(
                 event.getStatus(), EventTransition.RESTORE));
@@ -832,6 +872,7 @@ public class EventServiceimpl implements EventService {
      * comes back 403.
      */
     private List<EventTransition> actionsFor(Event event, Audience audience, int sold) {
+        boolean finished = event.getStartsAt() != null && event.getStartsAt().isBefore(Instant.now());
         return stateMachine.availableTransitions(event.getStatus()).stream()
                 .filter(audience == Audience.ADMIN
                         ? EventTransition::isAdminAction
@@ -846,7 +887,26 @@ public class EventServiceimpl implements EventService {
                  * always comes back 409 is worse than not offering it, and the
                  * sold count is already to hand.
                  */
-                .filter(t -> !(audience == Audience.ORGANIZER && t == EventTransition.TAKE_DOWN && sold > 0))
+                /*
+                 * TAKE_DOWN is the one transition both audiences share, and the
+                 * organiser's copy holds while nothing has sold OR once the
+                 * event is over - see takeDownOwnEvent for why finishing ends
+                 * the refund argument. Filtered here rather than left to the
+                 * refusal because this is what the organiser's footer renders,
+                 * and a button that always answers 409 is worse than no button.
+                 */
+                /*
+                 * TAKE_DOWN is the one transition both audiences share, and it
+                 * drops out in two cases:
+                 *   - the event has finished, for anyone: it already left the
+                 *     catalogue, so there is nothing left to stop
+                 *   - it has sold tickets, for the organiser: pulling a show
+                 *     people hold tickets to is a refund decision
+                 */
+                .filter(t -> t != EventTransition.TAKE_DOWN || !finished)
+                .filter(t -> !(audience == Audience.ORGANIZER
+                        && t == EventTransition.TAKE_DOWN
+                        && sold > 0))
                 .toList();
     }
 

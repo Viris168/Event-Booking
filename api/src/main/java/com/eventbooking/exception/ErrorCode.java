@@ -101,6 +101,13 @@ public enum ErrorCode {
        decision, which is the platform's to make - so past the first sale the
        action stays with an admin. */
     EVENT_HAS_SALES(HttpStatus.CONFLICT),
+    /* An action that only makes sense on an event still ahead of everyone -
+       today only RESTORE. Putting a finished show back on sale would set it
+       PUBLISHED for a date that has passed: it still could not sell, because
+       verifyEventIsOnSale checks the clock, and it would not reappear in the
+       catalogue, which now lists from today onward. The status would be the
+       only thing that changed, and it would be wrong. */
+    EVENT_ALREADY_FINISHED(HttpStatus.CONFLICT),
     /* The admin users screen asked for a role change the platform cannot make:
        demoting an organiser who still owns events or venues, or an admin
        editing their own role. Not 403 - the caller has every permission, it is

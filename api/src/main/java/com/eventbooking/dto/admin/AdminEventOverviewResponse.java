@@ -25,6 +25,18 @@ public record AdminEventOverviewResponse(
         String category,
         Instant startsAt,
 
+        /*
+         * The sales window, so the moderation table can say what the organiser
+         * dashboard says: whether an event is actually selling right now.
+         *
+         * The status column answers "what did the organiser decide"; these two
+         * answer "what is happening", and the table carried no way to tell a
+         * live event from one whose sales shut a month ago - both read
+         * "Published".
+         */
+        Instant salesOpenAt,
+        Instant salesCloseAt,
+
         Long organizerId,
         /** "Org name · owner display name", already localised by the caller's locale. */
         String organizerNameEn,

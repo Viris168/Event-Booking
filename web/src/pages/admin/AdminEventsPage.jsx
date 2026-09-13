@@ -27,6 +27,7 @@ import {
   updateEventAsAdmin,
 } from '../../api/admin.js'
 import { useProvinces } from '../../lib/useProvinces.js'
+import { SALES_UI, displayStatus, isPast, salesState } from '../../lib/salesState.js'
 
 // Declaration order is lifecycle order, so the filter dropdown reads as the
 // path an event actually takes rather than as an alphabetical list.
@@ -351,8 +352,11 @@ export default function AdminEventsPage() {
               </tr>
             </thead>
             <tbody>
+              {/* The tint follows the badge, not the stored status. A finished
+                  event reads "Finished" whatever it was taken down from, so
+                  colouring it as taken down contradicted its own label. */}
               {events.map((e) => (
-                <tr key={e.id} className={e.status === 'TAKEN_DOWN' ? 'flagged' : ''}>
+                <tr key={e.id} className={displayStatus(e) === 'TAKEN_DOWN' ? 'flagged' : ''}>
                   <td>
                     <Link to={`/events/${e.id}`} className="font-bold">
                       {km ? e.title_km : e.title_en}
@@ -363,7 +367,19 @@ export default function AdminEventsPage() {
                   </td>
                   <td className="small">{organizerName(e)}</td>
                   <td>
-                    <Badge status={e.status} />
+                    <Badge status={displayStatus(e)} />
+                    {/* The same pill the organiser sees. "Published" is what
+                        the organiser decided; this is what is happening - and
+                        without it the moderation table cannot tell a live event
+                        from one that finished last month. */}
+                    {(() => {
+                      const state = salesState(e)
+                      // Every finished row's badge now reads "Finished", so a
+                      // pill saying it again is pure repetition.
+                      if (!state || state === 'over') return null
+                      const ui = SALES_UI[state]
+                      return <div className={`sales-pill ${ui.tone}`}>{km ? ui.km : ui.en}</div>
+                    })()}
                   </td>
                   <td className="small">{date(e.starts_at)}</td>
                   <td>
@@ -406,16 +422,27 @@ export default function AdminEventsPage() {
                           icon: 'alert',
                           label: t('takeDown'),
                           tone: 'danger',
-                          hidden: e.status !== 'PUBLISHED',
+                          // Not on a finished event: it left the catalogue when
+                          // its date passed, so there is nothing to stop. The
+                          // server refuses it too.
+                          hidden: e.status !== 'PUBLISHED' || isPast(e),
                           onSelect: () => confirm(e, 'takedown'),
                         },
                         {
-                          // The undo for take-down, and the reason TAKEN_DOWN
-                          // stopped being a terminal state.
+                          /*
+                           * The undo for take-down, and the reason TAKEN_DOWN
+                           * stopped being a terminal state.
+                           *
+                           * Not offered once the event has happened: the server
+                           * refuses it, because putting a finished show back to
+                           * PUBLISHED changes nothing except a badge that would
+                           * then be wrong - it still cannot sell, and the
+                           * catalogue lists from today onward.
+                           */
                           key: 'restore',
                           icon: 'checkCircle',
                           label: t('openAgain'),
-                          hidden: e.status !== 'TAKEN_DOWN',
+                          hidden: e.status !== 'TAKEN_DOWN' || isPast(e),
                           onSelect: () => openAgain(e),
                         },
                         {

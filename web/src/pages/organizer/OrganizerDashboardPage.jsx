@@ -9,6 +9,7 @@ import { OrganizerDashboardSkeleton } from '../../components/Skeleton.jsx'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
 import { usd } from '../../lib/format.js'
+import { SALES_UI, displayStatus, isPast, salesState } from '../../lib/salesState.js'
 import {
   deleteOwnEvent,
   getOrganizerEvents,
@@ -67,6 +68,34 @@ export default function OrganizerDashboardPage() {
   const reload = () => setReloadKey((k) => k + 1)
 
   const navigate = useNavigate()
+
+  /*
+   * Which slice of the list to show. Upcoming by default.
+   *
+   * A dashboard is a place you open to see what needs doing, and a finished
+   * event needs nothing - it just pushes the one selling tickets tomorrow
+   * further down the page. Hiding them beats the alternative that keeps coming
+   * up, which is flipping an expired event to TAKEN_DOWN: that is a moderation
+   * verb, it would tell the organiser an admin pulled their event, and it would
+   * change no behaviour at all because verifyEventIsOnSale already checks the
+   * clock.
+   *
+   * A filter, not a deletion - the count below says how many are hidden, and
+   * one click brings them back.
+   */
+  const [scope, setScope] = useState('upcoming')
+
+  /*
+   * "Past" means the event has happened, not that its sales window shut.
+   *
+   * An event whose sales closed last week but which happens tomorrow is the
+   * most active thing on this list - the organiser is about to run it. Keying
+   * on starts_at is the same line salesState draws, and the same one the seed
+   * draws, so all three agree on what "over" means.
+   */
+  const pastCount = events.filter(isPast).length
+  const shown =
+    scope === 'all' ? events : events.filter((e) => (scope === 'past' ? isPast(e) : !isPast(e)))
 
   /**
    * Open a row, unless the click was aimed at something inside it.
@@ -230,15 +259,41 @@ export default function OrganizerDashboardPage() {
 
           {/* the events themselves */}
           <section className="bg-surface border border-line rounded-card shadow-card p-5">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
               <h2 className="text-base font-bold text-ink m-0">{t('myEvents')}</h2>
-              <span className="text-small text-muted">
-                {events.filter((e) => e.status === 'PUBLISHED').length} {km ? 'កំពុងផ្សាយ' : 'live'} ·{' '}
-                {events.length} {km ? 'សរុប' : 'total'}
-              </span>
+
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className="text-small text-muted">
+                  {events.filter((e) => e.status === 'PUBLISHED').length} {km ? 'កំពុងផ្សាយ' : 'live'} ·{' '}
+                  {events.length} {km ? 'សរុប' : 'total'}
+                </span>
+
+                {/* Only offered once there is something to hide. A toggle that
+                    does nothing on a new organiser's first event is furniture. */}
+                {pastCount > 0 && (
+                  <div className="scope-tabs" role="tablist" aria-label={km ? 'ចន្លោះពេល' : 'Time range'}>
+                    {[
+                      ['upcoming', km ? 'នាពេលខាងមុខ' : 'Upcoming', events.length - pastCount],
+                      ['past', km ? 'កន្លងផុត' : 'Past', pastCount],
+                      ['all', km ? 'ទាំងអស់' : 'All', events.length],
+                    ].map(([key, label, n]) => (
+                      <button
+                        key={key}
+                        type="button"
+                        role="tab"
+                        aria-selected={scope === key}
+                        className={`scope-tab${scope === key ? ' on' : ''}`}
+                        onClick={() => setScope(key)}
+                      >
+                        {label} <span className="scope-tab-n">{n}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
-            {events.length ? (
+            {shown.length ? (
               <ResponsiveTable>
                 <table className="table">
                   <thead>
@@ -252,7 +307,7 @@ export default function OrganizerDashboardPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {events.map((e) => {
+                    {shown.map((e) => {
                       const venue = e.venue
                       return (
                         /*
@@ -290,7 +345,23 @@ export default function OrganizerDashboardPage() {
                             </div>
                           </td>
                           <td>
-                            <Badge status={e.status} />
+                            <Badge status={displayStatus(e)} />
+                            {/* The second half of the answer. The lifecycle
+                                badge says what the organiser decided; this says
+                                what is happening now. Stacked rather than
+                                side-by-side so a narrow column does not push
+                                the date out of line. */}
+                            {(() => {
+                              const state = salesState(e)
+                              // The badge says "Finished" already.
+                              if (!state || state === 'over') return null
+                              const ui = SALES_UI[state]
+                              return (
+                                <div className={`sales-pill ${ui.tone}`}>
+                                  {km ? ui.km : ui.en}
+                                </div>
+                              )
+                            })()}
                           </td>
                           <td className="small">{date(e.starts_at)}</td>
                           <td>

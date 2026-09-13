@@ -68,7 +68,25 @@ public record EventSearchCriteria(
         return new EventSearchCriteria(
                 likePattern(q),
                 trimToNull(province),
-                fromDate == null ? null : fromDate.atStartOfDay(CAMBODIA).toInstant(),
+                /*
+                 * No "from" date means TODAY, not the beginning of time.
+                 *
+                 * A finished event drops out of the catalogue on its own, the
+                 * moment its date passes - nobody has to take it down, and its
+                 * status stays PUBLISHED because finishing is not a decision
+                 * anyone made. Browsing a ticketing site should not turn up
+                 * last month's concerts.
+                 *
+                 * Midnight in Phnom Penh rather than the exact instant, so an
+                 * event starting at 19:00 tonight stays listed all day instead
+                 * of vanishing from under someone mid-checkout.
+                 *
+                 * The LIST only. The event's own page stays reachable - see
+                 * EventStatus.publiclyVisible - because a ticket-holder's
+                 * confirmation email links straight to it.
+                 */
+                (fromDate == null ? LocalDate.now(CAMBODIA) : fromDate)
+                        .atStartOfDay(CAMBODIA).toInstant(),
                 // Exclusive, so the whole "to" day is included whatever time of
                 // day the events on it start.
                 toDate == null ? null : toDate.plusDays(1).atStartOfDay(CAMBODIA).toInstant(),

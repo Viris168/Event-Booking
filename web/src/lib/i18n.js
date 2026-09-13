@@ -347,6 +347,11 @@ export const STATUS_LABELS = {
   APPROVED: { en: "Approved", km: "បានអនុម័ត" },
   REJECTED: { en: "Rejected", km: "បដិសេធ" },
   PUBLISHED: { en: "Published", km: "បានផ្សព្វផ្សាយ" },
+  // Not an EventStatus. A finished event keeps status PUBLISHED in the
+  // database - finishing is not a decision anybody made - but showing
+  // "Published" on a row the public can no longer reach is a plain
+  // contradiction, so the badge says what is true instead.
+  FINISHED: { en: "Finished", km: "បានបញ្ចប់" },
   TAKEN_DOWN: { en: "Taken down", km: "បានដកចេញ" },
   CREATED: { en: "Created", km: "បានបង្កើត" },
   PENDING: { en: "Pending", km: "កំពុងរង់ចាំ" },

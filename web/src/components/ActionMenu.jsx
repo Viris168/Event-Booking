@@ -27,10 +27,13 @@ import { useLocale } from '../context/LocaleContext.jsx'
  * dropdown on any row near the bottom was cut off by it rather than overlaying
  * the page.
  *
- * <p>That is also why it closes on scroll. A fixed panel does not travel with
- * the row it belongs to, so leaving it open while the page moves would leave it
- * pointing at a different row - closing is both simpler and more honest than
- * tracking the trigger.
+ * <p>That is also why scrolling re-places it. A fixed panel does not travel
+ * with the row it belongs to, so leaving it alone while the page moves would
+ * leave it pointing at a different row. It closes only once the trigger has
+ * actually scrolled out of sight, because closing on any scroll at all loses
+ * the menu to momentum: on a trackpad the scroll events keep arriving after
+ * the finger is gone, so a click that lands during the glide opened the menu
+ * and the next frame shut it again.
  */
 export default function ActionMenu({ items, label, disabled = false }) {
   const { locale } = useLocale()
@@ -76,23 +79,33 @@ export default function ActionMenu({ items, label, disabled = false }) {
     const onKey = (e) => {
       if (e.key === 'Escape') setOpen(false)
     }
+    /*
+     * Follow the row rather than dismiss. Out of the viewport entirely means
+     * the row is gone from the screen and the panel would be anchored to
+     * nothing, so that one does close.
+     */
+    const onScroll = () => {
+      const r = triggerRef.current?.getBoundingClientRect()
+      if (!r || r.bottom < 0 || r.top > window.innerHeight) setOpen(false)
+      else place()
+    }
     const close = () => setOpen(false)
     // Pointerdown rather than click: a click listener fires after the trigger
     // has already toggled the menu, so the same gesture would open and
     // immediately close it.
     document.addEventListener('pointerdown', onDown)
     document.addEventListener('keydown', onKey)
-    // Capture, so a scroll inside the table wrapper closes it too - that one
+    // Capture, so a scroll inside the table wrapper is seen too - that one
     // does not bubble.
-    window.addEventListener('scroll', close, true)
+    window.addEventListener('scroll', onScroll, true)
     window.addEventListener('resize', close)
     return () => {
       document.removeEventListener('pointerdown', onDown)
       document.removeEventListener('keydown', onKey)
-      window.removeEventListener('scroll', close, true)
+      window.removeEventListener('scroll', onScroll, true)
       window.removeEventListener('resize', close)
     }
-  }, [open])
+  }, [open, place])
 
   // A row whose every action is hidden renders nothing rather than a menu that
   // opens onto a blank panel.
