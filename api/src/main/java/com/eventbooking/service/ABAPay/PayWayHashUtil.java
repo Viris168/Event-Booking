@@ -1,6 +1,6 @@
 package com.eventbooking.service.ABAPay;
 
-import com.eventbooking.common.error.PaymentGatewayException;
+import com.eventbooking.exception.PaymentGatewayException;
 import com.eventbooking.model.ABA.BankPaymentRequest;
 
 import javax.crypto.Mac;

@@ -1,5 +1,6 @@
 package com.eventbooking.catalog;
 
+import com.eventbooking.service.event.EventSnapshotter;
 import com.eventbooking.Enumeration.InventoryMode;
 import com.eventbooking.model.Event;
 import com.eventbooking.model.Venue;

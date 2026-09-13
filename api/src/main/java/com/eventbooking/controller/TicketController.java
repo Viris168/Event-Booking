@@ -10,7 +10,7 @@ import com.eventbooking.dto.ticket.ScanResponse;
 import com.eventbooking.dto.ticket.ScanTicketRequest;
 import com.eventbooking.dto.ticket.TicketResponse;
 import com.eventbooking.dto.ticket.UndoCheckInRequest;
-import com.eventbooking.ticket.TicketService;
+import com.eventbooking.service.ticket.TicketService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;

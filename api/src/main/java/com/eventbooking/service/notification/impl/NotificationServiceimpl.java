@@ -5,7 +5,7 @@ import com.eventbooking.Enumeration.Role;
 import com.eventbooking.dto.notification.NotificationResponse;
 import com.eventbooking.model.AppUser;
 import com.eventbooking.model.Notification;
-import com.eventbooking.notification.error.NotificationNotFoundException;
+import com.eventbooking.exception.notification.NotificationNotFoundException;
 import com.eventbooking.repository.AppUserRepository;
 import com.eventbooking.repository.NotificationRepository;
 import com.eventbooking.service.notification.NotificationService;

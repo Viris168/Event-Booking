@@ -1,7 +1,7 @@
 package com.eventbooking.security;
 
-import com.eventbooking.catalog.error.SeatClassNotFoundException;
-import com.eventbooking.catalog.error.VenueSeatNotFoundException;
+import com.eventbooking.exception.catalog.SeatClassNotFoundException;
+import com.eventbooking.exception.catalog.VenueSeatNotFoundException;
 import com.eventbooking.dto.VenueSeat.CreateVenueSeatsRequest;
 import com.eventbooking.dto.eventseat.GenerateEventSeatsRequest;
 import com.eventbooking.dto.eventzone.CreateEventZoneRequest;
@@ -19,7 +19,7 @@ import com.eventbooking.repository.EventZoneRepository;
 import com.eventbooking.repository.SeatClassRepository;
 import com.eventbooking.repository.VenueRepository;
 import com.eventbooking.repository.VenueSeatRepository;
-import com.eventbooking.security.error.NotResourceOwnerException;
+import com.eventbooking.exception.security.NotResourceOwnerException;
 import com.eventbooking.service.Seatclass.impl.SeatClassServiceimpl;
 import com.eventbooking.service.Venue.impl.VenueSeatServiceimpl;
 import com.eventbooking.service.event.impl.EventSeatServiceimpl;

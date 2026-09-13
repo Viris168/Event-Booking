@@ -1,5 +1,6 @@
 package com.eventbooking.ticket;
 
+import com.eventbooking.service.ticket.TicketService;
 import com.eventbooking.Enumeration.BookingStatus;
 import com.eventbooking.model.Booking;
 import com.eventbooking.model.Ticket;
@@ -127,7 +128,7 @@ class TicketGateE2EIT {
     @Autowired WebApplicationContext context;
     @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
     @Autowired com.eventbooking.service.hold.HoldService holdService;
-    @Autowired com.eventbooking.booking.BookingService bookingService;
+    @Autowired com.eventbooking.service.booking.BookingService bookingService;
     @Autowired TicketService ticketService;
     @Autowired org.springframework.transaction.support.TransactionTemplate transactions;
     @Autowired BookingRepository bookingRepository;

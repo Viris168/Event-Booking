@@ -1,8 +1,8 @@
 package com.eventbooking.service.event.impl;
 
-import com.eventbooking.catalog.error.EventNotFoundException;
-import com.eventbooking.catalog.error.SeatClassNotFoundException;
-import com.eventbooking.catalog.error.VenueSeatNotFoundException;
+import com.eventbooking.exception.catalog.EventNotFoundException;
+import com.eventbooking.exception.catalog.SeatClassNotFoundException;
+import com.eventbooking.exception.catalog.VenueSeatNotFoundException;
 import com.eventbooking.dto.eventseat.GenerateEventSeatsRequest;
 import com.eventbooking.dto.eventseat.SeatMapResponse;
 import com.eventbooking.mapper.Event.EventSeatMapper;

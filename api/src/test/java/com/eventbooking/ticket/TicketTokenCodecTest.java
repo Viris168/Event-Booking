@@ -1,5 +1,7 @@
 package com.eventbooking.ticket;
 
+import com.eventbooking.config.TicketProperties;
+import com.eventbooking.service.ticket.TicketTokenCodec;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;

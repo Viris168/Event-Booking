@@ -2,10 +2,10 @@ package com.eventbooking.controller.PaymentController;
 
 import com.eventbooking.security.CurrentUserId;
 import com.eventbooking.dto.payment.PaymentResponse;
-import com.eventbooking.payment.PaymentReconciler;
-import com.eventbooking.payment.PaymentService;
-import com.eventbooking.payment.bakong.BakongClient;
-import com.eventbooking.payment.bakong.MockBakongClient;
+import com.eventbooking.service.payment.PaymentReconciler;
+import com.eventbooking.service.payment.PaymentService;
+import com.eventbooking.service.payment.bakong.BakongClient;
+import com.eventbooking.service.payment.bakong.MockBakongClient;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;

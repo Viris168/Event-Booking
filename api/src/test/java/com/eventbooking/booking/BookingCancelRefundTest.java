@@ -1,10 +1,15 @@
 package com.eventbooking.booking;
 
+import com.eventbooking.mapper.Booking.BookingMapper;
+import com.eventbooking.config.BookingProperties;
+import com.eventbooking.service.booking.BookingRefGenerator;
+import com.eventbooking.service.booking.BookingService;
+import com.eventbooking.service.booking.BookingStateMachine;
 import com.eventbooking.Enumeration.BookingStatus;
 import com.eventbooking.Enumeration.PaymentStatus;
 import com.eventbooking.Enumeration.SeatStatus;
-import com.eventbooking.booking.error.BookingNotFoundException;
-import com.eventbooking.booking.error.IllegalBookingTransitionException;
+import com.eventbooking.exception.booking.BookingNotFoundException;
+import com.eventbooking.exception.booking.IllegalBookingTransitionException;
 import com.eventbooking.dto.booking.BookingResponse;
 import com.eventbooking.model.Booking;
 import com.eventbooking.model.BookingItem;

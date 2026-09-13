@@ -1,7 +1,7 @@
 package com.eventbooking.service.Zone.impl;
 
-import com.eventbooking.catalog.error.EventNotFoundException;
-import com.eventbooking.catalog.error.EventZoneNotFoundException;
+import com.eventbooking.exception.catalog.EventNotFoundException;
+import com.eventbooking.exception.catalog.EventZoneNotFoundException;
 import com.eventbooking.dto.Zone.ZoneAvailabilityResponse;
 import com.eventbooking.model.EventZone;
 import com.eventbooking.repository.EventRepository;

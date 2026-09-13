@@ -1,5 +1,7 @@
 package com.eventbooking.ticket;
 
+import com.eventbooking.config.TicketProperties;
+import com.eventbooking.service.ticket.TicketSecretGuard;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThatCode;

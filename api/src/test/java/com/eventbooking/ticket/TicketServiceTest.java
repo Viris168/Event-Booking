@@ -1,9 +1,16 @@
 package com.eventbooking.ticket;
 
+import com.eventbooking.service.ticket.GateAuditor;
+import com.eventbooking.service.ticket.QrRenderer;
+import com.eventbooking.service.ticket.ScanOutcome;
+import com.eventbooking.mapper.Ticket.TicketMapper;
+import com.eventbooking.config.TicketProperties;
+import com.eventbooking.service.ticket.TicketService;
+import com.eventbooking.service.ticket.TicketTokenCodec;
 import com.eventbooking.Enumeration.BookingStatus;
 import com.eventbooking.Enumeration.InventoryMode;
-import com.eventbooking.booking.error.BookingNotFoundException;
-import com.eventbooking.catalog.error.EventNotFoundException;
+import com.eventbooking.exception.booking.BookingNotFoundException;
+import com.eventbooking.exception.catalog.EventNotFoundException;
 import com.eventbooking.dto.ticket.GroupConfirmResponse;
 import com.eventbooking.dto.ticket.GroupPreviewResponse;
 import com.eventbooking.dto.ticket.ScanResponse;
@@ -23,10 +30,10 @@ import com.eventbooking.repository.ScanLogRepository;
 import com.eventbooking.repository.TicketRepository;
 import com.eventbooking.model.OrganizerProfile;
 import com.eventbooking.security.OrganizerResolver;
-import com.eventbooking.security.error.NotAnOrganizerException;
-import com.eventbooking.security.error.NotResourceOwnerException;
-import com.eventbooking.ticket.error.TicketNotFoundException;
-import com.eventbooking.ticket.error.UnknownOperatorException;
+import com.eventbooking.exception.security.NotAnOrganizerException;
+import com.eventbooking.exception.security.NotResourceOwnerException;
+import com.eventbooking.exception.ticket.TicketNotFoundException;
+import com.eventbooking.exception.ticket.UnknownOperatorException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
