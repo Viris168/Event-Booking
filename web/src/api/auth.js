@@ -151,3 +151,41 @@ export function googleLogin(idToken) {
  */
 export const setPhone = (phone_e164) =>
   client.post('/auth/me/phone', { phone_e164 }).then((r) => r.data)
+
+/**
+ * Attach a Google identity to the account already signed in.
+ *
+ * For someone who registered with a phone and password and wants Google as a
+ * second way in. Resolves with the updated record, so `google_linked` flips
+ * without a second round trip.
+ *
+ * Rejects 409 GOOGLE_ALREADY_LINKED when this account already has one, or that
+ * Google account belongs to someone else here - one answer to both, so the
+ * endpoint cannot be used to discover whether a stranger has an account.
+ */
+export const linkGoogle = (idToken) =>
+  client.post('/auth/me/link/google', { id_token: idToken }).then((r) => r.data)
+
+/**
+ * Detach it again.
+ *
+ * Rejects 409 LAST_SIGN_IN_METHOD when Google is the only way in - an account
+ * created through Google has no password, and unlinking would strand its owner
+ * outside a row that still holds their bookings.
+ */
+export const unlinkGoogle = () =>
+  client.delete('/auth/me/link/google').then((r) => r.data)
+
+/**
+ * Give an account its first password. For accounts created through Google,
+ * which have none.
+ *
+ * No current password: there isn't one, and being signed in is the proof. The
+ * server refuses once a password exists - replacing one goes through
+ * changePassword, which asks.
+ *
+ * Rejects 409 PHONE_NUMBER_REQUIRED when the account has no phone yet. That is
+ * the login identifier, so a password without one could not be used to sign in.
+ */
+export const setPassword = (new_password) =>
+  client.post('/auth/me/password', { new_password }).then((r) => r.data)

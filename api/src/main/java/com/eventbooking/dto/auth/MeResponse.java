@@ -58,6 +58,19 @@ public record MeResponse(
          */
         @JsonProperty("has_password") boolean hasPassword,
 
+        /**
+         * Whether a Google identity is attached, however it got there.
+         *
+         * <p>Not the same question as {@code provider}: an account registered
+         * with a phone that later linked Google is still {@code LOCAL}, and one
+         * created through Google is linked from birth. The account screen asks
+         * "can this person sign in with Google", and this is that answer.
+         *
+         * <p>The subject itself never leaves the server. It identifies the
+         * account at Google and nothing here needs it.
+         */
+        @JsonProperty("google_linked") boolean googleLinked,
+
         @JsonProperty("is_disabled") boolean isDisabled,
 
         @JsonProperty("image_url") String imageUrl,
@@ -78,6 +91,7 @@ public record MeResponse(
                 user.getRole(),
                 user.getProvider(),
                 user.getPasswordHash() != null && !user.getPasswordHash().isBlank(),
+                user.getProviderSubject() != null,
                 Boolean.TRUE.equals(user.getIsDisabled()),
                 user.getCloudinaryImageId(),
                 profile == null ? null : profile.getId(),

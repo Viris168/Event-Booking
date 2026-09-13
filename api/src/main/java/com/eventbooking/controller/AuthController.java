@@ -2,6 +2,7 @@ package com.eventbooking.controller;
 
 import com.eventbooking.dto.auth.ChangePasswordRequest;
 import com.eventbooking.dto.auth.GoogleLoginRequest;
+import com.eventbooking.dto.auth.SetPasswordRequest;
 import com.eventbooking.dto.auth.SetPhoneRequest;
 import com.eventbooking.dto.auth.LoginRequest;
 import com.eventbooking.dto.auth.MeResponse;
@@ -23,6 +24,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -235,6 +237,69 @@ public class AuthController {
     public MeResponse setPhone(@CurrentUserId Long actorUserId,
                                @Valid @RequestBody SetPhoneRequest request) {
         return authService.setPhone(actorUserId, request);
+    }
+
+    @PostMapping("/me/password")
+    @Operation(
+            summary = "Set a first password",
+            description = """
+                    For an account created through Google, which has none. Afterwards that
+                    person can sign in either way, and is no longer locked out if they lose
+                    access to their Google account.
+
+                    Takes no current password because there is none; being signed in is the
+                    proof, as it is for every other edit to your own record. Refused once a
+                    password exists - replacing one must always require knowing it, and that
+                    is `/auth/change-password`. Without that split, a lifted access token
+                    could lock the real owner out.
+
+                    Other sessions are **not** revoked. Adding a second way in is not the
+                    same act as replacing a password you believe someone else knows.
+
+                    `409 PASSWORD_ALREADY_SET` if there is one already.
+                    `409 PHONE_NUMBER_REQUIRED` if the account has no phone number yet -
+                    that is what you sign in with, so a password without one could not be
+                    used.""")
+    public MeResponse setPassword(@CurrentUserId Long actorUserId,
+                                  @Valid @RequestBody SetPasswordRequest request) {
+        return authService.setPassword(actorUserId, request);
+    }
+
+    @PostMapping("/me/link/google")
+    @Operation(
+            summary = "Attach a Google account to the one you are signed in as",
+            description = """
+                    For someone who registered with a phone and password and wants to sign
+                    in with Google as well. Afterwards either method reaches the same
+                    account.
+
+                    Both halves are proved rather than assumed: the bearer token proves you
+                    hold this account, the ID token proves you hold that Google account. A
+                    matching email address proves neither and is not consulted.
+
+                    `provider` is not rewritten - it records how the account was created.
+                    What changes is the Google subject attached to it.
+
+                    `409 GOOGLE_ALREADY_LINKED` if this account already has one, or that
+                    Google account belongs to someone else here. One answer to both, so the
+                    endpoint cannot be used to discover whether a stranger has an account.""")
+    public MeResponse linkGoogle(@CurrentUserId Long actorUserId,
+                                 @Valid @RequestBody GoogleLoginRequest request) {
+        return authService.linkGoogle(actorUserId, request.idToken());
+    }
+
+    @DeleteMapping("/me/link/google")
+    @Operation(
+            summary = "Detach the Google account",
+            description = """
+                    Refused when it is the only way in - an account created through Google
+                    has no password, and unlinking would leave its owner outside a row that
+                    still holds their bookings.
+
+                    `409 LAST_SIGN_IN_METHOD` in that case, `409 GOOGLE_NOT_LINKED` if there
+                    was nothing attached.""")
+    public MeResponse unlinkGoogle(@CurrentUserId Long actorUserId) {
+        return authService.unlinkGoogle(actorUserId);
     }
 
     /**
