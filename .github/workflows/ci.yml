@@ -18,7 +18,7 @@ on:
 # main is exempt: every commit that lands there keeps its own result, so the
 # history shows which merge broke something rather than "cancelled".
 concurrency:
-  group: ci-${{ github.head_ref || github.ref_name }}
+  group: ci-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
