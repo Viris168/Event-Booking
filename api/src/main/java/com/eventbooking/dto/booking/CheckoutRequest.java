@@ -19,7 +19,8 @@ public record CheckoutRequest(
         /* Mirrors the CHECK on booking.buyer_phone_e164 so a bad number is a
            422 from validation rather than a 23514 from Postgres. */
         @NotBlank
-        @Pattern(regexp = "^\\+855[0-9]{8,9}$", message = "must be a Cambodian E.164 number, e.g. +85512345678")
+        @Pattern(regexp = "^(\\+855|0)[0-9]{8,9}$",
+                message = "must be a Cambodian number, e.g. 012345678 or +85512345678")
         @JsonProperty("buyer_phone_e164") String buyerPhoneE164,
 
         @JsonProperty("buyer_email") @Email String buyerEmail

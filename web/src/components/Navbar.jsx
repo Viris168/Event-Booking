@@ -89,7 +89,10 @@ export default function Navbar({ onOpenAccount }) {
     { to: '/', label: t('home'), icon: 'home', end: true, show: true },
     { to: '/events', label: t('events'), icon: 'calendar', show: true },
     { to: '/my-bookings', label: t('myBookings'), icon: 'ticket', show: isAuthenticated },
-    { to: '/organizer', label: t('organizer'), icon: 'building', show: isOrganizer },
+    // isOrganizer is true for PLATFORM_ADMIN too, so this needs the explicit
+    // !isAdmin: an admin's work lives under /admin, and carrying both put two
+    // different consoles side by side with nothing to say which was theirs.
+    { to: '/organizer', label: t('organizer'), icon: 'building', show: isOrganizer && !isAdmin },
     { to: '/admin', label: t('admin'), icon: 'shield', show: isAdmin },
   ].filter((l) => l.show)
 
@@ -207,6 +210,29 @@ export default function Navbar({ onOpenAccount }) {
               {countdown(holdMsLeft)}
             </Link>
           )}
+
+          {/* The account, as an initial and nothing else.
+              It sat only inside the drawer, which made reaching your own
+              account on a phone a two-step guess: open a burger, hope it is in
+              there. It is the destination people reach for most after the
+              links themselves, so it earns a permanent slot - and at this
+              width it can only afford to be one glyph wide, which the avatar
+              already is. Same button and same panel as the wide bar; only the
+              name and role label are dropped. */}
+          {isAuthenticated && (
+            <button
+              type="button"
+              className="nav-avatar-btn"
+              onClick={onOpenAccount}
+              title={t('myAccount')}
+              aria-label={t('myAccount')}
+            >
+              <span className="avatar" aria-hidden="true">
+                {user.display_name.slice(0, 1).toUpperCase()}
+              </span>
+            </button>
+          )}
+
           <button
             className={`nav-icon-btn nav-burger ${menuOpen ? 'on' : ''}`}
             onClick={() => setMenuOpen((v) => !v)}

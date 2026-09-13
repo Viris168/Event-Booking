@@ -35,4 +35,6 @@ public interface OrganizerApplicationRepository extends JpaRepository<OrganizerA
      */
     List<OrganizerApplication> findByStatusOrderBySubmittedAtAsc(OrganizerApplicationStatus status);
 
+    /** How many applications are still waiting. The dashboard's queue badge. */
+    long countByStatus(OrganizerApplicationStatus status);
 }

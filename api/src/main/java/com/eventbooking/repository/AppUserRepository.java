@@ -4,6 +4,8 @@ import com.eventbooking.Enumeration.Provider;
 import com.eventbooking.Enumeration.Role;
 import com.eventbooking.model.AppUser;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -75,4 +77,37 @@ public interface AppUserRepository extends JpaRepository<AppUser, Long> {
      * prove.
      */
     List<AppUser> findAllByRoleOrderByIdAsc(Role role);
+
+    /**
+     * The admin users screen, filtered server-side.
+     *
+     * <p>Each filter is nullable and a null one means "do not filter", which is
+     * what lets one query serve the unfiltered list and every combination of
+     * the three controls above it. The screen used to hold every account in the
+     * browser and filter the array; that works until the platform has more
+     * users than a tab wants to keep.
+     *
+     * <p>{@code q} arrives already lowercased and {@code %}-wrapped - the
+     * service owns that, so this query has no string handling in it. phone and
+     * email are coalesced because both are nullable on this table: a GOOGLE
+     * account has no phone until its owner supplies one, and concatenating a
+     * null in SQL would make the whole haystack null and silently drop the row.
+     */
+    @Query("""
+            select u from AppUser u
+            where (:role is null or u.role = :role)
+              and (:disabled is null or u.isDisabled = :disabled)
+              and (:q is null
+                   or lower(u.displayName) like :q escape '!'
+                   or lower(coalesce(u.phoneE164, '')) like :q escape '!'
+                   or lower(coalesce(u.email, '')) like :q escape '!')
+            order by u.id asc
+            """)
+    List<AppUser> searchForAdmin(@Param("q") String q,
+                                 @Param("role") Role role,
+                                 @Param("disabled") Boolean disabled);
+
+    long countByRole(Role role);
+
+    long countByIsDisabledTrue();
 }

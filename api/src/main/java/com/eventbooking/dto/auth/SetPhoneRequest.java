@@ -14,7 +14,7 @@ import jakarta.validation.constraints.Pattern;
 public record SetPhoneRequest(
 
         @NotBlank
-        @Pattern(regexp = "^\\+855[0-9]{8,9}$",
-                message = "must be a Cambodian E.164 number, e.g. +85512345678")
+        @Pattern(regexp = "^(\\+855|0)[0-9]{8,9}$",
+                message = "must be a Cambodian number, e.g. 012345678 or +85512345678")
         @JsonProperty("phone_e164") String phoneE164) {
 }

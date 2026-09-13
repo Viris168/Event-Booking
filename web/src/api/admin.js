@@ -80,3 +80,72 @@ export const approveApplication = (id) =>
  */
 export const rejectApplication = (id, message) =>
   client.patch(`/admin/organizer-applications/${id}/reject`, { message }).then((r) => r.data)
+
+// --- users ------------------------------------------------------------------
+/*
+ * The admin users screen. These replace mock/store.js's listUsers and
+ * setUserDisabled, which filtered an in-memory array - so the screen showed
+ * accounts that did not exist, and "disable" changed nothing about whether the
+ * real person could log in.
+ */
+
+/**
+ * Accounts matching the filter bar. Every parameter is optional and an omitted
+ * one means "do not filter", so the untouched screen sends nothing at all.
+ *
+ * @param {{ q?: string, role?: string, disabled?: boolean }} params
+ *        disabled is a tri-state: true for disabled only, false for active
+ *        only, undefined for both. Passing false and omitting it are different
+ *        questions, which is why the caller must not collapse them to a falsy
+ *        check.
+ */
+export const getUsers = (params) =>
+  client.get('/admin/users', { params }).then((r) => r.data)
+
+/**
+ * Lock an account out, or let it back in. Returns the updated user.
+ *
+ * Existing bookings and tickets are deliberately untouched by the server:
+ * someone disabled mid-trip still holds a ticket a gate is going to scan.
+ */
+export const setUserDisabled = (id, disabled) =>
+  client.patch(`/admin/users/${id}/${disabled ? 'disable' : 'enable'}`).then((r) => r.data)
+
+// --- payments ---------------------------------------------------------------
+
+/**
+ * Payment attempts across every organiser, newest first.
+ *
+ * @param {{ provider?: string, status?: string, stuckOnly?: boolean }} params
+ *        stuckOnly keeps only attempts still open an hour after they opened.
+ *        The threshold is the server's, deliberately: it is a question about
+ *        elapsed time, and a tab left open overnight answers it against a clock
+ *        nobody has looked at since.
+ */
+export const getPayments = (params) =>
+  client.get('/admin/payments', { params }).then((r) => r.data)
+
+// --- dashboard --------------------------------------------------------------
+
+/** Every counter on the dashboard, in one request. */
+export const getPlatformStats = () =>
+  client.get('/admin/stats').then((r) => r.data)
+
+/** The latest-bookings strip. Server caps limit at 50. */
+export const getRecentBookings = (limit = 8) =>
+  client.get('/admin/stats/recent-bookings', { params: { limit } }).then((r) => r.data)
+
+// --- moderation table -------------------------------------------------------
+
+/**
+ * Every event on the platform, any owner, any status.
+ *
+ * Deliberately not getReviewQueue: that one defaults to PENDING_REVIEW and
+ * answers "what is waiting for me". This answers "what is on the platform" and
+ * applies no status filter unless asked, which is the difference between the
+ * queue screen and the moderation table.
+ *
+ * @param {{ q?: string, status?: string, province?: string }} params
+ */
+export const getEventsOverview = (params) =>
+  client.get('/admin/events/overview', { params }).then((r) => r.data)

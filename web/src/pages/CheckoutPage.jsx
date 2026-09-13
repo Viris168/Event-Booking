@@ -10,7 +10,7 @@ import { Alert, Field, Steps } from '../components/ui.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
 import { useToast } from '../context/ToastContext.jsx'
-import { seatLabel, toE164, usd } from '../lib/format.js'
+import { seatLabel, toLocalPhone, usd } from '../lib/format.js'
 import { getHold } from '../api/holds.js'
 import { getEvent } from '../api/events.js'
 import { createBooking } from '../api/bookings.js'
@@ -147,7 +147,7 @@ export default function CheckoutPage() {
       next.firstName = locale === 'km' ? 'ត្រូវការនាមខ្លួន' : 'First name is required'
     if (!lastName.trim())
       next.lastName = locale === 'km' ? 'ត្រូវការនាមត្រកូល' : 'Last name is required'
-    if (!toE164(phone))
+    if (!toLocalPhone(phone))
       next.phone = locale === 'km' ? 'ឧទាហរណ៍៖ 012 345 678' : 'For example 012 345 678'
     // PayWay requires an email on purchase — it is where the receipt goes.
     if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
@@ -175,8 +175,8 @@ export default function CheckoutPage() {
       holdId: hold.id,
       buyer_name: buyerName,
       buyerName,
-      buyer_phone_e164: toE164(phone),
-      buyerPhoneE164: toE164(phone),
+      buyer_phone_e164: toLocalPhone(phone),
+      buyerPhoneE164: toLocalPhone(phone),
       buyer_email: email.trim() || null,
       buyerEmail: email.trim() || null,
     })

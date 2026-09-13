@@ -110,4 +110,11 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
         order by t.bookingItem.id asc, t.unitSeq asc
         """)
     List<Ticket> findAllByBookingIdForUpdate(@Param("bookingId") Long bookingId);
+
+    /**
+     * Platform-wide check-in count. checkedInAt is the only record that a
+     * ticket was scanned - Ticket.isCheckedIn() reads the same field - so its
+     * nullity is the question, not a separate status column.
+     */
+    long countByCheckedInAtIsNotNull();
 }
