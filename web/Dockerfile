@@ -23,9 +23,18 @@ COPY . .
 ARG VITE_API_BASE_URL=/api/v1
 ARG VITE_APP_NAME="Event Booking Cambodia"
 ARG VITE_DEFAULT_CURRENCY=USD
+# The Google OAuth web client id. Empty by default, and empty is a working
+# state: GoogleSignInButton reads it as '' and renders nothing, so a build
+# without it is a site with password login only rather than a broken button.
+#
+# It is not a secret - the browser hands it to Google in the open - but it IS
+# baked into the bundle at build time, so changing it means rebuilding the
+# image, not restarting the container.
+ARG VITE_GOOGLE_CLIENT_ID=
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL \
     VITE_APP_NAME=$VITE_APP_NAME \
-    VITE_DEFAULT_CURRENCY=$VITE_DEFAULT_CURRENCY
+    VITE_DEFAULT_CURRENCY=$VITE_DEFAULT_CURRENCY \
+    VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID
 
 # `npm run build` is eslint-then-vite (see package.json). A lint error fails the
 # image build, which is deliberate: the alternative is shipping and finding out.
