@@ -49,6 +49,24 @@ trap restart_api EXIT
 echo "══ stopping the API"
 "${COMPOSE[@]}" stop api
 
+# Take a copy of what is about to be destroyed.
+#
+# --clean --if-exists drops every object before recreating it, and the file
+# names here are timestamps, so restoring the wrong one is an easy mistake with
+# no undo. This costs seconds and is the only thing standing between a misread
+# filename and a lost database.
+SAFETY="$(dirname "$DUMP")/pre-restore-$(date -u +%Y%m%dT%H%M%SZ).dump"
+echo "══ dumping the CURRENT database first -> $SAFETY"
+if docker exec eb-postgres pg_dump -U "$DB_USERNAME" -d "$DB_NAME" -Fc > "$SAFETY" && [[ -s "$SAFETY" ]]; then
+  chmod 600 "$SAFETY"
+  echo "     $(du -h "$SAFETY" | cut -f1) - restore this file to undo what follows"
+else
+  rm -f "$SAFETY"
+  echo "error: could not dump the current database, so this restore has no undo." >&2
+  echo "       Refusing to continue. Check that eb-postgres is running." >&2
+  exit 1
+fi
+
 echo "══ restoring"
 # --clean --if-exists drops each object before recreating it, so this works on a
 # populated database. Restoring into an EMPTY one is cleaner still; see the

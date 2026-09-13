@@ -36,6 +36,19 @@ REMOTE_RETAIN_DAYS="${REMOTE_RETAIN_DAYS:-30}"
 # own does not belong in the same file the application reads.
 export RCLONE_CONFIG="${RCLONE_CONFIG:-/root/.config/rclone/rclone.conf}"
 
+# A dead man's switch. Set BACKUP_PING_URL to a healthchecks.io (or similar)
+# check and this pings it on success; the monitor alarms when the ping does NOT
+# arrive. That inversion is the whole point - every other signal this script
+# produces requires someone to go and read a log file, and nobody reads a log
+# that has been fine for six weeks. Silence has to be what raises the alarm.
+BACKUP_PING_URL="${BACKUP_PING_URL:-$(read_env BACKUP_PING_URL)}"
+ping_ok()   { [[ -n "$BACKUP_PING_URL" ]] && curl -fsS -m 10 -o /dev/null "$BACKUP_PING_URL" || true; }
+ping_fail() { [[ -n "$BACKUP_PING_URL" ]] && curl -fsS -m 10 -o /dev/null "$BACKUP_PING_URL/fail" || true; }
+
+# Any non-zero exit from here on reports failure, including the ones `set -e`
+# triggers without reaching the end of the script.
+trap 'rc=$?; (( rc != 0 )) && ping_fail; exit $rc' ERR
+
 mkdir -p "$BACKUP_DIR"
 chmod 700 "$BACKUP_DIR"
 
@@ -70,9 +83,13 @@ echo "[$(date -u +%FT%TZ)] pruned $DELETED dump(s) older than ${RETAIN_DAYS} day
 # That covers a bad migration or a mistaken DELETE; it does not cover the VPS
 # being gone, which is the failure the paid backup add-on was going to cover.
 if [[ -z "$BACKUP_REMOTE" ]]; then
-  echo "warning: BACKUP_REMOTE is unset — this dump exists ONLY on this disk" >&2
+  # This used to exit 0, so cron recorded a success and you could run for months
+  # believing you had offsite copies. A local-only dump is a half-done backup and
+  # should read as one.
+  echo "warning: BACKUP_REMOTE is unset - this dump exists ONLY on this disk" >&2
   echo "warning: see 'Backups' in deploy/README.md to finish the setup" >&2
-  exit 0
+  ping_fail
+  exit 3
 fi
 
 command -v rclone >/dev/null || { echo "error: BACKUP_REMOTE is set but rclone is not installed" >&2; exit 1; }
@@ -105,4 +122,5 @@ rclone delete "$BACKUP_REMOTE" \
   --include "${DB_NAME}-*.dump" \
   --min-age "${REMOTE_RETAIN_DAYS}d"
 
+ping_ok
 echo "[$(date -u +%FT%TZ)] done"

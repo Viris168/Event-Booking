@@ -61,9 +61,14 @@ done
 # always current, while a .env.prod copied months ago is not. A key that the
 # template requires and .env.prod does not mention at all is reported too, which
 # is the point — that is exactly what a stale copy looks like.
+# `want` survives comment and blank lines deliberately. It used to be cleared by
+# any line that was not the key, so writing an explanatory comment between the
+# marker and the variable silently dropped that variable from the check - which
+# is the exact failure this mechanism exists to prevent.
 mapfile -t REQUIRED < <(awk '
   /^#!required$/          { want = 1; next }
-  want && /^[A-Z0-9_]+=/  { key = $0; sub(/=.*/, "", key); print key }
+  want && /^[A-Z0-9_]+=/  { key = $0; sub(/=.*/, "", key); print key; want = 0; next }
+  want && /^[[:space:]]*(#|$)/ { next }
                           { want = 0 }
 ' env.prod.example)
 
@@ -122,6 +127,41 @@ if $PULL; then
   git -C .. pull --ff-only
 fi
 
+# ── Rollback point ─────────────────────────────────────────────────────────
+# `up -d` replaces the running containers BEFORE anything has checked that the
+# new build works, so a broken image is live the moment it starts and the health
+# wait below only tells you afterwards. Tagging what is currently running gives
+# that wait something to do other than report the bad news.
+#
+# Local builds overwrite the :TAG images in place, so the previous bytes have to
+# be given a second name before the build, or they are gone.
+IMAGE_TAG="$(sed -n 's/^IMAGE_TAG=//p' .env.prod | head -n1)"
+IMAGE_TAG="${IMAGE_TAG:-latest}"
+ROLLBACK_READY=false
+for img in event-booking-api event-booking-web; do
+  if docker image inspect "$img:$IMAGE_TAG" >/dev/null 2>&1; then
+    docker image tag "$img:$IMAGE_TAG" "$img:rollback"
+    ROLLBACK_READY=true
+  fi
+done
+$ROLLBACK_READY && echo "══ tagged the running images as :rollback"
+
+rollback() {
+  if ! $ROLLBACK_READY; then
+    echo "error: no previous image to roll back to - this looks like a first deploy." >&2
+    echo "       The stack is down. Fix the build and run deploy.sh again." >&2
+    return 1
+  fi
+  echo "══ ROLLING BACK to the previous images" >&2
+  for img in event-booking-api event-booking-web; do
+    docker image inspect "$img:rollback" >/dev/null 2>&1 \
+      && docker image tag "$img:rollback" "$img:$IMAGE_TAG"
+  done
+  "${COMPOSE[@]}" up -d --no-build
+  echo "══ rolled back. The site should be serving the previous version again." >&2
+  echo "   The failed build's logs are above; nothing about them has been discarded." >&2
+}
+
 # ── Build ──────────────────────────────────────────────────────────────────
 if $BUILD; then
   echo "══ build"
@@ -154,12 +194,14 @@ for i in $(seq 1 60); do
     unhealthy)
       echo "error: the API container is unhealthy. Last 60 lines:" >&2
       "${COMPOSE[@]}" logs --tail=60 api >&2
+      rollback
       exit 1
       ;;
   esac
   if (( i == 60 )); then
     echo "error: the API did not become healthy within 5 minutes. Last 60 lines:" >&2
     "${COMPOSE[@]}" logs --tail=60 api >&2
+    rollback
     exit 1
   fi
   sleep 5
@@ -167,6 +209,8 @@ done
 
 # Reclaim the previous build's layers. `-f` only removes images nothing
 # references, so the running stack is never at risk.
+# `-f` only removes images nothing references, and the :rollback tags are a
+# reference, so the previous version survives this.
 docker image prune -f >/dev/null
 
 DOMAIN="$(sed -n 's/^DOMAIN=//p' .env.prod | head -n1)"

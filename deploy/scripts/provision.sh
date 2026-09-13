@@ -40,6 +40,16 @@ fi
 if [[ "$TARGET_USER" != "root" ]]; then
   usermod -aG docker "$TARGET_USER"
   echo "     added $TARGET_USER to the docker group (log out and back in for it to take)"
+else
+  # SUDO_USER is empty when this is run from a root shell rather than through
+  # sudo, so there is no account to add and the step used to be skipped in
+  # silence. You then discover it at the first deploy, as
+  # "permission denied ... /var/run/docker.sock", with nothing connecting that
+  # message back to this script.
+  echo "     WARNING: run from a root shell, so no user was added to the docker group." >&2
+  echo "     Your deploy user will not be able to talk to Docker. Fix it with:" >&2
+  echo "         usermod -aG docker <your-user>" >&2
+  echo "     then log out and back in." >&2
 fi
 
 echo "══ 3/6  Docker log rotation"
@@ -59,6 +69,38 @@ JSON
   systemctl restart docker
 else
   echo "     /etc/docker/daemon.json exists — not overwriting, check log-opts by hand"
+fi
+
+echo "══ 3.5/6  SSH hardening"
+# Only if the target user can already get in by key. Disabling password auth
+# before a key works locks you out of a server you have just paid for, and the
+# recovery is the provider's console.
+KEYFILE=""
+[[ "$TARGET_USER" != "root" ]] && KEYFILE="/home/$TARGET_USER/.ssh/authorized_keys"
+[[ "$TARGET_USER" == "root" ]] && KEYFILE="/root/.ssh/authorized_keys"
+
+if [[ -s "$KEYFILE" ]]; then
+  # 00- and not 99-: sshd takes the FIRST value it finds, drop-ins are read in
+  # alphabetical order, and Ubuntu's cloud images ship 50-cloud-init.conf with
+  # PasswordAuthentication yes. A 99- file loses to it, silently - the config
+  # looks right, `sshd -T` disagrees, and passwords stay enabled.
+  cat > /etc/ssh/sshd_config.d/00-hardening.conf <<'EOF'
+PasswordAuthentication no
+PermitRootLogin no
+KbdInteractiveAuthentication no
+EOF
+  if sshd -t; then
+    systemctl reload ssh
+    echo "     password auth and root login disabled ($(basename "$KEYFILE") has a key)"
+    echo "     Your provider's console still accepts the root password - that is your way back in."
+  else
+    rm -f /etc/ssh/sshd_config.d/00-hardening.conf
+    echo "     sshd rejected the hardening config - left unchanged" >&2
+  fi
+else
+  echo "     SKIPPED: no authorized_keys for $TARGET_USER yet." >&2
+  echo "     Run ssh-copy-id from your laptop first, then re-run this script," >&2
+  echo "     or the server keeps accepting passwords from the whole internet." >&2
 fi
 
 echo "══ 4/6  Firewall"
