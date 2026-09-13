@@ -61,6 +61,18 @@ public interface AppUserRepository extends JpaRepository<AppUser, Long> {
     Optional<AppUser> findByProviderAndProviderSubject(Provider provider, String providerSubject);
 
     /**
+     * The account a Google identity belongs to, whichever way it got there.
+     *
+     * <p>Not narrowed by {@code provider}, and that is the point: an account
+     * that registered with a phone and later linked Google keeps
+     * {@code provider = 'LOCAL'}, so asking for ('GOOGLE', sub) would miss it
+     * and mint a second account for a person who already has one. V24's unique
+     * index on {@code provider_subject} is what makes this safe to ask - one
+     * subject can belong to exactly one row.
+     */
+    Optional<AppUser> findByProviderSubject(String providerSubject);
+
+    /**
      * DatabaseSeeder: the demo organizer (V6__seed_demo_users.sql) that owns
      * the seeded venues and events.
      */

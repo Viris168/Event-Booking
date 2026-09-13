@@ -5,6 +5,7 @@ import com.eventbooking.Enumeration.Role;
 import com.eventbooking.dto.auth.LoginRequest;
 import com.eventbooking.dto.auth.MeResponse;
 import com.eventbooking.dto.auth.ChangePasswordRequest;
+import com.eventbooking.dto.auth.SetPasswordRequest;
 import com.eventbooking.dto.auth.SetPhoneRequest;
 import com.eventbooking.dto.auth.RegisterRequest;
 import com.eventbooking.dto.auth.UpdateProfileRequest;
@@ -18,6 +19,11 @@ import com.eventbooking.security.error.InvalidCredentialsException;
 import com.eventbooking.security.error.InvalidRefreshTokenException;
 import com.eventbooking.security.error.NotAuthenticatedException;
 import com.eventbooking.security.error.PhoneAlreadyRegisteredException;
+import com.eventbooking.security.error.PhoneNumberRequiredException;
+import com.eventbooking.security.error.GoogleAlreadyLinkedException;
+import com.eventbooking.security.error.GoogleNotLinkedException;
+import com.eventbooking.security.error.LastSignInMethodException;
+import com.eventbooking.security.error.PasswordAlreadySetException;
 import com.eventbooking.security.error.PhoneAlreadySetException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -305,7 +311,7 @@ public class AuthService {
         GoogleTokenVerifier.GoogleIdentity identity = googleTokenVerifier.verify(idToken);
 
         AppUser user = appUserRepository
-                .findByProviderAndProviderSubject(Provider.GOOGLE, identity.subject())
+                .findByProviderSubject(identity.subject())
                 .orElseGet(() -> {
                     if (identity.email() != null
                             && appUserRepository.existsByEmail(identity.email())) {
@@ -361,6 +367,131 @@ public class AuthService {
         user.setPhoneE164(request.phoneE164());
         appUserRepository.save(user);
         log.info("User {} added a phone number", user.getId());
+
+        return MeResponse.of(user,
+                organizerProfileRepository.findByUserId(user.getId()).orElse(null));
+    }
+
+    /**
+     * Attaches a Google identity to the account the caller is already signed in as.
+     *
+     * <p>Two proofs are required and both are already present: the bearer token
+     * proves they hold this account, and the ID token - verified, not read -
+     * proves they hold that Google account. Linking on the strength of a
+     * matching email address instead would let anyone who can obtain a token
+     * for an address claim the account holding it.
+     *
+     * <p>{@code provider} is deliberately left alone. It records how the account
+     * was created, and a local account that gains a second way to sign in has
+     * not stopped being a local account. What changes is
+     * {@code provider_subject}, and V24's unique index is what stops the same
+     * Google identity being attached to two accounts.
+     */
+    @Transactional
+    public MeResponse linkGoogle(Long actorUserId, String idToken) {
+        if (actorUserId == null) {
+            throw new NotAuthenticatedException();
+        }
+        AppUser user = appUserRepository.findById(actorUserId)
+                .orElseThrow(NotAuthenticatedException::new);
+
+        if (user.getProviderSubject() != null) {
+            throw new GoogleAlreadyLinkedException();
+        }
+
+        GoogleTokenVerifier.GoogleIdentity identity = googleTokenVerifier.verify(idToken);
+
+        /*
+         * Checked before writing so the answer is a 409 that names the problem,
+         * rather than the unique index raising a 23505 nobody can act on. The
+         * index remains the real guarantee: two simultaneous link attempts can
+         * both pass this check.
+         */
+        appUserRepository.findByProviderSubject(identity.subject()).ifPresent(other -> {
+            throw new GoogleAlreadyLinkedException();
+        });
+
+        user.setProviderSubject(identity.subject());
+        appUserRepository.save(user);
+        log.info("User {} linked a Google identity", user.getId());
+
+        return MeResponse.of(user,
+                organizerProfileRepository.findByUserId(user.getId()).orElse(null));
+    }
+
+    /**
+     * Detaches the Google identity, provided it is not the only way in.
+     *
+     * <p>An account created through Google has no password, so unlinking would
+     * leave nothing to sign in with - the row would still exist, holding
+     * bookings its owner can no longer reach. Refused rather than allowed with
+     * a warning: the warning is read after the click.
+     */
+    @Transactional
+    public MeResponse unlinkGoogle(Long actorUserId) {
+        if (actorUserId == null) {
+            throw new NotAuthenticatedException();
+        }
+        AppUser user = appUserRepository.findById(actorUserId)
+                .orElseThrow(NotAuthenticatedException::new);
+
+        if (user.getProviderSubject() == null) {
+            throw new GoogleNotLinkedException();
+        }
+
+        boolean hasPassword = user.getPasswordHash() != null && !user.getPasswordHash().isBlank();
+        boolean canSignIn = hasPassword
+                && user.getPhoneE164() != null && !user.getPhoneE164().isBlank();
+        if (!canSignIn) {
+            throw new LastSignInMethodException();
+        }
+
+        user.setProviderSubject(null);
+        appUserRepository.save(user);
+        log.info("User {} unlinked their Google identity", user.getId());
+
+        return MeResponse.of(user,
+                organizerProfileRepository.findByUserId(user.getId()).orElse(null));
+    }
+
+    /**
+     * Gives an account its first password, so Google stops being the only way in.
+     *
+     * <p>No current password is asked for because there is none to ask for; the
+     * bearer token is the proof, exactly as it is for every other edit to one's
+     * own record. Refused outright once a hash exists - replacing a password
+     * must always require knowing it, and that path is
+     * {@link #changePassword}. Without that guard this endpoint would let a
+     * lifted access token lock the real owner out.
+     *
+     * <p>A phone number is required first. It is the login identifier, so a
+     * password without one is a credential that cannot be used to sign in
+     * anywhere - the feature would appear to work and change nothing.
+     *
+     * <p>Sessions are deliberately <b>not</b> revoked. {@link #changePassword}
+     * burns them because replacing a password is what someone does when they
+     * believe it is known to another person. Adding a second way into an
+     * account carries no such suspicion, and signing every device out would be
+     * an alarming answer to a routine action.
+     */
+    @Transactional
+    public MeResponse setPassword(Long actorUserId, SetPasswordRequest request) {
+        if (actorUserId == null) {
+            throw new NotAuthenticatedException();
+        }
+        AppUser user = appUserRepository.findById(actorUserId)
+                .orElseThrow(NotAuthenticatedException::new);
+
+        if (user.getPasswordHash() != null && !user.getPasswordHash().isBlank()) {
+            throw new PasswordAlreadySetException();
+        }
+        if (user.getPhoneE164() == null || user.getPhoneE164().isBlank()) {
+            throw new PhoneNumberRequiredException();
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+        appUserRepository.save(user);
+        log.info("User {} set a first password", user.getId());
 
         return MeResponse.of(user,
                 organizerProfileRepository.findByUserId(user.getId()).orElse(null));

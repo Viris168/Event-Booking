@@ -110,6 +110,22 @@ public enum ErrorCode {
     // sending the user to the phone screen rather than by editing the payload.
     PHONE_NUMBER_REQUIRED(HttpStatus.CONFLICT),
 
+    // Linking a Google identity to an existing account. The first two are one
+    // answer to two questions - "you already linked one" and "that one belongs
+    // to somebody else" - because distinguishing them would confirm whether a
+    // stranger's Google account exists here.
+    // A first password on an account that already has one. Its own code because
+    // setting a first password requires no proof of the old one - there is none
+    // - and the endpoint that replaces a password must always ask.
+    PASSWORD_ALREADY_SET(HttpStatus.CONFLICT),
+
+    GOOGLE_ALREADY_LINKED(HttpStatus.CONFLICT),
+    GOOGLE_NOT_LINKED(HttpStatus.CONFLICT),
+
+    // Unlinking the only way into an account. Refused, because the row would
+    // still hold bookings its owner could no longer reach.
+    LAST_SIGN_IN_METHOD(HttpStatus.CONFLICT),
+
     // 415 Unsupported Media Type
     UNSUPPORTED_FILE_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE),
     UNSUPPORTED_MEDIA_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE),
