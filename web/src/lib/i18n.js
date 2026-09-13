@@ -229,6 +229,19 @@ const dict = {
   seatMap: { en: "Seat map", km: "ប្លង់កៅអី" },
   sales: { en: "Sales", km: "របាយការណ៍លក់" },
   publish: { en: "Publish", km: "ផ្សព្វផ្សាយ" },
+  // The event form's footer. These mirror the organiser's own transitions in
+  // EventTransition, so the button text and the server's available_actions
+  // describe the same three moves.
+  saveDraft: { en: "Save draft", km: "រក្សាទុកជាសេចក្ដីព្រាង" },
+  submitForReview: { en: "Submit for review", km: "ដាក់ស្នើត្រួតពិនិត្យ" },
+  // The same action, shortened for the dashboard row where the full label wraps
+  // onto two lines and drags the row's height with it. The menu and the event
+  // form's footer both have the room, and keep the longer wording.
+  submitShort: { en: "Submit", km: "ដាក់ស្នើ" },
+  withdraw: { en: "Withdraw", km: "ដកសំណើវិញ" },
+  // The organiser's own take-down. Worded as the effect rather than as
+  // "Take down", which is the admin's moderation action and a different thing.
+  takeOffSale: { en: "Take off sale", km: "ដកចេញពីការលក់" },
   unpublish: { en: "Take down", km: "ផ្អាកការផ្សព្វផ្សាយ" },
   save: { en: "Save", km: "រក្សាទុក" },
   cancel: { en: "Cancel", km: "បោះបង់" },
@@ -257,6 +270,16 @@ const dict = {
   disable: { en: "Disable", km: "បិទដំណើរការ" },
   enable: { en: "Enable", km: "បើកដំណើរការ" },
   takeDown: { en: "Take down", km: "ដកចេញពីប្រព័ន្ធ" },
+  edit: { en: "Edit", km: "កែសម្រួល" },
+  // The undo for takeDown. "Open again" rather than "Restore" because the
+  // event was never deleted - it stopped selling, and this starts it again.
+  openAgain: { en: "Open again", km: "បើកលក់ឡើងវិញ" },
+  // Deliberately not "Delete": the item sits next to Take down, and the whole
+  // point of the pair is that one is reversible and this one is not. Kept to a
+  // single word so it does not wrap in the actions menu - the confirmation
+  // dialog is where "permanently" is spelled out, which is the moment it
+  // actually matters.
+  removeForever: { en: "Remove", km: "លុបចោល" },
   reconciliation: {
     en: "Needs reconciliation",
     km: "ទាមទារការផ្ទៀងផ្ទាត់ទិន្នន័យ",
@@ -431,6 +454,13 @@ export const NOTIFICATION_TEXT = {
     km: {
       title: "ព្រឹត្តិការណ៍ត្រូវបានដកចេញ",
       body: "{title} ត្រូវបានដកចេញពីបញ្ជីដោយអ្នកគ្រប់គ្រងប្រព័ន្ធ។",
+    },
+  },
+  EVENT_RESTORED: {
+    en: { title: "Event back on sale", body: "{title} was put back in the catalogue by a platform admin." },
+    km: {
+      title: "ព្រឹត្តិការណ៍លក់ឡើងវិញ",
+      body: "{title} ត្រូវបានដាក់ចូលបញ្ជីវិញដោយអ្នកគ្រប់គ្រងប្រព័ន្ធ។",
     },
   },
   EVENT_TICKETS_SOLD: {

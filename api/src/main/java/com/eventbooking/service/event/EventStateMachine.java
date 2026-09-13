@@ -36,10 +36,13 @@ import java.util.Map;
  *   APPROVED          --PUBLISH---------> PUBLISHED
  *   APPROVED          --WITHDRAW--------> DRAFT
  *   PUBLISHED         --TAKE_DOWN-------> TAKEN_DOWN
+ *   TAKEN_DOWN        --RESTORE---------> PUBLISHED
  * </pre>
  *
- * <p>REJECTED and TAKEN_DOWN have no outgoing edges: both are terminal, and a
- * rejected event becomes a new draft by being duplicated, not by being revived.
+ * <p>REJECTED has no outgoing edges: it is terminal, and a rejected event
+ * becomes a new draft by being duplicated, not by being revived. TAKEN_DOWN
+ * used to be terminal too - see EventTransition.RESTORE for why it no longer
+ * is, and note that the pair now forms the one cycle in this table.
  */
 @Component
 public class EventStateMachine {
@@ -71,7 +74,14 @@ public class EventStateMachine {
         EDGES.put(EventStatus.PUBLISHED, Map.of(
                 EventTransition.TAKE_DOWN, EventStatus.TAKEN_DOWN));
 
-        // REJECTED and TAKEN_DOWN are absent on purpose: terminal.
+        // The undo for the line above. It is the only edge that returns an
+        // event to a state it has already been in, which is why anything
+        // keyed on "this happened once" - the take-down notification's dedupe
+        // key, for one - had to stop assuming that.
+        EDGES.put(EventStatus.TAKEN_DOWN, Map.of(
+                EventTransition.RESTORE, EventStatus.PUBLISHED));
+
+        // REJECTED is absent on purpose: terminal.
     }
 
     /**

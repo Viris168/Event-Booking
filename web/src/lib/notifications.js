@@ -21,6 +21,7 @@ export const NOTIFICATION_ICON = {
   EVENT_REJECTED: 'xCircle',
   EVENT_CHANGES_REQUESTED: 'edit',
   EVENT_TAKEN_DOWN: 'alert',
+  EVENT_RESTORED: 'checkCircle',
   EVENT_TICKETS_SOLD: 'ticket',
 
   EVENT_SUBMITTED_FOR_REVIEW: 'eye',
@@ -44,6 +45,7 @@ export const NOTIFICATION_TONE = {
   EVENT_REJECTED: 'bad',
   EVENT_CHANGES_REQUESTED: 'warn',
   EVENT_TAKEN_DOWN: 'bad',
+  EVENT_RESTORED: 'ok',
   EVENT_TICKETS_SOLD: 'ok',
 
   EVENT_SUBMITTED_FOR_REVIEW: 'info',

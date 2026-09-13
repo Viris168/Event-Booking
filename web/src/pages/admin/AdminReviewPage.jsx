@@ -1,6 +1,7 @@
 import { useDocumentTitle } from '../../lib/useDocumentTitle.js'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ConfirmDialog from '../../components/ConfirmDialog.jsx'
+import QueueDialog from './QueueDialog.jsx'
 import Icon from '../../components/Icon.jsx'
 import { Alert, Badge, Empty, Field, Pager } from '../../components/ui.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
@@ -9,6 +10,7 @@ import { useToast } from '../../context/ToastContext.jsx'
 import { formatDate, formatDateTime, timeAgo, usd } from '../../lib/format.js'
 import {
   approveEvent,
+  getEventStatusCounts,
   getReviewQueue,
   rejectEvent,
   requestEventChanges,
@@ -35,6 +37,26 @@ const PAGE_SIZE = 20
 /** Snake_case off the wire, camelCase if something ever maps it. As adapters.js. */
 const pick = (o, snake, camel) => o?.[snake] ?? o?.[camel]
 
+/**
+ * Cheapest and dearest ticket, across both halves of the inventory split.
+ *
+ * Zones alone would under-report a SEATED or MIXED event by its entire seat
+ * map - the trap EventMapper's own comment describes - so seat classes are
+ * folded in. Null when nothing is priced yet, which the column renders as a
+ * dash rather than as $0.00: an unpriced event and a free one are different
+ * things, and only one of them is a reason to reject.
+ */
+function priceRange(event) {
+  const all = [
+    ...(event.zones ?? []),
+    ...(pick(event, 'seat_classes', 'seatClasses') ?? []),
+  ]
+    .map((row) => pick(row, 'price_usd_cents', 'priceUsdCents'))
+    .filter((n) => typeof n === 'number' && n > 0)
+  if (!all.length) return null
+  return { min: Math.min(...all), max: Math.max(...all) }
+}
+
 export default function AdminReviewPage() {
   // The locale context's `status` is a label formatter; the local `status` is
   // the selected queue. Renamed so the two cannot collide.
@@ -53,6 +75,24 @@ export default function AdminReviewPage() {
   // Which row the panel is showing. ONE selection model - no checkboxes.
   // Bulk-approving events you have not read is the opposite of reviewing.
   const [selectedId, setSelectedId] = useState(null)
+
+  /*
+   * How many sit in each queue, for the tabs.
+   *
+   * Its own request, not derived from the page being shown: the list only ever
+   * holds one status, so the other three counts have nowhere else to come from.
+   */
+  const [counts, setCounts] = useState({})
+
+  /*
+   * Whether the detail panel is open. Closed until an event is clicked.
+   *
+   * It used to open on the first row automatically, which decided for the
+   * reviewer which submission they were looking at before they had chosen one -
+   * and spent half the width saying so. The queue opens as a full-width list
+   * now, and clicking an event is what asks for its detail.
+   */
+  const [panelOpen, setPanelOpen] = useState(false)
 
   const [deciding, setDeciding] = useState(null) // { action } | null
   const [message, setMessage] = useState('')
@@ -86,6 +126,34 @@ export default function AdminReviewPage() {
     }
   }, [status, page, version])
 
+  /*
+   * The counts, refreshed on every reload of the list AND on a timer.
+   *
+   * Thirty seconds, and polling rather than a live connection: this is a page
+   * an admin leaves open while working, and the number that matters - how many
+   * are waiting - changes when an organiser submits something, which is not an
+   * event this client has any other way to hear about. A websocket for four
+   * integers would be a lot of moving parts for a number that is allowed to be
+   * half a minute stale.
+   */
+  useEffect(() => {
+    let live = true
+    const load = () => {
+      getEventStatusCounts()
+        .then((res) => live && setCounts(res || {}))
+        .catch(() => {
+          // The tabs fall back to showing no number rather than an error: the
+          // queue itself still works, and a failed count is not worth a banner.
+        })
+    }
+    load()
+    const timer = setInterval(load, 30000)
+    return () => {
+      live = false
+      clearInterval(timer)
+    }
+  }, [version])
+
   const rows = data.content
 
   /*
@@ -109,9 +177,49 @@ export default function AdminReviewPage() {
     )
   }, [rows, selectedId, lastIndex])
 
+  /**
+   * Clicking a row opens it in the panel; clicking the row that is already open
+   * hides the panel and gives the table the full width.
+   *
+   * <p>The toggle is what makes the rail feel like part of the row rather than
+   * a fixture beside it: the same click that asked for the detail puts it away.
+   * The panel's own close button stays - it is the obvious control once your
+   * eye is already over there, and reaching back to the list to dismiss what
+   * you are reading is the long way round.
+   */
+  const closePanel = () => setPanelOpen(false)
+
+  /*
+   * Where the open submission sits, and how to step through without deciding.
+   *
+   * The dialog already advanced on its own after a decision - the approved row
+   * leaves the list and the same index now holds the next one. What it had no
+   * way to express was WHERE you were, or how to move on from something you did
+   * not want to rule on yet: the only exits were a decision or closing. A queue
+   * you cannot skip through is a queue that stalls on its first hard case.
+   */
+  const selectedIndex = useMemo(
+    () => (selected ? rows.findIndex((r) => r.id === selected.id) : -1),
+    [rows, selected],
+  )
+
+  const step = (delta) => {
+    const next = selectedIndex + delta
+    if (next < 0 || next >= rows.length) return
+    setSelectedId(rows[next].id)
+    setLastIndex(next)
+  }
+
+  // Counted across the whole queue, not the page: "3 of 24" is the number a
+  // reviewer is actually working down. Page-relative would reset to 1 every
+  // twenty and say nothing about how much is left.
+  const position = selectedIndex < 0 ? null : page * PAGE_SIZE + selectedIndex + 1
+
+  /** Clicking an event opens it in the dialog. */
   const selectRow = (event, index) => {
     setSelectedId(event.id)
     setLastIndex(index)
+    setPanelOpen(true)
   }
 
   const changeStatus = (next) => {
@@ -119,6 +227,10 @@ export default function AdminReviewPage() {
     setStatus(next)
     setPage(0)
     setLastIndex(0)
+    // A different queue is a different set of submissions; carrying the open
+    // panel across would leave it showing a row that is no longer in the list.
+    setSelectedId(null)
+    setPanelOpen(false)
   }
 
   /*
@@ -185,31 +297,30 @@ export default function AdminReviewPage() {
               : 'Waiting on a decision, oldest submission first.'}
           </p>
         </div>
+        {/* Was a <select>, which showed one count and hid the other three -
+            so "2 remaining" was the whole picture a reviewer got, and finding
+            out whether anything had been rejected meant changing the filter and
+            changing it back. Four tabs, four counts, one click between them. */}
         <div className="rq-head-right">
-          <div className="rq-filter">
-            <label className="sr-only" htmlFor="rq-status">
-              {t('status')}
-            </label>
-            <select
-              id="rq-status"
-              value={status}
-              onChange={(e) => changeStatus(e.target.value)}
-            >
-              {QUEUES.map((s) => (
-                <option key={s} value={s}>
-                  {statusLabel(s)}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="rq-count" aria-live="polite">
-            {loading
-              ? km
-                ? 'កំពុងផ្ទុក…'
-                : 'Loading…'
-              : km
-                ? `នៅសល់ ${data.totalElements}`
-                : `${data.totalElements} remaining`}
+          <div className="rq-tabs" role="tablist" aria-label={t('status')}>
+            {QUEUES.map((s) => (
+              <button
+                key={s}
+                type="button"
+                role="tab"
+                aria-selected={status === s}
+                className={`rq-tab${status === s ? ' on' : ''}`}
+                onClick={() => changeStatus(s)}
+              >
+                {statusLabel(s)}
+                {/* Absent until the first count lands rather than showing 0 -
+                    a zero that turns into a 3 reads as work appearing, which
+                    on this page is a lie. */}
+                {counts[s] !== undefined && (
+                  <span className="rq-tab-n">{counts[s]}</span>
+                )}
+              </button>
+            ))}
           </div>
         </div>
       </div>
@@ -246,6 +357,14 @@ export default function AdminReviewPage() {
                         nothing. When the event happens does inform the
                         decision - next week reads differently from next year. */}
                     <th>{km ? 'ចាប់ផ្តើម' : 'Starts'}</th>
+                    {/* What makes a submission worth opening BEFORE opening it.
+                        A 50,000-capacity show at a 200-seat hall, or a whole
+                        event priced at nothing, is exactly what a reviewer is
+                        looking for - and until now the only way to see either
+                        was to open every row in turn. Both numbers already ride
+                        along in the queue payload, so this costs no request. */}
+                    <th className="rq-num">{km ? 'ចំណុះ' : 'Capacity'}</th>
+                    <th className="rq-num">{km ? 'តម្លៃ' : 'Price'}</th>
                     <th className="rq-num">{km ? 'រង់ចាំ' : 'Waiting'}</th>
                   </tr>
                 </thead>
@@ -291,6 +410,18 @@ export default function AdminReviewPage() {
                             repeating the unit on every row is the sort of noise
                             that makes a table feel machine-filled. */}
                         <td className="rq-num rq-qmuted">
+                          {(pick(event, 'total_capacity', 'totalCapacity') ?? 0).toLocaleString()}
+                        </td>
+                        <td className="rq-num rq-qmuted">
+                          {(() => {
+                            const p = priceRange(event)
+                            // A dash, not $0.00: an unpriced event and a free
+                            // one are different, and only one is a red flag.
+                            if (!p) return '—'
+                            return p.min === p.max ? usd(p.min) : `${usd(p.min)}–${usd(p.max)}`
+                          })()}
+                        </td>
+                        <td className="rq-num rq-qmuted">
                           {stamp ? timeAgo(stamp).replace(' ago', '') : '—'}
                         </td>
                       </tr>
@@ -311,29 +442,59 @@ export default function AdminReviewPage() {
             )}
           </div>
 
-          {/* -------------------------------------- the detail rail, on the right */}
-          {selected && (
-            <EventReviewPanel
-              event={selected}
-              km={km}
-              locale={locale}
-              busy={busy}
-              onApprove={approve}
-              onRequestChanges={() => {
-                setMessage('')
-                setDeciding({ action: 'REQUEST_CHANGES' })
-              }}
-              onReject={() => {
-                setMessage('')
-                setDeciding({ action: 'REJECT' })
-              }}
-            />
-          )}
         </div>
       )}
 
       {/* Both REJECT and REQUEST_CHANGES need a reason - the server refuses a
           blank one, and the organiser cannot act on "no". */}
+      {/*
+        * The submission, as a dialog.
+        *
+        * It was a rail pinned to the right of the list, which cost the table
+        * half its width the whole time it was open - and the list is what a
+        * reviewer scans. A dialog gives the detail the room it needs only while
+        * it is being read, and hands the full width back the moment it closes.
+        *
+        * Below the decision dialog in the stack: Approve and Reject open their
+        * own confirmation ON TOP of this one, so this sits at 1050 against
+        * .confirm-overlay's 1100.
+        */}
+      {selected && panelOpen && selectedId && (
+        <QueueDialog
+          km={km}
+          onClose={closePanel}
+          label={km ? 'ព័ត៌មានលម្អិត' : 'Submission detail'}
+          position={position}
+          total={data.totalElements}
+          onPrev={() => step(-1)}
+          onNext={() => step(1)}
+          canPrev={selectedIndex > 0}
+          canNext={selectedIndex >= 0 && selectedIndex < rows.length - 1}
+        >
+          {/* Keyed on the event so React REMOUNTS the panel when the queue
+              advances under it. Two reasons: the scroll position resets, so the
+              next submission starts at the top rather than halfway down where
+              the last one was left - and the swap animation re-runs, which is
+              what makes a silent content change register. */}
+          <EventReviewPanel
+            key={selected.id}
+            event={selected}
+            km={km}
+            locale={locale}
+            busy={busy}
+            onApprove={approve}
+            onRequestChanges={() => {
+              setMessage('')
+              setDeciding({ action: 'REQUEST_CHANGES' })
+            }}
+            onReject={() => {
+              setMessage('')
+              setDeciding({ action: 'REJECT' })
+            }}
+          />
+        </QueueDialog>
+      )}
+
       <ConfirmDialog
         open={Boolean(deciding)}
         tone={deciding?.action === 'REJECT' ? 'danger' : 'warn'}

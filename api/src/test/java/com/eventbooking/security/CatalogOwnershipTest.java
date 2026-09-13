@@ -178,6 +178,49 @@ class CatalogOwnershipTest {
         verify(venueSeatRepository, never()).saveAll(any());
     }
 
+    /**
+     * A venue with no owner admits nobody.
+     *
+     * <p>V21 made {@code venue.organizer_id} nullable so a NULL could mean "a
+     * shared platform venue any organiser may use", and OrganizerResolver grew
+     * requireOwnerOrShared to let those through. V27 withdrew that: venues are
+     * private to the organiser who created them, and the bypass is gone.
+     *
+     * <p>Worth pinning rather than assuming, because the rule now rests on a
+     * detail of {@code requireOwner} - {@code organizerId.equals(null)} is
+     * false, so a null owner matches no caller. Written the other way round
+     * (comparing the row's id to the caller's) it would NPE instead, and this
+     * test is what would say so.
+     */
+    @Test
+    void aVenueWithNoOwnerRefusesEveryone() {
+        Venue orphan = Venue.builder().id(3L).organizerId(null).build();
+        when(venueRepository.findById(3L)).thenReturn(Optional.of(orphan));
+        VenueSeatServiceimpl service =
+                new VenueSeatServiceimpl(venueSeatRepository, venueRepository, organizerResolver);
+
+        // Not just the intruder - the organiser who would have been let in while
+        // sharing existed is refused too. That IS the behaviour change.
+        assertThatThrownBy(() -> service.createVenueSeats(OWNER, 3L, seatRequest()))
+                .isInstanceOf(NotResourceOwnerException.class);
+        assertThatThrownBy(() -> service.createVenueSeats(INTRUDER, 3L, seatRequest()))
+                .isInstanceOf(NotResourceOwnerException.class);
+
+        verify(venueSeatRepository, never()).saveAll(any());
+    }
+
+    /** The owner still gets in, so the rule above is a check and not a wall. */
+    @Test
+    void theVenuesOwnerIsStillAdmitted() {
+        when(venueRepository.findById(3L)).thenReturn(Optional.of(venue()));
+        VenueSeatServiceimpl service =
+                new VenueSeatServiceimpl(venueSeatRepository, venueRepository, organizerResolver);
+
+        service.createVenueSeats(OWNER, 3L, seatRequest());
+
+        verify(venueSeatRepository).saveAll(any());
+    }
+
     // --- event seats ------------------------------------------------------
 
     @Test

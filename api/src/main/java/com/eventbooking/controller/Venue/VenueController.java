@@ -36,9 +36,23 @@ public class VenueController {
         return new ResponseEntity<>(v, HttpStatus.CREATED);
     }
 
+    /**
+     * The caller's own venues.
+     *
+     * <p>Was unauthenticated and returned every venue on the platform. That is
+     * what made a venue shared in practice - the event form's picker listed
+     * other organisers' buildings, and binding an event to one of them was
+     * allowed. Venues belong to the organiser who created them, so this needs
+     * to know who is asking.
+     *
+     * <p>{@code GET /venue/{id}} below stays open on purpose: a booking
+     * confirmation and an event page both have to print the venue of an event
+     * the reader does not own.
+     */
     @GetMapping
-    public ResponseEntity<List<VenueResponse>> getAllVenues() {
-        return new ResponseEntity<>(venueService.getAllVenues(), HttpStatus.OK);
+    public ResponseEntity<List<VenueResponse>> getMyVenues(@CurrentUserId Long actorUserId) {
+        Long organizerId = organizerResolver.requireOrganizerId(actorUserId);
+        return new ResponseEntity<>(venueService.getVenuesForOrganizer(organizerId), HttpStatus.OK);
     }
 
     @GetMapping("/{id}")

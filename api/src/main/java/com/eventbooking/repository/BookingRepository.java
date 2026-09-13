@@ -154,4 +154,28 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
             group by b.event.id
             """)
     List<Object[]> sumRevenueByEvent(@Param("states") Collection<BookingStatus> states);
+
+    /**
+     * Does anyone hold a booking on this event, in any state at all?
+     *
+     * <p>The delete guard, and deliberately unfiltered by state: an EXPIRED or
+     * CANCELLED booking is still a row pointing at {@code event_id}, and
+     * {@code booking.event_id} carries no ON DELETE clause - so a delete past
+     * one of those fails as a raw 23503 rather than politely. Counting only the
+     * states a person would call "a real booking" would make the refusal
+     * disagree with what Postgres is prepared to allow.
+     */
+    long countByEvent_Id(Long eventId);
+
+    /**
+     * Bookings per event, for every event at once - the moderation table's
+     * "can this be deleted" column.
+     *
+     * <p>Separate from {@link #sumRevenueByEvent} because that one counts only
+     * CONFIRMED money, and an event with one EXPIRED booking and no revenue is
+     * still undeletable. Events with none are absent; the caller defaults to
+     * zero, which is what makes the Remove button appear.
+     */
+    @Query("select b.event.id, count(b) from Booking b group by b.event.id")
+    List<Object[]> countByEvent();
 }

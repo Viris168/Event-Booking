@@ -157,4 +157,28 @@ public interface EventRepository extends JpaRepository<Event, Long> {
     List<Event> searchForAdmin(@Param("q") String q,
                                @Param("status") EventStatus status,
                                @Param("provinceCode") String provinceCode);
+
+    /**
+     * How much this organiser still owns - the guard on demoting them.
+     *
+     * <p>Losing the ORGANIZER role means losing the {@code organizer_profile}
+     * row, and {@code event.organizer_id} points straight at it. Demoting
+     * somebody who still owns events would leave rows referring to a profile
+     * that no longer exists, which is a moderation click turning into a
+     * constraint violation.
+     */
+    long countByOrganizerId(Long organizerId);
+
+    /**
+     * How many events sit in each status, in one pass.
+     *
+     * <p>Backs the review queue's status tabs, which show all four counts at
+     * once. Four {@link #countByStatus} calls per refresh would be four round
+     * trips for four integers on a page that polls.
+     *
+     * <p>{@code [status, count]} per row, and only for statuses that have any -
+     * the caller fills the zeros.
+     */
+    @Query("select e.status, count(e) from Event e group by e.status")
+    List<Object[]> countGroupedByStatus();
 }

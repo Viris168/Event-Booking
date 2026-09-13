@@ -5,7 +5,9 @@ import com.eventbooking.security.CurrentUserId;
 import com.eventbooking.dto.admin.AdminEventOverviewResponse;
 import com.eventbooking.dto.event.EventResponse;
 import com.eventbooking.dto.event.ReviewDecisionRequest;
+import com.eventbooking.dto.event.UpdateEventRequest;
 import com.eventbooking.security.AdminResolver;
+import com.eventbooking.service.event.EventDeletionService;
 import com.eventbooking.service.admin.AdminEventOverviewService;
 import com.eventbooking.service.event.EventService;
 import jakarta.validation.Valid;
@@ -16,6 +18,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Moderation. Separate from EventController on purpose: a different authorizer,
@@ -35,13 +38,16 @@ public class AdminEventController {
 
     private final EventService eventService;
     private final AdminEventOverviewService overviewService;
+    private final EventDeletionService deletionService;
     private final AdminResolver adminResolver;
 
     public AdminEventController(EventService eventService,
                                 AdminEventOverviewService overviewService,
+                                EventDeletionService deletionService,
                                 AdminResolver adminResolver) {
         this.eventService = eventService;
         this.overviewService = overviewService;
+        this.deletionService = deletionService;
         this.adminResolver = adminResolver;
     }
 
@@ -87,6 +93,59 @@ public class AdminEventController {
         return new ResponseEntity<>(eventService.listForReview(status, page, size), HttpStatus.OK);
     }
 
+    /**
+     * One event in full, in any status - what the moderation table's edit
+     * dialog opens with.
+     *
+     * <p>Not GET /api/v1/events/{id}. That one is the public detail page and
+     * 404s anything unpublished, deliberately, so nobody can walk sequential
+     * ids to read drafts. An admin is the one caller those states are kept for.
+     */
+    /**
+     * How many events sit in each status - the numbers on the review queue's tabs.
+     *
+     * <p>Declared BEFORE {@code /{id}} below, and that ordering is load-bearing:
+     * "status-counts" is not a Long, so if the templated mapping wins the match
+     * the request dies as a 400 MALFORMED_REQUEST before reaching any handler.
+     * That is exactly how this endpoint failed once already.
+     *
+     * <p>Its own endpoint rather than a field on /admin/stats, which is the
+     * dashboard's payload: that one runs a dozen counts across users, bookings,
+     * payments and tickets, and this is polled every thirty seconds.
+     */
+    @GetMapping("/status-counts")
+    public ResponseEntity<Map<EventStatus, Long>> statusCounts(@CurrentUserId Long actorUserId) {
+        adminResolver.requireAdminUserId(actorUserId);
+        return new ResponseEntity<>(overviewService.countsByStatus(), HttpStatus.OK);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<EventResponse> getForAdmin(
+            @CurrentUserId Long actorUserId,
+            @PathVariable Long id) {
+        adminResolver.requireAdminUserId(actorUserId);
+        return new ResponseEntity<>(eventService.getEventForAdmin(id), HttpStatus.OK);
+    }
+
+    /**
+     * Edit somebody else's event. Moderation's repair tool: a misleading title,
+     * a wrong category, a date that does not match the poster.
+     *
+     * <p>Same request body as the organiser's PATCH, and the same validation
+     * behind it. What it does not reach is pricing, zones, the seat map or the
+     * images - those have their own owner-scoped endpoints and are the
+     * organiser's inventory, not a moderator's to rewrite underneath sold
+     * tickets.
+     */
+    @PatchMapping("/{id}")
+    public ResponseEntity<EventResponse> update(
+            @CurrentUserId Long actorUserId,
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateEventRequest request) {
+        Long adminUserId = adminResolver.requireAdminUserId(actorUserId);
+        return new ResponseEntity<>(eventService.updateEventAsAdmin(adminUserId, id, request), HttpStatus.OK);
+    }
+
     @PatchMapping("/{id}/approve")
     public ResponseEntity<EventResponse> approve(
             @CurrentUserId Long actorUserId,
@@ -110,6 +169,45 @@ public class AdminEventController {
             @PathVariable Long id) {
         adminResolver.requireAdminUserId(actorUserId);
         return new ResponseEntity<>(eventService.takeDownEvent(id), HttpStatus.OK);
+    }
+
+    /**
+     * Put a taken-down event back on sale.
+     *
+     * <p>The undo for the method above, and the reason TAKEN_DOWN stopped being
+     * a terminal state. Nothing is rebuilt: the event's inventory and bookings
+     * were never touched by the take-down, so this is one column going back the
+     * other way.
+     */
+    @PatchMapping("/{id}/restore")
+    public ResponseEntity<EventResponse> restore(
+            @CurrentUserId Long actorUserId,
+            @PathVariable Long id) {
+        adminResolver.requireAdminUserId(actorUserId);
+        return new ResponseEntity<>(eventService.restoreEvent(id), HttpStatus.OK);
+    }
+
+    /**
+     * Erase the event for good.
+     *
+     * <p>The one irreversible action on this controller, and deliberately not
+     * an alternative to take-down: it is refused outright for any event that
+     * has ever been booked, because deleting it would take real tickets with
+     * it. What it is for is the listing that should not exist at all - spam, a
+     * duplicate, a test event - where TAKEN_DOWN would just be permanent
+     * clutter in the moderation table.
+     *
+     * <p>204, not the deleted row. There is nothing left to return, and a body
+     * describing a resource that no longer exists is a client's invitation to
+     * keep using it.
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(
+            @CurrentUserId Long actorUserId,
+            @PathVariable Long id) {
+        Long adminUserId = adminResolver.requireAdminUserId(actorUserId);
+        deletionService.delete(adminUserId, id);
+        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 
     @PatchMapping("/{id}/reject")

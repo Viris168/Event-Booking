@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.HashSet;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -221,8 +222,46 @@ public class OrganizerServiceimpl implements OrganizerService {
     @Override
     @Transactional(readOnly = true)
     public List<OrganizerApplicationResponse> pendingQueue() {
-        return toResponses(organizerApplicationRepository
-                .findByStatusOrderBySubmittedAtAsc(OrganizerApplicationStatus.PENDING));
+        return queue(OrganizerApplicationStatus.PENDING);
+    }
+
+    /**
+     * One status' worth of applications, longest wait first.
+     *
+     * <p>This screen used to serve PENDING and nothing else, on the reasoning
+     * that a decided application belongs on a different screen with different
+     * columns. In practice the columns are the same ones - who applied, what
+     * they want to run, when - and the thing an admin actually wants after
+     * rejecting somebody is to look back at what they wrote. So the status
+     * became a parameter rather than a second screen.
+     *
+     * <p>Still unpaged, and for the unchanged reason: a queue deep enough to
+     * need pages is a staffing problem this endpoint should make visible rather
+     * than hide behind a page size.
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public List<OrganizerApplicationResponse> queue(OrganizerApplicationStatus status) {
+        return toResponses(organizerApplicationRepository.findByStatusOrderBySubmittedAtAsc(status));
+    }
+
+    /**
+     * How many applications sit in each status. Every status present, zeros
+     * included - a tab that vanishes when its queue empties moves the tabs
+     * beside it under the admin's cursor.
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public Map<OrganizerApplicationStatus, Long> countsByStatus() {
+        Map<OrganizerApplicationStatus, Long> counts =
+                new EnumMap<>(OrganizerApplicationStatus.class);
+        for (OrganizerApplicationStatus s : OrganizerApplicationStatus.values()) {
+            counts.put(s, 0L);
+        }
+        for (Object[] row : organizerApplicationRepository.countGroupedByStatus()) {
+            counts.put((OrganizerApplicationStatus) row[0], ((Number) row[1]).longValue());
+        }
+        return counts;
     }
 
     // ------------------------------------------------------------

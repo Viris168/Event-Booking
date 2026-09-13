@@ -45,7 +45,13 @@ public enum EventStatus {
     /** On sale, subject to the sales window. */
     PUBLISHED,
 
-    /** Pulled after publication. Terminal, and a moderation action. */
+    /**
+     * Pulled after publication by an admin. Not on sale, still readable.
+     *
+     * <p>Reversible: RESTORE puts it back to PUBLISHED. It was terminal until
+     * the admin screens grew an "open again" button, and the reasoning for the
+     * change is on {@link com.eventbooking.Enumeration.EventTransition#RESTORE}.
+     */
     TAKEN_DOWN;
 
     /**

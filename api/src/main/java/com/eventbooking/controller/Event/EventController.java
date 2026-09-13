@@ -9,6 +9,7 @@ import com.eventbooking.dto.event.EventSearchCriteria;
 import com.eventbooking.dto.event.UpdateEventRequest;
 import com.eventbooking.security.EventVisibilityGuard;
 import com.eventbooking.security.OrganizerResolver;
+import com.eventbooking.service.event.EventDeletionService;
 import com.eventbooking.service.event.EventService;
 import org.springframework.data.domain.Page;
 
@@ -32,6 +33,8 @@ public class EventController {
 
     private final EventVisibilityGuard eventVisibilityGuard;
 
+    private final EventDeletionService eventDeletionService;
+
     /**
      * The actor id is an app_user id taken from the verified token, never the
      * OWNER id: the resolver turns it into an organizer_profile id and rejects
@@ -39,10 +42,12 @@ public class EventController {
      * wire, which is why the translation lives in one place.
      */
     public EventController(EventService eventService, OrganizerResolver organizerResolver,
-                           EventVisibilityGuard eventVisibilityGuard) {
+                           EventVisibilityGuard eventVisibilityGuard,
+                           EventDeletionService eventDeletionService) {
         this.eventService = eventService;
         this.organizerResolver = organizerResolver;
         this.eventVisibilityGuard = eventVisibilityGuard;
+        this.eventDeletionService = eventDeletionService;
     }
 
     @PostMapping
@@ -118,6 +123,47 @@ public class EventController {
             @PathVariable Long id) {
         Long organizerId = organizerResolver.requireOrganizerId(actorUserId);
         return new ResponseEntity<>(eventService.withdrawFromReview(organizerId, id, actorUserId), HttpStatus.OK);
+    }
+
+    /**
+     * Pull your own listing off sale, before anyone has bought a ticket.
+     *
+     * <p>Take-down used to be admin-only in full, on the reasoning that pulling
+     * a show with tickets out is a refund decision. That holds from the first
+     * sale onward and the service enforces it - but it says nothing about an
+     * event nobody has bought, where the only person affected is the organiser
+     * making the request. Queueing for an admin to undo your own typo is
+     * friction with nothing behind it.
+     *
+     * <p>Same path as the admin's, a different controller: this one resolves an
+     * organizer_profile id and refuses anyone else's event.
+     */
+    @PatchMapping("/{id}/takedown")
+    public ResponseEntity<EventResponse> takeDownOwnEvent(
+            @CurrentUserId Long actorUserId,
+            @PathVariable Long id) {
+        Long organizerId = organizerResolver.requireOrganizerId(actorUserId);
+        return new ResponseEntity<>(eventService.takeDownOwnEvent(organizerId, id), HttpStatus.OK);
+    }
+
+    /**
+     * Remove your own event for good.
+     *
+     * <p>The same guard the admin's DELETE uses, which is what makes handing it
+     * to organisers safe rather than generous: it refuses any event that has
+     * ever been booked, so this can only ever reach a listing nobody bought -
+     * a draft, a rejection, a duplicate posted twice.
+     *
+     * <p>There is deliberately no status rule on top. A bookingless event is a
+     * bookingless event whether it is a draft or was published and never sold.
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteOwnEvent(
+            @CurrentUserId Long actorUserId,
+            @PathVariable Long id) {
+        Long organizerId = organizerResolver.requireOrganizerId(actorUserId);
+        eventDeletionService.deleteAsOrganizer(organizerId, id);
+        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 
     @PatchMapping("/{id}/publish")

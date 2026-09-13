@@ -89,9 +89,30 @@ export const RQ_CSS = `
 /* No wrapper card. The list sits on the page and the rail beside it - the
    only framed thing on the screen, because it is the only thing that scrolls
    independently. Rail is wide enough to read a paragraph in. */
-.rq-split { display: grid; grid-template-columns: minmax(0, 1fr) 440px;
+/* Status tabs, replacing a <select> that showed one count and hid three.
+   Underline rather than pills: this sits under a page title in a console that
+   uses underlined tabs for its own top-level nav, and two different tab shapes
+   on one screen read as two different kinds of thing. */
+.rq-tabs { display: flex; gap: var(--rq-1); flex-wrap: wrap; }
+.rq-tab { display: inline-flex; align-items: center; gap: .4rem;
+  padding: .4rem .6rem; border: 0; border-bottom: 2px solid transparent;
+  background: none; color: var(--color-muted); font: inherit; font-size: .86rem;
+  font-weight: 600; cursor: pointer; white-space: nowrap; }
+.rq-tab:hover { color: var(--color-ink); }
+.rq-tab.on { color: var(--color-ink); border-bottom-color: var(--color-brand-600); }
+/* The count sits in its own chip so a four-digit queue cannot shove the tabs
+   around as it grows - the chip widens, the label stays put. */
+.rq-tab-n { display: inline-grid; place-items: center; min-width: 1.35rem;
+  padding: 0 .32rem; border-radius: 999px; background: var(--color-surface-2);
+  color: var(--color-muted); font-size: .74rem; font-variant-numeric: tabular-nums; }
+.rq-tab.on .rq-tab-n { background: var(--color-brand-100); color: var(--color-brand-800); }
+
+/* One column. The detail moved into a dialog, so the list keeps the full
+   width it is scanned at. */
+.rq-split { display: grid; grid-template-columns: minmax(0, 1fr);
             gap: var(--rq-6); align-items: start; }
-@media (max-width: 1180px) { .rq-split { grid-template-columns: minmax(0, 1fr) 380px; gap: var(--rq-5); } }
+@media (max-width: 1180px) { .rq-split { grid-template-columns: minmax(0, 1fr) 380px; gap: var(--rq-5); }
+ }
 @media (max-width: 1024px) { .rq-split { grid-template-columns: 1fr; } }
 
 .rq-col { display: flex; flex-direction: column; gap: var(--rq-4); min-width: 0; }
@@ -116,8 +137,13 @@ export const RQ_CSS = `
    flush against the edge of the scroll container. */
 .rq-qrow > td:last-child { padding-inline-end: var(--rq-3); }
 .rq-qrow:hover > td { background: var(--color-surface-2); }
-.rq-qrow.is-on > td { background: var(--color-surface-2); }
-.rq-qrow.is-on > td:first-child { box-shadow: inset 3px 0 0 0 var(--color-ink); }
+/* No persistent "selected row" any more.
+
+   The bar and the tint marked which row the RAIL was showing - they were the
+   only thing tying the two panes together. The detail is a dialog now: while it
+   is open it covers the list, and once it closes there is nothing left for a
+   highlighted row to point at. A row that stays marked after you have finished
+   with it just reads as unfinished work. */
 .rq-qrow.is-on .rq-qtitle { color: var(--color-ink); }
 
 /*
@@ -139,7 +165,7 @@ export const RQ_CSS = `
 .rq-qmuted { color: var(--color-muted); font-size: .85rem; }
 
 /* --------------------------------------------------------------- the rail */
-.rq-panel { border: 1px solid var(--color-line);
+.rq-panel { position: relative; border: 1px solid var(--color-line);
             border-radius: var(--radius-card, 16px);
             background: var(--color-surface); color: var(--color-ink);
             display: flex; flex-direction: column;
@@ -223,4 +249,89 @@ export const RQ_CSS = `
                                       color: var(--color-page); }
 [data-theme='dark'] .rq-act-approve:not(:disabled):hover {
   background: var(--color-brand-100); }
+
+/* The submission dialog. Sits UNDER .confirm-overlay (1100) so the approve and
+   reject confirmations open on top of it rather than behind. */
+.rq-dialog-overlay {
+  /* The dialog is portalled to <body>, which is OUTSIDE .rq-wrap - so the
+     --rq-* scale declared there does not reach it, and every padding inside
+     resolved to nothing. The panel rendered flush to its own edges. Redeclared
+     here rather than moved to :root: they are this screen's scale, not the
+     product's, and hoisting them would invite use somewhere they do not mean
+     anything. */
+  --rq-1: .25rem; --rq-2: .5rem; --rq-3: .75rem; --rq-4: 1rem;
+  --rq-5: 1.5rem; --rq-6: 2rem;
+  position: fixed; inset: 0; z-index: 1050;
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: var(--rq-5) var(--rq-4); overflow-y: auto;
+  background: rgba(9, 11, 16, .62); }
+
+/* Wider than the rail it replaces - the rail was 440px because that was what
+   was left beside the table, which is not a reason for anything. */
+.rq-dialog { position: relative; width: min(96vw, 560px); margin: auto 0;
+  border: 1px solid var(--color-line); border-radius: var(--radius-card);
+  background: var(--color-surface); box-shadow: var(--shadow-float); }
+
+/* The panel inside loses the border it had as a rail - the dialog draws it. */
+.rq-dialog .rq-panel { border: 0; border-radius: inherit; background: none;
+  max-height: none; }
+
+/* The dialog's own bar: where you are, how to move, how to leave.
+   Sticky so it survives scrolling a long submission - the counter is only
+   useful if it is visible at the moment you press Approve. */
+.rq-dialog-bar { position: sticky; top: 0; z-index: 3;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--rq-3); padding: var(--rq-3);
+  border-bottom: 1px solid var(--color-line-2);
+  border-radius: var(--radius-card) var(--radius-card) 0 0;
+  background: var(--color-surface); }
+
+.rq-dialog-nav { display: flex; align-items: center; gap: var(--rq-2); }
+
+.rq-dialog-step, .rq-dialog-close {
+  display: grid; place-items: center; width: 1.9rem; height: 1.9rem; flex: none;
+  border: 1px solid var(--color-line); border-radius: .5rem;
+  background: var(--color-surface); color: var(--color-muted); cursor: pointer; }
+.rq-dialog-step:hover:not(:disabled), .rq-dialog-close:hover {
+  color: var(--color-ink); background: var(--color-surface-2); }
+/* Disabled rather than hidden at the ends of the queue: a control that
+   disappears moves the one beside it under the cursor mid-click. */
+.rq-dialog-step:disabled { opacity: .4; cursor: default; }
+
+.rq-dialog-pos { font-size: .82rem; color: var(--color-muted);
+  font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* The beat that makes an advance register.
+   The queue swaps the panel's contents in place after a decision - same box,
+   same buttons, a different show - and on a screen whose primary action cannot
+   be undone, a silent change is a mis-click. Short and small: enough to catch
+   the eye, not enough to sit through on every approval. */
+@keyframes rq-swap {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: none; }
+}
+.rq-dialog .rq-panel { animation: rq-swap .18s ease-out; }
+
+/* Someone who has asked not to see motion still needs to notice the change,
+   so the fade stays and only the movement goes. */
+@media (prefers-reduced-motion: reduce) {
+  .rq-dialog .rq-panel { animation: rq-swap .18s ease-out; transform: none; }
+  @keyframes rq-swap { from { opacity: 0; } to { opacity: 1; } }
+}
+
+/* What was decided, where the decision buttons sit on an open application.
+
+   An application this screen can no longer act on used to render Approve and
+   Reject anyway - the screen only ever served PENDING, so the panel assumed
+   every row was live. Reachable history made that assumption visible. */
+.rq-decided { display: flex; flex-direction: column; gap: var(--rq-1);
+  padding: var(--rq-4); border-top: 1px solid var(--color-line);
+  background: var(--color-surface-2); }
+.rq-decided-head { display: flex; align-items: center; gap: var(--rq-2);
+  font-weight: 650; color: var(--color-ink); }
+.rq-decided-when { font-size: .82rem; color: var(--color-muted);
+  padding-left: calc(15px + var(--rq-2)); }
+/* The reason, indented under the outcome it belongs to. */
+.rq-decided-note { margin: var(--rq-2) 0 0; font-size: .86rem; line-height: 1.5;
+  color: var(--color-ink-2); padding-left: calc(15px + var(--rq-2)); }
 `

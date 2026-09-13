@@ -37,4 +37,15 @@ public interface EventSeatRepository extends JpaRepository<EventSeat, Long> {
             group by s.event.id, s.status
             """)
     java.util.List<Object[]> statusCountsByEvent();
+
+    /**
+     * Seats in one state at one event - the seated half of "has this sold
+     * anything yet", which decides whether its organiser may still pull it.
+     *
+     * <p>Single-event, unlike statusCountsByEvent above: that one feeds the
+     * moderation table and aggregates the whole platform in a single query,
+     * which is the wrong shape for a question asked about one event during a
+     * write.
+     */
+    long countByEvent_IdAndStatus(Long eventId, com.eventbooking.Enumeration.SeatStatus status);
 }

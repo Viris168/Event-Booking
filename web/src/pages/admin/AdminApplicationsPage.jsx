@@ -1,6 +1,7 @@
 import { useDocumentTitle } from '../../lib/useDocumentTitle.js'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ConfirmDialog from '../../components/ConfirmDialog.jsx'
+import QueueDialog from './QueueDialog.jsx'
 import Icon from '../../components/Icon.jsx'
 import { Alert, Empty, Field } from '../../components/ui.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
@@ -9,6 +10,7 @@ import { useToast } from '../../context/ToastContext.jsx'
 import { formatDateTime, timeAgo } from '../../lib/format.js'
 import {
   approveApplication,
+  getApplicationStatusCounts,
   getOrganizerApplications,
   rejectApplication,
 } from '../../api/admin.js'
@@ -33,6 +35,16 @@ import {
  * wrote, not a summary of it.
  */
 
+// The three states an application can be in. Declaration order is the order it
+// moves through them, so the tabs read as a path rather than an alphabet.
+const QUEUES = ['PENDING', 'APPROVED', 'REJECTED']
+
+const QUEUE_LABEL = {
+  PENDING: { en: 'Pending', km: 'កំពុងរង់ចាំ' },
+  APPROVED: { en: 'Approved', km: 'បានអនុម័ត' },
+  REJECTED: { en: 'Rejected', km: 'បានបដិសេធ' },
+}
+
 /** Snake_case off the wire, camelCase if something ever maps it. As adapters.js. */
 const pick = (o, snake, camel) => o?.[snake] ?? o?.[camel]
 
@@ -42,6 +54,8 @@ export default function AdminApplicationsPage() {
   useDocumentTitle(km ? 'ពាក្យសុំធ្វើជាអ្នករៀបចំ' : 'Organiser applications')
   const toast = useToast()
 
+  const [status, setStatus] = useState('PENDING')
+  const [counts, setCounts] = useState({})
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
@@ -49,6 +63,9 @@ export default function AdminApplicationsPage() {
 
   const [selectedId, setSelectedId] = useState(null)
   const [lastIndex, setLastIndex] = useState(0)
+  // The detail opens as a dialog, as on the review queue. Closed until an
+  // application is clicked - the list is what gets scanned.
+  const [panelOpen, setPanelOpen] = useState(false)
 
   const [rejecting, setRejecting] = useState(false)
   const [message, setMessage] = useState('')
@@ -61,7 +78,7 @@ export default function AdminApplicationsPage() {
    */
   useEffect(() => {
     let live = true
-    getOrganizerApplications()
+    getOrganizerApplications({ status })
       .then((res) => {
         if (!live) return
         setLoadError(false)
@@ -75,6 +92,28 @@ export default function AdminApplicationsPage() {
       .finally(() => live && setLoading(false))
     return () => {
       live = false
+    }
+  }, [status, version])
+
+  /*
+   * The tab counts, on the same thirty-second poll as the review queue's.
+   * Applications arrive while an admin has this page open and there is no other
+   * way for the client to hear about one.
+   */
+  useEffect(() => {
+    let live = true
+    const load = () => {
+      getApplicationStatusCounts()
+        .then((res) => live && setCounts(res || {}))
+        .catch(() => {
+          // The tabs show no number rather than an error - the queue still works.
+        })
+    }
+    load()
+    const timer = setInterval(load, 30000)
+    return () => {
+      live = false
+      clearInterval(timer)
     }
   }, [version])
 
@@ -92,10 +131,44 @@ export default function AdminApplicationsPage() {
     return rows.find((a) => a.id === selectedId) ?? rows[Math.min(lastIndex, rows.length - 1)]
   }, [rows, selectedId, lastIndex])
 
+  /** Clicking an application opens it in the dialog. */
   const selectRow = (application, index) => {
     setSelectedId(application.id)
     setLastIndex(index)
+    setPanelOpen(true)
   }
+
+  const closePanel = () => setPanelOpen(false)
+
+  const changeStatus = (next) => {
+    setLoading(true)
+    setStatus(next)
+    setLastIndex(0)
+    // A different status is a different set of rows; an open dialog would be
+    // showing one that is no longer in the list.
+    setSelectedId(null)
+    setPanelOpen(false)
+  }
+
+  /*
+   * Where the open application sits, and how to step past one without ruling on
+   * it. Same reasoning as the review queue: the dialog already advanced after a
+   * decision, but had no way to say where you were or to skip a hard case.
+   */
+  const selectedIndex = useMemo(
+    () => (selected ? rows.findIndex((a) => a.id === selected.id) : -1),
+    [rows, selected],
+  )
+
+  const step = (delta) => {
+    const next = selectedIndex + delta
+    if (next < 0 || next >= rows.length) return
+    setSelectedId(rows[next].id)
+    setLastIndex(next)
+  }
+
+  // Unpaged endpoint, so the index IS the position - no page offset to add.
+  const position = selectedIndex < 0 ? null : selectedIndex + 1
 
   const refresh = useCallback(() => {
     setLoading(true)
@@ -145,14 +218,26 @@ export default function AdminApplicationsPage() {
               : 'People waiting for permission to run events, oldest application first.'}
           </p>
         </div>
-        <div className="rq-count" aria-live="polite">
-          {loading
-            ? km
-              ? 'កំពុងផ្ទុក…'
-              : 'Loading…'
-            : km
-              ? `នៅសល់ ${rows.length}`
-              : `${rows.length} waiting`}
+        {/* Tabs, as on the review queue. The count used to be a single number
+            for the only status this screen could show; now the other two are
+            reachable, and an admin who has just rejected somebody can look back
+            at what they wrote without leaving the page. */}
+        <div className="rq-head-right">
+          <div className="rq-tabs" role="tablist" aria-label={km ? 'ស្ថានភាព' : 'Status'}>
+            {QUEUES.map((q) => (
+              <button
+                key={q}
+                type="button"
+                role="tab"
+                aria-selected={status === q}
+                className={`rq-tab${status === q ? ' on' : ''}`}
+                onClick={() => changeStatus(q)}
+              >
+                {km ? QUEUE_LABEL[q].km : QUEUE_LABEL[q].en}
+                {counts[q] !== undefined && <span className="rq-tab-n">{counts[q]}</span>}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -230,20 +315,37 @@ export default function AdminApplicationsPage() {
             </div>
           </div>
 
-          {selected && (
-            <ApplicationPanel
-              application={selected}
-              km={km}
-              locale={locale}
-              busy={busy}
-              onApprove={approve}
-              onReject={() => {
-                setMessage('')
-                setRejecting(true)
-              }}
-            />
-          )}
         </div>
+      )}
+
+      {/* The application, as a dialog - the same move the review queue made, and
+          for the same reason: the rail cost the list half its width the whole
+          time it was open, and the list is what gets scanned. */}
+      {selected && panelOpen && selectedId && (
+        <QueueDialog
+          km={km}
+          onClose={closePanel}
+          label={km ? 'ព័ត៌មានលម្អិត' : 'Application detail'}
+          position={position}
+          total={rows.length}
+          onPrev={() => step(-1)}
+          onNext={() => step(1)}
+          canPrev={selectedIndex > 0}
+          canNext={selectedIndex >= 0 && selectedIndex < rows.length - 1}
+        >
+          <ApplicationPanel
+            key={selected.id}
+            application={selected}
+            km={km}
+            locale={locale}
+            busy={busy}
+            onApprove={approve}
+            onReject={() => {
+              setMessage('')
+              setRejecting(true)
+            }}
+          />
+        </QueueDialog>
       )}
 
       {/* A rejection needs a reason: the server refuses a blank one twice over,
@@ -315,6 +417,22 @@ function ApplicationPanel({ application, km, locale, busy, onApprove, onReject }
    */
   const noContact = !telegram && !facebook
 
+  /*
+   * Only a PENDING application can still be decided.
+   *
+   * This screen served PENDING and nothing else until the status tabs landed,
+   * so the panel could assume every row it was handed was still open and put
+   * Approve and Reject at the foot unconditionally. Now that decided rows are
+   * reachable, that assumption shows an approved application with a live
+   * Approve button on it - a control the server answers
+   * ORGANIZER_APPLICATION_ALREADY_DECIDED to, and which makes a settled
+   * decision look unsettled.
+   */
+  const decided = application.status && application.status !== 'PENDING'
+  const adminNote = pick(application, 'admin_note', 'adminNote')
+  const reviewedBy = pick(application, 'reviewed_by_name', 'reviewedByName')
+  const reviewedAt = pick(application, 'reviewed_at', 'reviewedAt')
+
   return (
     <section className="rq-panel" aria-label={km ? 'ព័ត៌មានលម្អិត' : 'Application detail'}>
       <div className="rq-panel-scroll" ref={scrollRef}>
@@ -379,16 +497,41 @@ function ApplicationPanel({ application, km, locale, busy, onApprove, onReject }
         * request-changes edge, because a rejected applicant submits a fresh row
         * rather than editing the one you turned down.
         */}
-      <footer className="rq-actions">
-        <button className="rq-act rq-act-approve" disabled={busy} onClick={onApprove}>
-          <Icon name="checkCircle" size={14} />
-          {km ? 'អនុម័ត' : 'Approve'}
-        </button>
-        <button className="rq-act rq-act-reject" disabled={busy} onClick={onReject}>
-          <Icon name="xCircle" size={14} />
-          {km ? 'បដិសេធ' : 'Reject'}
-        </button>
-      </footer>
+      {decided ? (
+        /* What was decided, by whom and when - the questions someone opening a
+           settled application actually has. The reason is shown for a rejection
+           because that is what the applicant was told, and an admin looking
+           back is usually checking exactly that. */
+        <footer className="rq-decided">
+          <div className="rq-decided-head">
+            <Icon
+              name={application.status === 'APPROVED' ? 'checkCircle' : 'xCircle'}
+              size={15}
+            />
+            <span>
+              {application.status === 'APPROVED'
+                ? km ? 'បានអនុម័ត' : 'Approved'
+                : km ? 'បានបដិសេធ' : 'Rejected'}
+              {reviewedBy ? ` · ${reviewedBy}` : ''}
+            </span>
+          </div>
+          {reviewedAt && (
+            <div className="rq-decided-when">{formatDateTime(reviewedAt, locale)}</div>
+          )}
+          {adminNote && <p className="rq-decided-note">{adminNote}</p>}
+        </footer>
+      ) : (
+        <footer className="rq-actions">
+          <button className="rq-act rq-act-approve" disabled={busy} onClick={onApprove}>
+            <Icon name="checkCircle" size={14} />
+            {km ? 'អនុម័ត' : 'Approve'}
+          </button>
+          <button className="rq-act rq-act-reject" disabled={busy} onClick={onReject}>
+            <Icon name="xCircle" size={14} />
+            {km ? 'បដិសេធ' : 'Reject'}
+          </button>
+        </footer>
+      )}
     </section>
   )
 }

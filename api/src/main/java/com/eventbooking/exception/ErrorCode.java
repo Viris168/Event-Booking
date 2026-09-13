@@ -17,6 +17,11 @@ public enum ErrorCode {
     PAYMENT_NOT_FOUND(HttpStatus.NOT_FOUND),
     TICKET_NOT_FOUND(HttpStatus.NOT_FOUND),
     ORGANIZER_APPLICATION_NOT_FOUND(HttpStatus.NOT_FOUND),
+    /* An admin screen named an app_user id that no longer exists. Distinct
+       from NOT_AUTHENTICATED, which is about the caller: here the caller is a
+       valid admin and it is the row they are acting ON that is gone - two
+       admins working the users table at once is the ordinary way to reach it. */
+    USER_NOT_FOUND(HttpStatus.NOT_FOUND),
     RESOURCE_NOT_FOUND(HttpStatus.NOT_FOUND),
 
     // 400 Bad Request
@@ -86,6 +91,21 @@ public enum ErrorCode {
     /* Approve or reject on a row that is no longer PENDING. Two admins working
        the queue at once is the ordinary way to reach this. */
     ORGANIZER_APPLICATION_ALREADY_DECIDED(HttpStatus.CONFLICT),
+    /* DELETE on an event that has sold something. Deleting it would take real
+       customers' bookings and tickets with it, so the admin is pointed at
+       take-down instead - which is the reversible action that exists for
+       exactly this case. */
+    EVENT_NOT_DELETABLE(HttpStatus.CONFLICT),
+    /* An organiser tried to pull their own event after it had sold something.
+       Taking a show off sale once people hold tickets to it is a refund
+       decision, which is the platform's to make - so past the first sale the
+       action stays with an admin. */
+    EVENT_HAS_SALES(HttpStatus.CONFLICT),
+    /* The admin users screen asked for a role change the platform cannot make:
+       demoting an organiser who still owns events or venues, or an admin
+       editing their own role. Not 403 - the caller has every permission, it is
+       the change itself that is impossible. */
+    ROLE_CHANGE_BLOCKED(HttpStatus.CONFLICT),
 
     // 410 Gone
     HOLD_EXPIRED(HttpStatus.GONE),

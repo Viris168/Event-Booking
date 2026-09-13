@@ -38,9 +38,18 @@ public class VenueServiceimpl implements VenueService {
         return VenueMapper.toVenueResponse(v);
     }
 
+    /**
+     * The caller's own venues, active ones only.
+     *
+     * <p>This used to be getAllVenues() and returned every venue on the
+     * platform. That was the listing half of shared venues: any organiser could
+     * see every other organiser's buildings and pick one in the event form.
+     * Venues are private now, so the list is scoped to their owner and the
+     * authorization below refuses the rest.
+     */
     @Override
-    public List<VenueResponse> getAllVenues() {
-        return venueRepository.findAllByIsDisabledFalse()
+    public List<VenueResponse> getVenuesForOrganizer(Long organizerId) {
+        return venueRepository.findAllByOrganizerIdAndIsDisabledFalse(organizerId)
                 .stream()
                 .map(VenueMapper::toVenueResponse)
                 .collect(Collectors.toList());
@@ -49,7 +58,7 @@ public class VenueServiceimpl implements VenueService {
     @Override
     public VenueResponse updateVenue(Long organizerId, Long venueId, UpdateVenueRequest request) {
         Venue v = venueRepository.findById(venueId).orElseThrow(() -> new VenueNotFoundException(venueId));
-        organizerResolver.requireOwnerOrShared(organizerId, v.getOrganizerId(), "venue", venueId);
+        organizerResolver.requireOwner(organizerId, v.getOrganizerId(), "venue", venueId);
         if (request.nameEn() != null) v.setNameEn(request.nameEn());
         if (request.nameKm() != null) v.setNameKm(request.nameKm());
         if (request.provinceCode() != null) v.setProvinceCode(request.provinceCode());
@@ -65,7 +74,7 @@ public class VenueServiceimpl implements VenueService {
     @Override
     public void deactivateVenue(Long organizerId, Long venueId) {
         Venue v = venueRepository.findById(venueId).orElseThrow(() -> new VenueNotFoundException(venueId));
-        organizerResolver.requireOwnerOrShared(organizerId, v.getOrganizerId(), "venue", venueId);
+        organizerResolver.requireOwner(organizerId, v.getOrganizerId(), "venue", venueId);
         v.setIsDisabled(true);
         venueRepository.save(v);
     }

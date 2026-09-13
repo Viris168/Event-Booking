@@ -17,6 +17,16 @@ const PATHS = {
   external: 'M14 4h6v6M20 4l-8 8M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5',
   close: 'M6 6l12 12M18 6 6 18',
   menu: 'M4 7h16M4 12h16M4 17h16',
+  /* The row-actions kebab. Filled, not stroked: the rest of the set draws with
+     round caps, and three zero-length subpaths relying on those caps to become
+     dots is a trick some renderers decline to perform. Three real circles
+     always paint. Drawn as arc pairs because the path syntax has no circle. */
+  moreVertical: {
+    d: 'M12 4.3a1.7 1.7 0 1 0 0 3.4 1.7 1.7 0 0 0 0-3.4Z'
+     + 'M12 10.3a1.7 1.7 0 1 0 0 3.4 1.7 1.7 0 0 0 0-3.4Z'
+     + 'M12 16.3a1.7 1.7 0 1 0 0 3.4 1.7 1.7 0 0 0 0-3.4Z',
+    filled: true,
+  },
   sun: 'M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4',
   moon: 'M20 14.5A8.5 8.5 0 0 1 9.5 4a7.5 7.5 0 1 0 10.5 10.5Z',
   plus: 'M12 5v14M5 12h14',

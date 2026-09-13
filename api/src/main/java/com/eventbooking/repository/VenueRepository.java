@@ -18,4 +18,30 @@ public interface VenueRepository extends JpaRepository<Venue,Long> {
      * render; VenueResponse carries isDisabled so the client can say so.
      */
     List<Venue> findAllByIsDisabledFalse();
+
+    /**
+     * One organiser's venues - what their venue list and the event form's venue
+     * picker are allowed to show.
+     *
+     * <p>Replaces {@link #findAllByIsDisabledFalse} on those two screens, which
+     * returned every venue on the platform: an organiser could see, and pick,
+     * buildings belonging to their competitors. Venues are private to the
+     * organiser who created them.
+     *
+     * <p>A NULL owner matches nothing here, which is deliberate. Those are the
+     * shared venues V21 introduced and V27 retired; there is no organiser they
+     * belong to, so there is no list they belong in.
+     */
+    List<Venue> findAllByOrganizerIdAndIsDisabledFalse(Long organizerId);
+
+    /**
+     * Venues belonging to one organiser - the other half of the demotion guard
+     * in AdminUserService.
+     *
+     * <p>{@code venue.organizer_id} is nullable, and a null means the venue
+     * belongs to the platform rather than to anyone (V21's shared halls). Those
+     * rows are not counted here, which is right: they survive their creator
+     * losing the role, because nobody owns them.
+     */
+    long countByOrganizerId(Long organizerId);
 }
