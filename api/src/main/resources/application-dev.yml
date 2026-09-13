@@ -30,3 +30,10 @@ spring:
     # makes +85510111222 a PLATFORM_ADMIN. Never add classpath:db/seed to a
     # deployment's locations.
     locations: classpath:db/migration,classpath:db/seed
+    # Some dev databases recorded version 24 against an early copy of the
+    # phone-format script, before it was renumbered to V25. Clearing that row
+    # frees the version, but V24 is then a pending version BELOW the applied
+    # maximum, which Flyway refuses by default ("Detected resolved migration
+    # not applied to database: 24") and skips even when validation is relaxed.
+    # Dev only: a database that applied these in order has never needed it.
+    out-of-order: true
