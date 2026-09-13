@@ -1,6 +1,6 @@
 package com.eventbooking.dto.ticket;
 
-import com.eventbooking.ticket.ScanOutcome;
+import com.eventbooking.service.ticket.ScanOutcome;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.Instant;

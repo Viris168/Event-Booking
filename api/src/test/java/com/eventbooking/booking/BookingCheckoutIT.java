@@ -1,8 +1,9 @@
 package com.eventbooking.booking;
 
-import com.eventbooking.booking.error.IllegalBookingTransitionException;
+import com.eventbooking.service.booking.BookingService;
+import com.eventbooking.exception.booking.IllegalBookingTransitionException;
 import com.eventbooking.dto.booking.CheckoutRequest;
-import com.eventbooking.inventory.error.HoldExpiredException;
+import com.eventbooking.exception.inventory.HoldExpiredException;
 import com.eventbooking.model.Booking;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -259,7 +260,7 @@ class BookingCheckoutIT {
 
         // Reported as missing rather than forbidden, so hold ids cannot be probed.
         assertThatThrownBy(() -> bookingService.convertHold(checkout(holdId), stranger))
-                .isInstanceOf(com.eventbooking.inventory.error.HoldNotFoundException.class);
+                .isInstanceOf(com.eventbooking.exception.inventory.HoldNotFoundException.class);
 
         assertThat(countBookingsForHold(holdId)).isZero();
         assertThat(seatStatus()).isEqualTo("HELD");

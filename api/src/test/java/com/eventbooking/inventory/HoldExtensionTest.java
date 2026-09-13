@@ -1,12 +1,13 @@
 package com.eventbooking.inventory;
 
+import com.eventbooking.config.HoldProperties;
 import com.eventbooking.Enumeration.HoldStatus;
 import com.eventbooking.Enumeration.SeatStatus;
 import com.eventbooking.dto.hold.HoldResponse;
-import com.eventbooking.inventory.error.HoldAlreadyExtendedException;
-import com.eventbooking.inventory.error.HoldExpiredException;
-import com.eventbooking.inventory.error.HoldNotActiveException;
-import com.eventbooking.inventory.error.HoldNotFoundException;
+import com.eventbooking.exception.inventory.HoldAlreadyExtendedException;
+import com.eventbooking.exception.inventory.HoldExpiredException;
+import com.eventbooking.exception.inventory.HoldNotActiveException;
+import com.eventbooking.exception.inventory.HoldNotFoundException;
 import com.eventbooking.model.AppUser;
 import com.eventbooking.model.Event;
 import com.eventbooking.model.EventSeat;

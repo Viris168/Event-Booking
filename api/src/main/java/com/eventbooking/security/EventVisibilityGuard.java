@@ -6,9 +6,9 @@ import com.eventbooking.repository.AppUserRepository;
 import com.eventbooking.repository.EventRepository;
 import com.eventbooking.repository.EventZoneRepository;
 import com.eventbooking.repository.OrganizerProfileRepository;
-import com.eventbooking.security.error.NotResourceOwnerException;
-import com.eventbooking.catalog.error.EventNotFoundException;
-import com.eventbooking.catalog.error.EventZoneNotFoundException;
+import com.eventbooking.exception.security.NotResourceOwnerException;
+import com.eventbooking.exception.catalog.EventNotFoundException;
+import com.eventbooking.exception.catalog.EventZoneNotFoundException;
 import org.springframework.stereotype.Component;
 
 /**

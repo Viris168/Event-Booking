@@ -1,6 +1,6 @@
 package com.eventbooking.service.Venue.impl;
 
-import com.eventbooking.catalog.error.VenueNotFoundException;
+import com.eventbooking.exception.catalog.VenueNotFoundException;
 
 import com.eventbooking.dto.VenueSeat.CreateVenueSeatsRequest;
 import com.eventbooking.dto.VenueSeat.VenueSeatMapResponse;

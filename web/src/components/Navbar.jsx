@@ -76,17 +76,17 @@ export default function Navbar({ onOpenAccount }) {
    * Two lists, because the bar and the drawer are answering different
    * questions.
    *
-   * The bar is what you reach for repeatedly, and every permanent item in it
-   * costs the ones beside it some attention. So it carries only destinations:
-   * Home is not one, because the brand lockup to its left already goes there,
-   * and "Become an organizer" is not one either - it is a thing you do once,
-   * which is why it now lives in the account panel.
+   * The bar carries destinations. Home is one of them: the brand lockup goes
+   * there too, but people look for a named link and do not all read a logo as
+   * a button. "Become an organizer" stays out - it is a thing you do once,
+   * which is why it lives in the account panel.
    *
-   * The drawer has room and no such competition, so it keeps both: there is no
-   * brand link to press inside it, and a phone user should not have to know the
-   * account panel exists to find the organiser application.
+   * The drawer has room and no such competition, so it keeps both: a phone
+   * user should not have to know the account panel exists to find the
+   * organiser application.
    */
   const links = [
+    { to: '/', label: t('home'), icon: 'home', end: true, show: true },
     { to: '/events', label: t('events'), icon: 'calendar', show: true },
     { to: '/my-bookings', label: t('myBookings'), icon: 'ticket', show: isAuthenticated },
     { to: '/organizer', label: t('organizer'), icon: 'building', show: isOrganizer },
@@ -94,7 +94,6 @@ export default function Navbar({ onOpenAccount }) {
   ].filter((l) => l.show)
 
   const drawerLinks = [
-    { to: '/', label: t('home'), icon: 'home', end: true, show: true },
     ...links,
     // Never shown beside the /organizer link: isOrganizer covers ORGANIZER and
     // PLATFORM_ADMIN, so exactly one of these two rows is ever visible and they

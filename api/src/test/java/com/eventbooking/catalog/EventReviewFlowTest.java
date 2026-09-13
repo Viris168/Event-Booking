@@ -1,11 +1,13 @@
 package com.eventbooking.catalog;
 
+import com.eventbooking.service.event.EventSnapshotter;
+import com.eventbooking.service.event.EventStateMachine;
 import com.eventbooking.Enumeration.EventStatus;
 import com.eventbooking.Enumeration.EventTransition;
 import com.eventbooking.Enumeration.InventoryMode;
-import com.eventbooking.catalog.error.EventNotEditableException;
-import com.eventbooking.catalog.error.InvalidEventStatusTransitionException;
-import com.eventbooking.catalog.error.NoInventoryException;
+import com.eventbooking.exception.catalog.EventNotEditableException;
+import com.eventbooking.exception.catalog.InvalidEventStatusTransitionException;
+import com.eventbooking.exception.catalog.NoInventoryException;
 import com.eventbooking.model.Event;
 import com.eventbooking.model.EventReview;
 import com.eventbooking.model.EventSeat;

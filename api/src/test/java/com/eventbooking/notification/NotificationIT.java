@@ -3,7 +3,7 @@ package com.eventbooking.notification;
 import com.eventbooking.Enumeration.NotificationType;
 import com.eventbooking.dto.notification.NotificationResponse;
 import com.eventbooking.model.Notification;
-import com.eventbooking.notification.error.NotificationNotFoundException;
+import com.eventbooking.exception.notification.NotificationNotFoundException;
 import com.eventbooking.repository.NotificationRepository;
 import com.eventbooking.service.notification.NotificationService;
 import org.junit.jupiter.api.BeforeEach;

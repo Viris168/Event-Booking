@@ -1,6 +1,6 @@
 package com.eventbooking.controller;
 
-import com.eventbooking.booking.BookingService;
+import com.eventbooking.service.booking.BookingService;
 import com.eventbooking.dto.booking.BookingReasonRequest;
 import com.eventbooking.dto.booking.BookingResponse;
 import com.eventbooking.security.AdminResolver;

@@ -1,8 +1,8 @@
 package com.eventbooking.service.Image;
 
-import com.eventbooking.service.Image.error.EmptyUploadException;
-import com.eventbooking.service.Image.error.FileTooLargeException;
-import com.eventbooking.service.Image.error.UnsupportedFileTypeException;
+import com.eventbooking.exception.image.EmptyUploadException;
+import com.eventbooking.exception.image.FileTooLargeException;
+import com.eventbooking.exception.image.UnsupportedFileTypeException;
 import lombok.experimental.UtilityClass;
 import org.apache.commons.io.FilenameUtils;
 import org.springframework.web.multipart.MultipartFile;

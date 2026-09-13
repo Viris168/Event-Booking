@@ -9,7 +9,7 @@ import java.util.Set;
  *
  * <p>Order of declaration follows the happy path, which is also the order the
  * organiser sees in the lifecycle bar. The legal edges between these live in
- * {@link com.eventbooking.catalog.EventStateMachine}, not here - an enum can
+ * {@link com.eventbooking.service.event.EventStateMachine}, not here - an enum can
  * say what states exist but not which ones follow which.
  *
  * <p>Everything except {@link #PUBLISHED} is non-sellable, and that falls out

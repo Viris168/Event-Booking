@@ -1,6 +1,6 @@
 package com.eventbooking.service.Seat.impl;
 
-import com.eventbooking.catalog.error.EventNotFoundException;
+import com.eventbooking.exception.catalog.EventNotFoundException;
 import com.eventbooking.dto.seatclass.SeatAvailabilityResponse;
 import com.eventbooking.model.EventSeat;
 import com.eventbooking.repository.EventRepository;

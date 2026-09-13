@@ -16,10 +16,10 @@ public interface HoldService {
      * Pushes an active hold's deadline out by the configured extension window,
      * once and only once per hold.
      *
-     * @throws com.eventbooking.inventory.error.HoldNotFoundException        no such hold, or not the caller's
-     * @throws com.eventbooking.inventory.error.HoldAlreadyExtendedException the one extension is already spent
-     * @throws com.eventbooking.inventory.error.HoldNotActiveException       consumed or released
-     * @throws com.eventbooking.inventory.error.HoldExpiredException         too late; the inventory is released first
+     * @throws com.eventbooking.exception.inventory.HoldNotFoundException        no such hold, or not the caller's
+     * @throws com.eventbooking.exception.inventory.HoldAlreadyExtendedException the one extension is already spent
+     * @throws com.eventbooking.exception.inventory.HoldNotActiveException       consumed or released
+     * @throws com.eventbooking.exception.inventory.HoldExpiredException         too late; the inventory is released first
      */
     HoldResponse extendHold(Long holdId, Long userId);
 

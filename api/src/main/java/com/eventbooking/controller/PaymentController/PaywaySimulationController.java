@@ -3,7 +3,7 @@ package com.eventbooking.controller.PaymentController;
 import com.eventbooking.Enumeration.PaymentProvider;
 import com.eventbooking.Enumeration.PaymentStatus;
 import com.eventbooking.model.PaymentTransaction;
-import com.eventbooking.payment.PaymentService;
+import com.eventbooking.service.payment.PaymentService;
 import com.eventbooking.repository.PaymentTransactionRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
