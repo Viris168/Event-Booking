@@ -16,19 +16,3 @@ export async function getBookingPayments(bookingId) {
   const { data } = await client.get(`/bookings/${bookingId}/payments`)
   return data
 }
-
-/**
- * Stands in for ABA approving the transaction
- */
-export async function simulateAbaPayment(tranId) {
-  const { data } = await client.post(`/dev/payway/${encodeURIComponent(tranId)}/pay`)
-  return data
-}
-
-/**
- * Stands in for Bakong KHQR being paid
- */
-export async function simulateBakongPayment(paymentId) {
-  const { data } = await client.post(`/dev/payments/${paymentId}/pay`)
-  return data
-}

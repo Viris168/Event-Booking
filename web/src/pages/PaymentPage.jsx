@@ -15,8 +15,6 @@ import {
   startPayment as startApiPayment,
   pollPayment,
   getBookingPayments,
-  simulateAbaPayment,
-  simulateBakongPayment,
 } from '../api/payment.js'
 import { MERCHANT_NAME, PROVIDER } from '../lib/payway.js'
 import { getBooking as getApiBooking } from '../api/bookings.js'
@@ -184,7 +182,7 @@ export default function PaymentPage() {
   }, [txn?.status, txn?.expires_at, txn?.expiresAt])
 
   const onSettled = useCallback(
-    (status, { simulated = false } = {}) => {
+    (status) => {
       if (!booking) return
 
       if (status === 'SUCCESS') {
@@ -192,22 +190,9 @@ export default function PaymentPage() {
         setTxn((prev) =>
           prev ? { ...prev, status, resolved_at: new Date().toISOString() } : null,
         )
-        if (simulated && apiBooking && txn?.id) {
-          setChecking(true)
-          const simCall = txn.provider === 'BAKONG_KHQR'
-              ? simulateBakongPayment(txn.id)
-              : simulateAbaPayment(txn.providerRef ?? txn.provider_ref)
-
-          simCall
-            .then(refreshBooking)
-            .then(() => navigate(`/bookings/${booking.id}`))
-            .catch((err) => console.error('Simulated settlement failed', err))
-            .finally(() => setChecking(false))
-        } else {
-          // Real settlement came from polling check-transaction - straight to
-          // the tickets, the way PayWay's skip-success-page flow ends.
-          navigate(`/bookings/${booking.id}`)
-        }
+        // Settlement only ever comes from polling check-transaction now, so go
+        // straight to the tickets, the way PayWay's skip-success-page flow ends.
+        navigate(`/bookings/${booking.id}`)
         return
       }
 
