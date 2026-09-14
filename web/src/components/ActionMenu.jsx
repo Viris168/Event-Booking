@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { Link } from 'react-router-dom'
 import Icon from './Icon.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
 
@@ -17,7 +18,10 @@ import { useLocale } from '../context/LocaleContext.jsx'
  * clicked. `tone: 'danger'` colours an item; `hidden` drops it, which is what
  * lets a caller write the whole list out and let each row's own state decide;
  * `hint` is a short muted note on the right, for saying why a disabled item is
- * disabled without lengthening its label into a second line.
+ * disabled without lengthening its label into a second line. `to` renders the
+ * item as a router Link instead of a button - for a plain navigation, so it
+ * keeps normal link behaviour (open in a new tab, copy link) that an
+ * onSelect-driven navigate() call would lose.
  *
  * <p><b>The panel is portalled to the body and positioned fixed.</b> Not a
  * preference - an absolutely-positioned panel is clipped here. Every table on
@@ -137,23 +141,37 @@ export default function ActionMenu({ items, label, disabled = false }) {
             // Hidden until placed, so the first paint is never in the corner.
             style={pos ? { top: pos.top, right: pos.right } : { visibility: 'hidden' }}
           >
-            {visible.map((item) => (
-              <button
-                key={item.key}
-                type="button"
-                role="menuitem"
-                className={`action-menu-item${item.tone === 'danger' ? ' danger' : ''}`}
-                disabled={item.disabled}
-                onClick={() => {
-                  setOpen(false)
-                  item.onSelect()
-                }}
-              >
-                {item.icon && <Icon name={item.icon} size={15} />}
-                <span>{item.label}</span>
-                {item.hint && <span className="action-menu-hint">{item.hint}</span>}
-              </button>
-            ))}
+            {visible.map((item) =>
+              item.to ? (
+                <Link
+                  key={item.key}
+                  role="menuitem"
+                  className={`action-menu-item no-underline${item.tone === 'danger' ? ' danger' : ''}`}
+                  to={item.to}
+                  onClick={() => setOpen(false)}
+                >
+                  {item.icon && <Icon name={item.icon} size={15} />}
+                  <span>{item.label}</span>
+                  {item.hint && <span className="action-menu-hint">{item.hint}</span>}
+                </Link>
+              ) : (
+                <button
+                  key={item.key}
+                  type="button"
+                  role="menuitem"
+                  className={`action-menu-item${item.tone === 'danger' ? ' danger' : ''}`}
+                  disabled={item.disabled}
+                  onClick={() => {
+                    setOpen(false)
+                    item.onSelect()
+                  }}
+                >
+                  {item.icon && <Icon name={item.icon} size={15} />}
+                  <span>{item.label}</span>
+                  {item.hint && <span className="action-menu-hint">{item.hint}</span>}
+                </button>
+              ),
+            )}
           </div>,
           document.body,
         )}
