@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import EventImageField from '../../components/EventImageField.jsx'
 import Icon from '../../components/Icon.jsx'
@@ -114,6 +114,12 @@ export default function EventFormPage() {
   const [zones, setZones] = useState([])
   const [errors, setErrors] = useState({})
   const [busy, setBusy] = useState(false)
+  // `busy` is React state, so setBusy(true) does not take effect until the
+  // next render - a fast double-click can fire save() twice before the
+  // button actually disables, and both calls would pass `if (busy) return`
+  // and create two events. This ref is set synchronously, so the second
+  // call is blocked immediately regardless of render timing.
+  const savingRef = useRef(false)
   const [seatMapOpen, setSeatMapOpen] = useState(false)
 
   /*
@@ -344,11 +350,12 @@ export default function EventFormPage() {
    *        before it would be refused. That path goes through runTransition.
    */
   async function save(nextAction = null) {
-    if (busy) return
+    if (savingRef.current) return
     if (!validate()) {
       toast(locale === 'km' ? 'សូមពិនិត្យទម្រង់' : 'Please fix the highlighted fields', 'error')
       return
     }
+    savingRef.current = true
     setBusy(true)
 
     /*
@@ -461,6 +468,7 @@ export default function EventFormPage() {
         'error',
       )
     } finally {
+      savingRef.current = false
       setBusy(false)
     }
   }
@@ -477,7 +485,8 @@ export default function EventFormPage() {
    * describes an edit nobody asked for.
    */
   async function runTransition(action) {
-    if (busy || !existing) return
+    if (savingRef.current || !existing) return
+    savingRef.current = true
     setBusy(true)
     try {
       if (action === 'PUBLISH') await publishApiEvent(existing.id)
@@ -494,6 +503,7 @@ export default function EventFormPage() {
       const detail = err?.response?.data?.detail || err?.response?.data?.message || err.message
       toast(`${locale === 'km' ? 'មិនបានសម្រេច' : 'Could not do that'}: ${detail}`, 'error')
     } finally {
+      savingRef.current = false
       setBusy(false)
     }
   }
