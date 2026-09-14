@@ -33,10 +33,27 @@ export default function ConfirmDialog({
   const km = locale === 'km'
   const cancelRef = useRef(null)
 
+  /*
+   * onClose and busy come from the caller as inline props, recreated on every
+   * render - and the caller re-renders on every keystroke in this dialog's own
+   * Reason textarea, since that's lifted state one level up. A dependency
+   * array naming onClose/busy directly would re-run the effect below on every
+   * character typed, and cancelRef.current?.focus() would drag focus off the
+   * textarea and onto Cancel mid-word. Refs sidestep that: the effect depends
+   * only on `open`, so it runs once per open/close, while the keydown handler
+   * still always reads the latest onClose/busy through the ref.
+   */
+  const onCloseRef = useRef(onClose)
+  const busyRef = useRef(busy)
+  useEffect(() => {
+    onCloseRef.current = onClose
+    busyRef.current = busy
+  }, [onClose, busy])
+
   useEffect(() => {
     if (!open) return undefined
     const onKey = (e) => {
-      if (e.key === 'Escape' && !busy) onClose()
+      if (e.key === 'Escape' && !busyRef.current) onCloseRef.current()
     }
     const previous = document.body.style.overflow
     document.body.style.overflow = 'hidden'
@@ -46,7 +63,7 @@ export default function ConfirmDialog({
       document.body.style.overflow = previous
       document.removeEventListener('keydown', onKey)
     }
-  }, [open, busy, onClose])
+  }, [open])
 
   if (!open) return null
 
