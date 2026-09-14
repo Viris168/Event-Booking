@@ -702,12 +702,14 @@ export default function EventFormPage() {
                 <div className="img-grid">
                   <EventImageField
                     label={locale === 'km' ? 'រូបភាពគម្រប' : 'Cover image'}
-                    hint={locale === 'km' ? 'បញ្ឈរ · បង្ហាញក្នុងបញ្ជី' : 'Portrait · shown in listings'}
+                    hint={locale === 'km' ? 'ផ្ដេក · បង្ហាញក្នុងបញ្ជី' : 'Widescreen · shown in listings'}
                     aspect="16 / 6"
-                    // Previews match each other; the CROP matches how each
-                    // image is really used - the cover is portrait on the public
-                    // page, so cropping it 16:6 would throw most of it away.
-                    cropAspect={3 / 4}
+                    // Previews match each other; the CROP matches how the
+                    // image is really used - every listing, card, and the
+                    // About-card poster render the cover at 16:9
+                    // (.ev-media / .about-art use aspect-video), so the crop
+                    // matches that instead of throwing away the wrong edges.
+                    cropAspect={16 / 9}
                     currentUrl={images.COVER.clear ? null : images.COVER.url}
                     file={images.COVER.file}
                     busy={busy}
