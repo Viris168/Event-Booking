@@ -199,6 +199,27 @@ export const RQ_CSS = `
 .rq-section > h3 { margin: 0 0 var(--rq-2); font-size: .9rem; font-weight: 600;
                    letter-spacing: -.005em; color: var(--color-ink); }
 
+.rq-contact-btns { display: flex; flex-wrap: wrap; gap: var(--rq-2);
+                    margin: var(--rq-2) 0; }
+.rq-contact-btns .btn { gap: var(--rq-1, 4px); }
+
+/* Each service's own colour, tinted rather than solid - it says which app it
+   opens before you read the label, without shouting louder than the primary
+   Approve button below it. */
+.contact-btn-telegram, .contact-btn-facebook {
+  font-weight: 600; border-width: 1px; border-style: solid;
+}
+.contact-btn-telegram {
+  color: #1c8fc2; background: rgba(34, 158, 217, .1); border-color: rgba(34, 158, 217, .35);
+}
+.contact-btn-telegram:hover { background: rgba(34, 158, 217, .18); }
+.contact-btn-facebook {
+  color: #1461d1; background: rgba(24, 119, 242, .1); border-color: rgba(24, 119, 242, .35);
+}
+.contact-btn-facebook:hover { background: rgba(24, 119, 242, .18); }
+[data-theme='dark'] .contact-btn-telegram { color: #7cd0f4; }
+[data-theme='dark'] .contact-btn-facebook { color: #8fb4f7; }
+
 .rq-kv { display: flex; justify-content: space-between; gap: var(--rq-4);
          padding: var(--rq-2) 0; font-size: .875rem; align-items: baseline;
          border-top: 1px solid var(--color-line-2); }
@@ -251,7 +272,13 @@ export const RQ_CSS = `
   background: var(--color-brand-100); }
 
 /* The submission dialog. Sits UNDER .confirm-overlay (1100) so the approve and
-   reject confirmations open on top of it rather than behind. */
+   reject confirmations open on top of it rather than behind.
+
+   Docked to the right, next to the table it was opened from, rather than
+   centred over it - a reviewer reading the list and the detail together
+   wants both on screen, not the list blacked out behind a modal every time
+   a row is opened. Below rq-dialog-mobile-bp there is no room for both side
+   by side, so it falls back to the old centred, full-scrim behaviour. */
 .rq-dialog-overlay {
   /* The dialog is portalled to <body>, which is OUTSIDE .rq-wrap - so the
      --rq-* scale declared there does not reach it, and every padding inside
@@ -262,19 +289,40 @@ export const RQ_CSS = `
   --rq-1: .25rem; --rq-2: .5rem; --rq-3: .75rem; --rq-4: 1rem;
   --rq-5: 1.5rem; --rq-6: 2rem;
   position: fixed; inset: 0; z-index: 1050;
-  display: flex; align-items: flex-start; justify-content: center;
-  padding: var(--rq-5) var(--rq-4); overflow-y: auto;
-  background: rgba(9, 11, 16, .62); }
+  display: flex; align-items: stretch; justify-content: flex-end;
+  /* Barely dimmed, not blacked out - the table stays readable beside the
+     panel instead of vanishing behind a modal scrim. */
+  background: rgba(9, 11, 16, .12); }
 
-/* Wider than the rail it replaces - the rail was 440px because that was what
-   was left beside the table, which is not a reason for anything. */
-.rq-dialog { position: relative; width: min(96vw, 560px); margin: auto 0;
-  border: 1px solid var(--color-line); border-radius: var(--radius-card);
-  background: var(--color-surface); box-shadow: var(--shadow-float); }
+/* Flush to the viewport edge, full height, its own left border standing in
+   for the card border a centred dialog would have drawn all the way round. */
+.rq-dialog { position: relative; width: min(94vw, 460px); height: 100vh;
+  border-left: 1px solid var(--color-line); border-radius: 0;
+  background: var(--color-surface); box-shadow: var(--shadow-float);
+  display: flex; flex-direction: column; }
 
 /* The panel inside loses the border it had as a rail - the dialog draws it. */
 .rq-dialog .rq-panel { border: 0; border-radius: inherit; background: none;
-  max-height: none; }
+  max-height: none; flex: 1; min-height: 0; }
+
+/* No room for a 460px rail beside the table under ~860px - back to a
+   centred, full-scrim dialog like a normal mobile modal. */
+@media (max-width: 860px) {
+  .rq-dialog-overlay { align-items: flex-start; justify-content: center;
+    padding: var(--rq-5) var(--rq-4); overflow-y: auto;
+    background: rgba(9, 11, 16, .62); }
+  .rq-dialog { width: min(96vw, 560px); height: auto; margin: auto 0;
+    border: 1px solid var(--color-line); border-radius: var(--radius-card); }
+}
+
+/* The table gives up the width the docked panel now sits in, so its own
+   columns do not run under it. body:has() rather than a JS-driven class:
+   the dialog is portalled to <body>, a sibling of .rq-wrap, so this is the
+   only selector that can see both at once without threading panel-open
+   state down to a component that has no other reason to know about it. */
+@media (min-width: 861px) {
+  body:has(.rq-dialog-overlay) .rq-wrap .rq-col { max-width: calc(100% - 500px); }
+}
 
 /* The dialog's own bar: where you are, how to move, how to leave.
    Sticky so it survives scrolling a long submission - the counter is only

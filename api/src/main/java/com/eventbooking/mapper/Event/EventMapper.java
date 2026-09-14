@@ -53,7 +53,8 @@ public class EventMapper {
     public static EventResponse  toEventResponse(Event event, List<SeatClassResponse> seatClasses, List<EventZoneResponse>  eventZones,
                                                  String coverImageUrl, String bannerImageUrl,
                                                  List<EventTransition> availableActions, boolean editable,
-                                                 EventReviewResponse latestReview) {
+                                                 EventReviewResponse latestReview,
+                                                 String organizerTelegramHandle, String organizerFacebookUrl) {
 
 
         VenueResponse v = new VenueResponse(
@@ -119,7 +120,9 @@ public class EventMapper {
                 eventZones,
                 totalCapacity,
                 totalSold,
-                totalHeld
+                totalHeld,
+                organizerTelegramHandle,
+                organizerFacebookUrl
         );
     }
 
