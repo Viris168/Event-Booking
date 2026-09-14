@@ -46,7 +46,7 @@ function Row({ booking, event, ticketCount }) {
   const { locale, date, dateTime } = useLocale()
   const items = booking.items ?? []
   const units = items.reduce((a, i) => a + (i.qty ?? 0), 0)
-  const art = eventArt(event, 'cover')
+  const art = eventArt(event, 'banner')
   const payable = PAYABLE.includes(booking.state)
   const closed = CLOSED.includes(booking.state)
 

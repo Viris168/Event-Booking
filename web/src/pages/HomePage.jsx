@@ -50,7 +50,7 @@ function getMinPriceCents(event) {
  */
 function RailCard({ event }) {
   const { t, locale } = useLocale()
-  const art = eventArt(event, 'cover')
+  const art = eventArt(event, 'banner')
   const venue = event.venue
   const price = getMinPriceCents(event)
   const start = new Date(event.startsAt ?? event.starts_at)

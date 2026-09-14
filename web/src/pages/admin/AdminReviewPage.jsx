@@ -586,12 +586,12 @@ function EventReviewPanel({ event, km, locale, busy, onApprove, onRequestChanges
   return (
     <section className="rq-panel" aria-label={km ? 'ព័ត៌មានលម្អិត' : 'Submission detail'}>
       <div className="rq-panel-scroll" ref={scrollRef}>
-        {cover ? (
-          <img className="rq-cover" src={cover} alt="" />
+        {banner ? (
+          <img className="rq-cover" src={banner} alt="" />
         ) : (
           <div className="rq-cover rq-cover-empty">
             <Icon name="alert" size={16} />
-            <span className="small">{km ? 'គ្មានរូបភាពគម្រប' : 'No cover image'}</span>
+            <span className="small">{km ? 'គ្មានរូបភាពបដា' : 'No banner image'}</span>
           </div>
         )}
 
@@ -702,9 +702,9 @@ function EventReviewPanel({ event, km, locale, busy, onApprove, onRequestChanges
           </Section>
         )}
 
-        {banner && (
-          <Section title={km ? 'បដា' : 'Banner'}>
-            <img className="rq-banner" src={banner} alt="" />
+        {cover && (
+          <Section title={km ? 'រូបភាពផែនទី' : 'Map image'}>
+            <img className="rq-banner" src={cover} alt="" />
           </Section>
         )}
       </div>

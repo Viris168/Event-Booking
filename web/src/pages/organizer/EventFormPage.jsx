@@ -711,38 +711,15 @@ export default function EventFormPage() {
                     why a file picked while creating cannot go up sooner. */}
                 <div className="img-grid">
                   <EventImageField
-                    label={locale === 'km' ? 'រូបភាពគម្រប' : 'Cover image'}
-                    hint={locale === 'km' ? 'ផ្ដេក · បង្ហាញក្នុងបញ្ជី' : 'Widescreen · shown in listings'}
+                    label={locale === 'km' ? 'រូបភាពបដា' : 'Banner image'}
+                    hint={locale === 'km' ? 'ផ្ដេក · បង្ហាញពេញគេហទំព័រ' : 'Widescreen · shown across the site'}
                     aspect="16 / 6"
                     // Previews match each other; the CROP matches how the
-                    // image is really used - every listing, card, and the
-                    // About-card poster render the cover at 16:9
-                    // (.ev-media / .about-art use aspect-video), so the crop
-                    // matches that instead of throwing away the wrong edges.
+                    // image is really used - every listing, card and the
+                    // detail hero render this at 16:9 (.ev-media uses
+                    // aspect-video), so the crop matches that instead of
+                    // throwing away the wrong edges.
                     cropAspect={16 / 9}
-                    currentUrl={images.COVER.clear ? null : images.COVER.url}
-                    file={images.COVER.file}
-                    busy={busy}
-                    onPick={(file, err) => {
-                      if (err) return toast(err, 'error')
-                      setSlot('COVER', { file, clear: false })
-                    }}
-                    onClear={() => setSlot('COVER', { file: null, clear: true })}
-                  />
-                  <EventImageField
-                    label={locale === 'km' ? 'រូបភាពបដា' : 'Banner image'}
-                    hint={
-                      locale === 'km'
-                        ? 'ប្រើជាប្លង់ទីកន្លែងផងដែរ'
-                        : 'Also shown as the venue layout'
-                    }
-                    aspect="16 / 6"
-                    // Free crop, not 16:6. The banner doubles as the venue
-                    // layout on the event page, and venue charts range from a
-                    // near-square stadium bowl to a 2:1 hall - a fixed shape
-                    // cuts the ends off one or the other. The panel letterboxes
-                    // whatever comes out, so nothing is ever lost.
-                    cropAspect={undefined}
                     currentUrl={images.BANNER.clear ? null : images.BANNER.url}
                     file={images.BANNER.file}
                     busy={busy}
@@ -751,6 +728,30 @@ export default function EventFormPage() {
                       setSlot('BANNER', { file, clear: false })
                     }}
                     onClear={() => setSlot('BANNER', { file: null, clear: true })}
+                  />
+                  <EventImageField
+                    label={locale === 'km' ? 'រូបភាពផែនទី' : 'Map image'}
+                    hint={
+                      locale === 'km'
+                        ? 'ប្លង់កៅអី · បង្ហាញនៅទំព័រព្រឹត្តិការណ៍'
+                        : 'Seating chart · shown on the event page'
+                    }
+                    aspect="16 / 6"
+                    // null, not a number - this is not a photo, it is
+                    // whatever seating chart the venue actually has, and
+                    // those range from a near-square stadium bowl to a 2:1
+                    // hall. ImageCropDialog reads null as "fit the crop to
+                    // this image's own shape", so nothing is cut by default;
+                    // the crop tool is still there to zoom or reposition.
+                    cropAspect={null}
+                    currentUrl={images.COVER.clear ? null : images.COVER.url}
+                    file={images.COVER.file}
+                    busy={busy}
+                    onPick={(file, err) => {
+                      if (err) return toast(err, 'error')
+                      setSlot('COVER', { file, clear: false })
+                    }}
+                    onClear={() => setSlot('COVER', { file: null, clear: true })}
                   />
                 </div>
               </div>

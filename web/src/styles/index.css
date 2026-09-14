@@ -1554,50 +1554,12 @@
     border-radius: 0;
   }
 
-  /* --------------------------------------------------------- about + art */
+  /* ------------------------------------------------------------- about */
   .about-body {
     @apply flex items-start gap-[1.1rem];
   }
   .about-text {
     @apply min-w-0 flex-auto;
-  }
-  /* Sized to actually be looked at, not just acknowledged. Roughly 40% of the
-     card at desktop widths, so the description still has a readable column
-     beside it rather than a narrow gutter. */
-  .about-art {
-    @apply relative block aspect-video w-[280px] flex-none cursor-pointer overflow-hidden
-      rounded-card border border-line bg-surface-2 p-0;
-    transition: transform 0.18s ease, box-shadow 0.18s ease;
-  }
-  @media (min-width: 1024px) {
-    .about-art {
-      @apply w-[360px];
-    }
-  }
-  .about-art:hover {
-    @apply -translate-y-[2px] shadow-float;
-  }
-  .about-art img {
-    @apply h-full w-full object-cover;
-  }
-  .about-art-zoom {
-    @apply pointer-events-none absolute bottom-[0.4rem] right-[0.4rem] grid size-[26px]
-      place-items-center rounded-full bg-black/55 text-white opacity-0 backdrop-blur-sm;
-    transition: opacity 0.18s ease;
-  }
-  .about-art:hover .about-art-zoom,
-  .about-art:focus-visible .about-art-zoom {
-    @apply opacity-100;
-  }
-  /* Below this the text column would be too narrow to read beside the picture,
-     so the picture goes on top at full width instead. */
-  @media (max-width: 640px) {
-    .about-body {
-      @apply flex-col;
-    }
-    .about-art {
-      @apply w-full;
-    }
   }
 
   /* ------------------------------------------------- checkout order summary */
@@ -2840,15 +2802,6 @@
       @apply max-w-[60%];
     }
   }
-  /* Full-size artwork in the lightbox. The thumbnail that opens it now lives in
-     the About card, but the overlay image is styled the same wherever it is
-     opened from. */
-  /* Fills the media panel's width and is capped by height, so the picture is as
-     large as the viewport allows in either dimension. */
-  .about-art-full {
-    @apply block max-h-[88vh] w-full rounded-card object-contain;
-  }
-
   .event-hero .hero-facts {
     @apply mt-[0.25rem] flex flex-col gap-[0.3rem] text-small;
     color: rgba(255, 255, 255, 0.92);
@@ -4030,19 +3983,24 @@
 
 /* Where an event stands in its sales window, under the lifecycle badge.
 
-   Deliberately quieter than the Badge above it: the lifecycle status is the
-   thing an organiser scans for, and two equally loud pills on one row would
-   make neither of them read. No background - a coloured dot and a label is
-   enough to tell five states apart at a glance. */
+   Same pill shape as Badge above it now - a bare dot-and-label read as an
+   afterthought next to a real capsule, which made the row look like one
+   status was official and the other one was a note about it, rather than two
+   facts worth reading with equal attention (the lifecycle decision vs.
+   whether it is selling right now). */
 .sales-pill {
   display: flex;
   width: fit-content;
   align-items: center;
   gap: 0.32rem;
-  margin-top: 0.3rem;
-  font-size: 0.74rem;
-  font-weight: 600;
+  margin-top: 0.4rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.5;
   color: var(--color-muted);
+  background: var(--color-quiet-soft);
   white-space: nowrap;
 }
 
@@ -4055,10 +4013,13 @@
   flex: none;
 }
 
-.sales-pill.ok { color: var(--color-brand-600); }
-.sales-pill.warn { color: var(--color-warning); }
-.sales-pill.bad { color: var(--color-danger); }
-/* quiet keeps the muted default - nothing is happening, and that is the point. */
+/* info, not brand green - the Badge above is already that green for
+   "Published", and a second green pill right under it reads as the same fact
+   said twice rather than the different one it actually is. */
+.sales-pill.ok { color: var(--color-info); background: var(--color-info-soft); }
+.sales-pill.warn { color: var(--color-warning); background: var(--color-warning-soft); }
+.sales-pill.bad { color: var(--color-danger); background: var(--color-danger-soft); }
+/* quiet keeps the muted default background - nothing is happening, and that is the point. */
 
 /* A table row that opens something when clicked.
 

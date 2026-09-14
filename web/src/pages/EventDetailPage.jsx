@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import HoldBar from '../components/HoldBar.jsx'
 import Icon, { CATEGORY_ICON } from '../components/Icon.jsx'
 import SeatMap from '../components/SeatMap.jsx'
+import VenueLayoutPanel from '../components/VenueLayoutPanel.jsx'
 import ZonePicker from '../components/ZonePicker.jsx'
 import { EventDetailSkeleton } from '../components/Skeleton.jsx'
 import { Alert, Badge, BiTitle, Money, Progress } from '../components/ui.jsx'
@@ -31,9 +32,6 @@ export default function EventDetailPage() {
   const [zoneQty, setZoneQty] = useState({})
   const [reserving, setReserving] = useState(false)
   const [expiredNotice, setExpiredNotice] = useState(false)
-  // Full-size event artwork. The thumbnail in About is small, so a poster with
-  // a line-up or a schedule printed on it is unreadable until it is opened.
-  const [artZoom, setArtZoom] = useState(false)
   const [conflictHoldId, setConflictHoldId] = useState(null)
 
   const [apiEvent, setApiEvent] = useState(null)
@@ -99,12 +97,12 @@ export default function EventDetailPage() {
 
   const event = apiEvent
   const venue = event?.venue
-  // Wide slot on this page, so the banner wins and the cover is the stand-in.
   const heroArt = eventArt(event, 'banner')
-  // The cover, shown in the About card. It sat on the hero at first, where a
-  // second photograph competed with the banner behind it; beside the
-  // description it reads as an illustration of the event instead.
-  const posterUrl = artUrl(event, 'cover')
+  // Not a photo - the organiser's "Map image" upload, a seating chart. Feeds
+  // VenueLayoutPanel below rather than sitting beside the description as a
+  // second picture: cropped and object-cover'd like a photo, a map's zone
+  // labels are exactly the part that gets cut off.
+  const mapUrl = artUrl(event, 'cover')
 
   // The event endpoint serialises the venue in snake_case and mapEvent passes
   // it through untouched, so the camelCase reads this hero used resolved to
@@ -460,13 +458,6 @@ export default function EventDetailPage() {
         </div>
       </div>
 
-      {/* variant="media": just the picture, large. The default lightbox adds a
-          caption, a subtitle and "show this at the gate" — copy written for a
-          ticket, which read as nonsense under event artwork. */}
-      <QrLightbox open={artZoom} onClose={() => setArtZoom(false)} variant="media">
-        <img className="about-art-full" src={posterUrl} alt="" />
-      </QrLightbox>
-
       {expiredNotice && (
         <div style={{ marginTop: '1rem' }}>
           <Alert
@@ -556,12 +547,14 @@ export default function EventDetailPage() {
             </div>
           </div>
 
-          {/* No venue card here. It showed the venue name and address, which
-              the hero above now states in full — the same two lines twice on
-              one screen. VenueLayoutPanel is still in the tree unused: it comes
-              back the moment a venue-level LAYOUT image exists, because a
-              seating chart is the one thing it would add that the hero cannot
-              carry. Until then it would be a duplicate with a heading. */}
+          {/* No plain venue card here. It would show the venue name and
+              address, which the hero above already states in full - the same
+              two lines twice on one screen for no reason. VenueLayoutPanel
+              carries that same duplication, but earns it once there is a
+              seating chart to go with it: the one thing the hero cannot
+              carry. Without a map it would be a duplicate with a heading, so
+              it is gated on mapUrl rather than rendered unconditionally. */}
+          {mapUrl && <VenueLayoutPanel imageUrl={mapUrl} venue={venue} />}
 
           <div className="card">
             <div className="card-head">
@@ -569,29 +562,6 @@ export default function EventDetailPage() {
             </div>
 
             <div className="card-body about-body">
-              {/* The cover lives here rather than on the hero, where a second
-                  photograph competed with the banner behind it. Beside the text
-                  it reads as an illustration of the event instead. */}
-              {posterUrl && (
-                <button
-                  type="button"
-                  className="about-art"
-                  onClick={() => setArtZoom(true)}
-                  aria-label={locale === 'km' ? 'ពង្រីករូបភាព' : 'View the event image full size'}
-                >
-                  <img
-                    src={posterUrl}
-                    alt=""
-                    loading="lazy"
-                    decoding="async"
-                    onError={(e) => { e.currentTarget.closest('.about-art')?.remove() }}
-                  />
-                  <span className="about-art-zoom" aria-hidden="true">
-                    <Icon name="search" size={14} />
-                  </span>
-                </button>
-              )}
-
               <div className="about-text stack-sm">
                 <p>{locale === 'km' ? event.description_km : event.description_en}</p>
                 <p className={locale === 'km' ? 'small muted' : 'small muted km'}>

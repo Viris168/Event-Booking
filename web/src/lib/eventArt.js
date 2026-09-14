@@ -68,16 +68,20 @@ export function coverClass(event) {
 /**
  * The uploaded artwork for a slot, or null.
  *
- * `which` is 'cover' for square-ish contexts (cards, spotlight) and 'banner'
- * for the wide detail hero. Each falls back to the other: an organiser who
- * uploaded only one image still gets it shown in both places rather than
- * seeing their poster on the card and a bare gradient on the event page.
+ * `which` is 'banner' for the event's actual photograph - used everywhere a
+ * picture of the event is wanted: cards, spotlight, the detail hero. 'cover'
+ * is the seating chart / venue layout upload (see EventFormPage's "Map
+ * image" field and VenueLayoutPanel), which is content, not artwork - never
+ * a photo, and a photo is never a substitute for it. The two used to fall
+ * back to each other on the theory that any uploaded image beats a blank
+ * box; that theory stopped holding the moment 'cover' became a map, because
+ * a seating chart standing in for a missing photo is worse than the
+ * gradient it would have shown instead.
  */
-export function artUrl(event, which = 'cover') {
+export function artUrl(event, which = 'banner') {
   if (!event) return null
-  const cover = event.cover_image_url ?? event.coverImageUrl ?? null
-  const banner = event.banner_image_url ?? event.bannerImageUrl ?? null
-  return which === 'banner' ? (banner ?? cover) : (cover ?? banner)
+  if (which === 'cover') return event.cover_image_url ?? event.coverImageUrl ?? null
+  return event.banner_image_url ?? event.bannerImageUrl ?? null
 }
 
 /**
@@ -87,7 +91,7 @@ export function artUrl(event, which = 'cover') {
  * box is already the right colour while the photo decodes and stays that
  * colour if the request 404s.
  */
-export function eventArt(event, which = 'cover') {
+export function eventArt(event, which = 'banner') {
   const url = artUrl(event, which)
   return {
     url,
