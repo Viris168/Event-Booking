@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import EventImageField from '../../components/EventImageField.jsx'
 import Icon from '../../components/Icon.jsx'
@@ -114,6 +114,12 @@ export default function EventFormPage() {
   const [zones, setZones] = useState([])
   const [errors, setErrors] = useState({})
   const [busy, setBusy] = useState(false)
+  // `busy` is React state, so setBusy(true) does not take effect until the
+  // next render - a fast double-click can fire save() twice before the
+  // button actually disables, and both calls would pass `if (busy) return`
+  // and create two events. This ref is set synchronously, so the second
+  // call is blocked immediately regardless of render timing.
+  const savingRef = useRef(false)
   const [seatMapOpen, setSeatMapOpen] = useState(false)
 
   /*
@@ -344,11 +350,12 @@ export default function EventFormPage() {
    *        before it would be refused. That path goes through runTransition.
    */
   async function save(nextAction = null) {
-    if (busy) return
+    if (savingRef.current) return
     if (!validate()) {
       toast(locale === 'km' ? 'សូមពិនិត្យទម្រង់' : 'Please fix the highlighted fields', 'error')
       return
     }
+    savingRef.current = true
     setBusy(true)
 
     /*
@@ -461,6 +468,7 @@ export default function EventFormPage() {
         'error',
       )
     } finally {
+      savingRef.current = false
       setBusy(false)
     }
   }
@@ -477,7 +485,8 @@ export default function EventFormPage() {
    * describes an edit nobody asked for.
    */
   async function runTransition(action) {
-    if (busy || !existing) return
+    if (savingRef.current || !existing) return
+    savingRef.current = true
     setBusy(true)
     try {
       if (action === 'PUBLISH') await publishApiEvent(existing.id)
@@ -494,6 +503,7 @@ export default function EventFormPage() {
       const detail = err?.response?.data?.detail || err?.response?.data?.message || err.message
       toast(`${locale === 'km' ? 'មិនបានសម្រេច' : 'Could not do that'}: ${detail}`, 'error')
     } finally {
+      savingRef.current = false
       setBusy(false)
     }
   }
@@ -701,36 +711,15 @@ export default function EventFormPage() {
                     why a file picked while creating cannot go up sooner. */}
                 <div className="img-grid">
                   <EventImageField
-                    label={locale === 'km' ? 'រូបភាពគម្រប' : 'Cover image'}
-                    hint={locale === 'km' ? 'បញ្ឈរ · បង្ហាញក្នុងបញ្ជី' : 'Portrait · shown in listings'}
-                    aspect="16 / 6"
-                    // Previews match each other; the CROP matches how each
-                    // image is really used - the cover is portrait on the public
-                    // page, so cropping it 16:6 would throw most of it away.
-                    cropAspect={3 / 4}
-                    currentUrl={images.COVER.clear ? null : images.COVER.url}
-                    file={images.COVER.file}
-                    busy={busy}
-                    onPick={(file, err) => {
-                      if (err) return toast(err, 'error')
-                      setSlot('COVER', { file, clear: false })
-                    }}
-                    onClear={() => setSlot('COVER', { file: null, clear: true })}
-                  />
-                  <EventImageField
                     label={locale === 'km' ? 'រូបភាពបដា' : 'Banner image'}
-                    hint={
-                      locale === 'km'
-                        ? 'ប្រើជាប្លង់ទីកន្លែងផងដែរ'
-                        : 'Also shown as the venue layout'
-                    }
+                    hint={locale === 'km' ? 'ផ្ដេក · បង្ហាញពេញគេហទំព័រ' : 'Widescreen · shown across the site'}
                     aspect="16 / 6"
-                    // Free crop, not 16:6. The banner doubles as the venue
-                    // layout on the event page, and venue charts range from a
-                    // near-square stadium bowl to a 2:1 hall - a fixed shape
-                    // cuts the ends off one or the other. The panel letterboxes
-                    // whatever comes out, so nothing is ever lost.
-                    cropAspect={undefined}
+                    // Previews match each other; the CROP matches how the
+                    // image is really used - every listing, card and the
+                    // detail hero render this at 16:9 (.ev-media uses
+                    // aspect-video), so the crop matches that instead of
+                    // throwing away the wrong edges.
+                    cropAspect={16 / 9}
                     currentUrl={images.BANNER.clear ? null : images.BANNER.url}
                     file={images.BANNER.file}
                     busy={busy}
@@ -739,6 +728,30 @@ export default function EventFormPage() {
                       setSlot('BANNER', { file, clear: false })
                     }}
                     onClear={() => setSlot('BANNER', { file: null, clear: true })}
+                  />
+                  <EventImageField
+                    label={locale === 'km' ? 'រូបភាពផែនទី' : 'Map image'}
+                    hint={
+                      locale === 'km'
+                        ? 'ប្លង់កៅអី · បង្ហាញនៅទំព័រព្រឹត្តិការណ៍'
+                        : 'Seating chart · shown on the event page'
+                    }
+                    aspect="16 / 6"
+                    // null, not a number - this is not a photo, it is
+                    // whatever seating chart the venue actually has, and
+                    // those range from a near-square stadium bowl to a 2:1
+                    // hall. ImageCropDialog reads null as "fit the crop to
+                    // this image's own shape", so nothing is cut by default;
+                    // the crop tool is still there to zoom or reposition.
+                    cropAspect={null}
+                    currentUrl={images.COVER.clear ? null : images.COVER.url}
+                    file={images.COVER.file}
+                    busy={busy}
+                    onPick={(file, err) => {
+                      if (err) return toast(err, 'error')
+                      setSlot('COVER', { file, clear: false })
+                    }}
+                    onClear={() => setSlot('COVER', { file: null, clear: true })}
                   />
                 </div>
               </div>

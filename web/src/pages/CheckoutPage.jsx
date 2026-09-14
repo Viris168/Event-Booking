@@ -114,7 +114,7 @@ export default function CheckoutPage() {
 
   const event = apiEvent
   const venue = event?.venue
-  const art = eventArt(event, 'cover')
+  const art = eventArt(event, 'banner')
   const venueName =
     (locale === 'km'
       ? venue?.name_km ?? venue?.nameKm

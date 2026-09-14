@@ -526,6 +526,10 @@ export default function AdminReviewPage() {
               ? 'អ្នករៀបចំនឹងអាចកែប្រែ និងដាក់ស្នើឡើងវិញ។'
               : 'The organiser can edit it and submit again.'}
         </p>
+        {/* The reason below only reaches the organiser once they reopen the
+            form - these open a direct chat now, on whichever contact they
+            gave when they applied. */}
+        {selected && <ContactButtons event={selected} km={km} />}
         <Field label={km ? 'ហេតុផល' : 'Reason'}>
           <textarea
             className="input"
@@ -582,12 +586,12 @@ function EventReviewPanel({ event, km, locale, busy, onApprove, onRequestChanges
   return (
     <section className="rq-panel" aria-label={km ? 'ព័ត៌មានលម្អិត' : 'Submission detail'}>
       <div className="rq-panel-scroll" ref={scrollRef}>
-        {cover ? (
-          <img className="rq-cover" src={cover} alt="" />
+        {banner ? (
+          <img className="rq-cover" src={banner} alt="" />
         ) : (
           <div className="rq-cover rq-cover-empty">
             <Icon name="alert" size={16} />
-            <span className="small">{km ? 'គ្មានរូបភាពគម្រប' : 'No cover image'}</span>
+            <span className="small">{km ? 'គ្មានរូបភាពបដា' : 'No banner image'}</span>
           </div>
         )}
 
@@ -631,6 +635,12 @@ function EventReviewPanel({ event, km, locale, busy, onApprove, onRequestChanges
             <span className="mono">{event.slug}</span>
           </Row>
         </div>
+
+        {/* Straight to a DM, not just a note in the review record. A reason
+            left here reaches the organiser only once they reopen the form -
+            these open the same Telegram/Facebook they gave when they applied
+            to become an organiser, so a reviewer can actually talk to them. */}
+        <ContactButtons event={event} km={km} />
 
         <Section title={km ? 'កាលវិភាគ' : 'Schedule'}>
           <Row label={km ? 'ចាប់ផ្តើម' : 'Starts'}>{fmt(event.starts_at, locale)}</Row>
@@ -692,9 +702,9 @@ function EventReviewPanel({ event, km, locale, busy, onApprove, onRequestChanges
           </Section>
         )}
 
-        {banner && (
-          <Section title={km ? 'បដា' : 'Banner'}>
-            <img className="rq-banner" src={banner} alt="" />
+        {cover && (
+          <Section title={km ? 'រូបភាពផែនទី' : 'Map image'}>
+            <img className="rq-banner" src={cover} alt="" />
           </Section>
         )}
       </div>
@@ -742,6 +752,44 @@ function EventReviewPanel({ event, km, locale, busy, onApprove, onRequestChanges
         )}
       </footer>
     </section>
+  )
+}
+
+/** @sokha or plain "sokha" both arrive from the applicant's own typing. */
+const telegramUrl = (handle) => `https://t.me/${handle.replace(/^@/, '').trim()}`
+
+/**
+ * Message the organiser directly, on whichever of Telegram or Facebook they
+ * gave when they applied - the server only sends these two fields for
+ * Audience.ADMIN, so an organiser never sees a link back to themselves here.
+ */
+function ContactButtons({ event, km }) {
+  const telegram = pick(event, 'organizer_telegram_handle', 'organizerTelegramHandle')
+  const facebook = pick(event, 'organizer_facebook_url', 'organizerFacebookUrl')
+  if (!telegram && !facebook) return null
+
+  return (
+    <div className="rq-contact-btns">
+      {telegram && (
+        <a
+          className="btn btn-sm contact-btn-telegram"
+          href={telegramUrl(telegram)}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <Icon name="external" size={14} />
+          {km ? 'ទាក់ទងតាម Telegram' : 'Message on Telegram'}
+        </a>
+      )}
+      {facebook && (
+        /* noreferrer as well as noopener: this URL was typed by the organiser
+           being reviewed, not chosen by the platform. */
+        <a className="btn btn-sm contact-btn-facebook" href={facebook} target="_blank" rel="noopener noreferrer">
+          <Icon name="external" size={14} />
+          {km ? 'ទាក់ទងតាម Facebook' : 'Message on Facebook'}
+        </a>
+      )}
+    </div>
   )
 }
 

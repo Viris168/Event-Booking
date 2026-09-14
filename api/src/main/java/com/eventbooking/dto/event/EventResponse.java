@@ -59,6 +59,20 @@ public record EventResponse(
 
         Integer totalCapacity,
         Integer totalSold,
-        Integer totalHeld
+        Integer totalHeld,
+
+        /**
+         * The organiser's own contact details, from their organiser application -
+         * not {@code organizer_profile.telegram_chat_id}, which is the bot's
+         * numeric chat id, not a human-readable handle.
+         *
+         * <p>Null for {@code Audience.ORGANIZER}: an organiser reading their own
+         * event has no use for a link back to themselves. Populated only for
+         * {@code Audience.ADMIN}, so a reviewer sending an event back for
+         * changes can message the organiser directly instead of only leaving an
+         * in-app note.
+         */
+        String organizerTelegramHandle,
+        String organizerFacebookUrl
 ) {
 }

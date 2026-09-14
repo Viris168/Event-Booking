@@ -62,8 +62,10 @@ public class EventServiceimpl implements EventService {
     private final EventSeatRepository eventSeatRepository;
     private final EventSnapshotter eventSnapshotter;
     private final ApplicationEventPublisher events;
+    private final OrganizerProfileRepository organizerProfileRepository;
+    private final OrganizerApplicationRepository organizerApplicationRepository;
 
-    public EventServiceimpl(VenueRepository venueRepository, EventRepository eventRepository, SeatClassRepository seatClassRepository, EventZoneRepository eventZoneRepository, CloudinaryService cloudinaryService, OrganizerResolver organizerResolver, EventStateMachine stateMachine, EventReviewRepository eventReviewRepository, AppUserRepository appUserRepository, EventSeatRepository eventSeatRepository, EventSnapshotter eventSnapshotter, ApplicationEventPublisher events) {
+    public EventServiceimpl(VenueRepository venueRepository, EventRepository eventRepository, SeatClassRepository seatClassRepository, EventZoneRepository eventZoneRepository, CloudinaryService cloudinaryService, OrganizerResolver organizerResolver, EventStateMachine stateMachine, EventReviewRepository eventReviewRepository, AppUserRepository appUserRepository, EventSeatRepository eventSeatRepository, EventSnapshotter eventSnapshotter, ApplicationEventPublisher events, OrganizerProfileRepository organizerProfileRepository, OrganizerApplicationRepository organizerApplicationRepository) {
         this.organizerResolver = organizerResolver;
         this.stateMachine = stateMachine;
         this.eventReviewRepository = eventReviewRepository;
@@ -76,6 +78,8 @@ public class EventServiceimpl implements EventService {
         this.eventSeatRepository = eventSeatRepository;
         this.eventSnapshotter = eventSnapshotter;
         this.events = events;
+        this.organizerProfileRepository = organizerProfileRepository;
+        this.organizerApplicationRepository = organizerApplicationRepository;
     }
 
     @Override
@@ -151,7 +155,7 @@ public class EventServiceimpl implements EventService {
                 // Nothing sold - it was created a line ago.
                 actionsFor(event, Audience.ORGANIZER, 0),
                 stateMachine.isEditable(event.getStatus()),
-                null);
+                null, null, null);
     }
 
     @Override
@@ -827,6 +831,26 @@ public class EventServiceimpl implements EventService {
         return toEventResponse(event, Audience.ORGANIZER);
     }
 
+    /**
+     * The organiser's Telegram handle and Facebook page, from their most recent
+     * organiser application - not organizer_profile.telegram_chat_id, which is
+     * the bot's numeric chat id, not a human-readable handle to link to.
+     *
+     * <p>Only ever called for Audience.ADMIN: an organiser has no use for a
+     * link back to their own contact details on their own event.
+     */
+    private String[] organizerContact(Long organizerId) {
+        var profile = organizerProfileRepository.findById(organizerId).orElse(null);
+        if (profile == null) return new String[] { null, null };
+        var latest = organizerApplicationRepository
+                .findByUserIdOrderBySubmittedAtDesc(profile.getUserId())
+                .stream()
+                .findFirst()
+                .orElse(null);
+        if (latest == null) return new String[] { null, null };
+        return new String[] { latest.getTelegramHandle(), latest.getFacebookUrl() };
+    }
+
     private EventResponse toEventResponse(Event event, Audience audience) {
         List<SeatClassResponse> seatClasses =
                 seatClassRepository.findAllByEventId(event.getId())
@@ -848,6 +872,10 @@ public class EventServiceimpl implements EventService {
         int sold = zones.stream().mapToInt(z -> z.soldQty() == null ? 0 : z.soldQty()).sum()
                 + seatClasses.stream().mapToInt(c -> (int) c.soldCount()).sum();
 
+        String[] contact = audience == Audience.ADMIN
+                ? organizerContact(event.getOrganizerId())
+                : new String[] { null, null };
+
         return EventMapper.toEventResponse(
                 event,
                 seatClasses,
@@ -857,7 +885,9 @@ public class EventServiceimpl implements EventService {
                 event.getCloudinaryBannerId(),
                 actionsFor(event, audience, sold),
                 stateMachine.isEditable(event.getStatus()),
-                latestReview(event.getId()));
+                latestReview(event.getId()),
+                contact[0],
+                contact[1]);
     }
 
     /**

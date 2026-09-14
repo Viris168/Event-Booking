@@ -65,7 +65,7 @@ export default function EventCard({ event, compact = false }) {
   const venue = event.venue
   const price = getMinPriceCents(event)
   const start = new Date(event.startsAt ?? event.starts_at)
-  const art = eventArt(event, 'cover')
+  const art = eventArt(event, 'banner')
   const soldOut = getScarcity(event).level === 'sold-out'
 
   const titleEn = event.titleEn ?? event.title_en

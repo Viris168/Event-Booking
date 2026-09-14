@@ -23,20 +23,34 @@ import Icon from '../../components/Icon.jsx'
 export default function QueueDialog({ km, onClose, label, position, total, onPrev, onNext, canPrev, canNext, children }) {
   const closeRef = useRef(null)
 
+  /*
+   * onClose/onNext/onPrev arrive as inline props that are new on every render
+   * of the caller - which re-renders on every keystroke in the Reject/Changes
+   * textarea one dialog up, since that value is lifted state. Naming them in
+   * this effect's dependency array would re-run it, and hence re-run
+   * closeRef.current?.focus(), on every character typed - stealing focus off
+   * that textarea mid-word. Refs let the effect depend only on mount/unmount
+   * while the keydown handler still calls whatever the latest callback is.
+   */
+  const callbacksRef = useRef({ onClose, onNext, onPrev })
+  useEffect(() => {
+    callbacksRef.current = { onClose, onNext, onPrev }
+  }, [onClose, onNext, onPrev])
+
   useEffect(() => {
     const onKey = (e) => {
       // Only when this is the top overlay. A decision dialog open above it owns
       // Escape - otherwise one keypress would dismiss both, losing the half-
       // typed reason with them.
       if (document.querySelector('.confirm-overlay')) return
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') callbacksRef.current.onClose()
       // Arrows step the queue. Only when focus is not in a field - the reject
       // dialog's textarea is a sibling overlay, but a stray listener here would
       // still hijack arrow keys inside any input this panel grows later.
       const tag = document.activeElement?.tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA') return
-      if (e.key === 'ArrowRight') onNext?.()
-      if (e.key === 'ArrowLeft') onPrev?.()
+      if (e.key === 'ArrowRight') callbacksRef.current.onNext?.()
+      if (e.key === 'ArrowLeft') callbacksRef.current.onPrev?.()
     }
     const previous = document.body.style.overflow
     document.body.style.overflow = 'hidden'
@@ -46,7 +60,7 @@ export default function QueueDialog({ km, onClose, label, position, total, onPre
       document.body.style.overflow = previous
       document.removeEventListener('keydown', onKey)
     }
-  }, [onClose, onNext, onPrev])
+  }, [])
 
   return createPortal(
     <div

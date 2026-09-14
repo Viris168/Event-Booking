@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useDocumentTitle } from '../../lib/useDocumentTitle.js'
 import { Link, useNavigate } from 'react-router-dom'
+import ActionMenu from '../../components/ActionMenu.jsx'
 import ConfirmDialog from '../../components/ConfirmDialog.jsx'
 import Icon from '../../components/Icon.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
@@ -515,8 +516,6 @@ function RowMenu({ event, onChanged }) {
   const { t, locale } = useLocale()
   const km = locale === 'km'
   const toast = useToast()
-  const [open, setOpen] = useState(false)
-  const ref = useRef(null)
 
   /*
    * The action waiting on a yes. Holds the transition name for a confirmable
@@ -583,22 +582,8 @@ function RowMenu({ event, onChanged }) {
     SUBMIT: km ? 'បានដាក់ស្នើត្រួតពិនិត្យ' : 'Submitted for review',
   }
 
-  useEffect(() => {
-    if (!open) return
-    const onKey = (e) => e.key === 'Escape' && setOpen(false)
-    const onClick = (e) => {
-      if (!ref.current?.contains(e.target)) setOpen(false)
-    }
-    document.addEventListener('keydown', onKey)
-    document.addEventListener('mousedown', onClick)
-    return () => {
-      document.removeEventListener('keydown', onKey)
-      document.removeEventListener('mousedown', onClick)
-    }
-  }, [open])
-
   return (
-    <div className="flex items-center justify-end gap-2" ref={ref}>
+    <div className="flex items-center justify-end gap-2">
       {/* On the row, not in the menu - see `primary` above. */}
       {primary && (
         <button
@@ -611,110 +596,53 @@ function RowMenu({ event, onChanged }) {
         </button>
       )}
 
-      <div className="relative inline-block">
-      <button
-        type="button"
-        className="w-8 h-8 rounded-ui border border-line bg-surface text-muted hover:text-ink hover:bg-surface-2 inline-flex items-center justify-center transition-colors"
-        onClick={() => setOpen((v) => !v)}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-label={km ? 'សកម្មភាព' : 'Actions'}
-      >
-        <Icon name="settingsSolid" size={16} />
-      </button>
-
-      {open && (
-        <div
-          role="menu"
-          /* Opens to the LEFT of the gear and centred on it, rather than
-             dropping below. The gear sits at the right edge of a wide table, so
-             a downward menu on the last row is the one most likely to fall off
-             the bottom - and opening leftward moves it INWARD, away from the
-             container edge, instead of toward it. */
-          className="absolute right-full top-1/2 -translate-y-1/2 mr-2 z-20 min-w-44 rounded-ui border border-line bg-surface shadow-float py-1 text-left"
-        >
-          <Link
-            role="menuitem"
-            className="flex items-center gap-2 px-3 py-2 text-small text-ink hover:bg-surface-2 no-underline"
-            to={`/organizer/events/${event.id}/edit`}
-            onClick={() => setOpen(false)}
-          >
-            <Icon name="edit" size={15} className="text-muted" />
-            {t('editEvent')}
-          </Link>
-          <Link
-            role="menuitem"
-            className="flex items-center gap-2 px-3 py-2 text-small text-ink hover:bg-surface-2 no-underline"
-            to={`/organizer/events/${event.id}/sales`}
-            onClick={() => setOpen(false)}
-          >
-            <Icon name="chart" size={15} className="text-muted" />
-            {t('sales')}
-          </Link>
-          <Link
-            role="menuitem"
-            className="flex items-center gap-2 px-3 py-2 text-small text-ink hover:bg-surface-2 no-underline"
-            to={`/events/${event.id}`}
-            onClick={() => setOpen(false)}
-          >
-            <Icon name="eye" size={15} className="text-muted" />
-            {km ? 'មើលទំព័រសាធារណៈ' : 'View public page'}
-          </Link>
-
-          {/* Rendered from the server's own answer rather than guessed from the
-              status. A two-state guess offered "Publish" on a REJECTED event,
-              which the API refuses - and could never learn about a new edge. */}
-          {actions.filter((a) => a !== primary).length > 0 && <div className="h-px bg-line-2 my-1" />}
-          {actions.filter((a) => a !== primary).map((action) => {
-            const ui = ACTION_UI[action]
-            return (
-              <button
-                key={action}
-                role="menuitem"
-                type="button"
-                className={`w-full flex items-center gap-2 px-3 py-2 text-small text-left ${
-                  ui.danger ? 'text-danger hover:bg-danger-soft' : 'text-ink hover:bg-surface-2'
-                }`}
-                onClick={() => {
-                  setOpen(false)
-                  // Destructive ones ask first; the rest are one click, as they
-                  // were - a submit or a publish is undone by withdrawing.
+      <ActionMenu
+        disabled={busy}
+        label={km ? 'សកម្មភាព' : 'Actions'}
+        items={[
+          { key: 'edit', icon: 'edit', label: t('editEvent'), to: `/organizer/events/${event.id}/edit` },
+          { key: 'sales', icon: 'chart', label: t('sales'), to: `/organizer/events/${event.id}/sales` },
+          {
+            key: 'view',
+            icon: 'eye',
+            label: km ? 'មើលទំព័រសាធារណៈ' : 'View public page',
+            to: `/events/${event.id}`,
+          },
+          // Rendered from the server's own answer rather than guessed from the
+          // status. A two-state guess offered "Publish" on a REJECTED event,
+          // which the API refuses - and could never learn about a new edge.
+          ...actions
+            .filter((a) => a !== primary)
+            .map((action) => {
+              const ui = ACTION_UI[action]
+              return {
+                key: action,
+                icon: ui.icon,
+                label: km ? ui.km : ui.en,
+                tone: ui.danger ? 'danger' : undefined,
+                onSelect: () => {
+                  // Destructive ones ask first; the rest are one click, as
+                  // they were - a submit or a publish is undone by
+                  // withdrawing.
                   if (ui.confirm) setConfirming(action)
                   else run(ui.call, km ? 'រួចរាល់' : 'Done')
-                }}
-              >
-                <Icon name={ui.icon} size={15} className={ui.danger ? '' : 'text-muted'} />
-                {km ? ui.km : ui.en}
-              </button>
-            )
-          })}
-
-          {/* Not a transition, so it is not in available_actions and cannot come
-              from ACTION_UI. The server refuses it for anything ever booked,
-              which is what makes it the organiser's to do: what is left is the
-              draft, the rejection and the duplicate posted twice. */}
-          {canRemove && (
-            <>
-              {actions.filter((a) => a !== primary).length === 0 && (
-                <div className="h-px bg-line-2 my-1" />
-              )}
-              <button
-                role="menuitem"
-                type="button"
-                className="w-full flex items-center gap-2 px-3 py-2 text-small text-left text-danger hover:bg-danger-soft"
-                onClick={() => {
-                  setOpen(false)
-                  setConfirming('DELETE')
-                }}
-              >
-                <Icon name="close" size={15} />
-                {km ? 'លុបចោល' : 'Remove'}
-              </button>
-            </>
-          )}
-        </div>
-      )}
-      </div>
+                },
+              }
+            }),
+          // Not a transition, so it is not in available_actions and cannot
+          // come from ACTION_UI. The server refuses it for anything ever
+          // booked, which is what makes it the organiser's to do: what is
+          // left is the draft, the rejection and the duplicate posted twice.
+          {
+            key: 'remove',
+            icon: 'close',
+            label: km ? 'លុបចោល' : 'Remove',
+            tone: 'danger',
+            hidden: !canRemove,
+            onSelect: () => setConfirming('DELETE'),
+          },
+        ]}
+      />
 
       <ConfirmDialog
         open={Boolean(confirming)}

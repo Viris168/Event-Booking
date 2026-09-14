@@ -22,6 +22,25 @@ import { useLocale } from '../context/LocaleContext.jsx'
  * orientation tag. That matters: a phone photo carries its rotation as metadata
  * rather than in the pixels, so an uploaded original often arrives sideways.
  * Drawing it here bakes in the rotation the user actually saw.
+ *
+ * <p><b>`aspect={null}` fits the crop to the picked image itself</b>, rather
+ * than to a fixed shape. react-easy-crop has no real unconstrained mode - its
+ * `aspect` prop always resolves to a number, defaulting to 4/3 even when left
+ * undefined, so a caller that actually wants "don't force a shape" (a venue
+ * seating chart, which ranges from a near-square bowl to a 2:1 hall) got a
+ * silent 4:3 crop that cut the sides off anything wider.
+ *
+ * <p>The image's own ratio is read BEFORE the Cropper ever mounts, with a
+ * plain {@code Image()} probe, rather than by passing a fallback aspect and
+ * correcting it once react-easy-crop reports the size itself. Correcting it
+ * after the fact means the Cropper mounts once with the wrong aspect, and
+ * its first emitted crop area is sized for THAT aspect - measured against a
+ * container that has often not even laid out yet, so that first area can be
+ * zero-sized. If nothing the user does prompts a second emit before they
+ * confirm, a zero-sized area is exactly what gets cropped: a few-byte,
+ * undecodable "image". Resolving the aspect first means the Cropper's very
+ * first render, and its very first emitted area, already use the right
+ * shape - nothing to correct out from under it later.
  */
 export default function ImageCropDialog({ open, file, aspect, title, onCancel, onCropped }) {
   const { locale } = useLocale()
@@ -32,6 +51,8 @@ export default function ImageCropDialog({ open, file, aspect, title, onCancel, o
   const [zoom, setZoom] = useState(1)
   const [area, setArea] = useState(null)
   const [busy, setBusy] = useState(false)
+  // Only set when `aspect` itself is null - see the class doc above.
+  const [autoAspect, setAutoAspect] = useState(null)
   const cancelRef = useRef(null)
 
   useEffect(() => {
@@ -39,12 +60,32 @@ export default function ImageCropDialog({ open, file, aspect, title, onCancel, o
       setSrc(null)
       return undefined
     }
+    let cancelled = false
     const url = URL.createObjectURL(file)
-    setSrc(url)
     setCrop({ x: 0, y: 0 })
     setZoom(1)
-    return () => URL.revokeObjectURL(url)
-  }, [file])
+    setAutoAspect(null)
+
+    if (aspect == null) {
+      // Probed separately from the Cropper's own <img>, and gated on THIS
+      // load rather than the Cropper's onMediaLoaded, precisely so `src`
+      // (and therefore the Cropper mounting at all) waits for it.
+      const probe = new Image()
+      probe.onload = () => {
+        if (cancelled) return
+        setAutoAspect(probe.naturalWidth / probe.naturalHeight)
+        setSrc(url)
+      }
+      probe.src = url
+    } else {
+      setSrc(url)
+    }
+
+    return () => {
+      cancelled = true
+      URL.revokeObjectURL(url)
+    }
+  }, [file, aspect])
 
   useEffect(() => {
     if (!open) return undefined
@@ -63,8 +104,23 @@ export default function ImageCropDialog({ open, file, aspect, title, onCancel, o
 
   const onComplete = useCallback((_, pixels) => setArea(pixels), [])
 
+  /*
+   * react-easy-crop measures the crop area against its own stage element's
+   * getBoundingClientRect(), which can still be 0x0 on the very first
+   * measurement if that element has not been through a layout pass yet - the
+   * dialog only just mounted via a portal. The area it emits from that first
+   * pass is degenerate (zero-sized), and cropToBlob would happily draw a
+   * zero-sized canvas from it: a few-byte, undecodable "image", uploaded
+   * without complaint. A later measurement corrects it - the gap is a single
+   * layout pass, imperceptible to an actual click - but a confirm that lands
+   * inside that gap must not be allowed to go through. Guarding on the
+   * area's own size is what makes this robust regardless of what the true
+   * cause of any particular bad measurement turns out to be.
+   */
+  const validArea = area && area.width > 0 && area.height > 0
+
   async function confirm() {
-    if (!area || !src || busy) return
+    if (!validArea || !src || busy) return
     setBusy(true)
     try {
       const blob = await cropToBlob(src, area)
@@ -93,8 +149,10 @@ export default function ImageCropDialog({ open, file, aspect, title, onCancel, o
             image={src}
             crop={crop}
             zoom={zoom}
-            // undefined = unconstrained, which is what a venue chart needs.
-            aspect={aspect}
+            // `src` (and so this mount) is held back until autoAspect is
+            // resolved when aspect is null - see the class doc above - so by
+            // the time the Cropper exists at all, this is already correct.
+            aspect={aspect ?? autoAspect}
             onCropChange={setCrop}
             onZoomChange={setZoom}
             onCropComplete={onComplete}
@@ -126,7 +184,12 @@ export default function ImageCropDialog({ open, file, aspect, title, onCancel, o
           >
             {km ? 'បោះបង់' : 'Cancel'}
           </button>
-          <button type="button" className="btn btn-primary" onClick={confirm} disabled={busy}>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={confirm}
+            disabled={busy || !validArea}
+          >
             {busy ? (km ? 'កំពុងកាត់…' : 'Cropping…') : km ? 'យកតាមនេះ' : 'Use this crop'}
           </button>
         </div>
