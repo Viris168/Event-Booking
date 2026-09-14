@@ -32,6 +32,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Locale;
 import java.util.Optional;
 
 /**
@@ -83,17 +84,18 @@ public class AuthService {
      */
     @Transactional
     public TokenResponse register(RegisterRequest request, String userAgent) {
+        String email = normaliseEmail(request.email());
+
         if (appUserRepository.existsByPhoneE164(request.phoneE164())) {
             throw new PhoneAlreadyRegisteredException();
         }
-        if (request.email() != null && !request.email().isBlank()
-                && appUserRepository.existsByEmail(request.email())) {
+        if (email != null && appUserRepository.existsByEmail(email)) {
             throw new EmailAlreadyRegisteredException();
         }
 
         AppUser user = appUserRepository.save(AppUser.builder()
                 .phoneE164(request.phoneE164())
-                .email(emptyToNull(request.email()))
+                .email(email)
                 // The raw password is hashed here and never stored, logged, or
                 // returned. This is the only place it is touched.
                 .passwordHash(passwordEncoder.encode(request.password()))
@@ -225,7 +227,7 @@ public class AuthService {
         AppUser user = appUserRepository.findById(actorUserId)
                 .orElseThrow(NotAuthenticatedException::new);
 
-        String email = emptyToNull(request.email());
+        String email = normaliseEmail(request.email());
         if (email != null && !email.equalsIgnoreCase(user.getEmail())
                 && appUserRepository.existsByEmail(email)) {
             throw new EmailAlreadyRegisteredException();
@@ -309,16 +311,16 @@ public class AuthService {
     @Transactional
     public TokenResponse loginWithGoogle(String idToken, String userAgent) {
         GoogleTokenVerifier.GoogleIdentity identity = googleTokenVerifier.verify(idToken);
+        String email = normaliseEmail(identity.email());
 
         AppUser user = appUserRepository
                 .findByProviderSubject(identity.subject())
                 .orElseGet(() -> {
-                    if (identity.email() != null
-                            && appUserRepository.existsByEmail(identity.email())) {
+                    if (email != null && appUserRepository.existsByEmail(email)) {
                         throw new EmailAlreadyRegisteredException();
                     }
                     AppUser created = appUserRepository.save(AppUser.builder()
-                            .email(identity.email())
+                            .email(email)
                             .displayName(identity.displayName())
                             .role(Role.CUSTOMER)
                             .provider(Provider.GOOGLE)
@@ -506,7 +508,27 @@ public class AuthService {
                 accessExpirationMs / 1000);
     }
 
-    private static String emptyToNull(String value) {
-        return Optional.ofNullable(value).filter(v -> !v.isBlank()).orElse(null);
+    /**
+     * Folds an address to the single form the table is indexed on.
+     *
+     * <p>V28 made {@code uq_app_user_email_lower} unique on {@code lower(email)}
+     * and every check in this class asks its question the same way, so an
+     * address kept in the casing someone happened to type would be written in
+     * one form and searched for in another. Before that fold existed,
+     * registering as {@code Vannara@gmail.com} and later signing in with Google
+     * as {@code vannara@gmail.com} walked straight past the duplicate check in
+     * {@link #loginWithGoogle} - the two strings are not equal - and split one
+     * person's bookings across two accounts.
+     *
+     * <p>{@link Locale#ROOT} rather than the platform default. In a Turkish
+     * locale {@code "I".toLowerCase()} is a dotless i, so a server that happened to be
+     * configured that way would quietly corrupt every address holding a capital
+     * I.
+     */
+    private static String normaliseEmail(String value) {
+        return Optional.ofNullable(value)
+                .map(v -> v.trim().toLowerCase(Locale.ROOT))
+                .filter(v -> !v.isEmpty())
+                .orElse(null);
     }
 }

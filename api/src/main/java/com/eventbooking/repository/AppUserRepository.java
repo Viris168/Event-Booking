@@ -38,8 +38,13 @@ public interface AppUserRepository extends JpaRepository<AppUser, Long> {
     /**
      * Email is optional on {@code app_user}, so this is for account recovery and
      * duplicate checks - never as the primary login path.
+     *
+     * <p>Folded on both sides, because V28 made the uniqueness of an address
+     * case-insensitive and a lookup that still compared byte for byte would
+     * report "no such account" for a row the index considers taken.
      */
-    Optional<AppUser> findByEmail(String email);
+    @Query("select u from AppUser u where lower(u.email) = lower(:email)")
+    Optional<AppUser> findByEmail(@Param("email") String email);
 
     /**
      * Registration pre-checks. Cheaper than loading the row, and they let the
@@ -48,7 +53,20 @@ public interface AppUserRepository extends JpaRepository<AppUser, Long> {
      */
     boolean existsByPhoneE164(String phoneE164);
 
-    boolean existsByEmail(String email);
+    /**
+     * The duplicate-address check, folded to match {@code uq_app_user_email_lower}.
+     *
+     * <p>Derived {@code IgnoreCase} would have done the folding too, but Spring
+     * Data writes it as {@code upper(email) = upper(?)} and V28's index is built
+     * on {@code lower(email)} - close enough to look right, different enough that
+     * the planner could not use the index and every registration would scan the
+     * table. Spelling the query out keeps the two in step.
+     *
+     * <p>Callers normalise before they get here; this folds anyway, so the
+     * guarantee does not depend on remembering to.
+     */
+    @Query("select count(u) > 0 from AppUser u where lower(u.email) = lower(:email)")
+    boolean existsByEmail(@Param("email") String email);
 
     /**
      * Google sign-in lookup. Matches on the provider's own subject claim
