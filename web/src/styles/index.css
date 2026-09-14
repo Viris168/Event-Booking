@@ -4035,7 +4035,8 @@
    make neither of them read. No background - a coloured dot and a label is
    enough to tell five states apart at a glance. */
 .sales-pill {
-  display: inline-flex;
+  display: flex;
+  width: fit-content;
   align-items: center;
   gap: 0.32rem;
   margin-top: 0.3rem;
