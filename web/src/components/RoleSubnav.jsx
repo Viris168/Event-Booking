@@ -24,7 +24,7 @@ export default function RoleSubnav({ links }) {
 
   return (
     <div className="subnav">
-      <div className="subnav-inner" ref={ref}>
+      <div className="subnav-inner scroll-hint-x" ref={ref}>
         {links.map((l) => (
           <NavLink key={l.to} to={l.to} end={l.end} className={({ isActive }) => (isActive ? 'active' : '')}>
             {l.label}

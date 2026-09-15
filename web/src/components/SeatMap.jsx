@@ -52,7 +52,7 @@ export default function SeatMap({ seats, seatClasses, selected, onToggle, disabl
 
   return (
     <div className="stack-sm">
-      <div className="seatmap-scroll">
+      <div className="seatmap-scroll scroll-hint-x">
         <div className="rows" role="group" aria-label={t('pickSeats')}>
           {rows.map((row) => (
             <div key={row.label} className="row">
