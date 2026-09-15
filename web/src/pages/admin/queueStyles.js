@@ -305,6 +305,61 @@ export const RQ_CSS = `
 .rq-dialog .rq-panel { border: 0; border-radius: inherit; background: none;
   max-height: none; flex: 1; min-height: 0; }
 
+/*
+ * Under 900px the queue stops being a table and becomes a list of cards.
+ *
+ * 900px because that is where every other table in the app already switches
+ * (see .table in styles/index.css). Two tables changing shape at two different
+ * widths is the kind of inconsistency nobody can name but everybody feels.
+ *
+ * Four columns squeezed into a phone is not a table anyone can read: the widest
+ * value decides every column, so the organisation name wraps to four lines
+ * while "3d" keeps a quarter of the screen. Rows already open a dialog on tap,
+ * so a card is also a better target than a 30px-tall strip.
+ *
+ * Labels come from <ResponsiveTable>, which copies each <th> onto the cells
+ * below it after every render - so they follow the EN/KM toggle without being
+ * written twice.
+ */
+@media (max-width: 900px) {
+  .rq-tablewrap { overflow-x: visible; }
+  .rq-queue thead { display: none; }
+  .rq-queue tbody { display: block; }
+
+  .rq-queue tbody tr.rq-qrow {
+    display: block; margin-bottom: var(--rq-3); padding: var(--rq-1) var(--rq-3);
+    border: 1px solid var(--color-line); border-radius: var(--radius-card);
+    background: var(--color-surface);
+  }
+  .rq-queue tbody tr.rq-qrow:last-child { margin-bottom: 0; }
+  /* The row-level hover tint and the leading-edge shadow both said "this is the
+     row under the pointer" in a list of ruled lines. A card already looks
+     separate, and on a touch screen there is no pointer to follow. */
+  .rq-qrow:hover > td { background: none; }
+
+  .rq-qrow > td {
+    display: grid; align-items: start; gap: var(--rq-3);
+    grid-template-columns: minmax(80px, min(34%, 170px)) minmax(0, 1fr);
+    padding: var(--rq-2) 0; box-shadow: none;
+    border-bottom: 1px dashed var(--color-line-2);
+  }
+  .rq-qrow > td:last-child { border-bottom: 0; }
+  .rq-qrow > td:last-child, .rq-qrow > td:first-child { padding-inline: 0; }
+
+  .rq-qrow > td[data-label]::before {
+    content: attr(data-label);
+    font-size: .68rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .05em; color: var(--color-muted);
+  }
+  /* Keep a multi-line cell (name + its Khmer second line) in the value column
+     instead of letting the second child wrap back under the label. */
+  .rq-qrow > td[data-label] > * { grid-column: 2; justify-self: start; }
+
+  /* Numbers were right-aligned to line up down a column. There is no column
+     to line up with once each value sits beside its own label. */
+  .rq-qrow > td.rq-num { text-align: start; }
+}
+
 /* No room for a 460px rail beside the table under ~860px - back to a
    centred, full-scrim dialog like a normal mobile modal. */
 @media (max-width: 860px) {

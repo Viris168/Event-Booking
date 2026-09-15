@@ -163,7 +163,7 @@ export default function AdminPayoutsPage() {
         </div>
 
         {/* ------------------------------------------------------------ tabs */}
-        <div className="px-5 py-3 border-b border-line-2 bg-surface-2 flex items-center gap-2 flex-wrap">
+        <div className="border-b border-line-2 bg-surface-2 flex items-center gap-2 flex-wrap">
           {PAYOUT_STATUSES.map((s) => (
             <button
               key={s}
@@ -194,20 +194,20 @@ export default function AdminPayoutsPage() {
 
         {/* ----------------------------------------------------------- table */}
         <ResponsiveTable>
-          <table className="w-full text-left border-collapse">
+          <table className="table">
             <thead>
-              <tr className="bg-surface-2 border-b border-line text-tiny text-muted font-bold uppercase tracking-wide">
-                <th className="px-5 py-3">{km ? 'វិក្កយបត្រ' : 'Invoice'}</th>
-                <th className="px-5 py-3">{km ? 'អ្នករៀបចំ' : 'Organizer'}</th>
-                <th className="px-5 py-3">{km ? 'ព្រឹត្តិការណ៍' : 'Event'}</th>
-                <th className="px-5 py-3">{km ? 'ផ្ញើទៅ' : 'Send to'}</th>
-                <th className="px-5 py-3 text-right whitespace-nowrap">{km ? 'ត្រូវទូទាត់' : 'Payable'}</th>
-                <th className="px-5 py-3">{km ? 'ស្ថានភាព' : 'Status'}</th>
-                <th className="px-5 py-3 text-right">{km ? 'សកម្មភាព' : 'Action'}</th>
+              <tr>
+                <th>{km ? 'វិក្កយបត្រ' : 'Invoice'}</th>
+                <th>{km ? 'អ្នករៀបចំ' : 'Organizer'}</th>
+                <th>{km ? 'ព្រឹត្តិការណ៍' : 'Event'}</th>
+                <th>{km ? 'ផ្ញើទៅ' : 'Send to'}</th>
+                <th className="num whitespace-nowrap">{km ? 'ត្រូវទូទាត់' : 'Payable'}</th>
+                <th>{km ? 'ស្ថានភាព' : 'Status'}</th>
+                <th className="num">{km ? 'សកម្មភាព' : 'Action'}</th>
               </tr>
             </thead>
             {loading ? (
-              <TableRowsSkeleton rows={5} cols={7} cellClassName="px-5 py-3" rowClassName="border-b border-line-2" />
+              <TableRowsSkeleton rows={5} cols={7} cellClassName="px-[0.9rem] py-[0.7rem]" rowClassName="border-b border-line-2" />
             ) : (
               <tbody>
                 {error ? (
@@ -233,30 +233,30 @@ export default function AdminPayoutsPage() {
                 ) : (
                   rows.map((p) => (
                     <tr key={p.id} className="border-b border-line-2">
-                      <td className="px-5 py-3">
+                      <td>
                         <span className="font-mono text-small">{p.invoice_no}</span>
                         <p className="text-tiny text-muted m-0">{dateTime(p.requested_at)}</p>
                       </td>
-                      <td className="px-5 py-3">{km ? p.organizer_name_km : p.organizer_name_en}</td>
-                      <td className="px-5 py-3">
+                      <td>{km ? p.organizer_name_km : p.organizer_name_en}</td>
+                      <td>
                         {km ? p.event_title_km : p.event_title_en}
                         <p className="text-tiny text-muted m-0">
                           {date(p.event_starts_at)} · {p.tickets_sold} {km ? 'សំបុត្រ' : 'tickets'}
                         </p>
                       </td>
-                      <td className="px-5 py-3">
+                      <td>
                         {p.payout_method}
                         <p className="text-tiny text-muted m-0">{p.account_name}</p>
                         <p className="text-tiny text-muted m-0 font-mono">{p.account_number}</p>
                       </td>
-                      <td className="px-5 py-3 text-right whitespace-nowrap">
+                      <td className="num whitespace-nowrap">
                         <b>{usd(p.net_usd_cents)}</b>
                         {/* The derivation, small, under the number an admin is
                             about to transfer. Checking it should not require
                             opening anything. */}
                         <p className="text-tiny text-muted m-0">{derivation(p, km)}</p>
                       </td>
-                      <td className="px-5 py-3">
+                      <td>
                         <Badge status={p.status} />
                         {p.reviewed_by_name && (
                           <p className="text-tiny text-muted m-0 mt-1">
@@ -267,7 +267,7 @@ export default function AdminPayoutsPage() {
                           <p className="text-tiny text-muted m-0 font-mono">{p.paid_reference}</p>
                         )}
                       </td>
-                      <td className="px-5 py-3 text-right whitespace-nowrap">
+                      <td className="num whitespace-nowrap">
                         {p.status === 'REQUESTED' && (
                           <button
                             type="button"
