@@ -27,7 +27,7 @@ import org.springframework.stereotype.Component;
  * Those defend against a placeholder value that is dangerous in any environment.
  * This one is about missing credentials, which only matter once the application
  * is actually talking to ABA — and {@code PAYWAY_MODE} is precisely the switch
- * that decides whether it is. A MOCK environment  needs no credentials and is
+ * that decides whether it is. A MOCK environment needs no credentials and is
  * left alone.
  */
 @Component
@@ -69,7 +69,7 @@ public class PaywayCredentialsGuard {
         log.info("ABA PayWay is LIVE against {}", payway.getBaseUrl());
     }
 
-    /** Trimmed and case-insensitive: {@code PAYWAY_MODE=live}  asfka;d;must not silently  jasdjsaf alan MOCK. */
+    /** Trimmed and case-insensitive: {@code PAYWAY_MODE=live} must not silently mean MOCK. */
     private static boolean isLive(String mode) {
         return mode != null && "LIVE".equalsIgnoreCase(mode.trim());
     }
