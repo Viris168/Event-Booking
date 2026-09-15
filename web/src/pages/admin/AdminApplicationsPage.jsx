@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ConfirmDialog from '../../components/ConfirmDialog.jsx'
 import QueueDialog from './QueueDialog.jsx'
 import Icon from '../../components/Icon.jsx'
-import { Alert, Empty, Field } from '../../components/ui.jsx'
+import { Alert, Empty, Field, ResponsiveTable } from '../../components/ui.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
 import { RQ_CSS } from './queueStyles.js'
 import { useToast } from '../../context/ToastContext.jsx'
@@ -263,7 +263,7 @@ export default function AdminApplicationsPage() {
       {rows.length > 0 && (
         <div className="rq-split">
           <div className="rq-col">
-            <div className="rq-tablewrap">
+            <ResponsiveTable className="rq-tablewrap">
               <table className="rq-queue">
                 <thead>
                   <tr>
@@ -315,7 +315,7 @@ export default function AdminApplicationsPage() {
                   })}
                 </tbody>
               </table>
-            </div>
+            </ResponsiveTable>
           </div>
 
         </div>

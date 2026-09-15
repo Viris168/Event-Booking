@@ -261,19 +261,19 @@ export default function OrganizerPayoutsPage() {
         </div>
 
         <ResponsiveTable>
-          <table className="w-full text-left border-collapse">
+          <table className="table">
             <thead>
-              <tr className="bg-surface-2 border-b border-line text-tiny text-muted font-bold uppercase tracking-wide">
-                <th className="px-5 py-3">{km ? 'វិក្កយបត្រ' : 'Invoice'}</th>
-                <th className="px-5 py-3">{km ? 'ព្រឹត្តិការណ៍' : 'Event'}</th>
-                <th className="px-5 py-3 whitespace-nowrap">{km ? 'ស្នើសុំនៅ' : 'Requested'}</th>
-                <th className="px-5 py-3">{km ? 'ស្ថានភាព' : 'Status'}</th>
-                <th className="px-5 py-3 text-right whitespace-nowrap">{km ? 'ទឹកប្រាក់' : 'Amount'}</th>
-                <th className="px-5 py-3" />
+              <tr>
+                <th>{km ? 'វិក្កយបត្រ' : 'Invoice'}</th>
+                <th>{km ? 'ព្រឹត្តិការណ៍' : 'Event'}</th>
+                <th className="whitespace-nowrap">{km ? 'ស្នើសុំនៅ' : 'Requested'}</th>
+                <th>{km ? 'ស្ថានភាព' : 'Status'}</th>
+                <th className="num whitespace-nowrap">{km ? 'ទឹកប្រាក់' : 'Amount'}</th>
+                <th />
               </tr>
             </thead>
             {loading ? (
-              <TableRowsSkeleton rows={3} cols={6} cellClassName="px-5 py-3" rowClassName="border-b border-line-2" />
+              <TableRowsSkeleton rows={3} cols={6} cellClassName="px-[0.9rem] py-[0.7rem]" rowClassName="border-b border-line-2" />
             ) : (
               <tbody>
                 {payouts.length === 0 ? (
@@ -285,10 +285,10 @@ export default function OrganizerPayoutsPage() {
                 ) : (
                   payouts.map((p) => (
                     <tr key={p.id} className="border-b border-line-2">
-                      <td className="px-5 py-3 font-mono text-small">{p.invoice_no}</td>
-                      <td className="px-5 py-3">{km ? p.event_title_km : p.event_title_en}</td>
-                      <td className="px-5 py-3 whitespace-nowrap">{date(p.requested_at)}</td>
-                      <td className="px-5 py-3">
+                      <td className="font-mono text-small">{p.invoice_no}</td>
+                      <td>{km ? p.event_title_km : p.event_title_en}</td>
+                      <td className="whitespace-nowrap">{date(p.requested_at)}</td>
+                      <td>
                         <Badge status={p.status} />
                         {p.status === 'PAID' && p.paid_reference && (
                           <p className="text-tiny text-muted m-0 mt-1">
@@ -296,10 +296,10 @@ export default function OrganizerPayoutsPage() {
                           </p>
                         )}
                       </td>
-                      <td className="px-5 py-3 text-right font-semibold whitespace-nowrap">
+                      <td className="text-right font-semibold whitespace-nowrap">
                         {usd(p.net_usd_cents)}
                       </td>
-                      <td className="px-5 py-3 text-right">
+                      <td className="num">
                         <Link className="btn btn-sm btn-outline" to={`/organizer/payouts/${p.id}`}>
                           {km ? 'វិក្កយបត្រ' : 'Invoice'}
                         </Link>

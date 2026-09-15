@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ConfirmDialog from '../../components/ConfirmDialog.jsx'
 import QueueDialog from './QueueDialog.jsx'
 import Icon from '../../components/Icon.jsx'
-import { Alert, Badge, Empty, Field, Pager } from '../../components/ui.jsx'
+import { Alert, Badge, Empty, Field, Pager, ResponsiveTable } from '../../components/ui.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
 import { RQ_CSS } from './queueStyles.js'
 import { useToast } from '../../context/ToastContext.jsx'
@@ -348,7 +348,7 @@ export default function AdminReviewPage() {
         <div className="rq-split">
           {/* ------------------------------------------- the queue, as a table */}
           <div className="rq-col">
-            <div className="rq-tablewrap">
+            <ResponsiveTable className="rq-tablewrap">
               <table className="rq-queue">
                 <thead>
                   <tr>
@@ -432,7 +432,7 @@ export default function AdminReviewPage() {
                   })}
                 </tbody>
               </table>
-            </div>
+            </ResponsiveTable>
 
             {/* Pager counts from 1; Spring's Pageable counts from 0. Without
                 this the 21st submission is unreachable. */}
