@@ -32,6 +32,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Locale;
 import java.util.Optional;
 
 /**
@@ -86,14 +87,11 @@ public class AuthService {
         if (appUserRepository.existsByPhoneE164(request.phoneE164())) {
             throw new PhoneAlreadyRegisteredException();
         }
-        if (request.email() != null && !request.email().isBlank()
-                && appUserRepository.existsByEmail(request.email())) {
-            throw new EmailAlreadyRegisteredException();
-        }
 
+        // No email. An account gets its address from Google when it links, which
+        // is the only source here that has verified one - see RegisterRequest.
         AppUser user = appUserRepository.save(AppUser.builder()
                 .phoneE164(request.phoneE164())
-                .email(emptyToNull(request.email()))
                 // The raw password is hashed here and never stored, logged, or
                 // returned. This is the only place it is touched.
                 .passwordHash(passwordEncoder.encode(request.password()))
@@ -103,7 +101,7 @@ public class AuthService {
                 .isDisabled(false)
                 .build());
 
-        log.info("Registered user {} ({})", user.getId(), user.getPhoneE164());
+        log.info("Registered user {}", user.getId());
         return issuePair(user, userAgent);
     }
 
@@ -113,11 +111,11 @@ public class AuthService {
      * <p>Every failure below raises the same {@link InvalidCredentialsException}
      * with the same message. A missing user and a wrong password must be
      * indistinguishable, or the endpoint becomes a way to enumerate which phone
-     * numbers hold accounts.
+     * numbers and addresses hold accounts.
      */
     @Transactional
     public TokenResponse login(LoginRequest request, String userAgent) {
-        AppUser user = appUserRepository.findByPhoneE164(request.phoneE164())
+        AppUser user = findByIdentifier(request.identifier())
                 .orElseThrow(InvalidCredentialsException::new);
 
         // A GOOGLE account has no password_hash. Rejecting it here rather than
@@ -225,7 +223,7 @@ public class AuthService {
         AppUser user = appUserRepository.findById(actorUserId)
                 .orElseThrow(NotAuthenticatedException::new);
 
-        String email = emptyToNull(request.email());
+        String email = normaliseEmail(request.email());
         if (email != null && !email.equalsIgnoreCase(user.getEmail())
                 && appUserRepository.existsByEmail(email)) {
             throw new EmailAlreadyRegisteredException();
@@ -309,16 +307,16 @@ public class AuthService {
     @Transactional
     public TokenResponse loginWithGoogle(String idToken, String userAgent) {
         GoogleTokenVerifier.GoogleIdentity identity = googleTokenVerifier.verify(idToken);
+        String email = normaliseEmail(identity.email());
 
         AppUser user = appUserRepository
                 .findByProviderSubject(identity.subject())
                 .orElseGet(() -> {
-                    if (identity.email() != null
-                            && appUserRepository.existsByEmail(identity.email())) {
+                    if (email != null && appUserRepository.existsByEmail(email)) {
                         throw new EmailAlreadyRegisteredException();
                     }
                     AppUser created = appUserRepository.save(AppUser.builder()
-                            .email(identity.email())
+                            .email(email)
                             .displayName(identity.displayName())
                             .role(Role.CUSTOMER)
                             .provider(Provider.GOOGLE)
@@ -412,6 +410,34 @@ public class AuthService {
         });
 
         user.setProviderSubject(identity.subject());
+
+        /*
+         * Google's address replaces whatever is on the account.
+         *
+         * <p>The stored one was typed into a form and never confirmed, so a
+         * person who registered as vannara@gmial.com has an address that
+         * reaches nobody and no way to discover it. Google has verified the one
+         * it hands over - GoogleTokenVerifier refuses a token whose email is
+         * not verified - so taking it is trading an unchecked value for a
+         * checked one, and it repairs the typo without asking anyone to notice
+         * it first.
+         *
+         * <p>Refused rather than overwritten if the address already sits on
+         * another row: uq_app_user_email_lower would reject the write anyway,
+         * and a constraint violation surfacing as a 500 tells the person
+         * nothing. Two accounts reaching one mailbox is also the split this
+         * whole fold exists to prevent.
+         */
+        String googleEmail = normaliseEmail(identity.email());
+        if (googleEmail != null && !googleEmail.equals(user.getEmail())) {
+            appUserRepository.findByEmail(googleEmail)
+                    .filter(other -> !other.getId().equals(user.getId()))
+                    .ifPresent(other -> {
+                        throw new EmailAlreadyRegisteredException();
+                    });
+            user.setEmail(googleEmail);
+        }
+
         appUserRepository.save(user);
         log.info("User {} linked a Google identity", user.getId());
 
@@ -506,7 +532,51 @@ public class AuthService {
                 accessExpirationMs / 1000);
     }
 
-    private static String emptyToNull(String value) {
-        return Optional.ofNullable(value).filter(v -> !v.isBlank()).orElse(null);
+    private static String blankToNull(String value) {
+        return Optional.ofNullable(value).map(String::trim).filter(v -> !v.isEmpty()).orElse(null);
+    }
+
+    /**
+     * Resolves whatever was typed into the one field on the sign-in form.
+     *
+     * <p>An '@' is the test rather than a full address pattern. Both columns are
+     * unique and neither can hold the other's shape - a Cambodian number never
+     * contains an '@', and an address always does - so the character alone
+     * decides which column to search without having to agree with the stricter
+     * validation that guards writes.
+     *
+     * <p>Nothing is guessed at: an entry that looks like an address is looked up
+     * as one and nothing else, so a typo returns the same single
+     * INVALID_CREDENTIALS rather than quietly matching some other account.
+     */
+    private Optional<AppUser> findByIdentifier(String identifier) {
+        String trimmed = identifier.trim();
+        return trimmed.contains("@")
+                ? appUserRepository.findByEmail(trimmed)
+                : appUserRepository.findByPhoneE164(trimmed);
+    }
+
+    /**
+     * Folds an address to the single form the table is indexed on.
+     *
+     * <p>V31 made {@code uq_app_user_email_lower} unique on {@code lower(email)}
+     * and every check in this class asks its question the same way, so an
+     * address kept in the casing someone happened to type would be written in
+     * one form and searched for in another. Before that fold existed,
+     * registering as {@code Vannara@gmail.com} and later signing in with Google
+     * as {@code vannara@gmail.com} walked straight past the duplicate check in
+     * {@link #loginWithGoogle} - the two strings are not equal - and split one
+     * person's bookings across two accounts.
+     *
+     * <p>{@link Locale#ROOT} rather than the platform default. In a Turkish
+     * locale {@code "I".toLowerCase()} is a dotless i, so a server that happened to be
+     * configured that way would quietly corrupt every address holding a capital
+     * I.
+     */
+    private static String normaliseEmail(String value) {
+        return Optional.ofNullable(value)
+                .map(v -> v.trim().toLowerCase(Locale.ROOT))
+                .filter(v -> !v.isEmpty())
+                .orElse(null);
     }
 }

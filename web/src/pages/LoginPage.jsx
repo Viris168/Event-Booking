@@ -116,9 +116,10 @@ export default function LoginPage() {
           subtitle above already promises "phone or email" and the field is
           called `identifier` precisely because either works — but the label
           read "Phone", so anyone signing in with the email they registered had
-          to ignore it to get it right. inputMode stays `tel` (the numeric pad
-          is right far more often here) while autoComplete widens to accept
-          either of the two saved credentials.
+          to ignore it to get it right. No inputMode: `tel` opens a pad that on
+          many phone keyboards has no way to reach "@", so the numeric default
+          would have made the address half of this field untypeable on exactly
+          the devices most people use. autoComplete accepts either credential.
         */}
         <Field
           htmlFor="login-identifier"
@@ -135,7 +136,6 @@ export default function LoginPage() {
               aria-describedby="login-identifier-message"
               aria-invalid={error === 'BAD_CREDENTIALS' || undefined}
               autoComplete="username"
-              inputMode="tel"
               autoFocus
             />
           </span>

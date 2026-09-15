@@ -32,12 +32,12 @@ export default function RegisterPage() {
   const [form, setForm] = useState({
     display_name: '',
     phone_e164: '',
-    email: '',
     password: '',
   })
   const [errors, setErrors] = useState({})
   const [serverError, setServerError] = useState(null)
   const [busy, setBusy] = useState(false)
+
 
   function set(key, value) {
     setForm((f) => ({ ...f, [key]: value }))
@@ -50,8 +50,6 @@ export default function RegisterPage() {
     if (!toLocalPhone(form.phone_e164))
       next.phone_e164 =
         locale === 'km' ? 'ឧទាហរណ៍៖ 012 345 678' : 'For example 012 345 678'
-    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
-      next.email = locale === 'km' ? 'អ៊ីមែលមិនត្រឹមត្រូវ' : 'Enter a valid email'
     if (form.password.length < 8) next.password = t('passwordHint')
     setErrors(next)
     return Object.keys(next).length === 0
@@ -69,15 +67,11 @@ export default function RegisterPage() {
       return
     }
     setBusy(true)
-    // `email: null` rather than '' - the API treats a blank string as a value
-    // and would try to enforce UNIQUE on it, so two accounts without an email
-    // would collide with each other.
     const result = await register({
       display_name: form.display_name.trim(),
       // validate() has already proved this converts; toLocalPhone is what the
       // API's CHECK constraint accepts, not the 012... the user typed.
       phone_e164: toLocalPhone(form.phone_e164),
-      email: form.email.trim() || null,
       password: form.password,
     })
     setBusy(false)
@@ -155,21 +149,6 @@ export default function RegisterPage() {
           </span>
         </Field>
 
-        <Field htmlFor="reg-email" label={t('email')} optional error={errors.email}>
-          <span className="field-icon">
-            <Icon name="mail" size={16} />
-            <input
-              id="reg-email"
-              className="input"
-              type="email"
-              value={form.email}
-              onChange={(e) => set('email', e.target.value)}
-              aria-invalid={!!errors.email}
-              aria-describedby={errors.email ? 'reg-email-message' : undefined}
-              autoComplete="email"
-            />
-          </span>
-        </Field>
 
         <Field
           htmlFor="reg-password"
