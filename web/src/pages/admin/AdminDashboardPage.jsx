@@ -20,7 +20,7 @@ import { getPlatformStats, getRecentBookings } from '../../api/admin.js'
 const EMPTY_STATS = {
   users: 0, customers: 0, organizers: 0, disabled: 0,
   events: 0, published: 0, drafts: 0, pending_review: 0, taken_down: 0,
-  bookings: 0, confirmed: 0, awaiting_confirmation: 0, refund_requests: 0,
+  bookings: 0, confirmed: 0, awaiting_confirmation: 0,
   gross_usd_cents: 0, tickets_issued: 0, checked_in: 0,
   stuck_payments: 0, pending_applications: 0,
 }
@@ -115,13 +115,6 @@ export default function AdminDashboardPage() {
           value={stats.stuck_payments}
           sub={locale === 'km' ? 'លើស ១ ម៉ោង' : 'pending over 1 hour'}
           alert={stats.stuck_payments > 0}
-        />
-        <Stat
-          icon="refresh"
-          label={t('requestRefund')}
-          value={stats.refund_requests}
-          sub={locale === 'km' ? 'រង់ចាំការសម្រេច' : 'awaiting a decision'}
-          alert={stats.refund_requests > 0}
         />
       </div>
 

@@ -331,7 +331,7 @@ public class EventServiceimpl implements EventService {
      *
      * <p>No inventory is touched. verifyEventIsOnSale already requires
      * PUBLISHED, so sales stop the moment this commits; holds and bookings that
-     * already exist stay valid, which is what refunding or honouring them
+     * already exist stay valid, which is what returning money or honouring them
      * needs.
      *
      * <p>Terminal by construction: publishEvent only accepts DRAFT, so nothing
@@ -397,7 +397,7 @@ public class EventServiceimpl implements EventService {
          * Sales only block this while the show is still ahead of everyone.
          *
          * The rule exists because pulling a listing that people hold tickets
-         * to is a refund decision, and refunds are the platform's call. Once
+         * to is a money-back decision, and refunds are the platform's call. Once
          * the event has actually happened that reasoning is spent: nobody is
          * going to turn up to it, the tickets were used or they were not, and
          * taking the listing down decides nothing for anybody. Leaving it
@@ -922,7 +922,7 @@ public class EventServiceimpl implements EventService {
                 /*
                  * TAKE_DOWN is the one transition both audiences share, and the
                  * organiser's copy only holds while nothing has sold - past that
-                 * it is a refund decision and the service refuses it.
+                 * it is a money-back decision and the service refuses it.
                  *
                  * Filtered here rather than left to the refusal because this is
                  * what the organiser's footer renders: offering a button that
@@ -933,7 +933,7 @@ public class EventServiceimpl implements EventService {
                  * TAKE_DOWN is the one transition both audiences share, and the
                  * organiser's copy holds while nothing has sold OR once the
                  * event is over - see takeDownOwnEvent for why finishing ends
-                 * the refund argument. Filtered here rather than left to the
+                 * the money-back argument. Filtered here rather than left to the
                  * refusal because this is what the organiser's footer renders,
                  * and a button that always answers 409 is worse than no button.
                  */
@@ -943,7 +943,7 @@ public class EventServiceimpl implements EventService {
                  *   - the event has finished, for anyone: it already left the
                  *     catalogue, so there is nothing left to stop
                  *   - it has sold tickets, for the organiser: pulling a show
-                 *     people hold tickets to is a refund decision
+                 *     people hold tickets to is a money-back decision
                  */
                 .filter(t -> t != EventTransition.TAKE_DOWN || !finished)
                 .filter(t -> !(audience == Audience.ORGANIZER

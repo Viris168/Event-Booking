@@ -65,8 +65,6 @@
   --color-danger-soft: #f8e0d9;
   --color-info: #1057b8;
   --color-info-soft: #dde8f8;
-  --color-refund: #6b3aa0;
-  --color-refund-soft: #e9e0f2;
   --color-settled: #0e6266;
   --color-settled-soft: #d9eced;
   --color-quiet: #6a6256;
@@ -149,8 +147,6 @@
   --color-danger-soft: #32201a;
   --color-info: #8ab4f7;
   --color-info-soft: #1a2336;
-  --color-refund: #c1a8e8;
-  --color-refund-soft: #261f33;
   --color-settled: #6cc9ce;
   --color-settled-soft: #16292b;
   --color-quiet: #b0a696;
@@ -1860,12 +1856,6 @@
   }
   .s-CONFIRMED {
     @apply bg-success-soft text-success;
-  }
-  .s-REFUND_REQUESTED {
-    @apply bg-refund-soft text-refund;
-  }
-  .s-REFUNDED {
-    @apply bg-settled-soft text-settled;
   }
   .s-EXPIRED {
     @apply bg-quiet-soft text-quiet;

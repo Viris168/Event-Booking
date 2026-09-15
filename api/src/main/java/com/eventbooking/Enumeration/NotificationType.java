@@ -29,19 +29,6 @@ public enum NotificationType {
     /** The hold ran out before payment landed; the seats went back on sale. */
     BOOKING_EXPIRED,
 
-    /** An admin granted the refund and the money is on its way back. */
-    BOOKING_REFUNDED,
-
-    /**
-     * An admin refused the refund; the booking is CONFIRMED again.
-     *
-     * <p>Its own type rather than a second BOOKING_CONFIRMED. REFUND_REQUESTED
-     * to CONFIRMED is a legal transition, so without this the customer who asked
-     * for their money back would be told "your tickets are ready" - technically
-     * true, and no answer at all to the question they actually asked.
-     */
-    BOOKING_REFUND_DECLINED,
-
     /** The application to run events was granted; the organiser area is open. */
     ORGANIZER_APPLICATION_APPROVED,
 
@@ -95,9 +82,6 @@ public enum NotificationType {
 
     /** A customer asked to become an organiser. */
     ORGANIZER_APPLICATION_SUBMITTED,
-
-    /** A customer asked for their money back; somebody has to decide. */
-    REFUND_REQUESTED,
 
     /** An organiser asked to be settled for a finished event. */
     PAYOUT_REQUESTED

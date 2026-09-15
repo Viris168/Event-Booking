@@ -73,8 +73,6 @@ public final class TelegramMessages {
             case "PENDING_PAYMENT", "AWAITING_CONFIRMATION" -> "⏳";
             case "PAYMENT_FAILED" -> "⚠️";
             case "CANCELLED", "EXPIRED" -> "❌";
-            case "REFUND_REQUESTED" -> "🔄";
-            case "REFUNDED" -> "💸";
             default -> "•";
         };
     }

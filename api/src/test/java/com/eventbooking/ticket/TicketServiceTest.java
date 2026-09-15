@@ -301,9 +301,9 @@ class TicketServiceTest {
     }
 
     @Test
-    void refusesATicketWhoseBookingWasRefunded() {
+    void refusesATicketWhoseBookingWasCancelled() {
         Ticket ticket = issuedTicket();
-        ticket.getBookingItem().getBooking().setState(BookingStatus.REFUNDED);
+        ticket.getBookingItem().getBooking().setState(BookingStatus.CANCELLED);
         givenTicketUnderLock(ticket);
 
         ScanResponse response = service.scan(payloadFor(ticket), EVENT_ID, OPERATOR_ID);

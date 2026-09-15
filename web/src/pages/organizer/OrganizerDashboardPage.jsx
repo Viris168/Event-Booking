@@ -496,7 +496,7 @@ const ACTION_UI = {
    * The organiser's own take-down, not the admin's. It reaches this menu only
    * while nothing has sold - the server drops TAKE_DOWN from available_actions
    * from the first ticket onward, because pulling a show people hold tickets to
-   * is a refund decision rather than a listing one.
+   * is a money-back decision rather than a listing one.
    *
    * Confirmed before it runs, and marked danger, because the organiser cannot
    * undo it: reopening a taken-down event is admin-only, deliberately, so that

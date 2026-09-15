@@ -184,7 +184,6 @@ const dict = {
     km: "សំបុត្រនឹងបង្ហាញនៅទីនេះ បន្ទាប់ពីការទូទាត់ប្រាក់ត្រូវបានបញ្ជាក់។",
   },
   cancelBooking: { en: "Cancel booking", km: "បោះបង់ការកក់" },
-  requestRefund: { en: "Request refund", km: "ស្នើសុំប្រាក់ត្រឡប់មកវិញ" },
   payNow: { en: "Pay now", km: "ទូទាត់ប្រាក់ឥឡូវនេះ" },
   // Deliberately not "Pay again": re-opening the same provider hands back the
   // SAME QR and reference, so nobody is charged twice.
@@ -340,11 +339,6 @@ export const STATUS_LABELS = {
   },
   PAYMENT_FAILED: { en: "Payment failed", km: "ការទូទាត់បរាជ័យ" },
   CONFIRMED: { en: "Confirmed", km: "បញ្ជាក់រួចរាល់" },
-  REFUND_REQUESTED: {
-    en: "Refund requested",
-    km: "បានស្នើសុំប្រាក់ត្រឡប់មកវិញ",
-  },
-  REFUNDED: { en: "Refunded", km: "បានសងប្រាក់ត្រឡប់វិញ" },
   EXPIRED: { en: "Expired", km: "ផុតកំណត់" },
   CANCELLED: { en: "Cancelled", km: "បានបោះបង់" },
   DRAFT: { en: "Draft", km: "សេចក្តីព្រាង" },
@@ -423,20 +417,6 @@ export const NOTIFICATION_TEXT = {
       body: "ការកក់ {ref} ផុតកំណត់មុនពេលទូទាត់ ហើយកៅអីត្រូវបានដាក់លក់វិញ។",
     },
   },
-  BOOKING_REFUNDED: {
-    en: { title: "Refund approved", body: "The money for {ref} is on its way back to you." },
-    km: { title: "ការសងប្រាក់ត្រូវបានអនុម័ត", body: "ប្រាក់សម្រាប់ការកក់ {ref} កំពុងត្រឡប់ទៅអ្នកវិញ។" },
-  },
-  BOOKING_REFUND_DECLINED: {
-    en: {
-      title: "Refund declined",
-      body: "{ref} was not refunded, and your tickets for {title} are still valid.",
-    },
-    km: {
-      title: "សំណើសងប្រាក់ត្រូវបានបដិសេធ",
-      body: "ការកក់ {ref} មិនត្រូវបានសងប្រាក់ទេ ហើយសំបុត្ររបស់អ្នកសម្រាប់ {title} នៅតែប្រើបាន។",
-    },
-  },
   ORGANIZER_APPLICATION_APPROVED: {
     en: { title: "You can now run events", body: "{org} was approved. The organiser area is open." },
     km: {
@@ -492,10 +472,6 @@ export const NOTIFICATION_TEXT = {
   ORGANIZER_APPLICATION_SUBMITTED: {
     en: { title: "New organiser application", body: "{org} applied to run events." },
     km: { title: "ពាក្យស្នើសុំធ្វើជាអ្នករៀបចំថ្មី", body: "{org} បានស្នើសុំរៀបចំព្រឹត្តិការណ៍។" },
-  },
-  REFUND_REQUESTED: {
-    en: { title: "Refund requested", body: "{ref} for {title} is waiting on a decision." },
-    km: { title: "សំណើសុំសងប្រាក់", body: "ការកក់ {ref} សម្រាប់ {title} កំពុងរង់ចាំការសម្រេច។" },
   },
   PAYOUT_REQUESTED: {
     en: {

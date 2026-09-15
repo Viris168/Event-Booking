@@ -12,7 +12,7 @@ import com.eventbooking.exception.ErrorCode;
  * friction with nothing behind it.
  *
  * <p>The first sale changes what the action means. People now hold tickets, so
- * pulling the event is a refund decision rather than a listing decision, and
+ * pulling the event is a money-back decision rather than a listing decision, and
  * this platform makes those - which is why past that point take-down stays on
  * the admin controller. Not 403: the caller owns the event and is allowed to
  * ask, it is the sales that make it somebody else's call.
@@ -21,6 +21,6 @@ public class EventHasSalesException extends ApiException {
     public EventHasSalesException(Long eventId, int sold) {
         super(ErrorCode.EVENT_HAS_SALES,
                 "Event " + eventId + " has already sold " + sold + " ticket(s), so taking it down is a "
-                        + "refund decision. Ask a platform admin to pull it.");
+                        + "money-back decision. Ask a platform admin to pull it.");
     }
 }

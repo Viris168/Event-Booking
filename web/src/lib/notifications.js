@@ -12,8 +12,6 @@ export const NOTIFICATION_ICON = {
   BOOKING_PAYMENT_FAILED: 'alert',
   BOOKING_CANCELLED: 'xCircle',
   BOOKING_EXPIRED: 'clock',
-  BOOKING_REFUNDED: 'wallet',
-  BOOKING_REFUND_DECLINED: 'ticket',
   ORGANIZER_APPLICATION_APPROVED: 'building',
   ORGANIZER_APPLICATION_REJECTED: 'xCircle',
 
@@ -31,7 +29,6 @@ export const NOTIFICATION_ICON = {
 
   EVENT_SUBMITTED_FOR_REVIEW: 'eye',
   ORGANIZER_APPLICATION_SUBMITTED: 'building',
-  REFUND_REQUESTED: 'wallet',
   PAYOUT_REQUESTED: 'bank',
 }
 
@@ -40,10 +37,6 @@ export const NOTIFICATION_TONE = {
   BOOKING_PAYMENT_FAILED: 'bad',
   BOOKING_CANCELLED: 'quiet',
   BOOKING_EXPIRED: 'quiet',
-  BOOKING_REFUNDED: 'ok',
-  // Not 'bad': the request was refused, but the tickets are still good. Red
-  // here would read as "something is wrong with your booking".
-  BOOKING_REFUND_DECLINED: 'warn',
   ORGANIZER_APPLICATION_APPROVED: 'ok',
   ORGANIZER_APPLICATION_REJECTED: 'bad',
 
@@ -62,7 +55,6 @@ export const NOTIFICATION_TONE = {
 
   EVENT_SUBMITTED_FOR_REVIEW: 'info',
   ORGANIZER_APPLICATION_SUBMITTED: 'info',
-  REFUND_REQUESTED: 'warn',
   PAYOUT_REQUESTED: 'info',
 }
 

@@ -72,7 +72,7 @@ public enum EventTransition {
      * to be. That made the two audiences strict complements - every transition
      * belonged to exactly one - and TAKE_DOWN now belongs to both: an admin may
      * pull any event as moderation, and an organiser may pull their own while
-     * nothing has sold. Once a ticket exists it is a refund decision and the
+     * nothing has sold. Once a ticket exists it is a money-back decision and the
      * organiser's copy is refused, but that is a rule about sales rather than
      * about who they are, so it lives in the service and not here.
      *

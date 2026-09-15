@@ -8,19 +8,11 @@ export const getBooking = (id) => client.get(`/bookings/${id}`).then((r) => r.da
  * render the new state rather than refetching to discover it.
  *
  * Only PENDING_PAYMENT, AWAITING_CONFIRMATION and PAYMENT_FAILED can be
- * cancelled — a paid booking answers 409 and has to go through requestRefund,
- * because a successful charge cannot be un-made.
+ * cancelled — a paid booking answers 409, because a successful charge cannot be
+ * un-made and there is no path out of CONFIRMED at all.
  */
 export const cancelBooking = (id, reason) =>
   client.post(`/bookings/${id}/cancel`, { reason }).then((r) => r.data)
-
-/**
- * Ask for a refund on a CONFIRMED booking. Puts it in REFUND_REQUESTED for an
- * admin to decide; the tickets stay valid and the seats stay sold until that
- * decision, so nothing about the customer's tickets changes here.
- */
-export const requestRefund = (id, reason) =>
-  client.post(`/bookings/${id}/refund`, { reason }).then((r) => r.data)
 
 /**
  * The organiser's own transactions - every booking across the events they own.

@@ -13,7 +13,7 @@ import { getBookingTickets } from '../api/tickets.js'
 import { mapBooking, mapEvent } from '../api/adapters.js'
 
 /** States in which a booking has tickets worth counting. */
-const TICKETED = ['CONFIRMED', 'REFUND_REQUESTED', 'REFUNDED']
+const TICKETED = ['CONFIRMED']
 
 /**
  * States the buyer can still act on, mirroring PaymentService.PAYABLE on the
@@ -23,15 +23,13 @@ const TICKETED = ['CONFIRMED', 'REFUND_REQUESTED', 'REFUNDED']
 const PAYABLE = ['PENDING_PAYMENT', 'AWAITING_CONFIRMATION', 'PAYMENT_FAILED']
 
 /** Dead states — kept visible for the record, but styled as spent. */
-const CLOSED = ['EXPIRED', 'CANCELLED', 'REFUNDED']
+const CLOSED = ['EXPIRED', 'CANCELLED']
 
 const STATES = [
   'PENDING_PAYMENT',
   'AWAITING_CONFIRMATION',
   'PAYMENT_FAILED',
   'CONFIRMED',
-  'REFUND_REQUESTED',
-  'REFUNDED',
   'EXPIRED',
   'CANCELLED',
 ]

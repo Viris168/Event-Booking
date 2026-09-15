@@ -124,7 +124,7 @@ public enum ErrorCode {
        exactly this case. */
     EVENT_NOT_DELETABLE(HttpStatus.CONFLICT),
     /* An organiser tried to pull their own event after it had sold something.
-       Taking a show off sale once people hold tickets to it is a refund
+       Taking a show off sale once people hold tickets to it is a money-back
        decision, which is the platform's to make - so past the first sale the
        action stays with an admin. */
     EVENT_HAS_SALES(HttpStatus.CONFLICT),

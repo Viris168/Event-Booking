@@ -189,21 +189,14 @@ public class NotificationListener {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onBookingStateChanged(NotificationEvents.BookingStateChanged e) {
         NotificationType customerType = switch (e.to()) {
-            // Arriving at CONFIRMED from REFUND_REQUESTED is a refused refund,
-            // not a completed purchase. Same destination, opposite news.
-            case CONFIRMED -> e.from() == BookingStatus.REFUND_REQUESTED
-                    ? NotificationType.BOOKING_REFUND_DECLINED
-                    : NotificationType.BOOKING_CONFIRMED;
+            case CONFIRMED -> NotificationType.BOOKING_CONFIRMED;
             case PAYMENT_FAILED -> NotificationType.BOOKING_PAYMENT_FAILED;
             case CANCELLED -> NotificationType.BOOKING_CANCELLED;
             case EXPIRED -> NotificationType.BOOKING_EXPIRED;
-            case REFUNDED -> NotificationType.BOOKING_REFUNDED;
             default -> null;
         };
 
-        boolean tellAdmins = e.to() == BookingStatus.REFUND_REQUESTED;
-
-        if (customerType == null && !tellAdmins) {
+        if (customerType == null) {
             return;
         }
 
@@ -233,12 +226,7 @@ public class NotificationListener {
         // they get that is not about moderation. Same dedupe key as the
         // customer's: the key is scoped per recipient and per type, so the two
         // rows do not collide.
-        //
-        // Excluding the refused-refund path explicitly rather than leaving the
-        // dedupe key to absorb it. It would - the ref is the same - but that
-        // makes "the organiser is not told twice about one sale" a property of
-        // the write guard instead of a decision anybody made.
-        if (e.to() == BookingStatus.CONFIRMED && e.from() != BookingStatus.REFUND_REQUESTED) {
+        if (e.to() == BookingStatus.CONFIRMED) {
             notificationService.notifyUser(
                     organizerUserId(event.getOrganizerId()),
                     NotificationType.EVENT_TICKETS_SOLD,
@@ -247,20 +235,10 @@ public class NotificationListener {
                     params);
 
             // The Telegram half, for whichever organisers have connected one.
-            // Same guard as the in-app write above - a refused refund landing
-            // back on CONFIRMED is not a new sale.
             organizerProfileRepository.findById(event.getOrganizerId())
                     .filter(p -> p.getTelegramChatId() != null)
                     .ifPresent(p -> telegram.sendToChat(p.getTelegramChatId(),
                             TelegramMessages.ticketSold(eventStat(event), transactionLine(booking))));
-        }
-
-        if (tellAdmins) {
-            notificationService.notifyAdmins(
-                    NotificationType.REFUND_REQUESTED,
-                    booking.getBookingRef(),
-                    "/admin/payments",
-                    params);
         }
     }
 
