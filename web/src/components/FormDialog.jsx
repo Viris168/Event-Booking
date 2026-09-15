@@ -39,10 +39,32 @@ export default function FormDialog({
   const km = locale === 'km'
   const formRef = useRef(null)
 
+  /*
+   * The same trap ConfirmDialog documents, and the same way out.
+   *
+   * onClose and busy arrive as inline props, recreated on every render of the
+   * caller - and a caller that lifts its form state up re-renders on every
+   * keystroke in this dialog's own fields. Naming them in the dependency array
+   * below re-ran the effect on each character typed, and the focus() call at
+   * the end of it dragged the cursor out of the field mid-word and onto the
+   * first control in the form. With a <select> at the top of the body, that
+   * meant typing one letter of an account name and landing back on the bank
+   * dropdown.
+   *
+   * Refs sidestep it: the effect depends only on `open`, so it runs once per
+   * open/close, while the keydown handler still reads the latest onClose/busy.
+   */
+  const onCloseRef = useRef(onClose)
+  const busyRef = useRef(busy)
+  useEffect(() => {
+    onCloseRef.current = onClose
+    busyRef.current = busy
+  }, [onClose, busy])
+
   useEffect(() => {
     if (!open) return undefined
     const onKey = (e) => {
-      if (e.key === 'Escape' && !busy) onClose()
+      if (e.key === 'Escape' && !busyRef.current) onCloseRef.current()
     }
     const previous = document.body.style.overflow
     document.body.style.overflow = 'hidden'
@@ -57,7 +79,7 @@ export default function FormDialog({
       document.body.style.overflow = previous
       document.removeEventListener('keydown', onKey)
     }
-  }, [open, busy, onClose])
+  }, [open])
 
   if (!open) return null
 
