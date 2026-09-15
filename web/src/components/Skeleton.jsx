@@ -112,7 +112,7 @@ export function EventGridSkeleton({ count = 4, className = '', style }) {
   )
 }
 
-/** The hero's "Next up" card, on navy — hence the dark variant. */
+/** The hero's "Top selling" card, on navy — hence the dark variant. */
 export function SpotlightSkeleton() {
   return (
     <SkeletonRegion className="spotlight">

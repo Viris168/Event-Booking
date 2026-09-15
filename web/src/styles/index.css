@@ -356,8 +356,23 @@
     @apply text-muted max-w-[60ch];
   }
 
+  /*
+   * The action holds its line; the heading is what gives way.
+   *
+   * With both free to shrink, a narrow phone broke "View all" across two lines
+   * beside a heading that had also wrapped — four ragged lines where there
+   * should be two. The link is short and fixed, so it is the one thing here
+   * that should never wrap; min-w-0 lets the heading take the hit instead,
+   * which it can absorb because it wraps on word boundaries.
+   */
   .section-head {
-    @apply mb-[0.9rem] flex items-baseline justify-between gap-4;
+    @apply mb-[0.9rem] flex items-baseline justify-between gap-3;
+  }
+  .section-head > :first-child {
+    @apply min-w-0;
+  }
+  .section-head > a {
+    @apply flex-none whitespace-nowrap;
   }
 
   .breadcrumb {
@@ -368,9 +383,23 @@
   }
 
   /* ---------------------------------------------------------------- navbar */
+  /*
+   * The same ground as the footer, from the same token.
+   *
+   * These two bookend every page and are read as one chrome colour, but they
+   * were never the same: the footer is a solid --color-brand-900 (#062718)
+   * while this was #041b10 at 94%, which let 6% of the page through and
+   * composited to #12271c in light mode — lighter and greyer than the footer —
+   * and to something different again over the dark theme's ground. Being
+   * translucent meant it could not match anything for long, since whatever
+   * scrolled underneath changed it.
+   *
+   * backdrop-blur went with the transparency: over an opaque background it
+   * renders nothing and only costs a compositing layer.
+   */
   .nav {
-    @apply sticky top-0 z-40 text-white backdrop-blur-[8px];
-    background: color-mix(in srgb, #041b10 94%, transparent);
+    @apply sticky top-0 z-40 text-white;
+    background: var(--color-brand-900);
     @apply border-b border-white/[0.09];
     box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04);
   }
@@ -586,6 +615,10 @@
     @apply absolute right-0 top-[calc(100%+0.5rem)] z-50 flex flex-col overflow-hidden
            rounded-card border border-line bg-surface text-ink shadow-float;
     width: min(370px, calc(100vw - 1.6rem));
+    /* The bar is sticky, so the panel hangs from a fixed point on the screen
+       and cannot scroll back into view: left uncapped it runs off the bottom
+       of a short window, taking the "See all" link with it. */
+    max-height: calc(100dvh - 5rem);
     animation: rise 0.14s ease-out;
   }
   .notif-head {
@@ -621,7 +654,7 @@
   }
 
   .notif-list {
-    @apply flex flex-col overflow-y-auto;
+    @apply flex min-h-0 flex-col overflow-y-auto;
     max-height: min(60vh, 430px);
   }
   .notif-empty {
@@ -681,6 +714,23 @@
   .notif-foot {
     @apply flex items-center justify-center gap-[0.25rem] border-t border-line bg-surface-2
            py-[0.55rem] text-[0.82rem] font-semibold text-link;
+  }
+
+  /* The bell is not the last control in the bar - the avatar and the burger
+     sit to its right - so a panel hung from the bell's right edge runs off the
+     LEFT of the screen well before it runs out of width to shrink into. Below
+     this it stops hanging from the bell and hangs from the bar: dropping
+     .notif-wrap out of the positioning chain leaves the sticky .nav as the
+     containing block, and that is exactly as wide as the viewport. `top` still
+     resolves against the bar's own height, so nothing moves vertically. */
+  @media (max-width: 520px) {
+    .notif-wrap {
+      @apply static;
+    }
+    .notif-panel {
+      @apply left-page right-page;
+      width: auto;
+    }
   }
 
   /* The full page: same rows, given a card to sit in rather than a dropdown. */
@@ -1218,6 +1268,84 @@
     }
   }
 
+  /* ---------------------------------------------------------- range slider */
+  /* Two stacked range inputs over one drawn track. The inputs are invisible and
+     transparent to the pointer; only their thumbs accept it, which is what lets
+     both be grabbed even where they overlap. */
+  .range {
+    @apply relative flex h-full w-full items-center;
+  }
+  /* 5px, not a hairline: at 1-2px the track disappeared next to the bordered
+     date inputs and the thumbs looked like they were floating on nothing. */
+  .range-track {
+    @apply absolute inset-x-0 h-[5px] rounded-full;
+    background: var(--color-line-2, var(--color-line));
+  }
+  .range-fill {
+    @apply absolute inset-y-0 rounded-full bg-brand-600;
+  }
+  .range input[type='range'] {
+    @apply absolute inset-x-0 m-0 w-full bg-transparent;
+    -webkit-appearance: none;
+    appearance: none;
+    pointer-events: none;
+  }
+  .range input[type='range']::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    pointer-events: auto;
+    height: 16px;
+    width: 16px;
+    border-radius: 9999px;
+    border: 2px solid var(--color-surface);
+    background: var(--color-brand-600);
+    box-shadow: var(--shadow-float);
+    cursor: grab;
+  }
+  .range input[type='range']::-moz-range-thumb {
+    pointer-events: auto;
+    height: 16px;
+    width: 16px;
+    border-radius: 9999px;
+    border: 2px solid var(--color-surface);
+    background: var(--color-brand-600);
+    cursor: grab;
+  }
+  .range input[type='range']:active::-webkit-slider-thumb {
+    cursor: grabbing;
+  }
+  .range input[type='range']:focus-visible::-webkit-slider-thumb {
+    box-shadow: var(--shadow-focus);
+  }
+  .range input[type='range']:focus-visible::-moz-range-thumb {
+    box-shadow: var(--shadow-focus);
+  }
+  /* The advanced row's columns are sized for a date or a number; a two-thumb
+     track needs more than 150px before the ends stop colliding, so it takes two
+     of them where there is room and the whole row where there is not. */
+  .range-field {
+    grid-column: span 2;
+  }
+  @media (max-width: 520px) {
+    .range-field {
+      grid-column: 1 / -1;
+    }
+  }
+
+  /* Label on the left, the value it is currently set to on the right — one row,
+     so the control below is exactly one input-height box like its neighbours. */
+  .range-label {
+    @apply flex w-full items-baseline justify-between gap-2;
+  }
+  .range-label b {
+    @apply text-ink;
+    font-variant-numeric: tabular-nums;
+  }
+  /* The same shell as .input, so the three fields in this row are one family. */
+  .range-box {
+    @apply flex min-h-[42px] w-full items-center rounded-[10px] border border-line
+      bg-surface px-[0.85rem];
+  }
+
   /* Removable summary of what is currently filtering the result set. */
   .active-filters {
     @apply flex flex-wrap items-center gap-[0.4rem];
@@ -1237,20 +1365,81 @@
 
   /* ----------------------------------------------------------------- auth */
   /* One centred column — no marketing panel, no split screen. */
+  /*
+   * 439px is not arbitrary: it is 400 + 2x1px panel border + 2x1.15rem
+   * panel-body padding, so the column inside the card is exactly 400px wide.
+   *
+   * That 400 is Google's ceiling. renderButton takes a pixel width and clamps
+   * anything above 400, and it draws into a cross-origin iframe, so the sign-in
+   * button cannot be widened to meet a full-width submit button — the card has
+   * to come down to meet it instead. At 460 the submit button was 421px against
+   * Google's 400 and the pair read as misaligned; now both are 400.
+   */
   .auth-wrap {
-    @apply mx-auto flex max-w-[460px] flex-col gap-4;
+    @apply mx-auto flex max-w-[439px] flex-col gap-4;
   }
+  /* Wordmark inside the card, so the page says whose it is without a second
+     element above competing with the heading for first read. */
+  .auth-brand {
+    @apply mb-5 inline-flex items-center gap-[0.55rem] text-ink no-underline;
+  }
+  .auth-brand img {
+    @apply h-7 w-auto;
+  }
+  .auth-brand span {
+    @apply text-[0.95rem] tracking-[-0.01em];
+    font-weight: 680;
+  }
+  .auth-brand:hover span {
+    @apply text-link;
+  }
+
+  /* Ruled off rather than merely spaced: the heading pair introduces the form,
+     and a line says that more cheaply than the extra margin it replaces. */
   .auth-head {
-    @apply mb-5;
+    @apply mb-5 border-b border-line-2 pb-4;
   }
   .auth-head h1 {
-    @apply text-[1.5rem];
+    @apply text-[1.55rem] leading-[1.2] tracking-[-0.02em];
   }
+  .auth-head p {
+    @apply mt-1 text-small;
+  }
+
   .auth-switch {
     @apply mt-4 text-center text-small text-muted;
   }
   .auth-back {
     @apply inline-flex items-center justify-center gap-[0.35rem] self-center text-small text-muted;
+  }
+
+  /* Google sign-in. The button itself is drawn by Google's script into
+     .gsi-host at a pixel width the component measures — these rules are only
+     the frame around it. They lived in a <style> tag inside the component,
+     which re-injected the same block for every instance mounted; the rest of
+     the app keeps its styles here, so this does too. */
+  /*
+   * mt-3 matches the gap-3 below, and that symmetry is the whole point: the
+   * rule sits at the vertical centre of .gsi-sep, so the space above it is
+   * (this margin + half the separator's line box) and the space below is (half
+   * that line box + the flex gap). With no top margin the two came out 12px and
+   * 23px, and the rule sat visibly closer to the submit button than to the
+   * Google one. Any change to gap-3 has to be mirrored here.
+   */
+  .gsi-wrap {
+    @apply mt-3 flex w-full flex-col items-center gap-3;
+  }
+  .gsi-sep {
+    @apply flex w-full items-center gap-3 text-small text-muted;
+  }
+  .gsi-sep::before,
+  .gsi-sep::after {
+    content: '';
+    @apply flex-1 border-t border-line;
+  }
+  /* Height reserved so the card does not jump when the widget arrives. */
+  .gsi-host {
+    @apply flex min-h-[44px] w-full justify-center;
   }
 
   /* Password input with a reveal toggle. */
@@ -1803,9 +1992,12 @@
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238b96b1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   }
   /* Surfaces that stay light in both themes — a QR must keep its contrast to
-     scan, and the date chip sits on cover art. Re-declaring the neutral tokens
-     locally re-themes every descendant utility in one place. */
-  [data-theme='dark'] :is(.qr-frame, .ev-media .ev-date) {
+     scan, and the date chips sit on cover art. Re-declaring the neutral tokens
+     locally re-themes every descendant utility in one place.
+     Both chips belong here: .rail-date is the hero's copy of .ev-date on a
+     white plate of its own, and being left off this list is what left it
+     printing near-white text on near-white in dark mode. */
+  [data-theme='dark'] :is(.qr-frame, .ev-media .ev-date, .rail-date) {
     /* Re-declaring the tokens fixes descendants that apply a colour utility… */
     --color-ink: #1d1a16;
     --color-ink-2: #4a443b;
@@ -2689,9 +2881,13 @@
   .footer-inner {
     @apply mx-auto max-w-shell px-page;
   }
+  /* The brand column is sized to the measure its paragraph is capped at, not
+     the other way round. At 2.2fr against a 46ch cap the column was ~230px
+     wider than anything ever drawn in it, which read as a hole punched between
+     the wordmark and the nav rather than as breathing room. */
   .footer-grid {
-    @apply grid gap-x-8 gap-y-[1.6rem];
-    grid-template-columns: minmax(0, 2.2fr) repeat(3, minmax(0, 1fr));
+    @apply grid gap-x-10 gap-y-[1.6rem];
+    grid-template-columns: minmax(0, 1.5fr) repeat(3, minmax(0, 1fr));
   }
   @media (max-width: 900px) {
     .footer-grid {
@@ -2708,7 +2904,7 @@
   }
 
   .footer-brand {
-    @apply flex max-w-[46ch] flex-col items-start gap-[0.8rem];
+    @apply flex max-w-[52ch] flex-col items-start gap-[0.8rem];
   }
   .footer-mark {
     @apply h-[38px] w-auto;
@@ -2741,19 +2937,27 @@
   .footer-pay {
     @apply inline-flex items-center gap-[0.4rem] text-white/[0.74];
   }
-  .footer-fx {
-    @apply mt-[0.35rem] font-mono text-[0.76rem] text-white/55;
+
+  /* Same plate as .footer-lang and .nav-icon-btn, at 40px so it clears the
+     touch-target floor - these are the only footer links small enough to miss
+     with a thumb. */
+  .footer-social {
+    @apply mt-[0.9rem] flex list-none flex-wrap gap-[0.45rem] p-0;
   }
-  .footer-fx em {
-    @apply mt-[0.2rem] block font-sans text-[0.76rem] not-italic text-white/40;
+  .footer-social a {
+    @apply grid size-10 place-items-center rounded-full border border-white/[0.14]
+      bg-white/[0.06] text-white/[0.74];
+  }
+  .footer-social a:hover {
+    @apply border-white/[0.28] bg-white/[0.14] text-white no-underline;
   }
 
+  /* Was white/45, which measures 4.27:1 on the brand ground — the identical
+     shortfall the column headings above were already corrected for, and this
+     line is smaller than they are. white/56 takes it to 5.87:1. */
   .footer-bottom {
     @apply mt-8 flex flex-wrap items-center justify-between gap-x-[1.4rem] gap-y-[0.8rem]
-      border-t border-white/10 pt-4 text-[0.78rem] text-white/45;
-  }
-  .footer-note {
-    @apply inline-flex items-center gap-[0.35rem];
+      border-t border-white/10 pt-4 text-[0.78rem] text-white/[0.56];
   }
   .footer-lang {
     @apply inline-flex gap-[2px] rounded-full border border-white/[0.14] bg-white/[0.06] p-[2px];
@@ -4879,4 +5083,46 @@
     color: inherit !important;
     text-decoration: none !important;
   }
+}
+
+/*
+ * Sign in with Google, sized to match .btn-lg beside it.
+ *
+ * GIS draws the standard button as ordinary DOM in this document — the
+ * cross-origin iframe is only used for the One Tap prompt — so its box is ours
+ * to set. Left alone it is 40px tall with 4px corners next to a 48px button
+ * with 12px ones, which is the mismatch this fixes. The mark, wordmark and
+ * label inside are Google's and are not touched; only the box is. Google ships
+ * `shape` and `size` options of its own, so the box is theirs to vary.
+ *
+ * DELIBERATELY OUTSIDE @layer components. Google injects its stylesheet into
+ * the document unlayered, and unlayered rules beat layered ones outright, no
+ * matter how specific the layered one is — inside the layer this rule parsed
+ * fine, matched the element, and silently lost every time. Matched on the ARIA
+ * role rather than Google's class names, which are minified per release.
+ */
+.gsi-host [role='button'] {
+  height: 3rem; /* .btn-lg is min-h-12 */
+  border-radius: var(--radius-ui);
+}
+
+/*
+ * Dark mode only: drop the white plate behind the G.
+ *
+ * Google's dark button puts the mark on a 36px white chip rounded 3px on its
+ * LEFT side alone — it is drawn to sit flush in the button's left corner as a
+ * leading panel. `logo_alignment: 'center'` moves it to the middle, where a
+ * half-rounded white square floats in the centre of a dark pill and reads as a
+ * rendering fault. Centring is what makes the mark and the label one group, so
+ * the plate goes instead and the G sits straight on the button.
+ *
+ * Light mode is untouched: the outline theme's button is already white, so the
+ * chip is invisible there and Google's own composition is left alone.
+ *
+ * Matched through :has() on the element wrapping the logo rather than on
+ * Google's minified class names. If they restructure, this stops matching and
+ * the plate comes back — visible, not broken.
+ */
+:root[data-theme='dark'] .gsi-host [role='button'] div:has(svg) {
+  background-color: transparent;
 }

@@ -118,20 +118,24 @@ export default function RegisterPage() {
       }
     >
       <form className="stack" onSubmit={submit} noValidate>
-        <Field label={t('displayName')} error={errors.display_name}>
+        <Field htmlFor="reg-name" label={t('displayName')} error={errors.display_name}>
           <span className="field-icon">
             <Icon name="user" size={16} />
             <input
+              id="reg-name"
               className="input"
               value={form.display_name}
               onChange={(e) => set('display_name', e.target.value)}
               aria-invalid={!!errors.display_name}
+              aria-describedby={errors.display_name ? 'reg-name-message' : undefined}
               autoComplete="name"
+              autoFocus
             />
           </span>
         </Field>
 
         <Field
+          htmlFor="reg-phone"
           label={t('phone')}
           error={errors.phone_e164}
           hint={locale === 'km' ? 'ឧ. 012 345 678' : 'e.g. 012 345 678'}
@@ -139,32 +143,43 @@ export default function RegisterPage() {
           <span className="field-icon">
             <Icon name="phone" size={16} />
             <input
+              id="reg-phone"
               className="input"
               value={form.phone_e164}
               onChange={(e) => set('phone_e164', e.target.value)}
               aria-invalid={!!errors.phone_e164}
+              aria-describedby="reg-phone-message"
               inputMode="tel"
               autoComplete="tel"
             />
           </span>
         </Field>
 
-        <Field label={t('email')} optional error={errors.email}>
+        <Field htmlFor="reg-email" label={t('email')} optional error={errors.email}>
           <span className="field-icon">
             <Icon name="mail" size={16} />
             <input
+              id="reg-email"
               className="input"
               type="email"
               value={form.email}
               onChange={(e) => set('email', e.target.value)}
               aria-invalid={!!errors.email}
+              aria-describedby={errors.email ? 'reg-email-message' : undefined}
               autoComplete="email"
             />
           </span>
         </Field>
 
-        <Field label={t('password')} error={errors.password} hint={t('passwordHint')}>
+        <Field
+          htmlFor="reg-password"
+          label={t('password')}
+          error={errors.password}
+          hint={t('passwordHint')}
+        >
           <PasswordField
+            id="reg-password"
+            describedBy="reg-password-message"
             value={form.password}
             onChange={(v) => set('password', v)}
             autoComplete="new-password"
@@ -172,15 +187,24 @@ export default function RegisterPage() {
           />
         </Field>
 
+        {/* Announced on insertion, for the same reason as the login form — and
+            only rendered when it has something to say, so the empty wrapper
+            does not sit in the stack adding a gap. */}
         {serverError && (
-          <Alert tone="danger">
-            {ERRORS[serverError]?.[locale] || ERRORS[serverError]?.en || serverError}
-          </Alert>
+          <div role="alert">
+            <Alert tone="danger">
+              {ERRORS[serverError]?.[locale] || ERRORS[serverError]?.en || serverError}
+            </Alert>
+          </div>
         )}
 
         <button className="btn btn-primary btn-lg btn-block" type="submit" disabled={busy}>
-          <Icon name="check" size={17} />
-          {t('register')}
+          {busy ? <span className="spinner" aria-hidden="true" /> : <Icon name="check" size={17} />}
+          {busy
+            ? locale === 'km'
+              ? 'កំពុងបង្កើតគណនី…'
+              : 'Creating account…'
+            : t('register')}
         </button>
       </form>
 

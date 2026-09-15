@@ -607,7 +607,17 @@ function RowMenu({ event, onChanged }) {
         disabled={busy}
         label={km ? 'សកម្មភាព' : 'Actions'}
         items={[
-          { key: 'edit', icon: 'edit', label: t('editEvent'), to: `/organizer/events/${event.id}/edit` },
+          // Edit goes once the event has happened: the API refuses the PATCH
+          // from that point, so leaving it here only led to an error at the
+          // end of a filled-in form. Sales and the public page stay - both
+          // are still worth reading afterwards.
+          {
+            key: 'edit',
+            icon: 'edit',
+            label: t('editEvent'),
+            hidden: isPast(event),
+            to: `/organizer/events/${event.id}/edit`,
+          },
           { key: 'sales', icon: 'chart', label: t('sales'), to: `/organizer/events/${event.id}/sales` },
           {
             key: 'view',

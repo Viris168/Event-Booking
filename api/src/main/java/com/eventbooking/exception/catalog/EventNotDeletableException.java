@@ -17,18 +17,33 @@ import com.eventbooking.exception.ErrorCode;
  * checkout, and the row they are holding disappearing underneath them is a
  * crash on the payment screen rather than a clean refusal.
  *
+ * <p>So does sold inventory, which is a separate question from the booking
+ * count rather than a restatement of it. {@code event_zone.sold_qty} and a
+ * SOLD seat are what the event itself says it sold, and the two can disagree
+ * with the booking table - a seat marked sold by a path that left no booking
+ * row, or by a seed. When they disagree the safe answer is the larger one:
+ * the row that says something was sold is the one that might be somebody's
+ * ticket.
+ *
  * <p>The message names take-down, because that is the action the admin actually
  * wants in every case this refuses: it pulls the listing off sale immediately
  * and leaves the sold tickets valid.
  */
 public class EventNotDeletableException extends ApiException {
     public EventNotDeletableException(Long eventId, long bookings, long activeHolds) {
-        super(ErrorCode.EVENT_NOT_DELETABLE, describe(eventId, bookings, activeHolds));
+        this(eventId, bookings, activeHolds, 0);
     }
 
-    private static String describe(Long eventId, long bookings, long activeHolds) {
-        if (bookings > 0) {
-            return "Event " + eventId + " has " + bookings + " booking(s) and cannot be deleted. "
+    public EventNotDeletableException(Long eventId, long bookings, long activeHolds, long sold) {
+        super(ErrorCode.EVENT_NOT_DELETABLE, describe(eventId, bookings, activeHolds, sold));
+    }
+
+    private static String describe(Long eventId, long bookings, long activeHolds, long sold) {
+        if (bookings > 0 || sold > 0) {
+            // Whichever is larger is the honest number: they are two records of
+            // the same sale and a delete has to respect both.
+            long attendees = Math.max(bookings, sold);
+            return "Event " + eventId + " has " + attendees + " ticket(s) sold and cannot be deleted. "
                     + "Take it down instead - that stops sales immediately and keeps sold tickets valid.";
         }
         return "Event " + eventId + " has " + activeHolds + " checkout(s) in progress and cannot be "

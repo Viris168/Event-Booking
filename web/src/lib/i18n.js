@@ -54,8 +54,11 @@ const dict = {
   priceHigh: { en: "Price · high to low", km: "តម្លៃ · ពីខ្ពស់ទៅទាប" },
   from: { en: "From", km: "ចាប់ពី" },
   to: { en: "To", km: "ដល់" },
-  minPrice: { en: "Min $", km: "តម្លៃទាបបំផុត $" },
-  maxPrice: { en: "Max $", km: "តម្លៃខ្ពស់បំផុត $" },
+  priceRange: { en: "Price range", km: "ជួរតម្លៃ" },
+  // Now the accessible names of the two slider thumbs rather than field labels,
+  // so they read as "lowest price" / "highest price" to a screen reader.
+  minPrice: { en: "Lowest price", km: "តម្លៃទាបបំផុត" },
+  maxPrice: { en: "Highest price", km: "តម្លៃខ្ពស់បំផុត" },
   noEvents: {
     en: "No events match your filters",
     km: "រកមិនឃើញព្រឹត្តិការណ៍ដែលត្រូវនឹងតម្រងរបស់អ្នកទេ",
@@ -80,7 +83,7 @@ const dict = {
   },
   legend: { en: "Legend", km: "ចំណាំ" },
   available: { en: "Available", km: "ទំនេរ" },
-  heldByOthers: { en: "Held by others", km: "អ្នកផ្សេងកាន់ទុក" },
+  heldByOthers: { en: "Held by others", km: "មានអ្នកកំពុងកក់" },
   sold: { en: "Sold", km: "លក់រួចហើយ" },
   yourSelection: { en: "Selected", km: "បានជ្រើសរើស" },
   blocked: { en: "Not for sale", km: "មិនដាក់លក់ទេ" },
@@ -202,7 +205,7 @@ const dict = {
   hidePassword: { en: "Hide password", km: "លាក់ពាក្យសម្ងាត់" },
   passwordHint: {
     en: "At least 8 characters",
-    km: "ត្រូវការ ៨ តួអក្សរជាអប្បបរមា",
+    km: "យ៉ាងតិច ៨ តួអក្សរ",
   },
   backHome: { en: "Back to Home", km: "ត្រឡប់ទៅទំព័រដើម" },
   loginTitle: { en: "Welcome back", km: "សូមស្វាគមន៍ការត្រឡប់មកវិញ" },
@@ -235,7 +238,7 @@ const dict = {
   // EventTransition, so the button text and the server's available_actions
   // describe the same three moves.
   saveDraft: { en: "Save draft", km: "រក្សាទុកជាសេចក្ដីព្រាង" },
-  submitForReview: { en: "Submit for review", km: "ដាក់ស្នើត្រួតពិនិត្យ" },
+  submitForReview: { en: "Submit for review", km: "ដាក់ស្នើដើម្បីត្រួតពិនិត្យ" },
   // The same action, shortened for the dashboard row where the full label wraps
   // onto two lines and drags the row's height with it. The menu and the event
   // form's footer both have the room, and keep the longer wording.
@@ -265,7 +268,7 @@ const dict = {
   payments: { en: "Payments", km: "ប្រតិបត្តិការទូទាត់ប្រាក់" },
   payouts: { en: "Payouts", km: "ការទូទាត់ជូនអ្នករៀបចំ" },
   moderation: { en: "Event moderation", km: "ការត្រួតពិនិត្យព្រឹត្តិការណ៍" },
-  reviewQueue: { en: "Review queue", km: "ជួរត្រួតពិនិត្យ" },
+  reviewQueue: { en: "Review queue", km: "បញ្ជីរង់ចាំត្រួតពិនិត្យ" },
   organizerApplications: {
     en: "Organiser applications",
     km: "ពាក្យសុំធ្វើជាអ្នករៀបចំ",
@@ -345,10 +348,10 @@ export const STATUS_LABELS = {
   EXPIRED: { en: "Expired", km: "ផុតកំណត់" },
   CANCELLED: { en: "Cancelled", km: "បានបោះបង់" },
   DRAFT: { en: "Draft", km: "សេចក្តីព្រាង" },
-  PENDING_REVIEW: { en: "Pending review", km: "កំពុងត្រួតពិនិត្យ" },
+  PENDING_REVIEW: { en: "Pending review", km: "រង់ចាំការត្រួតពិនិត្យ" },
   CHANGES_REQUESTED: { en: "Changes requested", km: "ត្រូវការកែប្រែ" },
   APPROVED: { en: "Approved", km: "បានអនុម័ត" },
-  REJECTED: { en: "Rejected", km: "បដិសេធ" },
+  REJECTED: { en: "Rejected", km: "បានបដិសេធ" },
   PUBLISHED: { en: "Published", km: "បានផ្សព្វផ្សាយ" },
   // Not an EventStatus. A finished event keeps status PUBLISHED in the
   // database - finishing is not a decision anybody made - but showing
@@ -395,7 +398,7 @@ export const NOTIFICATION_TEXT = {
   BOOKING_CONFIRMED: {
     en: { title: "Booking confirmed", body: "Your tickets for {title} are ready to show at the door." },
     km: {
-      title: "ការកក់បានបញ្ជាក់",
+      title: "ការកក់ត្រូវបានបញ្ជាក់",
       body: "សំបុត្ររបស់អ្នកសម្រាប់ {title} រួចរាល់សម្រាប់បង្ហាញនៅច្រកចូល។",
     },
   },
@@ -422,7 +425,7 @@ export const NOTIFICATION_TEXT = {
   },
   BOOKING_REFUNDED: {
     en: { title: "Refund approved", body: "The money for {ref} is on its way back to you." },
-    km: { title: "ការសងប្រាក់បានអនុម័ត", body: "ប្រាក់សម្រាប់ការកក់ {ref} កំពុងត្រឡប់ទៅអ្នកវិញ។" },
+    km: { title: "ការសងប្រាក់ត្រូវបានអនុម័ត", body: "ប្រាក់សម្រាប់ការកក់ {ref} កំពុងត្រឡប់ទៅអ្នកវិញ។" },
   },
   BOOKING_REFUND_DECLINED: {
     en: {
@@ -430,7 +433,7 @@ export const NOTIFICATION_TEXT = {
       body: "{ref} was not refunded, and your tickets for {title} are still valid.",
     },
     km: {
-      title: "សំណើសុំសងប្រាក់មិនត្រូវបានទទួលយក",
+      title: "សំណើសងប្រាក់ត្រូវបានបដិសេធ",
       body: "ការកក់ {ref} មិនត្រូវបានសងប្រាក់ទេ ហើយសំបុត្ររបស់អ្នកសម្រាប់ {title} នៅតែប្រើបាន។",
     },
   },
@@ -450,7 +453,7 @@ export const NOTIFICATION_TEXT = {
   EVENT_APPROVED: {
     en: { title: "Event approved", body: "{title} cleared review. You can publish it now." },
     km: {
-      title: "ព្រឹត្តិការណ៍បានអនុម័ត",
+      title: "ព្រឹត្តិការណ៍ត្រូវបានអនុម័ត",
       body: "{title} បានឆ្លងកាត់ការត្រួតពិនិត្យ។ អ្នកអាចផ្សព្វផ្សាយវាបានហើយ។",
     },
   },
@@ -484,7 +487,7 @@ export const NOTIFICATION_TEXT = {
   // ------------------------------------------------------------------- admin
   EVENT_SUBMITTED_FOR_REVIEW: {
     en: { title: "Event waiting for review", body: "{title} is in the review queue." },
-    km: { title: "ព្រឹត្តិការណ៍រង់ចាំការត្រួតពិនិត្យ", body: "{title} កំពុងនៅក្នុងជួរត្រួតពិនិត្យ។" },
+    km: { title: "ព្រឹត្តិការណ៍រង់ចាំការត្រួតពិនិត្យ", body: "{title} កំពុងនៅក្នុងបញ្ជីរង់ចាំត្រួតពិនិត្យ។" },
   },
   ORGANIZER_APPLICATION_SUBMITTED: {
     en: { title: "New organiser application", body: "{org} applied to run events." },

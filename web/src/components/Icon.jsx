@@ -83,6 +83,32 @@ const PATHS = {
   edit: 'M5 19h3l10-10-3-3L5 16v3ZM14.5 6.5l3 3',
   trash: 'M5 7h14M9 7V5h6v2M7 7l1 13h8l1-13',
   eye: 'M2.5 12S6 6.5 12 6.5S21.5 12 21.5 12S18 17.5 12 17.5S2.5 12 2.5 12ZM12 14.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z',
+  /* The pupil is dropped, not just struck through: at 16px an outline, a
+     pupil and a slash in the same 24px box read as a smudge. Outline plus
+     slash stays legible at the size the password toggle actually uses. */
+  eyeOff: 'M2.5 12S6 6.5 12 6.5S21.5 12 21.5 12S18 17.5 12 17.5S2.5 12 2.5 12ZM4.5 19.5l15-15',
+
+  /*
+   * Brand marks. Solid rather than stroked, unlike the rest of the set: these
+   * are recognised by silhouette, and at the 16px the footer uses them at, an
+   * outlined "f" or music note stops being identifiable. Instagram is the
+   * exception because its own mark is an outline — drawn solid it is just a
+   * rounded square.
+   */
+  facebook: {
+    filled: true,
+    d: 'M13.4 21v-7.6h2.6l.4-3h-3V8.5c0-.86.24-1.45 1.48-1.45H16.5V4.36A20 20 0 0 0 14.2 4.24c-2.3 0-3.87 1.4-3.87 3.97V10.4H7.7v3h2.63V21h3.07Z',
+  },
+  telegram: {
+    filled: true,
+    d: 'M21.8 5.2 18.9 19a1 1 0 0 1-1.6.6l-4.4-3.3-2.2 2.1a.7.7 0 0 1-1.15-.28l-1.6-4.9-4.3-1.4a.75.75 0 0 1 .03-1.43l17-6.2a.85.85 0 0 1 1.12 1Zm-3.9 2.1-8.6 5.4 1 3.2.25-2.3 7.35-6.3Z',
+  },
+  instagram:
+    'M7.6 3.5h8.8a4.1 4.1 0 0 1 4.1 4.1v8.8a4.1 4.1 0 0 1-4.1 4.1H7.6a4.1 4.1 0 0 1-4.1-4.1V7.6a4.1 4.1 0 0 1 4.1-4.1ZM12 8.4a3.6 3.6 0 1 0 0 7.2 3.6 3.6 0 0 0 0-7.2ZM16.9 7.1h.01',
+  tiktok: {
+    filled: true,
+    d: 'M16.9 3h-2.8v11.6a2.3 2.3 0 1 1-2-2.28V9.44a5.2 5.2 0 1 0 4.8 5.18V9.1a6.3 6.3 0 0 0 3.7 1.2V7.5a3.6 3.6 0 0 1-3.7-3.5V3Z',
+  },
 
   // categories
   music: 'M9 18V6l11-2v12M9 18a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0ZM20 16a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0Z',

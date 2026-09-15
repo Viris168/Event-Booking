@@ -121,7 +121,12 @@ public class AdminEventOverviewService {
                     t[0], t[1], t[2],
                     revenue.getOrDefault(e.getId(), 0L),
                     bookings,
-                    bookings == 0);
+                    // Matches EventDeletionService exactly: sold inventory
+                    // blocks a delete as surely as a booking row does, and the
+                    // two disagree whenever an event carries sold_qty that no
+                    // booking accounts for. A flag that said otherwise would
+                    // offer a button the server then refuses.
+                    bookings == 0 && t[1] == 0);
         }).toList();
     }
 
