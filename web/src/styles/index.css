@@ -756,6 +756,36 @@
   }
   .subnav-inner {
     @apply mx-auto flex max-w-shell gap-1 overflow-x-auto px-page;
+    /*
+     * Shadows that say "there is more this way", and only when there is.
+     *
+     * Four layers: two cover panels painted in the bar's own colour that scroll
+     * WITH the content (`local`), and two soft shadows pinned to the box
+     * (`scroll`). At the left end the cover sits over the left shadow and hides
+     * it; scroll right and the cover travels out of the way, revealing it. The
+     * shadow therefore appears exactly when there is something off-screen in
+     * that direction and vanishes when you reach the end.
+     *
+     * Chosen over a JS scroll listener because it costs nothing per frame and
+     * cannot get out of step with the real scroll position.
+     *
+     * Mixed from --color-ink rather than black: ink is near-black on the light
+     * theme and near-white on the dark one, so the edge stays visible in both.
+     * A black shadow is simply not there on a dark bar.
+     */
+    background:
+      linear-gradient(to right, var(--color-surface) 40%, transparent) left center / 2.5rem 100% no-repeat local,
+      linear-gradient(to left, var(--color-surface) 40%, transparent) right center / 2.5rem 100% no-repeat local,
+      radial-gradient(farthest-side at 0 50%, color-mix(in oklab, var(--color-ink) 20%, transparent), transparent)
+        left center / 0.9rem 100% no-repeat scroll,
+      radial-gradient(farthest-side at 100% 50%, color-mix(in oklab, var(--color-ink) 20%, transparent), transparent)
+        right center / 0.9rem 100% no-repeat scroll;
+    /* The bar is 46px tall; a scrollbar trough inside it eats a third of the
+       text. Touch and trackpad scrolling are unaffected. */
+    scrollbar-width: none;
+  }
+  .subnav-inner::-webkit-scrollbar {
+    @apply hidden;
   }
   .subnav a {
     @apply whitespace-nowrap border-b-2 border-transparent px-[0.7rem] py-3 text-[0.88rem] font-semibold text-muted;
