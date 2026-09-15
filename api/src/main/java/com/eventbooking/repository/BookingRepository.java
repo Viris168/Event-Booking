@@ -186,4 +186,17 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
      */
     @Query("select b.event.id, count(b) from Booking b group by b.event.id")
     List<Object[]> countByEvent();
+
+    /**
+     * How many bookings on this event sit in these states.
+     *
+     * <p>Narrower than {@link #countByEvent_Id}, and for a different job: that
+     * one is the delete guard and counts every row including EXPIRED ones,
+     * because those still hold an FK. This counts the bookings an invoice is a
+     * summary of, so it has to agree with {@link #sumRevenueForEvent} about
+     * which states are money - a count that included expired holds beside a
+     * total that did not would put "48 bookings, $0.00" on a document somebody
+     * is paid against.
+     */
+    long countByEvent_IdAndStateIn(Long eventId, Collection<BookingStatus> states);
 }

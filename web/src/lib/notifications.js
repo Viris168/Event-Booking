@@ -24,9 +24,15 @@ export const NOTIFICATION_ICON = {
   EVENT_RESTORED: 'checkCircle',
   EVENT_TICKETS_SOLD: 'ticket',
 
+  // 'bank' for the one that is money actually moving, 'card' for the approval,
+  // which is a decision rather than a transfer.
+  PAYOUT_APPROVED: 'card',
+  PAYOUT_PAID: 'bank',
+
   EVENT_SUBMITTED_FOR_REVIEW: 'eye',
   ORGANIZER_APPLICATION_SUBMITTED: 'building',
   REFUND_REQUESTED: 'wallet',
+  PAYOUT_REQUESTED: 'bank',
 }
 
 export const NOTIFICATION_TONE = {
@@ -48,9 +54,16 @@ export const NOTIFICATION_TONE = {
   EVENT_RESTORED: 'ok',
   EVENT_TICKETS_SOLD: 'ok',
 
+  // Not 'ok': approved means agreed, not arrived. Green here and green again
+  // on PAYOUT_PAID would make the second one look like a duplicate of the
+  // first, which is exactly the distinction the two states exist to draw.
+  PAYOUT_APPROVED: 'info',
+  PAYOUT_PAID: 'ok',
+
   EVENT_SUBMITTED_FOR_REVIEW: 'info',
   ORGANIZER_APPLICATION_SUBMITTED: 'info',
   REFUND_REQUESTED: 'warn',
+  PAYOUT_REQUESTED: 'info',
 }
 
 /** Unknown types still render: a new server type should not leave a blank row. */

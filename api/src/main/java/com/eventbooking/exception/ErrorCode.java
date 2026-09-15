@@ -17,6 +17,11 @@ public enum ErrorCode {
     PAYMENT_NOT_FOUND(HttpStatus.NOT_FOUND),
     TICKET_NOT_FOUND(HttpStatus.NOT_FOUND),
     ORGANIZER_APPLICATION_NOT_FOUND(HttpStatus.NOT_FOUND),
+    /* No payout with this id - or none the caller may see. The organiser-facing
+       lookups scope by organizerId and report a miss as this rather than as
+       403, because confirming that an id exists turns a sequential invoice
+       number into an oracle for other organisers' revenue. */
+    PAYOUT_REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND),
     /* An admin screen named an app_user id that no longer exists. Distinct
        from NOT_AUTHENTICATED, which is about the caller: here the caller is a
        valid admin and it is the row they are acting ON that is gone - two
@@ -84,6 +89,28 @@ public enum ErrorCode {
     /* The caller already has an organizer_profile row, which IS what being an
        organiser means - there is nothing for an application to grant them. */
     ALREADY_AN_ORGANIZER(HttpStatus.CONFLICT),
+
+    /* The event has already been claimed - one payout per event, ever. Backed
+       by uq_payout_request_event; checked in the service so it reads as a
+       conflict rather than as a 23505. */
+    PAYOUT_ALREADY_REQUESTED(HttpStatus.CONFLICT),
+
+    /* Approve/reject arrived for a row that is not REQUESTED, or mark-paid for
+       one that is not APPROVED. Two admins working the queue at once is the
+       ordinary way there. */
+    PAYOUT_ALREADY_DECIDED(HttpStatus.CONFLICT),
+
+    /* A payout was asked for before the event happened. CONFLICT rather than
+       BAD_REQUEST: nothing is malformed, and the identical call succeeds once
+       the date passes. Distinct from EVENT_ALREADY_FINISHED below, which is
+       the same clock read for the opposite purpose. */
+    EVENT_NOT_FINISHED(HttpStatus.CONFLICT),
+
+    /* The event finished owing nothing - it sold nothing, or everything it sold
+       came back. Refused rather than issued as a $0.00 invoice that an admin
+       still has to work through the queue. */
+    NOTHING_TO_PAY_OUT(HttpStatus.CONFLICT),
+
     /* One open application per person. Checked in the service so the caller
        gets this instead of the raw violation from
        uq_organizer_application_pending. */

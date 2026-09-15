@@ -1,5 +1,6 @@
 package com.eventbooking.repository;
 
+import com.eventbooking.Enumeration.BookingStatus;
 import com.eventbooking.model.Ticket;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -94,6 +95,22 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
             where t.bookingItem.booking.event.id = :eventId
             """)
     long countByEventId(@Param("eventId") Long eventId);
+
+    /**
+     * Tickets issued for an event, restricted to bookings in these states.
+     *
+     * <p>The invoice's ticket count. {@link #countByEventId} is the wrong
+     * number for that: it counts every ticket ever issued for the event,
+     * whatever became of the booking behind it, so an invoice using it would
+     * claim more tickets than the gross it sits beside was earned from.
+     */
+    @Query("""
+            select count(t) from Ticket t
+            where t.bookingItem.booking.event.id = :eventId
+              and t.bookingItem.booking.state in :states
+            """)
+    long countByEventIdAndBookingStateIn(@Param("eventId") Long eventId,
+                                         @Param("states") Collection<BookingStatus> states);
 
     /** ...and how many of them have walked in. */
     @Query("""

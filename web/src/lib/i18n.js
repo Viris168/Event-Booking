@@ -1,3 +1,5 @@
+import { usd } from "./format.js";
+
 // Minimal EN/KM dictionary for UI chrome. Content strings (event titles,
 // venue names, zone names) come from the data as _en/_km pairs instead.
 
@@ -261,6 +263,7 @@ const dict = {
   adminDashboard: { en: "Platform admin", km: "ផ្ទាំងអ្នកគ្រប់គ្រងប្រព័ន្ធ" },
   users: { en: "Users", km: "អ្នកប្រើប្រាស់" },
   payments: { en: "Payments", km: "ប្រតិបត្តិការទូទាត់ប្រាក់" },
+  payouts: { en: "Payouts", km: "ការទូទាត់ជូនអ្នករៀបចំ" },
   moderation: { en: "Event moderation", km: "ការត្រួតពិនិត្យព្រឹត្តិការណ៍" },
   reviewQueue: { en: "Review queue", km: "ជួរត្រួតពិនិត្យ" },
   organizerApplications: {
@@ -360,6 +363,11 @@ export const STATUS_LABELS = {
   ACTIVE: { en: "Active", km: "សកម្ម" },
   CONSUMED: { en: "Consumed", km: "បានប្រើប្រាស់រួច" },
   RELEASED: { en: "Released", km: "បានដកការកក់" },
+  // Payout lifecycle (V29). APPROVED is already above and reads correctly for
+  // a payout too - a second entry would be a second answer to the same
+  // question, free to drift from the first.
+  REQUESTED: { en: "Requested", km: "បានស្នើសុំ" },
+  PAID: { en: "Paid", km: "បានទូទាត់" },
 };
 
 export function statusLabel(status, locale) {
@@ -486,6 +494,41 @@ export const NOTIFICATION_TEXT = {
     en: { title: "Refund requested", body: "{ref} for {title} is waiting on a decision." },
     km: { title: "សំណើសុំសងប្រាក់", body: "ការកក់ {ref} សម្រាប់ {title} កំពុងរង់ចាំការសម្រេច។" },
   },
+  PAYOUT_REQUESTED: {
+    en: {
+      title: "Payout requested",
+      body: "{org} asked for {amount} for {title}. Invoice {invoice}.",
+    },
+    km: {
+      title: "សំណើសុំទូទាត់ប្រាក់",
+      body: "{org} បានស្នើសុំ {amount} សម្រាប់ {title}។ វិក្កយបត្រ {invoice}។",
+    },
+  },
+
+  // ------------------------------------------------------ organizer payouts
+  PAYOUT_APPROVED: {
+    en: {
+      title: "Payout approved",
+      body: "{amount} for {title} was approved. The transfer is being arranged.",
+    },
+    km: {
+      title: "ការទូទាត់ត្រូវបានអនុម័ត",
+      body: "{amount} សម្រាប់ {title} ត្រូវបានអនុម័ត។ ការផ្ទេរប្រាក់កំពុងរៀបចំ។",
+    },
+  },
+  PAYOUT_PAID: {
+    // The reference leads the body rather than trailing it: this is the message
+    // somebody re-reads when the money has not appeared, and it is the only
+    // thing in it their bank can look up.
+    en: {
+      title: "You have been paid",
+      body: "{amount} for {title} was sent. Reference {reference}.",
+    },
+    km: {
+      title: "អ្នកបានទទួលប្រាក់",
+      body: "{amount} សម្រាប់ {title} ត្រូវបានផ្ញើ។ លេខយោង {reference}។",
+    },
+  },
 };
 
 /**
@@ -510,6 +553,12 @@ export function notificationText(type, params, locale) {
     "{ref}": p.bookingRef || "",
     "{org}": (locale === "km" ? p.orgNameKm : p.orgNameEn) || p.orgNameEn || "",
     "{reason}": p.message || p.note || "",
+    // Payout params. Formatted here rather than by the caller because these
+    // rows are rendered by the bell, the inbox and nothing else - and cents
+    // reaching a person's screen is the one thing format.js exists to prevent.
+    "{amount}": p.netUsdCents == null ? "" : usd(p.netUsdCents),
+    "{invoice}": p.invoiceNo || "",
+    "{reference}": p.reference || "",
   };
 
   const fill = (s) =>

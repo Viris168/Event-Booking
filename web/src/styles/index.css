@@ -1738,6 +1738,21 @@
   .s-CONSUMED {
     @apply bg-quiet-soft text-quiet;
   }
+
+  /* Payout lifecycle (V29). Reuses the review family's logic exactly:
+     warning = with the platform, waiting on us
+     settled = agreed but not finished — APPROVED is already this colour, and a
+               payout that is approved-but-unsent is the same kind of "yes, in
+               progress" an approved-but-unpublished event is
+     success = money actually moved; PAID is the only green here, the way
+               PUBLISHED is the only green that means "on sale"
+     danger  = refused, same family as REJECTED because it is the same answer */
+  .s-REQUESTED {
+    @apply bg-warning-soft text-warning;
+  }
+  .s-PAID {
+    @apply bg-success-soft text-success;
+  }
   .s-RELEASED {
     @apply bg-quiet-soft text-quiet;
   }
@@ -4676,4 +4691,192 @@
 .org-apply-summary dd {
   margin: 0;
   color: var(--color-ink);
+}
+
+/* ============================================================
+   Payout invoice (V29)
+   ============================================================
+   Outside @layer components, matching the venue-layout and org-apply blocks
+   above: this is one page's furniture rather than a reusable primitive, and
+   nothing else in the app should be reaching for .invoice-line.
+
+   The whole point of the block is the @media print rule at the bottom. There
+   is no PDF library in this project on purpose - the document is bilingual,
+   and embedding a Khmer face into a server-rendered PDF is real work for a
+   result the browser already produces from the fonts the app has loaded. So
+   the invoice is a page that prints, and these rules are what make the printed
+   copy look like a document rather than like a screenshot of an app. */
+
+.invoice {
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: 14px;
+  padding: 2.2rem 2.4rem;
+  max-width: 52rem;
+  margin: 0 auto;
+}
+
+.invoice-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  padding-bottom: 1.4rem;
+  border-bottom: 2px solid var(--color-ink);
+}
+.invoice-brand {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  color: var(--color-brand-600);
+}
+.invoice-brand-sub,
+.invoice-label {
+  margin: 0.1rem 0 0;
+  font-size: 0.78rem;
+  color: var(--color-muted);
+}
+.invoice-label {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+}
+.invoice-no {
+  margin: 0.1rem 0 0.4rem;
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.invoice-parties {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 1.4rem;
+  padding: 1.4rem 0;
+  border-bottom: 1px solid var(--color-line-2);
+}
+.invoice-section-label {
+  margin: 0 0 0.35rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-muted);
+}
+
+.invoice-money {
+  padding: 1.2rem 0 0.2rem;
+}
+.invoice-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 2rem;
+  padding: 0.5rem 0;
+  font-size: 0.95rem;
+  color: var(--color-ink-2);
+}
+/* The total is the one line somebody reads if they read nothing else, so it
+   gets the rule above it and the weight - not a background tint, which stops
+   being visible the moment the page is printed in greyscale. */
+.invoice-line-total {
+  margin-top: 0.4rem;
+  padding-top: 0.8rem;
+  border-top: 2px solid var(--color-ink);
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--color-ink);
+}
+
+.invoice-fineprint {
+  margin: 1rem 0 0;
+  font-size: 0.78rem;
+  color: var(--color-muted);
+}
+
+.invoice-paid {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1.4rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--color-success);
+  border-radius: 10px;
+  color: var(--color-success);
+}
+
+.invoice-note {
+  margin-top: 1.2rem;
+  padding: 0.8rem 1rem;
+  border-left: 3px solid var(--color-line);
+  background: var(--color-surface-2);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.invoice-foot {
+  margin-top: 1.8rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-line-2);
+  font-size: 0.75rem;
+  color: var(--color-muted);
+  text-align: center;
+}
+
+/* ------------------------------------------------------------------ print */
+/* .no-print is deliberately global rather than scoped to .invoice: the navbar
+   and footer are rendered by App, outside this page's tree, and they are the
+   first things that have to go. */
+.no-print {
+  /* nothing on screen - this class exists only for the rule below */
+}
+
+@media print {
+  /* Everything that is app rather than document. The invoice is the page. */
+  .no-print,
+  .nav,
+  .subnav,
+  .footer,
+  .toast-wrap,
+  .skip-link {
+    display: none !important;
+  }
+
+  /* Printers waste ink on the page's warm paper colour and then render the
+     off-white as grey, which makes a document look photocopied. */
+  html,
+  body {
+    background: #fff !important;
+  }
+
+  .container,
+  .invoice-page {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+  }
+
+  .invoice {
+    border: none;
+    border-radius: 0;
+    padding: 0;
+    max-width: none;
+  }
+
+  /* A money table split across two sheets is the one break that makes an
+     invoice unreadable - the total lands alone on page two with nothing above
+     it to total. */
+  .invoice-money,
+  .invoice-paid,
+  .invoice-parties {
+    break-inside: avoid;
+  }
+
+  /* Links print as their text; a blue underline on paper is just noise. */
+  a {
+    color: inherit !important;
+    text-decoration: none !important;
+  }
 }

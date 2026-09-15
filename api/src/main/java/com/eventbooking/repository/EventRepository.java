@@ -110,6 +110,29 @@ public interface EventRepository extends JpaRepository<Event, Long> {
                                  @Param("status") EventStatus status);
 
     /**
+     * This organiser's events that have already happened, most recent first.
+     *
+     * <p>"Happened" is {@code startsAt < now}, because there is no
+     * {@code ends_at} column and never has been - {@code EventServiceimpl}
+     * reads finishing the same way in three places, and the FINISHED badge the
+     * catalogue renders is derived from it too. A fourth definition here would
+     * let an event the organiser's own dashboard calls finished be refused a
+     * payout.
+     *
+     * <p>Unfiltered by status on purpose: a taken-down event still sold
+     * tickets, and the organiser is owed for them. Whether the catalogue lists
+     * it has nothing to do with whether money changed hands.
+     */
+    @Query("""
+        select e from Event e
+        where e.organizerId = :organizerId
+          and e.startsAt < :now
+        order by e.startsAt desc
+        """)
+    List<Event> findFinishedForOrganizer(@Param("organizerId") Long organizerId,
+                                         @Param("now") Instant now);
+
+    /**
      * The moderation queue. One status at a time, ordered by the caller's
      * Pageable so the admin screen can ask for oldest-submitted-first.
      *
