@@ -9,16 +9,6 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
 import { useToast } from '../context/ToastContext.jsx'
 import { countdown, usd } from '../lib/format.js'
-import {
-  getBooking,
-  getEvent,
-  getVenue,
-  historyOf,
-  itemsOf,
-  paymentsForBooking,
-  ticketsOf,
-  useStore,
-} from '../mock/store.js'
 
 /** Which actions each of the eight booking states allows. */
 function actionsFor(state) {
@@ -96,7 +86,6 @@ import { getBookingTickets } from '../api/tickets.js'
 
 export default function BookingDetailPage() {
   const { id } = useParams()
-  useStore()
   const { t, locale, dateTime } = useLocale()
   const { user } = useAuth()
   const toast = useToast()
@@ -179,7 +168,7 @@ export default function BookingDetailPage() {
     return () => { active = false }
   }, [apiBooking?.id, apiBooking?.state])
 
-  const booking = apiBooking ?? getBooking(id)
+  const booking = apiBooking
   useDocumentTitle(booking?.booking_ref || null)
 
   if (bookingLoading) {
@@ -199,33 +188,22 @@ export default function BookingDetailPage() {
     )
   }
 
-  const event = apiEvent ?? getEvent(booking.event_id)
-  // An API event nests its venue (camelCase, like the rest of the API); the
-  // prototype store keys venues by id in snake_case. Normalise to the latter,
-  // which is what this page and TicketCard read.
+  const event = apiEvent
+  // The API nests venue on the event in camelCase; normalise to the
+  // snake_case fields this page and TicketCard read.
   const apiVenue = event?.venue
-  const venue = apiVenue
-    ? {
-        ...apiVenue,
-        name_en: apiVenue.nameEn ?? apiVenue.name_en,
-        name_km: apiVenue.nameKm ?? apiVenue.name_km,
-      }
-    : getVenue(event?.venue_id || 1)
-  const items = booking.items || itemsOf(booking.id)
-  const tickets = apiBooking ? (apiTickets ?? []) : ticketsOf(booking.id)
-  const payments = apiBooking ? (apiPayments ?? []) : paymentsForBooking(booking.id)
+  const venue = apiVenue && {
+    ...apiVenue,
+    name_en: apiVenue.nameEn ?? apiVenue.name_en,
+    name_km: apiVenue.nameKm ?? apiVenue.name_km,
+  }
+  const items = booking.items || []
+  const tickets = apiTickets ?? []
+  const payments = apiPayments ?? []
 
-  // Both of these are keyed by id in the prototype store, and a real booking's
-  // id can collide with a prototype one - which would show another booking's
-  // timeline, or a hold bar counting down against a hold that is not yours.
-  // The API has no endpoint for either yet, so a real booking simply shows
-  // neither rather than something invented.
-  const history = apiBooking ? [] : historyOf(booking.id)
-  // Cancel and refund now hit POST /bookings/{id}/cancel and /refund, so the
-  // override that used to blank both buttons on a real booking is gone. What it
-  // was protecting against was real: before those endpoints existed the buttons
-  // called into the prototype store and toasted "Booking cancelled" while the
-  // actual booking sat untouched.
+  // The API has no endpoint for a booking's status-change history yet, so
+  // this stays empty until one exists rather than showing something invented.
+  const history = []
   const act = actionsFor(booking.state)
   const mine = booking.user_id === user?.id
 

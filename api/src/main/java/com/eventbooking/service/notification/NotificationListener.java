@@ -15,6 +15,8 @@ import com.eventbooking.repository.AppUserRepository;
 import com.eventbooking.service.notification.telegram.TelegramMessages;
 import com.eventbooking.service.notification.telegram.TelegramNotifier;
 import com.eventbooking.repository.OrganizerProfileRepository;
+import com.eventbooking.repository.PaymentTransactionRepository;
+import com.eventbooking.service.event.EventService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -24,8 +26,11 @@ import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.time.Instant;
+import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Turns things that happened into things people are told.
@@ -55,6 +60,10 @@ public class NotificationListener {
     private final OrganizerProfileRepository organizerProfileRepository;
     private final AppUserRepository appUserRepository;
     private final TelegramNotifier telegram;
+    private final PaymentTransactionRepository paymentTransactionRepository;
+    private final EventService eventService;
+
+    private static final Set<BookingStatus> REVENUE_STATES = EnumSet.of(BookingStatus.CONFIRMED);
 
     public NotificationListener(NotificationService notificationService,
                                 BookingRepository bookingRepository,
@@ -62,7 +71,9 @@ public class NotificationListener {
                                 OrganizerApplicationRepository organizerApplicationRepository,
                                 OrganizerProfileRepository organizerProfileRepository,
                                 AppUserRepository appUserRepository,
-                                TelegramNotifier telegram) {
+                                TelegramNotifier telegram,
+                                PaymentTransactionRepository paymentTransactionRepository,
+                                EventService eventService) {
         this.notificationService = notificationService;
         this.bookingRepository = bookingRepository;
         this.eventRepository = eventRepository;
@@ -70,6 +81,51 @@ public class NotificationListener {
         this.organizerProfileRepository = organizerProfileRepository;
         this.appUserRepository = appUserRepository;
         this.telegram = telegram;
+        this.paymentTransactionRepository = paymentTransactionRepository;
+        this.eventService = eventService;
+    }
+
+    /**
+     * The event's own running totals, for the header above a ticket-sold
+     * ping and above a {@code /stats} reply alike - both put "where do
+     * sales stand now" before the detail of one sale. Reuses {@link
+     * EventService#getEventForAdmin} rather than re-deriving sold/capacity
+     * from zones and seat classes here - that arithmetic already lives in
+     * one place and getting it slightly wrong in a second place is how a
+     * dashboard and a notification disagree with each other.
+     */
+    private TelegramMessages.EventStat eventStat(Event event) {
+        var response = eventService.getEventForAdmin(event.getId());
+        long revenue = bookingRepository.sumRevenueForEvent(event.getId(), REVENUE_STATES);
+        return new TelegramMessages.EventStat(
+                response.titleEn(),
+                response.totalSold() == null ? 0 : response.totalSold(),
+                response.totalCapacity() == null ? 0 : response.totalCapacity(),
+                revenue);
+    }
+
+    /**
+     * This one booking, in the shape {@code /stats}' transaction lines
+     * already use - the organiser reads the same fields either way, so a
+     * ticket-sold ping and a stats reply should not describe a sale
+     * differently. The payment provider is looked up the same way {@code
+     * OrganizerTransactionServiceimpl} does for a whole page of bookings,
+     * just for this one id.
+     */
+    private TelegramMessages.TransactionLine transactionLine(Booking booking) {
+        String provider = paymentTransactionRepository.findProviderByBookingIds(List.of(booking.getId()))
+                .stream()
+                .findFirst()
+                .map(row -> String.valueOf(row[1]))
+                .orElse(null);
+        return new TelegramMessages.TransactionLine(
+                booking.getBookingRef(),
+                booking.getBuyerName(),
+                booking.getBuyerPhoneE164(),
+                provider,
+                String.valueOf(booking.getState()),
+                booking.getTotalUsdCents(),
+                booking.getCreatedAt());
     }
 
     /**
@@ -183,6 +239,14 @@ public class NotificationListener {
                     booking.getBookingRef(),
                     "/organizer/events/" + event.getId() + "/sales",
                     params);
+
+            // The Telegram half, for whichever organisers have connected one.
+            // Same guard as the in-app write above - a refused refund landing
+            // back on CONFIRMED is not a new sale.
+            organizerProfileRepository.findById(event.getOrganizerId())
+                    .filter(p -> p.getTelegramChatId() != null)
+                    .ifPresent(p -> telegram.sendToChat(p.getTelegramChatId(),
+                            TelegramMessages.ticketSold(eventStat(event), transactionLine(booking))));
         }
 
         if (tellAdmins) {
@@ -265,6 +329,20 @@ public class NotificationListener {
                     key,
                     "/organizer/events/" + event.getId() + "/edit",
                     params);
+        }
+
+        /*
+         * The Telegram half of the same news, for whichever organisers have
+         * connected one. Only APPROVE, not every organizerType above:
+         * REJECT/REQUEST_CHANGES/TAKE_DOWN/RESTORE already have their in-app
+         * notification, and a mobile push is not warmer news for those -
+         * approval is the one that reads as good news worth a phone buzzing.
+         */
+        if (e.transition() == EventTransition.APPROVE) {
+            organizerProfileRepository.findById(event.getOrganizerId())
+                    .filter(p -> p.getTelegramChatId() != null)
+                    .ifPresent(p -> telegram.sendToChat(p.getTelegramChatId(),
+                            TelegramMessages.eventApproved(event)));
         }
 
         if (tellAdmins) {

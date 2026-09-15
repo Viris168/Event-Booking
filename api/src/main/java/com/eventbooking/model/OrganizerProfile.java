@@ -57,6 +57,17 @@ public class OrganizerProfile {
     @Column(name = "telegram_chat_id")
     private String telegramChatId;
 
+    /**
+     * The one-time token a "Connect Telegram" click generates, and the
+     * deadline it is good until. Both null once nothing is in flight - see
+     * V28 and {@code OrganizerTelegramService}.
+     */
+    @Column(name = "telegram_connect_token")
+    private String telegramConnectToken;
+
+    @Column(name = "telegram_connect_expires_at")
+    private Instant telegramConnectExpiresAt;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

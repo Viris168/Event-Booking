@@ -12,10 +12,12 @@ import java.util.Map;
 /**
  * Posts a message to one Telegram chat through the Bot API.
  *
- * <p>One method, deliberately. This is not a Telegram client - it is the single
- * outbound call the platform makes to say "a human should look at this", and
- * keeping it to {@code sendMessage} means there is no surface here to grow a
- * polling loop or a webhook handler by accident.
+ * <p>One outbound call, deliberately - {@code sendMessage}, called either at a
+ * fixed admin chat ({@link #send}) or an arbitrary one ({@link #sendToChat},
+ * for an organiser who has connected their own). This is not a Telegram
+ * client: there is no polling loop and no webhook handling here, on purpose -
+ * an inbound call is {@code TelegramWebhookController}'s job, kept apart so
+ * this class stays the one place that can post as the bot.
  *
  * <p><b>Never throws.</b> Every caller is a notification listener running after
  * a transaction has already committed: the organiser application is saved, the
@@ -55,7 +57,8 @@ public class TelegramNotifier {
     }
 
     /**
-     * Send one message, in Telegram's HTML flavour.
+     * Send one message to the platform's own admin chat, in Telegram's HTML
+     * flavour.
      *
      * <p>Only {@code <b>}, {@code <i>}, {@code <code>}, {@code <a>} and a few
      * others are legal there, and an unbalanced tag makes the whole call fail
@@ -66,13 +69,32 @@ public class TelegramNotifier {
      */
     public boolean send(String html) {
         if (!properties.configured()) return false;
+        return sendToChat(properties.chatId(), html);
+    }
+
+    /**
+     * Send one message to an arbitrary chat - an organiser's own, once they
+     * have connected one, rather than the fixed admin chat {@link #send}
+     * always uses.
+     *
+     * <p>Gated on {@code botToken} alone, not the fuller {@link
+     * TelegramProperties#configured()}: sending here has nothing to do with
+     * whether an admin chat id is set, and a deployment that has only
+     * configured the organiser-facing connect flow should still be able to.
+     *
+     * @return true when Telegram accepted it, false on any failure at all -
+     *         including simply not being configured, same as {@link #send}.
+     */
+    public boolean sendToChat(String chatId, String html) {
+        if (properties.botToken() == null || properties.botToken().isBlank()) return false;
+        if (chatId == null || chatId.isBlank()) return false;
 
         try {
             client.post()
                     .uri("/bot{token}/sendMessage", properties.botToken())
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(Map.of(
-                            "chat_id", properties.chatId(),
+                            "chat_id", chatId,
                             "text", html,
                             "parse_mode", "HTML",
                             // The application link is for the admin console, which
