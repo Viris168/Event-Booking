@@ -115,11 +115,11 @@ public class AuthService {
      * <p>Every failure below raises the same {@link InvalidCredentialsException}
      * with the same message. A missing user and a wrong password must be
      * indistinguishable, or the endpoint becomes a way to enumerate which phone
-     * numbers hold accounts.
+     * numbers and addresses hold accounts.
      */
     @Transactional
     public TokenResponse login(LoginRequest request, String userAgent) {
-        AppUser user = appUserRepository.findByPhoneE164(request.phoneE164())
+        AppUser user = findByIdentifier(request.identifier())
                 .orElseThrow(InvalidCredentialsException::new);
 
         // A GOOGLE account has no password_hash. Rejecting it here rather than
@@ -506,6 +506,26 @@ public class AuthService {
                 jwtService.generateAccessToken(String.valueOf(user.getId()), user.getRole().name()),
                 refreshTokenService.issue(user, userAgent),
                 accessExpirationMs / 1000);
+    }
+
+    /**
+     * Resolves whatever was typed into the one field on the sign-in form.
+     *
+     * <p>An '@' is the test rather than a full address pattern. Both columns are
+     * unique and neither can hold the other's shape - a Cambodian number never
+     * contains an '@', and an address always does - so the character alone
+     * decides which column to search without having to agree with the stricter
+     * validation that guards writes.
+     *
+     * <p>Nothing is guessed at: an entry that looks like an address is looked up
+     * as one and nothing else, so a typo returns the same single
+     * INVALID_CREDENTIALS rather than quietly matching some other account.
+     */
+    private Optional<AppUser> findByIdentifier(String identifier) {
+        String trimmed = identifier.trim();
+        return trimmed.contains("@")
+                ? appUserRepository.findByEmail(trimmed)
+                : appUserRepository.findByPhoneE164(trimmed);
     }
 
     /**

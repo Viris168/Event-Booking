@@ -110,15 +110,18 @@ export default function LoginPage() {
       )}
 
       <form className="stack" onSubmit={submit} noValidate>
-        <Field label={t('phone')} hint="012 345 678">
+        <Field label={t('phoneOrEmail')} hint="012 345 678 · you@gmail.com">
           <span className="field-icon">
             <Icon name="user" size={16} />
+            {/* Not autoComplete="tel" with inputMode="tel" any more: either one
+                opens a numeric keypad on a phone, and an address cannot be typed
+                on it. "username" is what a password manager fills for the
+                account field whichever form the account uses. */}
             <input
               className="input"
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
-              autoComplete="tel"
-              inputMode="tel"
+              autoComplete="username"
             />
           </span>
         </Field>
