@@ -1,11 +1,25 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import Icon from "./Icon.jsx";
 import { useLocale } from "../context/LocaleContext.jsx";
-import { PROVINCES } from "../mock/store.js";
+import { getProvinces } from "../api/provinces.js";
 
 export default function Footer() {
   const { t, locale, setLocale } = useLocale();
   const km = locale === "km";
+  const [provinceCount, setProvinceCount] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    getProvinces()
+      .then((res) => {
+        if (active) setProvinceCount((res || []).length);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
 
   return (
     <footer className="footer">
@@ -29,10 +43,12 @@ export default function Footer() {
                   ? "កក់សំបុត្រព្រឹត្តិការណ៍ទូទាំងព្រះរាជាណាចក្រកម្ពុជា — កៅអីកក់ទុក ឬចូលទូទៅ ជាមួយសំបុត្រ QR។"
                   : "Ticketing for events across the Kingdom of Cambodia — reserved seats or general admission, with a QR ticket at the door."}
               </p>
-              <span className="footer-reach">
-                <Icon name="mapPin" size={13} />
-                {PROVINCES.length} {km ? "ខេត្ត/ក្រុង" : "provinces covered"}
-              </span>
+              {provinceCount != null && (
+                <span className="footer-reach">
+                  <Icon name="mapPin" size={13} />
+                  {provinceCount} {km ? "ខេត្ត/ក្រុង" : "provinces covered"}
+                </span>
+              )}
             </div>
           </div>
 
