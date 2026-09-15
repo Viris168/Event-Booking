@@ -78,15 +78,31 @@ class EmailCaseFoldingIT {
         return String.format("0120%05d", SEQ.incrementAndGet());
     }
 
-    private void register(String phone, String email) {
+    private Long register(String phone) {
         authService.register(
-                new RegisterRequest(phone, "a-long-enough-password", "Test User", email),
-                "junit");
+                new RegisterRequest(phone, "a-long-enough-password", "Test User"), "junit");
+        return appUserRepository.findByPhoneE164(phone).orElseThrow().getId();
+    }
+
+    /**
+     * Puts an address on an account the only way there is.
+     *
+     * <p>Registration takes no address any more, so every address in this table
+     * arrived from Google. Google normally hands back a lower-case one; the
+     * casing is varied here anyway, because the fold has to hold whatever the
+     * provider sends rather than whatever it usually sends.
+     */
+    private Long registerWithAddress(String phone, String subject, String email) {
+        Long id = register(phone);
+        when(googleTokenVerifier.verify(subject + "-token"))
+                .thenReturn(new GoogleTokenVerifier.GoogleIdentity(subject, email, "Test User"));
+        authService.linkGoogle(id, subject + "-token");
+        return id;
     }
 
     @Test
-    void registrationStoresTheAddressFolded() {
-        register(nextPhone(), "  Vannara.Test@Gmail.COM  ");
+    void linkingStoresTheAddressFolded() {
+        registerWithAddress(nextPhone(), "google-subject-fold", "  Vannara.Test@Gmail.COM  ");
 
         assertThat(appUserRepository.findByEmail("vannara.test@gmail.com"))
                 .get()
@@ -96,15 +112,18 @@ class EmailCaseFoldingIT {
 
     @Test
     void theDuplicateCheckNoLongerDependsOnCasing() {
-        register(nextPhone(), "Casing.Check@gmail.com");
+        registerWithAddress(nextPhone(), "google-subject-casing-a", "Casing.Check@gmail.com");
 
-        assertThatThrownBy(() -> register(nextPhone(), "CASING.CHECK@GMAIL.COM"))
+        // A second Google identity on the same mailbox, differently cased. The
+        // address is what identifies the person, so it must not land twice.
+        assertThatThrownBy(() -> registerWithAddress(
+                nextPhone(), "google-subject-casing-b", "CASING.CHECK@GMAIL.COM"))
                 .isInstanceOf(EmailAlreadyRegisteredException.class);
     }
 
     @Test
     void googleSignInWillNotMintASecondAccountForADifferentlyCasedAddress() {
-        register(nextPhone(), "Hijack.Target@gmail.com");
+        registerWithAddress(nextPhone(), "google-subject-hijack", "Hijack.Target@gmail.com");
         long before = appUserRepository.count();
 
         // Same person, same mailbox, the casing Google actually returns.
@@ -122,7 +141,7 @@ class EmailCaseFoldingIT {
 
     @Test
     void theIndexRefusesACaseVariantEvenWithTheServiceCheckBypassed() {
-        register(nextPhone(), "Index.Guard@gmail.com");
+        registerWithAddress(nextPhone(), "google-subject-index", "Index.Guard@gmail.com");
 
         // Straight to the table, as a second concurrent registration would
         // arrive after both had passed the application check.
@@ -134,10 +153,11 @@ class EmailCaseFoldingIT {
 
     @Test
     void anAccountWithNoAddressIsStillAllowed() {
-        // The index is partial; null email is the common case on this table and
-        // must stay unconstrained however many rows carry it.
-        register(nextPhone(), null);
-        register(nextPhone(), null);
+        // The index is partial, and a null email is now the state every account
+        // starts in - it stays null until Google supplies one - so the column
+        // must hold any number of them.
+        register(nextPhone());
+        register(nextPhone());
 
         assertThat(appUserRepository.count()).isPositive();
     }

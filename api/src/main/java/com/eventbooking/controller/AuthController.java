@@ -80,7 +80,7 @@ public class AuthController {
         String address = http.getRemoteAddr();
 
         // Folded and trimmed, because the limiter counts per key: "Foo@x.com"
-        // and "foo@x.com" are one account since V28, and leaving them as two
+        // and "foo@x.com" are one account since V31, and leaving them as two
         // keys would give an attacker a fresh budget for every casing of the
         // same address.
         String key = request.identifier().trim().toLowerCase(Locale.ROOT);

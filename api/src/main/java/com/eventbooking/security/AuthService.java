@@ -84,22 +84,14 @@ public class AuthService {
      */
     @Transactional
     public TokenResponse register(RegisterRequest request, String userAgent) {
-        String email = normaliseEmail(request.email());
-        // Blank to null: the columns are UNIQUE, and "" is a value to Postgres,
-        // so a second account registering with only the other identifier would
-        // collide with the first on an empty string.
-        String phone = blankToNull(request.phoneE164());
-
-        if (phone != null && appUserRepository.existsByPhoneE164(phone)) {
+        if (appUserRepository.existsByPhoneE164(request.phoneE164())) {
             throw new PhoneAlreadyRegisteredException();
         }
-        if (email != null && appUserRepository.existsByEmail(email)) {
-            throw new EmailAlreadyRegisteredException();
-        }
 
+        // No email. An account gets its address from Google when it links, which
+        // is the only source here that has verified one - see RegisterRequest.
         AppUser user = appUserRepository.save(AppUser.builder()
-                .phoneE164(phone)
-                .email(email)
+                .phoneE164(request.phoneE164())
                 // The raw password is hashed here and never stored, logged, or
                 // returned. This is the only place it is touched.
                 .passwordHash(passwordEncoder.encode(request.password()))
@@ -418,6 +410,34 @@ public class AuthService {
         });
 
         user.setProviderSubject(identity.subject());
+
+        /*
+         * Google's address replaces whatever is on the account.
+         *
+         * <p>The stored one was typed into a form and never confirmed, so a
+         * person who registered as vannara@gmial.com has an address that
+         * reaches nobody and no way to discover it. Google has verified the one
+         * it hands over - GoogleTokenVerifier refuses a token whose email is
+         * not verified - so taking it is trading an unchecked value for a
+         * checked one, and it repairs the typo without asking anyone to notice
+         * it first.
+         *
+         * <p>Refused rather than overwritten if the address already sits on
+         * another row: uq_app_user_email_lower would reject the write anyway,
+         * and a constraint violation surfacing as a 500 tells the person
+         * nothing. Two accounts reaching one mailbox is also the split this
+         * whole fold exists to prevent.
+         */
+        String googleEmail = normaliseEmail(identity.email());
+        if (googleEmail != null && !googleEmail.equals(user.getEmail())) {
+            appUserRepository.findByEmail(googleEmail)
+                    .filter(other -> !other.getId().equals(user.getId()))
+                    .ifPresent(other -> {
+                        throw new EmailAlreadyRegisteredException();
+                    });
+            user.setEmail(googleEmail);
+        }
+
         appUserRepository.save(user);
         log.info("User {} linked a Google identity", user.getId());
 
@@ -539,7 +559,7 @@ public class AuthService {
     /**
      * Folds an address to the single form the table is indexed on.
      *
-     * <p>V28 made {@code uq_app_user_email_lower} unique on {@code lower(email)}
+     * <p>V31 made {@code uq_app_user_email_lower} unique on {@code lower(email)}
      * and every check in this class asks its question the same way, so an
      * address kept in the casing someone happened to type would be written in
      * one form and searched for in another. Before that fold existed,

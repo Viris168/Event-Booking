@@ -395,7 +395,7 @@ public class AdminUserService {
     }
 
     /**
-     * Folds an address the way AuthService does, for the same reason: since V28
+     * Folds an address the way AuthService does, for the same reason: since V31
      * the unique index is on {@code lower(email)}, so an admin typing an address
      * in a different casing from the one already stored would otherwise write a
      * value this table then fails to match.

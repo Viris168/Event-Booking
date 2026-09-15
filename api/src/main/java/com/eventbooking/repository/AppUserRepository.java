@@ -39,7 +39,7 @@ public interface AppUserRepository extends JpaRepository<AppUser, Long> {
      * Email is optional on {@code app_user}, so this is for account recovery and
      * duplicate checks - never as the primary login path.
      *
-     * <p>Folded on both sides, because V28 made the uniqueness of an address
+     * <p>Folded on both sides, because V31 made the uniqueness of an address
      * case-insensitive and a lookup that still compared byte for byte would
      * report "no such account" for a row the index considers taken.
      */
@@ -57,7 +57,7 @@ public interface AppUserRepository extends JpaRepository<AppUser, Long> {
      * The duplicate-address check, folded to match {@code uq_app_user_email_lower}.
      *
      * <p>Derived {@code IgnoreCase} would have done the folding too, but Spring
-     * Data writes it as {@code upper(email) = upper(?)} and V28's index is built
+     * Data writes it as {@code upper(email) = upper(?)} and V31's index is built
      * on {@code lower(email)} - close enough to look right, different enough that
      * the planner could not use the index and every registration would scan the
      * table. Spelling the query out keeps the two in step.

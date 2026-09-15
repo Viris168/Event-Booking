@@ -32,12 +32,12 @@ export default function RegisterPage() {
   const [form, setForm] = useState({
     display_name: '',
     phone_e164: '',
-    email: '',
     password: '',
   })
   const [errors, setErrors] = useState({})
   const [serverError, setServerError] = useState(null)
   const [busy, setBusy] = useState(false)
+
 
   function set(key, value) {
     setForm((f) => ({ ...f, [key]: value }))
@@ -47,22 +47,9 @@ export default function RegisterPage() {
     const next = {}
     if (!form.display_name.trim())
       next.display_name = locale === 'km' ? 'ត្រូវការឈ្មោះ' : 'Display name is required'
-    const phone = form.phone_e164.trim()
-    const email = form.email.trim()
-
-    // Each is checked for shape only when it was filled in, and the pair is
-    // checked for presence. Neither is required alone: an account is signed in
-    // by whichever one it has, and the other is added before checkout.
-    if (phone && !toLocalPhone(phone))
+    if (!toLocalPhone(form.phone_e164))
       next.phone_e164 =
         locale === 'km' ? 'ឧទាហរណ៍៖ 012 345 678' : 'For example 012 345 678'
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
-      next.email = locale === 'km' ? 'អ៊ីមែលមិនត្រឹមត្រូវ' : 'Enter a valid email'
-    if (!phone && !email)
-      next.phone_e164 =
-        locale === 'km'
-          ? 'ត្រូវការលេខទូរស័ព្ទ ឬអ៊ីមែល'
-          : 'Enter a phone number or an email address'
     if (form.password.length < 8) next.password = t('passwordHint')
     setErrors(next)
     return Object.keys(next).length === 0
@@ -80,16 +67,11 @@ export default function RegisterPage() {
       return
     }
     setBusy(true)
-    // `email: null` rather than '' - the API treats a blank string as a value
-    // and would try to enforce UNIQUE on it, so two accounts without an email
-    // would collide with each other.
     const result = await register({
       display_name: form.display_name.trim(),
-      // Null rather than '' for the same reason as email below. validate() has
-      // already proved a filled-in number converts; toLocalPhone is what the
+      // validate() has already proved this converts; toLocalPhone is what the
       // API's CHECK constraint accepts, not the 012... the user typed.
-      phone_e164: toLocalPhone(form.phone_e164) || null,
-      email: form.email.trim() || null,
+      phone_e164: toLocalPhone(form.phone_e164),
       password: form.password,
     })
     setBusy(false)
@@ -145,13 +127,8 @@ export default function RegisterPage() {
 
         <Field
           label={t('phone')}
-          optional
           error={errors.phone_e164}
-          hint={
-            locale === 'km'
-              ? 'ឧ. 012 345 678 — បំពេញលេខនេះ ឬអ៊ីមែល'
-              : 'e.g. 012 345 678 — fill in this or an email'
-          }
+          hint={locale === 'km' ? 'ឧ. 012 345 678' : 'e.g. 012 345 678'}
         >
           <span className="field-icon">
             <Icon name="phone" size={16} />
@@ -166,19 +143,6 @@ export default function RegisterPage() {
           </span>
         </Field>
 
-        <Field label={t('email')} optional error={errors.email}>
-          <span className="field-icon">
-            <Icon name="mail" size={16} />
-            <input
-              className="input"
-              type="email"
-              value={form.email}
-              onChange={(e) => set('email', e.target.value)}
-              aria-invalid={!!errors.email}
-              autoComplete="email"
-            />
-          </span>
-        </Field>
 
         <Field label={t('password')} error={errors.password} hint={t('passwordHint')}>
           <PasswordField

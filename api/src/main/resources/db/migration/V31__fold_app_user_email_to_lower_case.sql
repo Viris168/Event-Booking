@@ -1,5 +1,5 @@
 -- ============================================================
--- V28 - app_user.email is matched case-insensitively
+-- V31 - app_user.email is matched case-insensitively
 --
 -- V1 gave email a plain UNIQUE, and Postgres compares text byte for byte.
 -- Nothing between the request and the insert ever folded the case, so

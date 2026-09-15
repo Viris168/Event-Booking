@@ -2,6 +2,7 @@ package com.eventbooking.security;
 
 import com.eventbooking.dto.auth.LoginRequest;
 import com.eventbooking.dto.auth.RegisterRequest;
+import com.eventbooking.exception.security.EmailAlreadyRegisteredException;
 import com.eventbooking.exception.security.InvalidCredentialsException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -56,6 +57,7 @@ class LoginIdentifierIT {
     private static final AtomicInteger SEQ = new AtomicInteger();
 
     @Autowired AuthService authService;
+    @Autowired com.eventbooking.repository.AppUserRepository appUserRepository;
 
     @MockitoBean GoogleTokenVerifier googleTokenVerifier;
 
@@ -63,9 +65,18 @@ class LoginIdentifierIT {
         return String.format("0121%05d", SEQ.incrementAndGet());
     }
 
-    private void register(String phone, String email) {
-        authService.register(
-                new RegisterRequest(phone, PASSWORD, "Test User", email), "junit");
+    private Long register(String phone) {
+        authService.register(new RegisterRequest(phone, PASSWORD, "Test User"), "junit");
+        return appUserRepository.findByPhoneE164(phone).orElseThrow().getId();
+    }
+
+    /** Puts a verified address on an account the only way there is: from Google. */
+    private Long registerAndLink(String phone, String subject, String email) {
+        Long id = register(phone);
+        when(googleTokenVerifier.verify(subject + "-token"))
+                .thenReturn(new GoogleTokenVerifier.GoogleIdentity(subject, email, "Test User"));
+        authService.linkGoogle(id, subject + "-token");
+        return id;
     }
 
     private void login(String identifier) {
@@ -75,7 +86,7 @@ class LoginIdentifierIT {
     @Test
     void thePhoneStillSignsIn() {
         String phone = nextPhone();
-        register(phone, "phone.path@gmail.com");
+        register(phone);
 
         assertThat(authService.login(new LoginRequest(phone, PASSWORD), "junit"))
                 .isNotNull();
@@ -83,7 +94,7 @@ class LoginIdentifierIT {
 
     @Test
     void theAddressSignsInToo() {
-        register(nextPhone(), "address.path@gmail.com");
+        registerAndLink(nextPhone(), "google-subject-address-path", "address.path@gmail.com");
 
         assertThat(authService.login(
                 new LoginRequest("address.path@gmail.com", PASSWORD), "junit"))
@@ -92,7 +103,7 @@ class LoginIdentifierIT {
 
     @Test
     void theAddressIsMatchedWhateverCaseItIsTypedIn() {
-        register(nextPhone(), "Mixed.Case@Gmail.com");
+        registerAndLink(nextPhone(), "google-subject-mixed", "Mixed.Case@Gmail.com");
 
         // Folded on both sides, so the casing someone happens to use at the
         // keyboard never decides whether they can get in.
@@ -103,7 +114,7 @@ class LoginIdentifierIT {
 
     @Test
     void anUnknownAddressIsTheSameRefusalAsAWrongPassword() {
-        register(nextPhone(), "known@gmail.com");
+        registerAndLink(nextPhone(), "google-subject-known", "known@gmail.com");
 
         // Both arms raise the one exception. A caller who could tell "no such
         // account" from "wrong password" could ask this endpoint which
@@ -128,39 +139,57 @@ class LoginIdentifierIT {
                 .isInstanceOf(InvalidCredentialsException.class);
     }
 
-    @Test
-    void anAccountRegisteredWithOnlyAnAddressCanSignIn() {
-        // No phone at all. The account is not complete - it cannot book until a
-        // number and a Google link are added - but it must still be reachable by
-        // the one identifier it was created with.
-        authService.register(
-                new RegisterRequest(null, PASSWORD, "Address Only", "address.only@gmail.com"),
-                "junit");
 
-        assertThat(authService.login(
-                new LoginRequest("address.only@gmail.com", PASSWORD), "junit"))
-                .isNotNull();
-    }
 
     @Test
-    void twoAccountsWithNoPhoneDoNotCollide() {
-        // phone_e164 is UNIQUE, so both rows must store null rather than "".
-        // Postgres treats nulls as distinct and empty strings as equal, and the
-        // second registration would be refused if a blank ever reached the column.
-        authService.register(
-                new RegisterRequest("", PASSWORD, "First", "first.nophone@gmail.com"), "junit");
-        authService.register(
-                new RegisterRequest("", PASSWORD, "Second", "second.nophone@gmail.com"), "junit");
+    void anAccountWithBothCredentialsIsReachedByEitherOne() {
+        // A password account that later links Google. Both doors have to open
+        // onto the same row: if Google minted a second account the person would
+        // own two, with their bookings split between them.
+        Long id = registerAndLink(
+                nextPhone(), "google-subject-both-ways", "both.ways@gmail.com");
 
+        // Door 1: the address and the password still work. Linking Google does
+        // not retire the password, and the row's provider column is not consulted.
         assertThat(authService.login(
-                new LoginRequest("second.nophone@gmail.com", PASSWORD), "junit"))
+                new LoginRequest("both.ways@gmail.com", PASSWORD), "junit"))
                 .isNotNull();
+
+        // Door 2: Google resolves by provider_subject, and lands on the same row.
+        authService.loginWithGoogle("google-subject-both-ways-token", "junit");
+        assertThat(appUserRepository.findByEmail("both.ways@gmail.com").orElseThrow().getId())
+                .as("one account, not two")
+                .isEqualTo(id);
     }
+
+
+    @Test
+    void linkingIsRefusedWhenGooglesAddressBelongsToAnotherAccount() {
+        registerAndLink(nextPhone(), "google-subject-incumbent", "incumbent@gmail.com");
+
+        // The challenger has no address yet - it has not linked anything.
+        Long challenger = register(nextPhone());
+
+        // Google says this person owns the address already sitting on another
+        // row. Adopting it would put one mailbox on two accounts, which is the
+        // split the folded index exists to prevent.
+        when(googleTokenVerifier.verify("contested-token"))
+                .thenReturn(new GoogleTokenVerifier.GoogleIdentity(
+                        "google-subject-contested", "incumbent@gmail.com", "Challenger"));
+
+        assertThatThrownBy(() -> authService.linkGoogle(challenger, "contested-token"))
+                .isInstanceOf(EmailAlreadyRegisteredException.class);
+
+        assertThat(appUserRepository.findById(challenger).orElseThrow().getEmail())
+                .as("left as it was, not half-written")
+                .isNull();
+    }
+
 
     @Test
     void anEntryWithAnAtSignIsNeverTriedAsAPhoneNumber() {
         String phone = nextPhone();
-        register(phone, "at.sign@gmail.com");
+        register(phone);
 
         // The '@' sends it down the address branch and it stays there, so a
         // mistyped address cannot fall through and match some phone number.
