@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import ActionMenu from '../../components/ActionMenu.jsx'
 import ConfirmDialog from '../../components/ConfirmDialog.jsx'
 import Icon from '../../components/Icon.jsx'
+import TelegramConnectCard from '../../components/TelegramConnectCard.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
 import { Badge, Empty, Progress, ResponsiveTable } from '../../components/ui.jsx'
 import { OrganizerDashboardSkeleton } from '../../components/Skeleton.jsx'
@@ -211,6 +212,12 @@ export default function OrganizerDashboardPage() {
       )}
 
       {loading && !error && <OrganizerDashboardSkeleton />}
+
+      {!loading && !error && (
+        <div className="mb-4">
+          <TelegramConnectCard />
+        </div>
+      )}
 
       <div className={`grid gap-4 lg:grid-cols-3 items-start ${loading || error ? 'hidden' : ''}`}>
         {/* ------------------------------------------------ left, two columns */}

@@ -7,6 +7,7 @@ import com.eventbooking.model.OrganizerApplication;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Locale;
 
 import static com.eventbooking.service.notification.telegram.TelegramNotifier.escape;
@@ -50,6 +51,31 @@ public final class TelegramMessages {
     private static void line(StringBuilder sb, String label, String value) {
         if (value == null || value.isBlank()) return;
         sb.append(label).append(": ").append(escape(value)).append('\n');
+    }
+
+    private static final String DIVIDER = "▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬";
+
+    /**
+     * A ten-block bar for a sold percentage - the one thing in these
+     * messages that reads at a glance, before a single number has actually
+     * been read, which text alone cannot do.
+     */
+    private static String bar(int pct) {
+        int filled = Math.max(0, Math.min(10, Math.round(pct / 10f)));
+        return "█".repeat(filled) + "░".repeat(10 - filled);
+    }
+
+    /** One glyph standing in for a booking state, so a list of five does not read as five identical words. */
+    private static String stateEmoji(String state) {
+        return switch (state) {
+            case "CONFIRMED" -> "✅";
+            case "PENDING_PAYMENT", "AWAITING_CONFIRMATION" -> "⏳";
+            case "PAYMENT_FAILED" -> "⚠️";
+            case "CANCELLED", "EXPIRED" -> "❌";
+            case "REFUND_REQUESTED" -> "🔄";
+            case "REFUNDED" -> "💸";
+            default -> "•";
+        };
     }
 
     /**
@@ -118,6 +144,128 @@ public final class TelegramMessages {
           .append(" — decide it in the <b>Review queue</b>.");
         return sb.toString();
     }
+
+    /**
+     * An event the recipient owns was just approved.
+     *
+     * <p>English only, like every other message in this file - see the note
+     * on {@link #organizerApplication}. Unlike those two, though, there is no
+     * stored signal to branch on even if a caller wanted to: {@code locale}
+     * lives only in the browser's own {@code LocaleContext}, never written to
+     * {@code app_user}, so "which language does this organiser read" is not a
+     * question the backend can answer.
+     */
+    public static String eventApproved(Event event) {
+        String title = escape(event.getTitleEn());
+        return "🎉 <b>Your event was approved!</b>\n" + DIVIDER
+                + "\n🎫 <b>" + title + "</b>\n\n🚀 It's live on the site — tickets can sell from here.";
+    }
+
+    /**
+     * A booking on the recipient's event just confirmed - the moment their
+     * in-app "tickets sold" notification already fires, mirrored to Telegram.
+     *
+     * <p>The event's running totals ({@code stat}) sit above this one sale's
+     * own detail ({@code sale}) - same header shape {@link #eventStatsMessage}
+     * uses, so "where do sales stand now" and "what just happened" both read
+     * in one message instead of needing a separate {@code /stats} to answer
+     * the first question.
+     */
+    public static String ticketSold(EventStat stat, TransactionLine sale) {
+        long avg = stat.sold() > 0 ? stat.revenueUsdCents() / stat.sold() : 0;
+        int pct = stat.capacity() > 0 ? (int) Math.round(100.0 * stat.sold() / stat.capacity()) : 0;
+
+        StringBuilder sb = new StringBuilder("🎫 <b>").append(escape(stat.titleEn())).append("</b>\n")
+                .append(DIVIDER).append('\n');
+        sb.append(bar(pct)).append("  ").append(pct).append("%\n");
+        sb.append("🎟 Sold: <b>").append(stat.sold()).append('/').append(stat.capacity()).append("</b>\n");
+        sb.append("💰 Revenue: <b>").append(usd(stat.revenueUsdCents())).append("</b>")
+          .append("  ·  avg ").append(usd(avg)).append("/ticket\n");
+        sb.append(DIVIDER).append('\n');
+
+        sb.append("🎉 <b>New ticket sold!</b>\n\n");
+        sb.append("<code>").append(escape(sale.bookingRef())).append("</code>\n");
+        if (sale.buyerName() != null && !sale.buyerName().isBlank()) {
+            sb.append("👤 ").append(escape(sale.buyerName())).append('\n');
+        }
+        if (sale.buyerPhone() != null && !sale.buyerPhone().isBlank()) {
+            sb.append("📞 ").append(escape(sale.buyerPhone())).append('\n');
+        }
+        sb.append("💳 ").append(escape(sale.provider() == null ? "—" : sale.provider()))
+          .append("  ").append(stateEmoji(sale.state())).append(' ').append(escape(sale.state()))
+          .append("  ·  ").append(usd(sale.amountUsdCents())).append('\n');
+        sb.append("🕒 ").append(at(sale.createdAt()));
+        return sb.toString();
+    }
+
+    /** No events at all - distinct from {@link #noSalesYet}, which has events but no sales. */
+    public static String noEvents() {
+        return "You don't have any events yet.";
+    }
+
+    /** Every event exists but none has sold anything - distinct from {@link #noEvents}. */
+    public static String noSalesYet() {
+        return "No tickets sold yet on any of your events.";
+    }
+
+    /**
+     * One event's own reply to {@code /stats} - sent as its own Telegram
+     * message rather than folded into one combined summary, so an organiser
+     * with several events reads each on its own rather than scrolling a
+     * wall of text to find the one they actually asked about.
+     *
+     * @param transactions the most recent few - see {@code shownCount} - not
+     *                      every booking this event has ever had. Telegram
+     *                      has no pagination UI, so a long list is a wall of
+     *                      text no differently than combining every event
+     *                      would have been; {@code totalCount} says how many
+     *                      more there are rather than silently truncating.
+     */
+    public static String eventStatsMessage(EventStat stat, List<TransactionLine> transactions, int totalCount) {
+        String title = escape(stat.titleEn());
+        long avg = stat.sold() > 0 ? stat.revenueUsdCents() / stat.sold() : 0;
+        int pct = stat.capacity() > 0 ? (int) Math.round(100.0 * stat.sold() / stat.capacity()) : 0;
+
+        StringBuilder sb = new StringBuilder("📊 <b>").append(title).append("</b>\n").append(DIVIDER).append('\n');
+        sb.append(bar(pct)).append("  ").append(pct).append("%\n");
+        sb.append("🎟 Sold: <b>").append(stat.sold()).append('/').append(stat.capacity()).append("</b>\n");
+        sb.append("💰 Revenue: <b>").append(usd(stat.revenueUsdCents())).append("</b>")
+          .append("  ·  avg ").append(usd(avg)).append("/ticket\n");
+
+        if (transactions.isEmpty()) {
+            sb.append(DIVIDER).append("\nNo transactions yet.");
+            return sb.toString();
+        }
+
+        sb.append(DIVIDER).append("\n<b>🧾 Recent transactions</b>\n");
+        int i = 0;
+        for (TransactionLine t : transactions) {
+            i++;
+            sb.append("\n<b>").append(i).append(".</b> <code>").append(escape(t.bookingRef())).append("</code>\n");
+            if (t.buyerName() != null && !t.buyerName().isBlank()) {
+                sb.append("   👤 ").append(escape(t.buyerName())).append('\n');
+            }
+            if (t.buyerPhone() != null && !t.buyerPhone().isBlank()) {
+                sb.append("   📞 ").append(escape(t.buyerPhone())).append('\n');
+            }
+            sb.append("   💳 ").append(escape(t.provider() == null ? "—" : t.provider()))
+              .append("  ").append(stateEmoji(t.state())).append(' ').append(escape(t.state()))
+              .append("  ·  ").append(usd(t.amountUsdCents())).append('\n');
+            sb.append("   🕒 ").append(at(t.createdAt())).append('\n');
+        }
+        if (totalCount > transactions.size()) {
+            sb.append("\n<i>…and ").append(totalCount - transactions.size()).append(" more.</i>");
+        }
+        return sb.toString();
+    }
+
+    /** One organiser's event, as far as {@link #eventStatsMessage} needs to know it. */
+    public record EventStat(String titleEn, int sold, int capacity, long revenueUsdCents) {}
+
+    /** One booking row, as far as {@link #eventStatsMessage} needs to know it. */
+    public record TransactionLine(
+            String bookingRef, String buyerName, String buyerPhone,
+            String provider, String state, long amountUsdCents, Instant createdAt) {}
 
     /**
      * Capacity and the price range, across both halves of the inventory split.

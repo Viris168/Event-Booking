@@ -156,6 +156,14 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     List<Object[]> sumRevenueByEvent(@Param("states") Collection<BookingStatus> states);
 
     /**
+     * Same as {@link #sumRevenueByEvent}, for one event - the ticket-sold
+     * Telegram message wants this one event's running total right after a
+     * sale, not a map over every event the organiser owns.
+     */
+    @Query("select coalesce(sum(b.totalUsdCents), 0) from Booking b where b.event.id = :eventId and b.state in :states")
+    long sumRevenueForEvent(@Param("eventId") Long eventId, @Param("states") Collection<BookingStatus> states);
+
+    /**
      * Does anyone hold a booking on this event, in any state at all?
      *
      * <p>The delete guard, and deliberately unfiltered by state: an EXPIRED or

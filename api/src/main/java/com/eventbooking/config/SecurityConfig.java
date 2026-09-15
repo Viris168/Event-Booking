@@ -130,6 +130,12 @@ public class SecurityConfig {
                     // surfaces as an opaque CORS error rather than a 401.
                     auth.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll();
 
+                    // Telegram's servers, not a browser holding one of ours - there
+                    // is no JWT this call could carry. TelegramWebhookController
+                    // checks the X-Telegram-Bot-Api-Secret-Token header itself,
+                    // which is what actually stands in for auth on this one path.
+                    auth.requestMatchers(HttpMethod.POST, "/api/v1/telegram/webhook").permitAll();
+
                     auth.requestMatchers(HttpMethod.GET, PUBLIC_GETS).permitAll();
 
                     // The ABA PayWay return page. The gateway redirects the

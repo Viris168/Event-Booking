@@ -1,9 +1,12 @@
 import Icon from './Icon.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
-import { zoneRemaining } from '../mock/store.js'
 import { Money } from './ui.jsx'
 
 const MAX_PER_ORDER = 10
+
+function zoneRemaining(zone) {
+  return Math.max(0, zone.capacity - zone.held_qty - zone.sold_qty)
+}
 
 /**
  * General-admission picker. Remaining capacity is deliberately vague once it
