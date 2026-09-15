@@ -41,6 +41,22 @@ public class EventAlreadyFinishedException extends ApiException {
                         + "so there is nothing to take down.");
     }
 
+    /**
+     * PATCH: the event is over, so there is nothing an edit can still affect.
+     *
+     * <p>Applies to the admin as much as to the owner, unlike the
+     * {@code isEditable} status gate. That one protects review - approve
+     * version A, publish version B - and an admin moderating is the party it
+     * protects, so they edit past it. This one is not about review at all: the
+     * show happened, the attendees came, and rewriting its date or its venue
+     * now only makes the record disagree with what took place.
+     */
+    public static EventAlreadyFinishedException cannotEdit(Long eventId) {
+        return new EventAlreadyFinishedException(
+                "Event " + eventId + " has already taken place, so it can no longer be edited. "
+                        + "Its page stays as it was for everyone holding a ticket to it.");
+    }
+
     private EventAlreadyFinishedException(String message) {
         super(ErrorCode.EVENT_ALREADY_FINISHED, message);
     }

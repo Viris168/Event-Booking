@@ -244,6 +244,18 @@ public class EventServiceimpl implements EventService {
     private void applyUpdate(Event event, UpdateEventRequest request, Long organizerIdForVenueCheck) {
         Long eventId = event.getId();
 
+        /*
+         * The show is over, so there is nothing left for an edit to affect -
+         * and every field on this PATCH would now contradict what actually
+         * happened. Sits here rather than in either caller because it holds
+         * against both of them, which the isEditable gate above deliberately
+         * does not: that one protects review from the organiser and has
+         * nothing to say to the admin doing the reviewing.
+         */
+        if (event.getStartsAt() != null && event.getStartsAt().isBefore(Instant.now())) {
+            throw EventAlreadyFinishedException.cannotEdit(eventId);
+        }
+
         if (request.inventoryMode() != null
                 && request.inventoryMode() != event.getInventoryMode()
                 && (seatClassRepository.existsByEventId(eventId)

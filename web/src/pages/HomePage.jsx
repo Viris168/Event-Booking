@@ -33,6 +33,39 @@ const ROTATE_MS = 5000
 /** Cards in the rail. More than this and the dots stop being scannable. */
 const RAIL_SIZE = 5
 
+/** Tickets sold, across both field spellings the API and the mapper produce. */
+function soldCount(e) {
+  return e.totalSold ?? e.total_sold ?? 0
+}
+
+function startMs(e) {
+  const v = e.startsAt ?? e.starts_at
+  return v ? new Date(v).getTime() : Infinity
+}
+
+/**
+ * Is this event taking money right now?
+ *
+ * <p>The rail is a buy-now surface, and ranking by tickets sold quietly works
+ * against that: an event whose sales window has already closed has had the whole
+ * window to accumulate sales, so it outranks everything still open almost by
+ * construction. The old date ordering hid that — the closed event had to also be
+ * the next one up to reach the front. Ranking by sales puts it there by default,
+ * which is how the home page ended up led by a card reading "sales closed".
+ *
+ * <p>Past events need no check here: the public catalogue already lists from
+ * today onward, so they never reach this page.
+ */
+function isOnSale(e) {
+  const now = Date.now()
+  const at = (v) => (v ? new Date(v).getTime() : null)
+  const opens = at(e.salesOpenAt ?? e.sales_open_at)
+  const closes = at(e.salesCloseAt ?? e.sales_close_at)
+  if (opens && opens > now) return false
+  if (closes && closes < now) return false
+  return true
+}
+
 function getMinPriceCents(event) {
   let min = Infinity
   const classes = event.seatClasses ?? event.seat_classes ?? []
@@ -91,7 +124,7 @@ function RailCard({ event }) {
 }
 
 /**
- * The upcoming events, one card at a time, advancing on its own.
+ * The best-selling events, one card at a time, advancing on its own.
  *
  * Auto-advancing content has to be stoppable (WCAG 2.2.2), so the timer pauses
  * while the pointer is over the rail and while focus is inside it — otherwise
@@ -130,11 +163,11 @@ function HeroRail({ events }) {
       onFocusCapture={hold}
       onBlurCapture={release}
       aria-roledescription="carousel"
-      aria-label={locale === 'km' ? 'ព្រឹត្តិការណ៍ជិតមកដល់' : 'Upcoming events'}
+      aria-label={locale === 'km' ? 'ព្រឹត្តិការណ៍លក់ដាច់បំផុត' : 'Top selling events'}
     >
       <div className="hero-rail-head">
         <span className="tiny">
-          <Icon name="clock" size={13} /> {locale === 'km' ? 'ជិតមកដល់' : 'Next up'}
+          <Icon name="trending" size={13} /> {locale === 'km' ? 'លក់ដាច់បំផុត' : 'Top selling'}
         </span>
       </div>
 
@@ -191,7 +224,24 @@ export default function HomePage() {
       .finally(() => setLoading(false))
   }, [])
 
-  const rail = published.slice(0, RAIL_SIZE)
+  /*
+   * Best sellers first.
+   *
+   * Sorted here rather than by the server because there is nothing to sort on:
+   * EventSort offers soonest and the two price directions only, and totalSold is
+   * derived in EventMapper from the zone and seat-class rows rather than stored
+   * on the event, so there is no column to order by. This therefore ranks the
+   * page already fetched (12 events), not the whole catalogue — the same honest
+   * ceiling the hero's `ticketsSold` counter settles for just below, and for the
+   * same reason.
+   *
+   * filter() copies, so the sort below never mutates `published` — `featured`
+   * and `upcoming` still read it in the API's own date order.
+   */
+  const rail = published
+    .filter(isOnSale)
+    .sort((a, b) => soldCount(b) - soldCount(a) || startMs(a) - startMs(b))
+    .slice(0, RAIL_SIZE)
   const featured = published.slice(0, 4)
   const upcoming = published.slice(4, 12)
 

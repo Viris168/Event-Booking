@@ -1,11 +1,14 @@
 package com.eventbooking.service.event;
 
 import com.eventbooking.Enumeration.HoldStatus;
+import com.eventbooking.Enumeration.SeatStatus;
 import com.eventbooking.exception.catalog.EventNotDeletableException;
 import com.eventbooking.exception.catalog.EventNotFoundException;
 import com.eventbooking.model.Event;
 import com.eventbooking.repository.BookingRepository;
 import com.eventbooking.repository.EventRepository;
+import com.eventbooking.repository.EventSeatRepository;
+import com.eventbooking.repository.EventZoneRepository;
 import com.eventbooking.repository.HoldRepository;
 import com.eventbooking.repository.ScanLogRepository;
 import com.eventbooking.security.OrganizerResolver;
@@ -43,6 +46,8 @@ public class EventDeletionService {
     private final BookingRepository bookingRepository;
     private final HoldRepository holdRepository;
     private final ScanLogRepository scanLogRepository;
+    private final EventZoneRepository eventZoneRepository;
+    private final EventSeatRepository eventSeatRepository;
     private final CloudinaryService cloudinaryService;
     private final OrganizerResolver organizerResolver;
 
@@ -50,12 +55,16 @@ public class EventDeletionService {
                                      BookingRepository bookingRepository,
                                      HoldRepository holdRepository,
                                      ScanLogRepository scanLogRepository,
+                                     EventZoneRepository eventZoneRepository,
+                                     EventSeatRepository eventSeatRepository,
                                      CloudinaryService cloudinaryService,
                                      OrganizerResolver organizerResolver) {
         this.eventRepository = eventRepository;
         this.bookingRepository = bookingRepository;
         this.holdRepository = holdRepository;
         this.scanLogRepository = scanLogRepository;
+        this.eventZoneRepository = eventZoneRepository;
+        this.eventSeatRepository = eventSeatRepository;
         this.cloudinaryService = cloudinaryService;
         this.organizerResolver = organizerResolver;
     }
@@ -105,8 +114,18 @@ public class EventDeletionService {
 
         long bookings = bookingRepository.countByEvent_Id(eventId);
         long activeHolds = holdRepository.countByEvent_IdAndStatus(eventId, HoldStatus.ACTIVE);
-        if (bookings > 0 || activeHolds > 0) {
-            throw new EventNotDeletableException(eventId, bookings, activeHolds);
+
+        /*
+         * Asked of the inventory as well as of the booking table, because the
+         * two can disagree and only one of them is checked by the cascade.
+         * A zone carrying sold_qty with no booking rows behind it deletes
+         * cleanly - no foreign key stops it - and takes the only record that
+         * those places were sold with it. Whatever produced that state, the
+         * row saying somebody has a ticket is the one to believe.
+         */
+        long sold = soldCount(eventId);
+        if (bookings > 0 || sold > 0 || activeHolds > 0) {
+            throw new EventNotDeletableException(eventId, bookings, activeHolds, sold);
         }
 
         /*
@@ -145,6 +164,21 @@ public class EventDeletionService {
         log.info("{} deleted event {} (\"{}\"), clearing {} scan log row(s) and {} finished hold(s)",
                 adminUserId == null ? "Its organizer" : "Admin " + adminUserId,
                 eventId, event.getTitleEn(), scans, holds);
+    }
+
+    /**
+     * Places sold at this event, across both halves of the inventory split.
+     *
+     * <p>Mirrors the helper of the same name in EventServiceimpl, which guards
+     * take-down. Same question, same two tables: zones alone would under-report
+     * a SEATED or MIXED event by its entire seat map, which here would mean
+     * deleting a show whose seated tiers had sold out.
+     */
+    private long soldCount(Long eventId) {
+        long sold = eventZoneRepository.findAllByEventId(eventId).stream()
+                .mapToLong(z -> z.getSoldQty() == null ? 0 : z.getSoldQty())
+                .sum();
+        return sold + eventSeatRepository.countByEvent_IdAndStatus(eventId, SeatStatus.SOLD);
     }
 
     /**

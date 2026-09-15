@@ -407,9 +407,14 @@ export default function AdminEventsPage() {
                       label={km ? 'សកម្មភាព' : 'Actions'}
                       items={[
                         {
+                          // Not once the event has happened. The show is over,
+                          // so every field here would now describe something
+                          // other than what took place - and the server refuses
+                          // the PATCH for the same reason.
                           key: 'edit',
                           icon: 'edit',
                           label: t('edit'),
+                          hidden: isPast(e),
                           onSelect: () => {
                             setSaveError(null)
                             setEditingId(e.id)
@@ -460,16 +465,26 @@ export default function AdminEventsPage() {
                           // The reason rides alongside as a hint rather than in
                           // the label, so the item stays one short line whether
                           // or not it is available.
+                          // The larger of the two counts the server checks. An
+                          // event can carry sold inventory with no booking row
+                          // behind it, and "0 booked" beside a disabled button
+                          // reads as a bug rather than as the reason.
                           hint: e.deletable
                             ? undefined
                             : km
-                              ? `កក់ ${e.booking_count}`
-                              : `${e.booking_count} booked`,
+                              ? `កក់ ${Math.max(e.booking_count ?? 0, e.sold ?? 0)}`
+                              : `${Math.max(e.booking_count ?? 0, e.sold ?? 0)} booked`,
                           tone: 'danger',
                           disabled: !e.deletable,
-                          // Take-down is the right action for a live listing,
-                          // so removal is not offered alongside it.
-                          hidden: e.status === 'PUBLISHED',
+                          /*
+                           * Take-down is the right action for a live listing,
+                           * so removal is not offered alongside it - but only
+                           * while the listing is actually live. A finished
+                           * PUBLISHED event can no longer be taken down, so
+                           * hiding remove there too left it with no action at
+                           * all and no way to clear a bookingless test event.
+                           */
+                          hidden: e.status === 'PUBLISHED' && !isPast(e),
                           onSelect: () => confirm(e, 'delete'),
                         },
                       ]}

@@ -52,8 +52,11 @@ const dict = {
   priceHigh: { en: "Price · high to low", km: "តម្លៃ · ពីខ្ពស់ទៅទាប" },
   from: { en: "From", km: "ចាប់ពី" },
   to: { en: "To", km: "ដល់" },
-  minPrice: { en: "Min $", km: "តម្លៃទាបបំផុត $" },
-  maxPrice: { en: "Max $", km: "តម្លៃខ្ពស់បំផុត $" },
+  priceRange: { en: "Price range", km: "ជួរតម្លៃ" },
+  // Now the accessible names of the two slider thumbs rather than field labels,
+  // so they read as "lowest price" / "highest price" to a screen reader.
+  minPrice: { en: "Lowest price", km: "តម្លៃទាបបំផុត" },
+  maxPrice: { en: "Highest price", km: "តម្លៃខ្ពស់បំផុត" },
   noEvents: {
     en: "No events match your filters",
     km: "រកមិនឃើញព្រឹត្តិការណ៍ដែលត្រូវនឹងតម្រងរបស់អ្នកទេ",
