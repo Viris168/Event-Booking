@@ -8,21 +8,27 @@ import { getProvinces } from "../api/provinces.js";
 /*
  * The platform's own accounts.
  *
- * <p>Deliberately empty. An entry with no url is skipped entirely, so the row
- * stays invisible until real links are put here — the same rule
- * GoogleSignInButton follows when no client id is configured. A guessed handle
- * would be worse than no link at all: facebook.com/<something plausible> almost
- * certainly belongs to somebody else, and the footer would be sending every
- * visitor to a stranger under this brand's name.
+ * <p>"#" is a placeholder, standing in until the real accounts are known. It is
+ * the one safe stand-in: a guessed handle would be worse than no link at all,
+ * because facebook.com/<something plausible> almost certainly belongs to
+ * somebody else and the footer would be sending every visitor to a stranger
+ * under this brand's name.
  *
- * <p>Fill in `url` for the accounts that exist and delete the rest.
+ * <p>Replace each "#" with the real URL and delete any account that does not
+ * exist - an entry with an empty url is skipped entirely, so removing the url
+ * removes the icon. Everything below "#" is already wired: swapping in an
+ * https address is the whole change, and {@link #isLive} then gives that link
+ * the outbound attributes a placeholder must not have.
  */
 const SOCIAL = [
-  { name: "Facebook", icon: "facebook", url: "" },
-  { name: "Telegram", icon: "telegram", url: "" },
-  { name: "Instagram", icon: "instagram", url: "" },
-  { name: "TikTok", icon: "tiktok", url: "" },
+  { name: "Facebook", icon: "facebook", url: "#" },
+  { name: "Telegram", icon: "telegram", url: "#" },
+  { name: "Instagram", icon: "instagram", url: "#" },
+  { name: "TikTok", icon: "tiktok", url: "#" },
 ];
+
+/** A link that actually leaves the site, as opposed to the "#" placeholder. */
+const isLive = (url) => url.startsWith("http");
 
 export default function Footer() {
   const { t, locale, setLocale } = useLocale();
@@ -125,13 +131,17 @@ export default function Footer() {
                 <ul className="footer-social" aria-label={km ? "បណ្តាញសង្គម" : "Social"}>
                   {social.map((s) => (
                     <li key={s.name}>
-                      {/* noreferrer as well as noopener: these are outbound
-                          brand links, and there is no reason to hand another
-                          site this page's URL as a referrer. */}
+                      {/* The outbound attributes go only on links that lead
+                          somewhere. noreferrer as well as noopener, because
+                          there is no reason to hand another site this page's
+                          URL as a referrer - but on the "#" placeholder
+                          target="_blank" would open a second copy of the page
+                          the visitor is already reading. */}
                       <a
                         href={s.url}
-                        target="_blank"
-                        rel="noreferrer noopener"
+                        {...(isLive(s.url)
+                          ? { target: "_blank", rel: "noreferrer noopener" }
+                          : {})}
                         aria-label={s.name}
                         title={s.name}
                       >

@@ -615,6 +615,10 @@
     @apply absolute right-0 top-[calc(100%+0.5rem)] z-50 flex flex-col overflow-hidden
            rounded-card border border-line bg-surface text-ink shadow-float;
     width: min(370px, calc(100vw - 1.6rem));
+    /* The bar is sticky, so the panel hangs from a fixed point on the screen
+       and cannot scroll back into view: left uncapped it runs off the bottom
+       of a short window, taking the "See all" link with it. */
+    max-height: calc(100dvh - 5rem);
     animation: rise 0.14s ease-out;
   }
   .notif-head {
@@ -650,7 +654,7 @@
   }
 
   .notif-list {
-    @apply flex flex-col overflow-y-auto;
+    @apply flex min-h-0 flex-col overflow-y-auto;
     max-height: min(60vh, 430px);
   }
   .notif-empty {
@@ -710,6 +714,23 @@
   .notif-foot {
     @apply flex items-center justify-center gap-[0.25rem] border-t border-line bg-surface-2
            py-[0.55rem] text-[0.82rem] font-semibold text-link;
+  }
+
+  /* The bell is not the last control in the bar - the avatar and the burger
+     sit to its right - so a panel hung from the bell's right edge runs off the
+     LEFT of the screen well before it runs out of width to shrink into. Below
+     this it stops hanging from the bell and hangs from the bar: dropping
+     .notif-wrap out of the positioning chain leaves the sticky .nav as the
+     containing block, and that is exactly as wide as the viewport. `top` still
+     resolves against the bar's own height, so nothing moves vertically. */
+  @media (max-width: 520px) {
+    .notif-wrap {
+      @apply static;
+    }
+    .notif-panel {
+      @apply left-page right-page;
+      width: auto;
+    }
   }
 
   /* The full page: same rows, given a card to sit in rather than a dropdown. */
@@ -1956,9 +1977,12 @@
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238b96b1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   }
   /* Surfaces that stay light in both themes — a QR must keep its contrast to
-     scan, and the date chip sits on cover art. Re-declaring the neutral tokens
-     locally re-themes every descendant utility in one place. */
-  [data-theme='dark'] :is(.qr-frame, .ev-media .ev-date) {
+     scan, and the date chips sit on cover art. Re-declaring the neutral tokens
+     locally re-themes every descendant utility in one place.
+     Both chips belong here: .rail-date is the hero's copy of .ev-date on a
+     white plate of its own, and being left off this list is what left it
+     printing near-white text on near-white in dark mode. */
+  [data-theme='dark'] :is(.qr-frame, .ev-media .ev-date, .rail-date) {
     /* Re-declaring the tokens fixes descendants that apply a colour utility… */
     --color-ink: #1d1a16;
     --color-ink-2: #4a443b;
@@ -2897,6 +2921,20 @@
   }
   .footer-pay {
     @apply inline-flex items-center gap-[0.4rem] text-white/[0.74];
+  }
+
+  /* Same plate as .footer-lang and .nav-icon-btn, at 40px so it clears the
+     touch-target floor - these are the only footer links small enough to miss
+     with a thumb. */
+  .footer-social {
+    @apply mt-[0.9rem] flex list-none flex-wrap gap-[0.45rem] p-0;
+  }
+  .footer-social a {
+    @apply grid size-10 place-items-center rounded-full border border-white/[0.14]
+      bg-white/[0.06] text-white/[0.74];
+  }
+  .footer-social a:hover {
+    @apply border-white/[0.28] bg-white/[0.14] text-white no-underline;
   }
 
   /* Was white/45, which measures 4.27:1 on the brand ground — the identical
