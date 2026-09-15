@@ -20,7 +20,7 @@ import { getPlatformStats, getRecentBookings } from '../../api/admin.js'
 const EMPTY_STATS = {
   users: 0, customers: 0, organizers: 0, disabled: 0,
   events: 0, published: 0, drafts: 0, pending_review: 0, taken_down: 0,
-  bookings: 0, confirmed: 0, awaiting_confirmation: 0, refund_requests: 0,
+  bookings: 0, confirmed: 0, awaiting_confirmation: 0,
   gross_usd_cents: 0, tickets_issued: 0, checked_in: 0,
   stuck_payments: 0, pending_applications: 0,
 }
@@ -116,13 +116,6 @@ export default function AdminDashboardPage() {
           sub={locale === 'km' ? 'លើស ១ ម៉ោង' : 'pending over 1 hour'}
           alert={stats.stuck_payments > 0}
         />
-        <Stat
-          icon="refresh"
-          label={t('requestRefund')}
-          value={stats.refund_requests}
-          sub={locale === 'km' ? 'រង់ចាំការសម្រេច' : 'awaiting a decision'}
-          alert={stats.refund_requests > 0}
-        />
       </div>
 
       {stats.stuck_payments > 0 && (
@@ -144,77 +137,54 @@ export default function AdminDashboardPage() {
         </div>
       )}
 
-      <div className="split">
-        <div className="panel">
-          <div className="panel-head">
-            <h2>{locale === 'km' ? 'ការកក់ថ្មីៗ' : 'Recent bookings'}</h2>
-            <Link className="small with-icon" to="/admin/payments">
-              {t('payments')}
-              <Icon name="arrowRight" size={14} />
-            </Link>
-          </div>
-          <ResponsiveTable>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Ref</th>
-                  <th>{locale === 'km' ? 'អ្នកទិញ' : 'Buyer'}</th>
-                  <th>{locale === 'km' ? 'ព្រឹត្តិការណ៍' : 'Event'}</th>
-                  <th>{t('status')}</th>
-                  <th className="num">{t('total')}</th>
-                  <th>{locale === 'km' ? 'ពេលវេលា' : 'Created'}</th>
+      {/* Full width rather than .split: that grid reserves a fixed 340px
+          second column, which stood empty once the Jump-to card went - the
+          nav rail already reaches every one of those four screens. */}
+      <div className="panel">
+        <div className="panel-head">
+          <h2>{locale === 'km' ? 'ការកក់ថ្មីៗ' : 'Recent bookings'}</h2>
+          <Link className="small with-icon" to="/admin/payments">
+            {t('payments')}
+            <Icon name="arrowRight" size={14} />
+          </Link>
+        </div>
+        <ResponsiveTable>
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Ref</th>
+                <th>{locale === 'km' ? 'អ្នកទិញ' : 'Buyer'}</th>
+                <th>{locale === 'km' ? 'ព្រឹត្តិការណ៍' : 'Event'}</th>
+                <th>{t('status')}</th>
+                <th className="num">{t('total')}</th>
+                <th>{locale === 'km' ? 'ពេលវេលា' : 'Created'}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recent.map((b) => (
+                <tr key={b.id}>
+                  <td>
+                    <Link className="mono small" to={`/bookings/${b.id}`}>
+                      {b.booking_ref}
+                    </Link>
+                  </td>
+                  <td>
+                    <div className="small font-bold">{b.buyer_name}</div>
+                    <div className="small muted mono">{b.buyer_phone_e164}</div>
+                  </td>
+                  <td className="small">{locale === 'km' ? b.event_title_km : b.event_title_en}</td>
+                  <td>
+                    <Badge status={b.state} />
+                  </td>
+                  <td className="num font-bold">{usd(b.total_usd_cents)}</td>
+                  <td className="small muted" title={dateTime(b.created_at)}>
+                    {timeAgo(b.created_at)}
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {recent.map((b) => (
-                  <tr key={b.id}>
-                    <td>
-                      <Link className="mono small" to={`/bookings/${b.id}`}>
-                        {b.booking_ref}
-                      </Link>
-                    </td>
-                    <td>
-                      <div className="small font-bold">{b.buyer_name}</div>
-                      <div className="small muted mono">{b.buyer_phone_e164}</div>
-                    </td>
-                    <td className="small">{locale === 'km' ? b.event_title_km : b.event_title_en}</td>
-                    <td>
-                      <Badge status={b.state} />
-                    </td>
-                    <td className="num font-bold">{usd(b.total_usd_cents)}</td>
-                    <td className="small muted" title={dateTime(b.created_at)}>
-                      {timeAgo(b.created_at)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+              ))}
+            </tbody>
+          </table>
 </ResponsiveTable>
-        </div>
-
-        <div className="panel">
-          <div className="panel-head">
-            <h3>{locale === 'km' ? 'តំណរហ័ស' : 'Jump to'}</h3>
-          </div>
-          <div className="panel-body stack-sm">
-            <Link className="btn btn-outline btn-block" to="/admin/users">
-              <Icon name="users" size={16} />
-              {t('users')}
-            </Link>
-            <Link className="btn btn-outline btn-block" to="/admin/events">
-              <Icon name="calendar" size={16} />
-              {t('moderation')}
-            </Link>
-            <Link className="btn btn-outline btn-block" to="/admin/payments">
-              <Icon name="card" size={16} />
-              {t('payments')}
-            </Link>
-            <Link className="btn btn-outline btn-block" to="/admin/applications">
-              <Icon name="ticket" size={16} />
-              {t('organizerApplications')}
-            </Link>
-          </div>
-        </div>
       </div>
     </div>
   )

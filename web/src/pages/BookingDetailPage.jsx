@@ -26,8 +26,7 @@ function actionsFor(state) {
     // grey button is the one they scroll past.
     payIsResume: state === 'AWAITING_CONFIRMATION',
     canCancel: ['PENDING_PAYMENT', 'AWAITING_CONFIRMATION', 'PAYMENT_FAILED'].includes(state),
-    canRefund: state === 'CONFIRMED',
-    hasTickets: ['CONFIRMED', 'REFUND_REQUESTED', 'REFUNDED'].includes(state),
+    hasTickets: state === 'CONFIRMED',
   }
 }
 
@@ -48,14 +47,6 @@ const STATE_COPY = {
     en: 'Paid and confirmed. Show the QR at the door.',
     km: 'បានបង់ប្រាក់ និងបញ្ជាក់រួច។ សូមបង្ហាញ QR នៅមាត់ទ្វារ។',
   },
-  REFUND_REQUESTED: {
-    en: 'Refund requested — the organizer is reviewing it. Tickets stay valid until it is approved.',
-    km: 'បានស្នើសុំសងប្រាក់វិញ — អ្នកចាត់ចែងកំពុងពិនិត្យ។ សំបុត្រនៅមានប្រសិទ្ធភាព។',
-  },
-  REFUNDED: {
-    en: 'Refunded to the original payment method. These tickets are no longer valid.',
-    km: 'បានសងប្រាក់វិញ។ សំបុត្រទាំងនេះលែងមានប្រសិទ្ធភាព។',
-  },
   EXPIRED: {
     en: 'The hold expired before payment cleared, so the seats went back on sale.',
     km: 'ការកក់ផុតកំណត់មុនពេលបង់ប្រាក់ ដូច្នេះកៅអីត្រូវបានដាក់លក់វិញ។',
@@ -71,13 +62,11 @@ const TONE = {
   AWAITING_CONFIRMATION: 'info',
   PAYMENT_FAILED: 'danger',
   CONFIRMED: 'success',
-  REFUND_REQUESTED: 'info',
-  REFUNDED: 'info',
   EXPIRED: 'warn',
   CANCELLED: 'warn',
 }
 
-import { getBooking as getApiBooking, cancelBooking, requestRefund } from '../api/bookings.js'
+import { getBooking as getApiBooking, cancelBooking } from '../api/bookings.js'
 import { getBookingPayments } from '../api/payment.js'
 import { mapBooking, mapTicket } from '../api/adapters.js'
 import { getEvent as getApiEvent } from '../api/events.js'
@@ -243,28 +232,6 @@ export default function BookingDetailPage() {
       .finally(() => setActing(false))
   }
 
-  function onRequestRefund() {
-    if (acting) return
-    setActing(true)
-    requestRefund(booking.id)
-      .then((res) =>
-        applyBookingResult(
-          res,
-          locale === 'km'
-            ? 'បានស្នើសុំសងប្រាក់វិញ — សំបុត្រនៅតែប្រើបានរហូតដល់មានការសម្រេច។'
-            : 'Refund requested. Your tickets stay valid until it is decided.',
-          'success',
-        ),
-      )
-      .catch((err) =>
-        onActionError(
-          err,
-          locale === 'km' ? 'មិនអាចស្នើសុំសងប្រាក់បានទេ' : 'Could not request a refund',
-        ),
-      )
-      .finally(() => setActing(false))
-  }
-
   function labelForTicket(ticket) {
     // An API ticket already carries its seat location and tier, and labels
     // itself. Only the prototype store's tickets need this lookup.
@@ -322,7 +289,7 @@ export default function BookingDetailPage() {
         {STATE_COPY[booking.state]?.[locale] || STATE_COPY[booking.state]?.en}
       </Alert>
 
-      {mine && (act.canPay || act.canCancel || act.canRefund) && (
+      {mine && (act.canPay || act.canCancel) && (
         <div className="row" style={{ marginTop: '1rem' }}>
           {act.canPay && (
             <>
@@ -346,11 +313,6 @@ export default function BookingDetailPage() {
               {t('cancelBooking')}
             </button>
           )}
-          {act.canRefund && (
-            <button className="btn btn-outline" onClick={onRequestRefund} disabled={acting}>
-              {t('requestRefund')}
-            </button>
-          )}
         </div>
       )}
 
@@ -368,11 +330,6 @@ export default function BookingDetailPage() {
             <div className="panel-body">
               {act.hasTickets && tickets.length ? (
                 <div className="stack-sm">
-                  {booking.state === 'REFUNDED' && (
-                    <Alert tone="warn">
-                      {locale === 'km' ? 'សំបុត្រលែងមានប្រសិទ្ធភាព។' : 'These tickets have been voided by the refund.'}
-                    </Alert>
-                  )}
                   {/* One code, made obvious. The gate resolves the whole
                       booking from any ticket on it, so six equal cards is six
                       things to thumb through at the one moment that is

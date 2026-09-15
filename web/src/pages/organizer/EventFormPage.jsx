@@ -560,7 +560,7 @@ export default function EventFormPage() {
           {existing?.status === 'PUBLISHED' && !actions.includes('TAKE_DOWN') && (
             /* Only once something has sold. Up to that point the organiser has
                their own take-down and the button is offered instead; from the
-               first ticket it becomes a refund decision, which is the
+               first ticket it becomes a money-back decision, which is the
                platform's, so the admin's is the only one left. */
             <p className="small muted">
               {locale === 'km'

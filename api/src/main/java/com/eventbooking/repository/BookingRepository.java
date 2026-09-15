@@ -83,13 +83,6 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     Page<Booking> findByUserIdAndStateOrderByCreatedAtDesc(Long userId, BookingStatus state, Pageable pageable);
 
     /**
-     * Every booking in one state, oldest change first. Backs the admin refund
-     * queue, where FIFO is the point: newest-first would leave the customer who
-     * has waited longest permanently at the bottom of the list.
-     */
-    Page<Booking> findByStateOrderByStateChangedAtAsc(BookingStatus state, Pageable pageable);
-
-    /**
      * Serialises concurrent state changes on one booking - the classic race
      * being a payment webhook confirming while the expiry sweeper cancels.
      * Both paths must take this lock before calling BookingStateMachine.
@@ -186,4 +179,17 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
      */
     @Query("select b.event.id, count(b) from Booking b group by b.event.id")
     List<Object[]> countByEvent();
+
+    /**
+     * How many bookings on this event sit in these states.
+     *
+     * <p>Narrower than {@link #countByEvent_Id}, and for a different job: that
+     * one is the delete guard and counts every row including EXPIRED ones,
+     * because those still hold an FK. This counts the bookings an invoice is a
+     * summary of, so it has to agree with {@link #sumRevenueForEvent} about
+     * which states are money - a count that included expired holds beside a
+     * total that did not would put "48 bookings, $0.00" on a document somebody
+     * is paid against.
+     */
+    long countByEvent_IdAndStateIn(Long eventId, Collection<BookingStatus> states);
 }

@@ -1,3 +1,5 @@
+import { usd } from "./format.js";
+
 // Minimal EN/KM dictionary for UI chrome. Content strings (event titles,
 // venue names, zone names) come from the data as _en/_km pairs instead.
 
@@ -52,8 +54,11 @@ const dict = {
   priceHigh: { en: "Price · high to low", km: "តម្លៃ · ពីខ្ពស់ទៅទាប" },
   from: { en: "From", km: "ចាប់ពី" },
   to: { en: "To", km: "ដល់" },
-  minPrice: { en: "Min $", km: "តម្លៃទាបបំផុត $" },
-  maxPrice: { en: "Max $", km: "តម្លៃខ្ពស់បំផុត $" },
+  priceRange: { en: "Price range", km: "ជួរតម្លៃ" },
+  // Now the accessible names of the two slider thumbs rather than field labels,
+  // so they read as "lowest price" / "highest price" to a screen reader.
+  minPrice: { en: "Lowest price", km: "តម្លៃទាបបំផុត" },
+  maxPrice: { en: "Highest price", km: "តម្លៃខ្ពស់បំផុត" },
   noEvents: {
     en: "No events match your filters",
     km: "រកមិនឃើញព្រឹត្តិការណ៍ដែលត្រូវនឹងតម្រងរបស់អ្នកទេ",
@@ -78,7 +83,7 @@ const dict = {
   },
   legend: { en: "Legend", km: "ចំណាំ" },
   available: { en: "Available", km: "ទំនេរ" },
-  heldByOthers: { en: "Held by others", km: "អ្នកផ្សេងកាន់ទុក" },
+  heldByOthers: { en: "Held by others", km: "មានអ្នកកំពុងកក់" },
   sold: { en: "Sold", km: "លក់រួចហើយ" },
   yourSelection: { en: "Selected", km: "បានជ្រើសរើស" },
   blocked: { en: "Not for sale", km: "មិនដាក់លក់ទេ" },
@@ -179,7 +184,6 @@ const dict = {
     km: "សំបុត្រនឹងបង្ហាញនៅទីនេះ បន្ទាប់ពីការទូទាត់ប្រាក់ត្រូវបានបញ្ជាក់។",
   },
   cancelBooking: { en: "Cancel booking", km: "បោះបង់ការកក់" },
-  requestRefund: { en: "Request refund", km: "ស្នើសុំប្រាក់ត្រឡប់មកវិញ" },
   payNow: { en: "Pay now", km: "ទូទាត់ប្រាក់ឥឡូវនេះ" },
   // Deliberately not "Pay again": re-opening the same provider hands back the
   // SAME QR and reference, so nobody is charged twice.
@@ -200,7 +204,7 @@ const dict = {
   hidePassword: { en: "Hide password", km: "លាក់ពាក្យសម្ងាត់" },
   passwordHint: {
     en: "At least 8 characters",
-    km: "ត្រូវការ ៨ តួអក្សរជាអប្បបរមា",
+    km: "យ៉ាងតិច ៨ តួអក្សរ",
   },
   backHome: { en: "Back to Home", km: "ត្រឡប់ទៅទំព័រដើម" },
   loginTitle: { en: "Welcome back", km: "សូមស្វាគមន៍ការត្រឡប់មកវិញ" },
@@ -233,7 +237,7 @@ const dict = {
   // EventTransition, so the button text and the server's available_actions
   // describe the same three moves.
   saveDraft: { en: "Save draft", km: "រក្សាទុកជាសេចក្ដីព្រាង" },
-  submitForReview: { en: "Submit for review", km: "ដាក់ស្នើត្រួតពិនិត្យ" },
+  submitForReview: { en: "Submit for review", km: "ដាក់ស្នើដើម្បីត្រួតពិនិត្យ" },
   // The same action, shortened for the dashboard row where the full label wraps
   // onto two lines and drags the row's height with it. The menu and the event
   // form's footer both have the room, and keep the longer wording.
@@ -261,8 +265,9 @@ const dict = {
   adminDashboard: { en: "Platform admin", km: "ផ្ទាំងអ្នកគ្រប់គ្រងប្រព័ន្ធ" },
   users: { en: "Users", km: "អ្នកប្រើប្រាស់" },
   payments: { en: "Payments", km: "ប្រតិបត្តិការទូទាត់ប្រាក់" },
+  payouts: { en: "Payouts", km: "ការទូទាត់ជូនអ្នករៀបចំ" },
   moderation: { en: "Event moderation", km: "ការត្រួតពិនិត្យព្រឹត្តិការណ៍" },
-  reviewQueue: { en: "Review queue", km: "ជួរត្រួតពិនិត្យ" },
+  reviewQueue: { en: "Review queue", km: "បញ្ជីរង់ចាំត្រួតពិនិត្យ" },
   organizerApplications: {
     en: "Organiser applications",
     km: "ពាក្យសុំធ្វើជាអ្នករៀបចំ",
@@ -334,18 +339,13 @@ export const STATUS_LABELS = {
   },
   PAYMENT_FAILED: { en: "Payment failed", km: "ការទូទាត់បរាជ័យ" },
   CONFIRMED: { en: "Confirmed", km: "បញ្ជាក់រួចរាល់" },
-  REFUND_REQUESTED: {
-    en: "Refund requested",
-    km: "បានស្នើសុំប្រាក់ត្រឡប់មកវិញ",
-  },
-  REFUNDED: { en: "Refunded", km: "បានសងប្រាក់ត្រឡប់វិញ" },
   EXPIRED: { en: "Expired", km: "ផុតកំណត់" },
   CANCELLED: { en: "Cancelled", km: "បានបោះបង់" },
   DRAFT: { en: "Draft", km: "សេចក្តីព្រាង" },
-  PENDING_REVIEW: { en: "Pending review", km: "កំពុងត្រួតពិនិត្យ" },
+  PENDING_REVIEW: { en: "Pending review", km: "រង់ចាំការត្រួតពិនិត្យ" },
   CHANGES_REQUESTED: { en: "Changes requested", km: "ត្រូវការកែប្រែ" },
   APPROVED: { en: "Approved", km: "បានអនុម័ត" },
-  REJECTED: { en: "Rejected", km: "បដិសេធ" },
+  REJECTED: { en: "Rejected", km: "បានបដិសេធ" },
   PUBLISHED: { en: "Published", km: "បានផ្សព្វផ្សាយ" },
   // Not an EventStatus. A finished event keeps status PUBLISHED in the
   // database - finishing is not a decision anybody made - but showing
@@ -360,6 +360,11 @@ export const STATUS_LABELS = {
   ACTIVE: { en: "Active", km: "សកម្ម" },
   CONSUMED: { en: "Consumed", km: "បានប្រើប្រាស់រួច" },
   RELEASED: { en: "Released", km: "បានដកការកក់" },
+  // Payout lifecycle (V29). APPROVED is already above and reads correctly for
+  // a payout too - a second entry would be a second answer to the same
+  // question, free to drift from the first.
+  REQUESTED: { en: "Requested", km: "បានស្នើសុំ" },
+  PAID: { en: "Paid", km: "បានទូទាត់" },
 };
 
 export function statusLabel(status, locale) {
@@ -387,7 +392,7 @@ export const NOTIFICATION_TEXT = {
   BOOKING_CONFIRMED: {
     en: { title: "Booking confirmed", body: "Your tickets for {title} are ready to show at the door." },
     km: {
-      title: "ការកក់បានបញ្ជាក់",
+      title: "ការកក់ត្រូវបានបញ្ជាក់",
       body: "សំបុត្ររបស់អ្នកសម្រាប់ {title} រួចរាល់សម្រាប់បង្ហាញនៅច្រកចូល។",
     },
   },
@@ -412,20 +417,6 @@ export const NOTIFICATION_TEXT = {
       body: "ការកក់ {ref} ផុតកំណត់មុនពេលទូទាត់ ហើយកៅអីត្រូវបានដាក់លក់វិញ។",
     },
   },
-  BOOKING_REFUNDED: {
-    en: { title: "Refund approved", body: "The money for {ref} is on its way back to you." },
-    km: { title: "ការសងប្រាក់បានអនុម័ត", body: "ប្រាក់សម្រាប់ការកក់ {ref} កំពុងត្រឡប់ទៅអ្នកវិញ។" },
-  },
-  BOOKING_REFUND_DECLINED: {
-    en: {
-      title: "Refund declined",
-      body: "{ref} was not refunded, and your tickets for {title} are still valid.",
-    },
-    km: {
-      title: "សំណើសុំសងប្រាក់មិនត្រូវបានទទួលយក",
-      body: "ការកក់ {ref} មិនត្រូវបានសងប្រាក់ទេ ហើយសំបុត្ររបស់អ្នកសម្រាប់ {title} នៅតែប្រើបាន។",
-    },
-  },
   ORGANIZER_APPLICATION_APPROVED: {
     en: { title: "You can now run events", body: "{org} was approved. The organiser area is open." },
     km: {
@@ -442,7 +433,7 @@ export const NOTIFICATION_TEXT = {
   EVENT_APPROVED: {
     en: { title: "Event approved", body: "{title} cleared review. You can publish it now." },
     km: {
-      title: "ព្រឹត្តិការណ៍បានអនុម័ត",
+      title: "ព្រឹត្តិការណ៍ត្រូវបានអនុម័ត",
       body: "{title} បានឆ្លងកាត់ការត្រួតពិនិត្យ។ អ្នកអាចផ្សព្វផ្សាយវាបានហើយ។",
     },
   },
@@ -476,15 +467,46 @@ export const NOTIFICATION_TEXT = {
   // ------------------------------------------------------------------- admin
   EVENT_SUBMITTED_FOR_REVIEW: {
     en: { title: "Event waiting for review", body: "{title} is in the review queue." },
-    km: { title: "ព្រឹត្តិការណ៍រង់ចាំការត្រួតពិនិត្យ", body: "{title} កំពុងនៅក្នុងជួរត្រួតពិនិត្យ។" },
+    km: { title: "ព្រឹត្តិការណ៍រង់ចាំការត្រួតពិនិត្យ", body: "{title} កំពុងនៅក្នុងបញ្ជីរង់ចាំត្រួតពិនិត្យ។" },
   },
   ORGANIZER_APPLICATION_SUBMITTED: {
     en: { title: "New organiser application", body: "{org} applied to run events." },
     km: { title: "ពាក្យស្នើសុំធ្វើជាអ្នករៀបចំថ្មី", body: "{org} បានស្នើសុំរៀបចំព្រឹត្តិការណ៍។" },
   },
-  REFUND_REQUESTED: {
-    en: { title: "Refund requested", body: "{ref} for {title} is waiting on a decision." },
-    km: { title: "សំណើសុំសងប្រាក់", body: "ការកក់ {ref} សម្រាប់ {title} កំពុងរង់ចាំការសម្រេច។" },
+  PAYOUT_REQUESTED: {
+    en: {
+      title: "Payout requested",
+      body: "{org} asked for {amount} for {title}. Invoice {invoice}.",
+    },
+    km: {
+      title: "សំណើសុំទូទាត់ប្រាក់",
+      body: "{org} បានស្នើសុំ {amount} សម្រាប់ {title}។ វិក្កយបត្រ {invoice}។",
+    },
+  },
+
+  // ------------------------------------------------------ organizer payouts
+  PAYOUT_APPROVED: {
+    en: {
+      title: "Payout approved",
+      body: "{amount} for {title} was approved. The transfer is being arranged.",
+    },
+    km: {
+      title: "ការទូទាត់ត្រូវបានអនុម័ត",
+      body: "{amount} សម្រាប់ {title} ត្រូវបានអនុម័ត។ ការផ្ទេរប្រាក់កំពុងរៀបចំ។",
+    },
+  },
+  PAYOUT_PAID: {
+    // The reference leads the body rather than trailing it: this is the message
+    // somebody re-reads when the money has not appeared, and it is the only
+    // thing in it their bank can look up.
+    en: {
+      title: "You have been paid",
+      body: "{amount} for {title} was sent. Reference {reference}.",
+    },
+    km: {
+      title: "អ្នកបានទទួលប្រាក់",
+      body: "{amount} សម្រាប់ {title} ត្រូវបានផ្ញើ។ លេខយោង {reference}។",
+    },
   },
 };
 
@@ -510,6 +532,12 @@ export function notificationText(type, params, locale) {
     "{ref}": p.bookingRef || "",
     "{org}": (locale === "km" ? p.orgNameKm : p.orgNameEn) || p.orgNameEn || "",
     "{reason}": p.message || p.note || "",
+    // Payout params. Formatted here rather than by the caller because these
+    // rows are rendered by the bell, the inbox and nothing else - and cents
+    // reaching a person's screen is the one thing format.js exists to prevent.
+    "{amount}": p.netUsdCents == null ? "" : usd(p.netUsdCents),
+    "{invoice}": p.invoiceNo || "",
+    "{reference}": p.reference || "",
   };
 
   const fill = (s) =>

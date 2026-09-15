@@ -135,6 +135,19 @@ app:
     bot-username: ${TELEGRAM_BOT_USERNAME:}
     webhook-secret: ${TELEGRAM_WEBHOOK_SECRET:}
 
+  # ------------------------------------------------------------------ payouts
+  #
+  # The platform's commission on an organiser's settlement, in basis points -
+  # 1000 is 10%. Not a credential, so unlike the block above it carries a real
+  # default rather than an empty one: a deployment that never thinks about this
+  # should still charge something coherent instead of silently paying out 100%.
+  #
+  # Changing it is safe at any time. The rate is snapshotted into
+  # payout_request.fee_bps when a request is made, so invoices already issued
+  # keep the rate they were priced at.
+  payout:
+    fee-bps: ${PAYOUT_FEE_BPS:1000}
+
   hold:
     ttl-minutes: ${HOLD_TTL_MINUTES:10}
     extension-minutes: ${HOLD_EXTENSION_MINUTES:3}

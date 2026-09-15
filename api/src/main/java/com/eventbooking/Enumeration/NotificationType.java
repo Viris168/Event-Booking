@@ -29,19 +29,6 @@ public enum NotificationType {
     /** The hold ran out before payment landed; the seats went back on sale. */
     BOOKING_EXPIRED,
 
-    /** An admin granted the refund and the money is on its way back. */
-    BOOKING_REFUNDED,
-
-    /**
-     * An admin refused the refund; the booking is CONFIRMED again.
-     *
-     * <p>Its own type rather than a second BOOKING_CONFIRMED. REFUND_REQUESTED
-     * to CONFIRMED is a legal transition, so without this the customer who asked
-     * for their money back would be told "your tickets are ready" - technically
-     * true, and no answer at all to the question they actually asked.
-     */
-    BOOKING_REFUND_DECLINED,
-
     /** The application to run events was granted; the organiser area is open. */
     ORGANIZER_APPLICATION_APPROVED,
 
@@ -74,6 +61,20 @@ public enum NotificationType {
     /** Somebody bought tickets to an event this organiser owns. */
     EVENT_TICKETS_SOLD,
 
+    /**
+     * An admin agreed the platform owes this payout. The money has not moved.
+     *
+     * <p>Its own type rather than folding into PAYOUT_PAID, because the wait
+     * between the two is exactly what the organiser wants to know about: told
+     * only when the transfer lands, an approval that sits for three days looks
+     * identical to a request nobody has read.
+     */
+    PAYOUT_APPROVED,
+
+    /** The transfer was made. Carries the bank's reference. */
+    PAYOUT_PAID,
+
+
     // ------------------------------------------------------------------- admin
 
     /** An organiser put an event into the review queue. */
@@ -82,6 +83,6 @@ public enum NotificationType {
     /** A customer asked to become an organiser. */
     ORGANIZER_APPLICATION_SUBMITTED,
 
-    /** A customer asked for their money back; somebody has to decide. */
-    REFUND_REQUESTED
+    /** An organiser asked to be settled for a finished event. */
+    PAYOUT_REQUESTED
 }

@@ -31,7 +31,7 @@ public enum ScanOutcome {
     UNKNOWN_TICKET,
 
     /**
-     * The booking behind it is not CONFIRMED - refunded, or expired before it
+     * The booking behind it is not CONFIRMED - cancelled, or expired before it
      * was ever paid. Tickets are only issued on CONFIRMED, so in practice this
      * means the booking moved on afterwards.
      */

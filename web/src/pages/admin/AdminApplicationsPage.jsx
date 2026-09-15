@@ -122,9 +122,10 @@ export default function AdminApplicationsPage() {
    *
    * `selectedId` is what the admin clicked. It stops matching the moment a
    * decision lands, because a decided application is no longer PENDING and
-   * drops out of the queue. Falling back to the same POSITION is what makes the
-   * queue advance on its own: the index that row occupied now holds the next
-   * one, so deciding repeatedly walks down the list without a click in between.
+   * drops out of the queue. Falling back to the same POSITION keeps the
+   * highlight where the admin was looking rather than dropping it to the top.
+   * It no longer pulls the next application into an open dialog: a decision
+   * closes the dialog, so opening the next one is a deliberate click.
    */
   const selected = useMemo(() => {
     if (!rows.length) return null
@@ -181,6 +182,7 @@ export default function AdminApplicationsPage() {
     try {
       await approveApplication(selected.id)
       toast(km ? 'បានអនុម័ត' : 'Approved', 'success')
+      closePanel()
       refresh()
     } catch (e) {
       toast(errorText(e, km ? 'អនុម័តមិនបានសម្រេច' : 'Could not approve'), 'error')
@@ -197,6 +199,7 @@ export default function AdminApplicationsPage() {
       toast(km ? 'បានបដិសេធ' : 'Rejected', 'success')
       setRejecting(false)
       setMessage('')
+      closePanel()
       refresh()
     } catch (e) {
       toast(errorText(e, km ? 'មិនបានសម្រេច' : 'Could not save decision'), 'error')

@@ -26,7 +26,6 @@ public record PlatformStatsResponse(
         long bookings,
         long confirmed,
         long awaitingConfirmation,
-        long refundRequests,
 
         long grossUsdCents,
 

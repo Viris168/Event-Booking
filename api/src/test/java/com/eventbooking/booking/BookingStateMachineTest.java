@@ -22,8 +22,6 @@ import static com.eventbooking.Enumeration.BookingStatus.CONFIRMED;
 import static com.eventbooking.Enumeration.BookingStatus.EXPIRED;
 import static com.eventbooking.Enumeration.BookingStatus.PAYMENT_FAILED;
 import static com.eventbooking.Enumeration.BookingStatus.PENDING_PAYMENT;
-import static com.eventbooking.Enumeration.BookingStatus.REFUNDED;
-import static com.eventbooking.Enumeration.BookingStatus.REFUND_REQUESTED;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -109,15 +107,6 @@ class BookingStateMachineTest {
         assertThat(stateMachine.canTransition(PAYMENT_FAILED, PENDING_PAYMENT)).isTrue();
     }
 
-    @Test
-    void allowsARefundRequestToBeTurnedDown() {
-        Booking booking = bookingIn(REFUND_REQUESTED);
-
-        stateMachine.transition(booking, CONFIRMED, 7L, "Outside the refund window");
-
-        assertThat(booking.getState()).isEqualTo(CONFIRMED);
-    }
-
     // ------------------------------------------------------------------
     // Illegal edges
     // ------------------------------------------------------------------
@@ -147,13 +136,28 @@ class BookingStateMachineTest {
     }
 
     @Test
-    void refusesToCancelAPaidBookingWithoutRefunding() {
+    void refusesToUndoAPaidBooking() {
         // Money has changed hands and uq_payment_txn_one_success_per_booking
-        // means it cannot quietly be un-charged - the refund path is the only
-        // way out of CONFIRMED.
+        // means it cannot quietly be un-charged. With no refund path there is
+        // nowhere legal to go from CONFIRMED at all.
         assertThat(stateMachine.canTransition(CONFIRMED, CANCELLED)).isFalse();
         assertThat(stateMachine.canTransition(CONFIRMED, EXPIRED)).isFalse();
-        assertThat(stateMachine.legalTargets(CONFIRMED)).containsExactly(REFUND_REQUESTED);
+        assertThat(stateMachine.legalTargets(CONFIRMED)).isEmpty();
+    }
+
+    @Test
+    void aPaidBookingIsADeadEndButKeepsItsSeats() {
+        /*
+         * The one that would have cost real money. CONFIRMED is a dead end, so
+         * it is tempting to fold it in with EXPIRED and CANCELLED - and doing
+         * that would release every paid booking's inventory the instant the
+         * payment settled, putting sold seats back on sale.
+         *
+         * Dead end and releases-inventory are separate questions. This asserts
+         * they stay separate.
+         */
+        assertThat(stateMachine.isDeadEnd(CONFIRMED)).isTrue();
+        assertThat(stateMachine.releasesInventory(CONFIRMED)).isFalse();
     }
 
     @ParameterizedTest
@@ -163,18 +167,24 @@ class BookingStateMachineTest {
     }
 
     @ParameterizedTest
-    @EnumSource(value = BookingStatus.class, names = {"REFUNDED", "EXPIRED", "CANCELLED"})
-    void terminalStatesHaveNoWayOut(BookingStatus terminal) {
-        assertThat(stateMachine.isTerminal(terminal)).isTrue();
-        assertThat(stateMachine.legalTargets(terminal)).isEmpty();
+    @EnumSource(value = BookingStatus.class, names = {"CONFIRMED", "EXPIRED", "CANCELLED"})
+    void deadEndStatesHaveNoWayOut(BookingStatus deadEnd) {
+        assertThat(stateMachine.isDeadEnd(deadEnd)).isTrue();
+        assertThat(stateMachine.legalTargets(deadEnd)).isEmpty();
     }
 
     @ParameterizedTest
-    @EnumSource(value = BookingStatus.class, names = {"REFUNDED", "EXPIRED", "CANCELLED"}, mode = EnumSource.Mode.EXCLUDE)
-    void nonTerminalStatesCanAlwaysGoSomewhere(BookingStatus state) {
+    @EnumSource(value = BookingStatus.class, names = {"EXPIRED", "CANCELLED"})
+    void onlyTheUnpaidDeadEndsGiveTheirSeatsBack(BookingStatus state) {
+        assertThat(stateMachine.releasesInventory(state)).isTrue();
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = BookingStatus.class, names = {"CONFIRMED", "EXPIRED", "CANCELLED"}, mode = EnumSource.Mode.EXCLUDE)
+    void liveStatesCanAlwaysGoSomewhere(BookingStatus state) {
         // Guards against a future edit stranding a booking in a state that is
         // neither final nor escapable.
-        assertThat(stateMachine.isTerminal(state)).isFalse();
+        assertThat(stateMachine.isDeadEnd(state)).isFalse();
         assertThat(stateMachine.legalTargets(state)).isNotEmpty();
     }
 
@@ -187,14 +197,9 @@ class BookingStateMachineTest {
         assertThat(stateMachine.legalTargets(state))
                 .as("%s must have an explicit entry in the transition table", state)
                 .isNotNull();
-        assertThat(stateMachine.isTerminal(state) || !stateMachine.legalTargets(state).isEmpty())
-                .as("%s is neither terminal nor has outgoing edges - was it added without updating the table?", state)
+        assertThat(stateMachine.isDeadEnd(state) || !stateMachine.legalTargets(state).isEmpty())
+                .as("%s is neither a dead end nor has outgoing edges - was it added without updating the table?", state)
                 .isTrue();
-    }
-
-    @Test
-    void refundedIsTheOnlyWayARefundEnds() {
-        assertThat(stateMachine.legalTargets(REFUND_REQUESTED)).containsExactlyInAnyOrder(REFUNDED, CONFIRMED);
     }
 
     private static Booking bookingIn(BookingStatus state) {

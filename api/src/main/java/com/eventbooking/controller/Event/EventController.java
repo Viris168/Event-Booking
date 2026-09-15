@@ -129,7 +129,7 @@ public class EventController {
      * Pull your own listing off sale, before anyone has bought a ticket.
      *
      * <p>Take-down used to be admin-only in full, on the reasoning that pulling
-     * a show with tickets out is a refund decision. That holds from the first
+     * a show with tickets out is a money-back decision. That holds from the first
      * sale onward and the service enforces it - but it says nothing about an
      * event nobody has bought, where the only person affected is the organiser
      * making the request. Queueing for an admin to undo your own typo is

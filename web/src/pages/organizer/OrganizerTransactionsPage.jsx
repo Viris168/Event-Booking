@@ -9,10 +9,8 @@ import { usd } from '../../lib/format.js'
 import { getOrganizerTransactions } from '../../api/bookings.js'
 import { getOrganizerEvents } from '../../api/events.js'
 
-/** Money that actually landed. Everything else is an intention or a reversal. */
+/** Money that actually landed. Everything else is an intention. */
 const EARNING = new Set(['CONFIRMED'])
-/** Money going back out, so it reads as a negative rather than more income. */
-const OUTGOING = new Set(['REFUNDED'])
 
 const STATES = [
   'PENDING_PAYMENT',
@@ -21,8 +19,6 @@ const STATES = [
   'CANCELLED',
   'EXPIRED',
   'PAYMENT_FAILED',
-  'REFUND_REQUESTED',
-  'REFUNDED',
 ]
 
 const PAGE_SIZES = [25, 50, 100]
@@ -304,7 +300,6 @@ export default function OrganizerTransactionsPage() {
               {tableHead}
               <tbody className="text-small text-ink">
                 {visible.map((r, i) => {
-                  const outgoing = OUTGOING.has(r.state)
                   const earning = EARNING.has(r.state)
                   return (
                     <tr
@@ -349,10 +344,10 @@ export default function OrganizerTransactionsPage() {
                       </td>
                       <td
                         className={`px-5 py-3 text-right font-bold tabular-nums whitespace-nowrap ${
-                          outgoing ? 'text-refund' : earning ? 'text-success' : 'text-muted'
+                          earning ? 'text-success' : 'text-muted'
                         }`}
                       >
-                        {outgoing ? '− ' : earning ? '+ ' : ''}
+                        {earning ? '+ ' : ''}
                         {usd(r.total_usd_cents)}
                       </td>
                     </tr>

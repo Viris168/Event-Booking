@@ -80,7 +80,6 @@ public class AdminStatsService {
                 bookingRepository.count(),
                 bookingRepository.countByState(BookingStatus.CONFIRMED),
                 bookingRepository.countByState(BookingStatus.AWAITING_CONFIRMATION),
-                bookingRepository.countByState(BookingStatus.REFUND_REQUESTED),
 
                 bookingRepository.sumTotalUsdCentsByStateIn(GROSS_STATES),
 

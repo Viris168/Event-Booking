@@ -244,7 +244,7 @@ class PaymentServiceTest {
     void flagsMoneyThatArrivesAfterTheAttemptWasGivenUpOn() {
         // Rare, and the reason the note column exists: the attempt had already
         // expired here, so recording a SUCCESS could collide with a later
-        // attempt's success row. It is left for a human to refund instead.
+        // attempt's success row. It is left for a human to return by hand.
         Booking booking = bookingIn(BookingStatus.PAYMENT_FAILED);
         PaymentTransaction attempt = openAttempt(booking, Instant.now().minusSeconds(60));
         attempt.setStatus(PaymentStatus.EXPIRED);
@@ -261,7 +261,7 @@ class PaymentServiceTest {
     @Test
     void doesNotConfirmABookingThatHasAlreadyDied() {
         // Its seats went back on sale when it expired; confirming would sell
-        // them twice. The payment stands, flagged for a refund.
+        // them twice. The payment stands, flagged for a human.
         Booking booking = bookingIn(BookingStatus.EXPIRED);
         PaymentTransaction attempt = openAttempt(booking, Instant.now().plusSeconds(60));
         givenAttemptUnderLock(booking, attempt);
@@ -269,7 +269,7 @@ class PaymentServiceTest {
         service.applyProviderResult(PAYMENT_ID, BakongCheckResult.paid("HASH-2", "ok"));
 
         assertThat(attempt.getStatus()).isEqualTo(PaymentStatus.SUCCESS);
-        assertThat(attempt.getNote()).contains("manual refund");
+        assertThat(attempt.getNote()).contains("returned out of band");
         assertThat(booking.getState()).isEqualTo(BookingStatus.EXPIRED);
         assertThat(history).isEmpty();
         // No tickets either - the seats are back on sale, so admitting anyone on

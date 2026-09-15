@@ -1,5 +1,5 @@
 import { useDocumentTitle } from '../../lib/useDocumentTitle.js'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import ActionMenu from '../../components/ActionMenu.jsx'
 import AdminEventEditDialog from '../../components/admin/AdminEventEditDialog.jsx'
@@ -31,14 +31,25 @@ import { SALES_UI, displayStatus, isPast, salesState } from '../../lib/salesStat
 
 // Declaration order is lifecycle order, so the filter dropdown reads as the
 // path an event actually takes rather than as an alphabetical list.
+//
+// No DRAFT. A draft is the organiser's private workspace and has been shown to
+// nobody, so there is no moderation decision to take on it - the review queue
+// leaves it out for that reason and this table now does too. The server no
+// longer returns one either; the filter is the courtesy, the query is the rule.
+//
+// FINISHED is the odd entry: not a stored status, but what the badge says once
+// the date has passed (see displayStatus). Leaving it off the list was what let
+// this screen contradict itself - filtering on TAKEN_DOWN matched the stored
+// column and returned rows whose badge read "Finished", with no way to ask for
+// the finished ones directly.
 const STATUSES = [
-  'DRAFT',
   'PENDING_REVIEW',
   'CHANGES_REQUESTED',
   'APPROVED',
   'REJECTED',
   'PUBLISHED',
   'TAKEN_DOWN',
+  'FINISHED',
 ]
 
 /*
@@ -98,7 +109,10 @@ export default function AdminEventsPage() {
     const timer = setTimeout(() => {
       getEventsOverview({
         ...(q.trim() ? { q: q.trim() } : {}),
-        ...(status !== 'ALL' ? { status } : {}),
+        // FINISHED is derived from the date, not stored, so there is nothing
+        // to ask the server for - it sends back every status and `rows` below
+        // keeps the ones that are over.
+        ...(status !== 'ALL' && status !== 'FINISHED' ? { status } : {}),
         ...(province ? { province } : {}),
       })
         .then((res) => {
@@ -118,6 +132,21 @@ export default function AdminEventsPage() {
       clearTimeout(timer)
     }
   }, [q, status, province, version])
+
+  /*
+   * The filter answers to the badge, not to the database column.
+   *
+   * `status` goes to the server, which matches what is stored - but a row whose
+   * date has passed reads FINISHED whatever that column says. Filtering on one
+   * and labelling with the other is what put two "Finished" rows under a
+   * TAKEN_DOWN filter: all four were genuinely taken down, and two of them had
+   * since happened. Narrowing here makes the two agree - ask for a lifecycle
+   * status and every row says it, ask for Finished and every row is over.
+   */
+  const rows = useMemo(
+    () => (status === 'ALL' ? events : events.filter((e) => displayStatus(e) === status)),
+    [events, status],
+  )
 
   const refresh = useCallback(() => setVersion((v) => v + 1), [])
 
@@ -223,7 +252,7 @@ export default function AdminEventsPage() {
     status !== 'ALL' && {
       key: 'status',
       icon: 'filter',
-      label: status,
+      label: t(status),
       onRemove: () => setStatus('ALL'),
     },
     province && {
@@ -258,7 +287,7 @@ export default function AdminEventsPage() {
               ? km
                 ? 'កំពុងផ្ទុក…'
                 : 'Loading…'
-              : `${events.length} ${
+              : `${rows.length} ${
                   km
                     ? 'ព្រឹត្តិការណ៍ត្រូវនឹងតម្រង — គ្រប់ម្ចាស់ទាំងអស់។'
                     : 'events match the current filters, across every owner.'
@@ -284,7 +313,7 @@ export default function AdminEventsPage() {
                 <option value="ALL">{km ? 'ទាំងអស់' : 'All statuses'}</option>
                 {STATUSES.map((s) => (
                   <option key={s} value={s}>
-                    {s}
+                    {t(s)}
                   </option>
                 ))}
               </IconSelect>
@@ -325,7 +354,7 @@ export default function AdminEventsPage() {
 
       {loading ? (
         <p className="muted small">{km ? 'កំពុងផ្ទុក…' : 'Loading…'}</p>
-      ) : events.length === 0 && !loadError ? (
+      ) : rows.length === 0 && !loadError ? (
         <Empty icon="search" title={km ? 'រកមិនឃើញព្រឹត្តិការណ៍ទេ' : 'No events match'}>
           {km
             ? 'សាកល្បងលុបតម្រងចេញ ឬស្វែងរកពាក្យផ្សេង។'
@@ -355,7 +384,7 @@ export default function AdminEventsPage() {
               {/* The tint follows the badge, not the stored status. A finished
                   event reads "Finished" whatever it was taken down from, so
                   colouring it as taken down contradicted its own label. */}
-              {events.map((e) => (
+              {rows.map((e) => (
                 <tr key={e.id} className={displayStatus(e) === 'TAKEN_DOWN' ? 'flagged' : ''}>
                   <td>
                     <Link to={`/events/${e.id}`} className="font-bold">
@@ -407,9 +436,14 @@ export default function AdminEventsPage() {
                       label={km ? 'សកម្មភាព' : 'Actions'}
                       items={[
                         {
+                          // Not once the event has happened. The show is over,
+                          // so every field here would now describe something
+                          // other than what took place - and the server refuses
+                          // the PATCH for the same reason.
                           key: 'edit',
                           icon: 'edit',
                           label: t('edit'),
+                          hidden: isPast(e),
                           onSelect: () => {
                             setSaveError(null)
                             setEditingId(e.id)
@@ -460,16 +494,26 @@ export default function AdminEventsPage() {
                           // The reason rides alongside as a hint rather than in
                           // the label, so the item stays one short line whether
                           // or not it is available.
+                          // The larger of the two counts the server checks. An
+                          // event can carry sold inventory with no booking row
+                          // behind it, and "0 booked" beside a disabled button
+                          // reads as a bug rather than as the reason.
                           hint: e.deletable
                             ? undefined
                             : km
-                              ? `កក់ ${e.booking_count}`
-                              : `${e.booking_count} booked`,
+                              ? `កក់ ${Math.max(e.booking_count ?? 0, e.sold ?? 0)}`
+                              : `${Math.max(e.booking_count ?? 0, e.sold ?? 0)} booked`,
                           tone: 'danger',
                           disabled: !e.deletable,
-                          // Take-down is the right action for a live listing,
-                          // so removal is not offered alongside it.
-                          hidden: e.status === 'PUBLISHED',
+                          /*
+                           * Take-down is the right action for a live listing,
+                           * so removal is not offered alongside it - but only
+                           * while the listing is actually live. A finished
+                           * PUBLISHED event can no longer be taken down, so
+                           * hiding remove there too left it with no action at
+                           * all and no way to clear a bookingless test event.
+                           */
+                          hidden: e.status === 'PUBLISHED' && !isPast(e),
                           onSelect: () => confirm(e, 'delete'),
                         },
                       ]}

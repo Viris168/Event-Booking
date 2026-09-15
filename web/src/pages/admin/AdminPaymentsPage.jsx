@@ -1,5 +1,5 @@
 import { useDocumentTitle } from '../../lib/useDocumentTitle.js'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
   ActiveFilters,
@@ -11,11 +11,8 @@ import {
   ResponsiveTable,
 } from '../../components/ui.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
-import { useToast } from '../../context/ToastContext.jsx'
 import { timeAgo, usd } from '../../lib/format.js'
 import { getPayments } from '../../api/admin.js'
-import { getRefundQueue, approveRefund, rejectRefund } from '../../api/refunds.js'
-import { mapBooking } from '../../api/adapters.js'
 
 const PROVIDERS = ['BAKONG_KHQR', 'ABA_PAYWAY']
 const STATUSES = ['CREATED', 'PENDING', 'SUCCESS', 'FAILED', 'CANCELLED', 'EXPIRED']
@@ -23,7 +20,6 @@ const STATUSES = ['CREATED', 'PENDING', 'SUCCESS', 'FAILED', 'CANCELLED', 'EXPIR
 export default function AdminPaymentsPage() {
   const { t, locale, dateTime } = useLocale()
   useDocumentTitle(t('payments'))
-  const toast = useToast()
   const [params] = useSearchParams()
 
   const [provider, setProvider] = useState('')
@@ -89,45 +85,6 @@ export default function AdminPaymentsPage() {
     setStuckOnly(false)
   }
 
-  /*
-   * The refund queue, alongside the payments table above it. Both are live now;
-   * this one had to be first, because the approve button below used to call the
-   * prototype store's approveRefund, so an admin saw "Refund approved" while
-   * the customer's booking stayed CONFIRMED and nobody was ever refunded.
-   */
-  const [refundRequests, setRefundRequests] = useState([])
-  const [deciding, setDeciding] = useState(null)
-
-  const loadQueue = useCallback(() => {
-    getRefundQueue()
-      .then((res) => setRefundRequests((res || []).map(mapBooking)))
-      // A non-admin gets 403 here; showing an empty queue is the right outcome
-      // either way, and this page is already behind an admin route.
-      .catch(() => setRefundRequests([]))
-  }, [])
-
-  useEffect(loadQueue, [loadQueue])
-
-  function decide(bookingId, action, successMessage) {
-    if (deciding) return
-    setDeciding(bookingId)
-    action(bookingId)
-      .then(() => {
-        // Drop the row immediately rather than waiting for the refetch: the
-        // booking has left REFUND_REQUESTED, so it is no longer in this queue.
-        setRefundRequests((prev) => prev.filter((b) => b.id !== bookingId))
-        toast(successMessage, 'success')
-      })
-      .catch((err) => {
-        const detail = err.response?.data?.detail || err.response?.data?.message || err.message
-        toast(`Could not update that refund (${detail})`, 'error')
-        // Something else moved the booking — another admin working the same
-        // queue is the ordinary way here — so resync rather than guess.
-        loadQueue()
-      })
-      .finally(() => setDeciding(null))
-  }
-
   const totals = payments.reduce(
     (acc, p) => ({
       count: acc.count + 1,
@@ -150,58 +107,6 @@ export default function AdminPaymentsPage() {
         </div>
       </div>
 
-      {refundRequests.length > 0 && (
-        <div style={{ marginBottom: '1.2rem' }}>
-          <Alert tone="info" title={`${refundRequests.length} ${t('requestRefund').toLowerCase()}`}>
-            <div className="stack-sm" style={{ marginTop: '0.5rem' }}>
-              {refundRequests.map((b) => (
-                <div className="spread small" key={b.id}>
-                  <Link className="mono" to={`/bookings/${b.id}`}>
-                    {b.booking_ref}
-                  </Link>
-                  <span>{b.buyer_name}</span>
-                  <span className="font-bold">{usd(b.total_usd_cents)}</span>
-                  <span className="row" style={{ gap: '0.4rem' }}>
-                    <button
-                      className="btn btn-sm btn-primary"
-                      disabled={deciding === b.id}
-                      onClick={() =>
-                        decide(
-                          b.id,
-                          approveRefund,
-                          locale === 'km' ? 'បានសងប្រាក់វិញ' : 'Refund approved — seats back on sale.',
-                        )
-                      }
-                    >
-                      {locale === 'km' ? 'អនុម័តសងប្រាក់' : 'Approve refund'}
-                    </button>
-                    {/*
-                      Declining was previously unreachable: the prototype store
-                      had no reject path, so a request an admin judged invalid
-                      just sat in the banner forever. REFUND_REQUESTED ->
-                      CONFIRMED is on the state machine, and the tickets were
-                      never invalidated, so this simply puts it back.
-                    */}
-                    <button
-                      className="btn btn-sm btn-outline"
-                      disabled={deciding === b.id}
-                      onClick={() =>
-                        decide(
-                          b.id,
-                          rejectRefund,
-                          locale === 'km' ? 'បានបដិសេធ' : 'Refund declined — the tickets stay valid.',
-                        )
-                      }
-                    >
-                      {locale === 'km' ? 'បដិសេធ' : 'Decline'}
-                    </button>
-                  </span>
-                </div>
-              ))}
-            </div>
-          </Alert>
-        </div>
-      )}
 
       <div className="panel" style={{ marginBottom: '1.2rem' }}>
         <div className="panel-body">

@@ -15,6 +15,7 @@ export default function OrganizerLayout() {
           { to: '/organizer', label: t('myEvents'), end: true },
           { to: '/organizer/venues', label: t('venues') },
           { to: '/organizer/transactions', label: locale === 'km' ? 'ប្រតិបត្តិការ' : 'Transactions' },
+          { to: '/organizer/payouts', label: locale === 'km' ? 'ការទូទាត់' : 'Payouts' },
           { to: '/organizer/check-in', label: t('checkIn') },
         ]}
       />

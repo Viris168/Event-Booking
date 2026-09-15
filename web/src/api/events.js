@@ -38,7 +38,7 @@ export const getEventReviewHistory = (id) =>
  * Deliberately not admin.js's takeDownEvent, which hits /admin/events and is
  * moderation - any event, any owner, at any point. This one is the organiser's
  * own copy: their event only, and the server refuses it from the first sale
- * onward, because pulling a show people hold tickets to is a refund decision
+ * onward, because pulling a show people hold tickets to is a money-back decision
  * rather than a listing one.
  *
  * The organiser's list already knows: TAKE_DOWN drops out of available_actions

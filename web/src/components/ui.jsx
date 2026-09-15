@@ -84,17 +84,39 @@ export function Progress({ sold = 0, held = 0, capacity = 0 }) {
   )
 }
 
-export function Field({ label, hint, error, optional, children, className = '' }) {
+/**
+ * A labelled form row.
+ *
+ * <p>Pass `htmlFor` with the id of the control inside and the label is bound to
+ * it: clicking the words focuses the field, and a screen reader reads the two
+ * as one thing. Without it a `<label>` is just styled text sitting near an
+ * input — which is what every one of these was. The same id also ties the hint
+ * or error underneath to the control through `aria-describedby`, so "e.g. 012
+ * 345 678", and more importantly a validation failure, are announced instead of
+ * being visible only to people who can see them.
+ *
+ * <p>Optional, so the fields that have not been given ids yet are unchanged.
+ */
+export function Field({ label, hint, error, optional, htmlFor, children, className = '' }) {
   const { t } = useLocale()
+  const messageId = htmlFor ? `${htmlFor}-message` : undefined
   return (
     <div className={`field ${className}`}>
       {label && (
-        <label className="label">
+        <label className="label" htmlFor={htmlFor}>
           {label} {optional && <span className="opt">({t('optional')})</span>}
         </label>
       )}
       {children}
-      {error ? <span className="err">{error}</span> : hint ? <span className="hint">{hint}</span> : null}
+      {error ? (
+        <span className="err" id={messageId}>
+          {error}
+        </span>
+      ) : hint ? (
+        <span className="hint" id={messageId}>
+          {hint}
+        </span>
+      ) : null}
     </div>
   )
 }
@@ -143,6 +165,49 @@ export function IconSelect({ value, onChange, icon, ariaLabel, children, classNa
         {children}
       </select>
     </span>
+  )
+}
+
+/**
+ * Two-thumb range, used for the price filter.
+ *
+ * <p>Built from two real `<input type="range">` elements stacked on one track,
+ * rather than a div with pointer handlers. Each thumb then keeps the keyboard
+ * support and the announced value the platform already gives it — arrows,
+ * Home/End, page keys — which a hand-rolled control has to rebuild and usually
+ * gets wrong. The inputs themselves are transparent and only their thumbs take
+ * pointer events, so the visible track and fill underneath can be styled.
+ *
+ * <p>`value` is [low, high]; either thumb pushing past the other is clamped
+ * rather than allowed to invert the pair.
+ */
+export function RangeSlider({ min, max, step = 1, value, onChange, lowLabel, highLabel }) {
+  const [low, high] = value
+  const pct = (n) => ((n - min) / (max - min)) * 100
+  return (
+    <div className="range">
+      <div className="range-track">
+        <div className="range-fill" style={{ left: `${pct(low)}%`, right: `${100 - pct(high)}%` }} />
+      </div>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={low}
+        aria-label={lowLabel}
+        onChange={(e) => onChange([Math.min(Number(e.target.value), high), high])}
+      />
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={high}
+        aria-label={highLabel}
+        onChange={(e) => onChange([low, Math.max(Number(e.target.value), low)])}
+      />
+    </div>
   )
 }
 

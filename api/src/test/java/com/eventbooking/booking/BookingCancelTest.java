@@ -46,14 +46,14 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * Customer cancellation and the refund path.
+ * Customer cancellation.
  *
  * <p>The transition table itself is BookingStateMachineTest's job; what is
  * tested here is the part BookingService adds on top - who is allowed to do it,
  * what happens to the inventory, and what happens to a payment attempt that is
  * still open when the booking dies.
  */
-class BookingCancelRefundTest {
+class BookingCancelTest {
 
     private static final long BOOKING_ID = 5L;
     private static final long OWNER_ID = 11L;
@@ -191,99 +191,6 @@ class BookingCancelRefundTest {
         assertThat(history).singleElement()
                 .satisfies(entry -> assertThat(entry.getNote())
                         .isEqualTo("Cancelled by customer: double booked"));
-    }
-
-    // ------------------------------------------------------------------
-    // Refund
-    // ------------------------------------------------------------------
-
-    @Test
-    void requestsARefundOnAConfirmedBooking() {
-        Booking booking = bookingIn(BookingStatus.CONFIRMED);
-
-        BookingResponse response = service.requestRefundForUser(BOOKING_ID, OWNER_ID, "cannot attend");
-
-        assertThat(response.state()).isEqualTo(BookingStatus.REFUND_REQUESTED);
-        assertThat(booking.getState()).isEqualTo(BookingStatus.REFUND_REQUESTED);
-        assertThat(history).singleElement()
-                .satisfies(entry -> assertThat(entry.getNote())
-                        .isEqualTo("Refund requested by customer: cannot attend"));
-    }
-
-    /**
-     * REFUND_REQUESTED is not terminal, and that is the whole point: freeing the
-     * seat here would resell a seat the refund might still be refused for, and
-     * would let the customer walk in on a ticket they had asked to be refunded.
-     */
-    @Test
-    void requestingARefundLeavesTheSeatSoldAndTheTicketValid() {
-        Booking booking = bookingIn(BookingStatus.CONFIRMED);
-        EventSeat seat = soldSeat();
-        booking.addItem(BookingItem.builder().eventSeat(seat).qty(1).unitPriceUsdCents(2500).build());
-
-        service.requestRefundForUser(BOOKING_ID, OWNER_ID, null);
-
-        assertThat(seat.getStatus()).isEqualTo(SeatStatus.SOLD);
-        assertThat(booking.getItems()).singleElement()
-                .satisfies(item -> assertThat(item.getReleasedAt()).isNull());
-    }
-
-    @Test
-    void refusesARefundOnAnUnpaidBooking() {
-        bookingIn(BookingStatus.PENDING_PAYMENT);
-
-        assertThatThrownBy(() -> service.requestRefundForUser(BOOKING_ID, OWNER_ID, null))
-                .isInstanceOf(IllegalBookingTransitionException.class);
-    }
-
-    @Test
-    void refusesARefundRequestOnSomebodyElsesBooking() {
-        bookingIn(BookingStatus.CONFIRMED);
-
-        assertThatThrownBy(() -> service.requestRefundForUser(BOOKING_ID, STRANGER_ID, null))
-                .isInstanceOf(BookingNotFoundException.class);
-    }
-
-    // ------------------------------------------------------------------
-    // Refund moderation
-    // ------------------------------------------------------------------
-
-    @Test
-    void approvingARefundReleasesTheInventory() {
-        Booking booking = bookingIn(BookingStatus.REFUND_REQUESTED);
-        EventSeat seat = soldSeat();
-        booking.addItem(BookingItem.builder().eventSeat(seat).qty(1).unitPriceUsdCents(2500).build());
-
-        BookingResponse response = service.approveRefund(BOOKING_ID, ADMIN_ID, "settled by wire");
-
-        assertThat(response.state()).isEqualTo(BookingStatus.REFUNDED);
-        assertThat(seat.getStatus()).isEqualTo(SeatStatus.AVAILABLE);
-        assertThat(history).singleElement().satisfies(entry -> {
-            assertThat(entry.getChangedByUserId()).isEqualTo(ADMIN_ID);
-            assertThat(entry.getNote()).isEqualTo("Refund approved: settled by wire");
-        });
-    }
-
-    @Test
-    void rejectingARefundReturnsTheBookingToConfirmedAndKeepsTheSeatSold() {
-        Booking booking = bookingIn(BookingStatus.REFUND_REQUESTED);
-        EventSeat seat = soldSeat();
-        booking.addItem(BookingItem.builder().eventSeat(seat).qty(1).unitPriceUsdCents(2500).build());
-
-        BookingResponse response = service.rejectRefund(BOOKING_ID, ADMIN_ID, "outside policy");
-
-        assertThat(response.state()).isEqualTo(BookingStatus.CONFIRMED);
-        assertThat(seat.getStatus()).isEqualTo(SeatStatus.SOLD);
-        assertThat(booking.getItems()).singleElement()
-                .satisfies(item -> assertThat(item.getReleasedAt()).isNull());
-    }
-
-    @Test
-    void refusesToDecideARefundThatWasNeverRequested() {
-        bookingIn(BookingStatus.PENDING_PAYMENT);
-
-        assertThatThrownBy(() -> service.approveRefund(BOOKING_ID, ADMIN_ID, null))
-                .isInstanceOf(IllegalBookingTransitionException.class);
     }
 
     // ------------------------------------------------------------------

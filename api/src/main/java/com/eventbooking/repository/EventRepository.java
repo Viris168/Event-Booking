@@ -110,6 +110,29 @@ public interface EventRepository extends JpaRepository<Event, Long> {
                                  @Param("status") EventStatus status);
 
     /**
+     * This organiser's events that have already happened, most recent first.
+     *
+     * <p>"Happened" is {@code startsAt < now}, because there is no
+     * {@code ends_at} column and never has been - {@code EventServiceimpl}
+     * reads finishing the same way in three places, and the FINISHED badge the
+     * catalogue renders is derived from it too. A fourth definition here would
+     * let an event the organiser's own dashboard calls finished be refused a
+     * payout.
+     *
+     * <p>Unfiltered by status on purpose: a taken-down event still sold
+     * tickets, and the organiser is owed for them. Whether the catalogue lists
+     * it has nothing to do with whether money changed hands.
+     */
+    @Query("""
+        select e from Event e
+        where e.organizerId = :organizerId
+          and e.startsAt < :now
+        order by e.startsAt desc
+        """)
+    List<Event> findFinishedForOrganizer(@Param("organizerId") Long organizerId,
+                                         @Param("now") Instant now);
+
+    /**
      * The moderation queue. One status at a time, ordered by the caller's
      * Pageable so the admin screen can ask for oldest-submitted-first.
      *
@@ -129,10 +152,17 @@ public interface EventRepository extends JpaRepository<Event, Long> {
      *
      * <p>Distinct from {@link #findByStatus} (one status, the review queue) and
      * from the public catalogue search, which is fixed to the publicly visible
-     * statuses by design. A null status here means "every status", which is
-     * exactly what must never be possible on the public endpoint.
+     * statuses by design. A null status here means "every moderatable status",
+     * which is exactly what must never be possible on the public endpoint.
      *
      * <p>venue is fetched because each row prints a venue name and province.
+     *
+     * <p>DRAFT is excluded unconditionally, for the same reason the review
+     * queue never lists one: a draft is the organiser's private workspace and
+     * has not been submitted to anybody, so there is no moderation decision to
+     * take on it. The screen's filter does not offer DRAFT either; passing it
+     * anyway returns nothing rather than failing, which is the correct answer
+     * to "show me the drafts".
      *
      * <p>status carries no {@code cast(...)} while the two String parameters
      * do. The casts exist because Postgres cannot infer a bare parameter's type
@@ -145,7 +175,8 @@ public interface EventRepository extends JpaRepository<Event, Long> {
     @Query("""
             select e from Event e
             join fetch e.venue v
-            where (:status is null or e.status = :status)
+            where e.status <> com.eventbooking.Enumeration.EventStatus.DRAFT
+              and (:status is null or e.status = :status)
               and (cast(:provinceCode as String) is null or v.provinceCode = :provinceCode)
               and (cast(:q as String) is null
                    or lower(e.titleEn) like :q escape '!'

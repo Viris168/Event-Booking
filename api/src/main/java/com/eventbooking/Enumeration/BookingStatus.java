@@ -15,9 +15,11 @@ public enum BookingStatus {
     PENDING_PAYMENT,
     AWAITING_CONFIRMATION,
     PAYMENT_FAILED,
+    /**
+     * Paid, and terminal. There is no refund path: the platform does not
+     * reverse a settled booking, so nothing follows CONFIRMED.
+     */
     CONFIRMED,
-    REFUND_REQUESTED,
-    REFUNDED,
     EXPIRED,
     CANCELLED
 }

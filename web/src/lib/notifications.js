@@ -12,8 +12,6 @@ export const NOTIFICATION_ICON = {
   BOOKING_PAYMENT_FAILED: 'alert',
   BOOKING_CANCELLED: 'xCircle',
   BOOKING_EXPIRED: 'clock',
-  BOOKING_REFUNDED: 'wallet',
-  BOOKING_REFUND_DECLINED: 'ticket',
   ORGANIZER_APPLICATION_APPROVED: 'building',
   ORGANIZER_APPLICATION_REJECTED: 'xCircle',
 
@@ -24,9 +22,14 @@ export const NOTIFICATION_ICON = {
   EVENT_RESTORED: 'checkCircle',
   EVENT_TICKETS_SOLD: 'ticket',
 
+  // 'bank' for the one that is money actually moving, 'card' for the approval,
+  // which is a decision rather than a transfer.
+  PAYOUT_APPROVED: 'card',
+  PAYOUT_PAID: 'bank',
+
   EVENT_SUBMITTED_FOR_REVIEW: 'eye',
   ORGANIZER_APPLICATION_SUBMITTED: 'building',
-  REFUND_REQUESTED: 'wallet',
+  PAYOUT_REQUESTED: 'bank',
 }
 
 export const NOTIFICATION_TONE = {
@@ -34,10 +37,6 @@ export const NOTIFICATION_TONE = {
   BOOKING_PAYMENT_FAILED: 'bad',
   BOOKING_CANCELLED: 'quiet',
   BOOKING_EXPIRED: 'quiet',
-  BOOKING_REFUNDED: 'ok',
-  // Not 'bad': the request was refused, but the tickets are still good. Red
-  // here would read as "something is wrong with your booking".
-  BOOKING_REFUND_DECLINED: 'warn',
   ORGANIZER_APPLICATION_APPROVED: 'ok',
   ORGANIZER_APPLICATION_REJECTED: 'bad',
 
@@ -48,9 +47,15 @@ export const NOTIFICATION_TONE = {
   EVENT_RESTORED: 'ok',
   EVENT_TICKETS_SOLD: 'ok',
 
+  // Not 'ok': approved means agreed, not arrived. Green here and green again
+  // on PAYOUT_PAID would make the second one look like a duplicate of the
+  // first, which is exactly the distinction the two states exist to draw.
+  PAYOUT_APPROVED: 'info',
+  PAYOUT_PAID: 'ok',
+
   EVENT_SUBMITTED_FOR_REVIEW: 'info',
   ORGANIZER_APPLICATION_SUBMITTED: 'info',
-  REFUND_REQUESTED: 'warn',
+  PAYOUT_REQUESTED: 'info',
 }
 
 /** Unknown types still render: a new server type should not leave a blank row. */

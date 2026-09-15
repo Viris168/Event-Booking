@@ -496,7 +496,7 @@ const ACTION_UI = {
    * The organiser's own take-down, not the admin's. It reaches this menu only
    * while nothing has sold - the server drops TAKE_DOWN from available_actions
    * from the first ticket onward, because pulling a show people hold tickets to
-   * is a refund decision rather than a listing one.
+   * is a money-back decision rather than a listing one.
    *
    * Confirmed before it runs, and marked danger, because the organiser cannot
    * undo it: reopening a taken-down event is admin-only, deliberately, so that
@@ -607,7 +607,17 @@ function RowMenu({ event, onChanged }) {
         disabled={busy}
         label={km ? 'សកម្មភាព' : 'Actions'}
         items={[
-          { key: 'edit', icon: 'edit', label: t('editEvent'), to: `/organizer/events/${event.id}/edit` },
+          // Edit goes once the event has happened: the API refuses the PATCH
+          // from that point, so leaving it here only led to an error at the
+          // end of a filled-in form. Sales and the public page stay - both
+          // are still worth reading afterwards.
+          {
+            key: 'edit',
+            icon: 'edit',
+            label: t('editEvent'),
+            hidden: isPast(event),
+            to: `/organizer/events/${event.id}/edit`,
+          },
           { key: 'sales', icon: 'chart', label: t('sales'), to: `/organizer/events/${event.id}/sales` },
           {
             key: 'view',

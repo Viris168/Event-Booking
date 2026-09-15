@@ -45,11 +45,6 @@ import java.util.stream.Collectors;
 public class AdminUserService {
 
     /**
-     * What counts as money this account has spent. REFUND_REQUESTED is in here
-     * with CONFIRMED because asking for a refund does not un-take the payment -
-     * only REFUNDED does, and that state is deliberately absent.
-     */
-    /**
      * How many administrators the platform will hold.
      *
      * <p>Small on purpose. Every admin sees all platform data and can act on
@@ -60,8 +55,12 @@ public class AdminUserService {
      */
     private static final int MAX_ADMINS = 3;
 
+    /**
+     * What counts as money this account has spent. CONFIRMED alone: it is the
+     * only state in which a payment has settled, and nothing follows it.
+     */
     private static final Set<BookingStatus> SPEND_STATES =
-            Collections.unmodifiableSet(EnumSet.of(BookingStatus.CONFIRMED, BookingStatus.REFUND_REQUESTED));
+            Collections.unmodifiableSet(EnumSet.of(BookingStatus.CONFIRMED));
 
     private final AppUserRepository userRepository;
     private final BookingRepository bookingRepository;
