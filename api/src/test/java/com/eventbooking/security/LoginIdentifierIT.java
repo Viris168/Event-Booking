@@ -129,6 +129,35 @@ class LoginIdentifierIT {
     }
 
     @Test
+    void anAccountRegisteredWithOnlyAnAddressCanSignIn() {
+        // No phone at all. The account is not complete - it cannot book until a
+        // number and a Google link are added - but it must still be reachable by
+        // the one identifier it was created with.
+        authService.register(
+                new RegisterRequest(null, PASSWORD, "Address Only", "address.only@gmail.com"),
+                "junit");
+
+        assertThat(authService.login(
+                new LoginRequest("address.only@gmail.com", PASSWORD), "junit"))
+                .isNotNull();
+    }
+
+    @Test
+    void twoAccountsWithNoPhoneDoNotCollide() {
+        // phone_e164 is UNIQUE, so both rows must store null rather than "".
+        // Postgres treats nulls as distinct and empty strings as equal, and the
+        // second registration would be refused if a blank ever reached the column.
+        authService.register(
+                new RegisterRequest("", PASSWORD, "First", "first.nophone@gmail.com"), "junit");
+        authService.register(
+                new RegisterRequest("", PASSWORD, "Second", "second.nophone@gmail.com"), "junit");
+
+        assertThat(authService.login(
+                new LoginRequest("second.nophone@gmail.com", PASSWORD), "junit"))
+                .isNotNull();
+    }
+
+    @Test
     void anEntryWithAnAtSignIsNeverTriedAsAPhoneNumber() {
         String phone = nextPhone();
         register(phone, "at.sign@gmail.com");

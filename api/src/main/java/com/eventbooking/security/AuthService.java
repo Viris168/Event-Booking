@@ -85,8 +85,12 @@ public class AuthService {
     @Transactional
     public TokenResponse register(RegisterRequest request, String userAgent) {
         String email = normaliseEmail(request.email());
+        // Blank to null: the columns are UNIQUE, and "" is a value to Postgres,
+        // so a second account registering with only the other identifier would
+        // collide with the first on an empty string.
+        String phone = blankToNull(request.phoneE164());
 
-        if (appUserRepository.existsByPhoneE164(request.phoneE164())) {
+        if (phone != null && appUserRepository.existsByPhoneE164(phone)) {
             throw new PhoneAlreadyRegisteredException();
         }
         if (email != null && appUserRepository.existsByEmail(email)) {
@@ -94,7 +98,7 @@ public class AuthService {
         }
 
         AppUser user = appUserRepository.save(AppUser.builder()
-                .phoneE164(request.phoneE164())
+                .phoneE164(phone)
                 .email(email)
                 // The raw password is hashed here and never stored, logged, or
                 // returned. This is the only place it is touched.
@@ -105,7 +109,7 @@ public class AuthService {
                 .isDisabled(false)
                 .build());
 
-        log.info("Registered user {} ({})", user.getId(), user.getPhoneE164());
+        log.info("Registered user {}", user.getId());
         return issuePair(user, userAgent);
     }
 
@@ -506,6 +510,10 @@ public class AuthService {
                 jwtService.generateAccessToken(String.valueOf(user.getId()), user.getRole().name()),
                 refreshTokenService.issue(user, userAgent),
                 accessExpirationMs / 1000);
+    }
+
+    private static String blankToNull(String value) {
+        return Optional.ofNullable(value).map(String::trim).filter(v -> !v.isEmpty()).orElse(null);
     }
 
     /**

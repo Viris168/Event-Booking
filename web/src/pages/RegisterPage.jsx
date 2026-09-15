@@ -47,11 +47,22 @@ export default function RegisterPage() {
     const next = {}
     if (!form.display_name.trim())
       next.display_name = locale === 'km' ? 'ត្រូវការឈ្មោះ' : 'Display name is required'
-    if (!toLocalPhone(form.phone_e164))
+    const phone = form.phone_e164.trim()
+    const email = form.email.trim()
+
+    // Each is checked for shape only when it was filled in, and the pair is
+    // checked for presence. Neither is required alone: an account is signed in
+    // by whichever one it has, and the other is added before checkout.
+    if (phone && !toLocalPhone(phone))
       next.phone_e164 =
         locale === 'km' ? 'ឧទាហរណ៍៖ 012 345 678' : 'For example 012 345 678'
-    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
       next.email = locale === 'km' ? 'អ៊ីមែលមិនត្រឹមត្រូវ' : 'Enter a valid email'
+    if (!phone && !email)
+      next.phone_e164 =
+        locale === 'km'
+          ? 'ត្រូវការលេខទូរស័ព្ទ ឬអ៊ីមែល'
+          : 'Enter a phone number or an email address'
     if (form.password.length < 8) next.password = t('passwordHint')
     setErrors(next)
     return Object.keys(next).length === 0
@@ -74,9 +85,10 @@ export default function RegisterPage() {
     // would collide with each other.
     const result = await register({
       display_name: form.display_name.trim(),
-      // validate() has already proved this converts; toLocalPhone is what the
+      // Null rather than '' for the same reason as email below. validate() has
+      // already proved a filled-in number converts; toLocalPhone is what the
       // API's CHECK constraint accepts, not the 012... the user typed.
-      phone_e164: toLocalPhone(form.phone_e164),
+      phone_e164: toLocalPhone(form.phone_e164) || null,
       email: form.email.trim() || null,
       password: form.password,
     })
@@ -133,8 +145,13 @@ export default function RegisterPage() {
 
         <Field
           label={t('phone')}
+          optional
           error={errors.phone_e164}
-          hint={locale === 'km' ? 'ឧ. 012 345 678' : 'e.g. 012 345 678'}
+          hint={
+            locale === 'km'
+              ? 'ឧ. 012 345 678 — បំពេញលេខនេះ ឬអ៊ីមែល'
+              : 'e.g. 012 345 678 — fill in this or an email'
+          }
         >
           <span className="field-icon">
             <Icon name="phone" size={16} />
