@@ -243,13 +243,15 @@ export default function OrganizerTransactionsPage() {
           <button
             type="button"
             /*
-              * Solid while something is actually filtered, so the button says
-              * so from across the screen - the outline and the ghost differ by
-              * a hairline, which is not a state you notice you are in.
-              * Opening the panel without setting anything is not that state.
+              * Two states, not three. Outlined at rest so it reads as a control
+              * rather than as text that happens to be clickable, and solid
+              * while the panel is open or a filter is set - both of those are
+              * "this button is doing something", and splitting them across an
+              * outline and a ghost made the difference a hairline nobody
+              * notices.
               */
             className={`btn min-h-[42px] ${
-              filtered ? 'btn-primary' : showFilters ? 'btn-outline' : 'btn-ghost'
+              showFilters || filtered ? 'btn-primary' : 'btn-outline'
             }`}
             onClick={() => setShowFilters((v) => !v)}
             aria-expanded={showFilters}

@@ -6,11 +6,12 @@ import ConfirmDialog from '../../components/ConfirmDialog.jsx'
 import Icon from '../../components/Icon.jsx'
 import TelegramConnectCard from '../../components/TelegramConnectCard.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
-import { Badge, Empty, Progress, ResponsiveTable } from '../../components/ui.jsx'
+import { Badge, Empty, Progress, ResponsiveTable, TablePager } from '../../components/ui.jsx'
 import { OrganizerDashboardSkeleton } from '../../components/Skeleton.jsx'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
 import { usd } from '../../lib/format.js'
+import { usePaging } from '../../lib/usePaging.js'
 import { SALES_UI, displayStatus, isPast, salesState } from '../../lib/salesState.js'
 import {
   deleteOwnEvent,
@@ -98,6 +99,17 @@ export default function OrganizerDashboardPage() {
   const pastCount = events.filter(isPast).length
   const shown =
     scope === 'all' ? events : events.filter((e) => (scope === 'past' ? isPast(e) : !isPast(e)))
+
+  /*
+   * Ten to a page rather than the twenty-five the admin tables use. These rows
+   * are two lines tall and carry a progress bar each, so ten of them already
+   * fill a laptop screen - and an organiser reads this list looking for one
+   * event they have in mind, not scanning a ledger.
+   *
+   * Keyed on the scope tab: Upcoming, Past and All are three different lists,
+   * so switching starts at the first page of the new one.
+   */
+  const paged = usePaging(shown, scope, 10)
 
   /**
    * Open a row, unless the click was aimed at something inside it.
@@ -328,7 +340,7 @@ export default function OrganizerDashboardPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {shown.map((e) => {
+                    {paged.visible.map((e) => {
                       const venue = e.venue
                       return (
                         /*
@@ -408,6 +420,19 @@ export default function OrganizerDashboardPage() {
                   {t('createEvent')}
                 </Link>
               </Empty>
+            )}
+
+            {/* Ten per page: these rows are two lines tall with a progress bar
+                each, so ten already fill a laptop screen. */}
+            {shown.length > 0 && (
+              <TablePager
+                page={paged.page}
+                pages={paged.pageCount}
+                pageSize={paged.pageSize}
+                onPage={paged.setPage}
+                onPageSize={paged.setPageSize}
+                sizes={[10, 20, 30]}
+              />
             )}
           </section>
         </div>
