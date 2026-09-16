@@ -236,24 +236,37 @@ export default function OrganizerDashboardPage() {
 
             {booked12 ? (
               <>
+                {/* Each column is min-w-0 and the hover figure is taken out of
+                    flow. Left in flow it is still laid out while invisible, and
+                    its nowrap "$0.00" became a ~30px floor under every one of
+                    the twelve columns - 426px of bars inside a 296px card on a
+                    phone, spilling over the card edge. */}
                 <div className="flex items-end gap-1.5 h-32">
                   {months.map((m, i) => (
-                    <div key={i} className="flex-1 flex flex-col items-center justify-end h-full group">
-                      <span className="text-tiny text-muted opacity-0 group-hover:opacity-100 transition-opacity mb-1 whitespace-nowrap">
-                        {usd(m.cents)}
-                      </span>
+                    <div key={i} className="flex-1 min-w-0 flex flex-col justify-end h-full group">
                       <div
-                        className="w-full bar-month rounded-t-tiny transition-all"
+                        className="relative w-full bar-month rounded-t-tiny transition-all"
                         style={{ height: `${Math.max((m.cents / peak) * 100, m.cents ? 4 : 1)}%` }}
                         title={`${MONTH_LABEL[m.month - 1]} ${m.year} · ${usd(m.cents)}`}
-                      />
+                      >
+                        <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1 text-tiny text-muted opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                          {usd(m.cents)}
+                        </span>
+                      </div>
                     </div>
                   ))}
                 </div>
-                <div className="flex justify-between text-tiny text-muted font-medium mt-3">
+                {/* Twelve three-letter labels need ~25px each and a phone gives
+                    them 24 - they touch, and the last one runs past the card. So
+                    below sm only every other month is named, counted back from
+                    the newest so the current month always keeps its label. The
+                    blank spans stay, to keep each label centred over its bar. */}
+                <div className="flex text-tiny text-muted font-medium mt-3">
                   {months.map((m, i) => (
-                    <span key={i} className="flex-1 text-center">
-                      {MONTH_LABEL[m.month - 1]}
+                    <span key={i} className="flex-1 min-w-0 text-center">
+                      <span className={(months.length - 1 - i) % 2 ? 'hidden sm:inline' : ''}>
+                        {MONTH_LABEL[m.month - 1]}
+                      </span>
                     </span>
                   ))}
                 </div>
