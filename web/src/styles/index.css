@@ -2834,6 +2834,35 @@
     animation: spin 0.8s linear infinite;
   }
 
+  /* ------------------------------------------- payout receipt drop zone
+     One row inside the "record the transfer" dialog, not a panel: the
+     reference box below it is the field that matters and the dialog already
+     carries the transfer details above. Dashed like the other optional
+     surfaces on this screen, and a <label> wrapping a visually-hidden input,
+     so a click anywhere on it opens the picker and a keyboard reaches it
+     without a tabindex of its own. */
+  .receipt-drop {
+    @apply flex cursor-pointer items-center justify-center gap-2 rounded-ui border-2 border-dashed border-brand-500
+      bg-tint-2 px-3 py-[0.7rem] text-center text-small font-semibold text-link;
+    transition:
+      border-color 0.15s ease,
+      background-color 0.15s ease,
+      color 0.15s ease;
+  }
+  /* Goes fully solid on hover rather than just deepening: the dashed outline
+     has said "drop here" from the moment the dialog opened, so the useful
+     thing for it to say under the cursor is "yes, this one". */
+  .receipt-drop:hover,
+  .receipt-drop:focus-within {
+    @apply border-brand-600 bg-brand-600 text-white;
+  }
+  /* Back to paper while it works. Not greyed out - the input inside is already
+     disabled, and draining the colour out of the whole row mid-read says "this
+     broke" rather than "this is busy". */
+  .receipt-drop.is-busy {
+    @apply pointer-events-none border-line bg-surface-2 text-muted;
+  }
+
   /* ------------------------------------------------------- ABA PayWay checkout
      The sheet PayWay returns from Create Transaction: a modal on desktop, a
      bottom sheet on phones. ABA's own red heads it; the body follows the app's

@@ -2,8 +2,11 @@ package com.eventbooking.service.payout;
 
 import com.eventbooking.Enumeration.PayoutStatus;
 import com.eventbooking.dto.payout.CreatePayoutRequest;
+import com.eventbooking.dto.payout.ExtractedReceiptResponse;
 import com.eventbooking.dto.payout.PayableEventResponse;
 import com.eventbooking.dto.payout.PayoutRequestResponse;
+
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
@@ -84,5 +87,25 @@ public interface PayoutService {
      * rather than allowed as a shortcut.
      */
     PayoutRequestResponse markPaid(Long adminUserId, Long payoutId, String reference, String note);
+
+    /**
+     * Read a transfer confirmation screenshot so the admin need not retype it.
+     *
+     * <p><b>The image is not stored.</b> It is held for one request, sent to a
+     * vision provider, and dropped. Nothing on {@code payout_request} changes -
+     * this returns a suggestion for a form the admin still has to submit, and
+     * {@link #markPaid} remains the only thing that moves a row to PAID.
+     *
+     * <p>Scoped to a payout, and to an APPROVED one, rather than offered as a
+     * free-standing "read this image" endpoint. Two reasons: a call to a paid
+     * vision API that any admin could aim at any image is an expense with no
+     * ceiling, and refusing here for the same reason {@link #markPaid} would
+     * means an admin cannot spend a call working on a row that somebody else
+     * already settled.
+     *
+     * @throws com.eventbooking.exception.payout.PayoutAlreadyDecidedException
+     *         if the payout is not APPROVED
+     */
+    ExtractedReceiptResponse extractReceipt(Long payoutId, MultipartFile image);
 
 }
