@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import ContactButtons from '../../components/ContactButtons.jsx'
 import Icon from '../../components/Icon.jsx'
 import ConfirmDialog from '../../components/ConfirmDialog.jsx'
@@ -8,7 +9,7 @@ import { TableRowsSkeleton } from '../../components/Skeleton.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
 import { useDocumentTitle } from '../../lib/useDocumentTitle.js'
-import { usd } from '../../lib/format.js'
+import { timeAgo, usd } from '../../lib/format.js'
 import { usePaging } from '../../lib/usePaging.js'
 import {
   approvePayout,
@@ -104,6 +105,17 @@ export default function AdminPayoutsPage() {
    */
   const paged = usePaging(rows, tab)
 
+  /*
+   * What the tab on screen is worth. The badge beside each tab says how many
+   * requests are in it; this says how much money they are, which is the number
+   * that decides whether the queue can wait until tomorrow.
+   *
+   * Net, not gross - net is what leaves the platform's account. Summed over
+   * `rows` rather than `paged.visible` on purpose: this describes the tab, not
+   * the page of it currently rendered.
+   */
+  const tabTotal = rows.reduce((a, r) => a + r.net_usd_cents, 0)
+
   // ---------------------------------------------------------------- actions
 
   const [busy, setBusy] = useState(false)
@@ -161,46 +173,61 @@ export default function AdminPayoutsPage() {
 
   return (
     <div className="container container-wide">
-      <div className="bg-surface border border-line rounded-hero shadow-card overflow-hidden">
-        <div className="px-5 py-4 border-b border-line-2">
-          <h1 className="text-lg font-bold text-ink m-0">
-            {km ? 'ការទូទាត់ជូនអ្នករៀបចំ' : 'Organizer payouts'}
-          </h1>
-          <p className="text-small text-muted m-0 mt-0.5">
+      {/* Title and subtitle outside the card, like every other screen in both
+          role areas. They lived in the card's own header, so the page had no
+          heading of its own and the card carried one instead. */}
+      <div className="page-head">
+        <div>
+          <h1>{km ? 'ការទូទាត់ជូនអ្នករៀបចំ' : 'Organizer payouts'}</h1>
+          <p>
             {km
               ? 'អនុម័តសំណើ រួចកត់ត្រាការផ្ទេរប្រាក់ជាមួយលេខយោង'
               : 'Approve a request, then record the transfer against its reference.'}
           </p>
         </div>
+      </div>
+
+      <div className="bg-surface border border-line rounded-hero shadow-card overflow-hidden">
 
         {/* ------------------------------------------------------------ tabs */}
-        <div className="border-b border-line-2 bg-surface-2 flex items-center gap-2 flex-wrap">
+        {/* Tabs, not buttons. They were drawn as a row of btn-sm, so the one
+            you were on differed from the other two by a hairline border - and
+            the strip sat flush against the window edge while the header and
+            table above and below it were padded. */}
+        <div className="tabbar" role="tablist" aria-label={km ? 'ស្ថានភាព' : 'Status'}>
           {PAYOUT_STATUSES.map((s) => (
             <button
               key={s}
               type="button"
-              className={`btn btn-sm ${tab === s ? 'btn-outline' : 'btn-ghost'}`}
+              role="tab"
               aria-pressed={tab === s}
+              aria-selected={tab === s}
               onClick={() => setTab(s)}
             >
               {TAB_LABELS[s][locale] || TAB_LABELS[s].en}
-              <span className="badge badge-mode ml-1">{counts[s] ?? 0}</span>
+              <span className="tab-n">{counts[s] ?? 0}</span>
             </button>
           ))}
         </div>
 
-        {/* Money agreed but not sent, said once at the top. The tab badge says
-            how many; this says how much, which is the number that decides
-            whether it can wait until tomorrow. */}
-        {tab === 'APPROVED' && rows.length > 0 && (
-          <div className="px-5 pt-4">
-            <Alert tone="warn" title={km ? 'រង់ចាំការផ្ទេរ' : 'Waiting to be transferred'}>
-              {usd(rows.reduce((a, r) => a + r.net_usd_cents, 0))}{' '}
-              {km
-                ? 'ត្រូវបានអនុម័ត ប៉ុន្តែមិនទាន់ផ្ញើ។'
-                : 'has been approved and not yet sent.'}
-            </Alert>
-          </div>
+
+
+        {/* The open tab, in money, directly under the tabs that select it.
+            Replaces an alert that said this for the APPROVED tab alone - the
+            other two had a count and no idea what it was worth. It follows the
+            tabs rather than the title because it changes with them. */}
+        {!loading && !error && rows.length > 0 && (
+          <p className="px-5 pt-3 text-small text-muted m-0">
+            {rows.length} {km ? 'សំណើ' : rows.length === 1 ? 'request' : 'requests'} ·{' '}
+            <span className="font-semibold text-ink">{usd(tabTotal)}</span>{' '}
+            {tab === 'PAID'
+              ? km
+                ? 'បានផ្ទេររួច'
+                : 'transferred'
+              : km
+                ? 'ត្រូវទូទាត់'
+                : 'payable'}
+          </p>
         )}
 
         {/* ----------------------------------------------------------- table */}
@@ -245,7 +272,13 @@ export default function AdminPayoutsPage() {
                   paged.visible.map((p) => (
                     <tr key={p.id} className="border-b border-line-2">
                       <td>
-                        <span className="font-mono text-small">{p.invoice_no}</span>
+                        {/* The invoice number opens the invoice. It was plain
+                            text until now, so the admin who makes the transfer
+                            had no way to read the document it is made against
+                            - while the organiser could print theirs. */}
+                        <Link className="font-mono text-small" to={`/admin/payouts/${p.id}`}>
+                          {p.invoice_no}
+                        </Link>
                         <p className="text-tiny text-muted m-0">{dateTime(p.requested_at)}</p>
                       </td>
                       <td>
@@ -278,6 +311,15 @@ export default function AdminPayoutsPage() {
                       </td>
                       <td>
                         <Badge status={p.status} />
+                        {/* Age, on the rows where waiting is the problem. The
+                            queue is ordered oldest-first, so this is what that
+                            order is showing - and a request sitting for eleven
+                            days reads as a date nobody subtracts. */}
+                        {p.status !== 'PAID' && (
+                          <p className="text-tiny text-muted m-0 mt-1">
+                            {km ? 'រង់ចាំ' : 'waiting'} {timeAgo(p.requested_at).replace(' ago', '')}
+                          </p>
+                        )}
                         {p.reviewed_by_name && (
                           <p className="text-tiny text-muted m-0 mt-1">
                             {km ? 'ដោយ' : 'by'} {p.reviewed_by_name}

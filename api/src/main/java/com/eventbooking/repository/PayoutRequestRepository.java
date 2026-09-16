@@ -81,11 +81,4 @@ public interface PayoutRequestRepository extends JpaRepository<PayoutRequest, Lo
      */
     @Query(value = "select nextval('payout_invoice_seq')", nativeQuery = true)
     long nextInvoiceSequence();
-
-    /** Admin totals: how much money is sitting in a given set of states. */
-    @Query("""
-            select coalesce(sum(p.netUsdCents), 0) from PayoutRequest p
-            where p.status in :states
-            """)
-    long sumNetUsdCentsByStatusIn(@Param("states") Collection<PayoutStatus> states);
 }

@@ -26,6 +26,18 @@ export const getOrganizerTransactions = (params) =>
   client.get('/organizer/transaction', { params }).then((r) => r.data)
 
 /**
+ * The figures over the table: how many transactions match the filters, and what
+ * they settled to.
+ *
+ * Takes the same filters as the list and no paging, because that is the whole
+ * point - the heading describes every matching transaction, while the list hands
+ * back twenty-five of them. Summing the page instead is what made an organiser
+ * with six hundred transactions read "25 transactions".
+ */
+export const getOrganizerTransactionSummary = (params) =>
+  client.get('/organizer/transaction/summary', { params }).then((r) => r.data)
+
+/**
  * Confirmed revenue per month, aggregated server-side.
  *
  * Replaces fetching a page of raw bookings to sum them in the browser - that

@@ -10,9 +10,31 @@ import { useLocale } from '../context/LocaleContext.jsx'
 import { useToast } from '../context/ToastContext.jsx'
 import { toLocalPhone } from '../lib/format.js'
 
+/*
+ * Wording for any code this page has no entry for.
+ *
+ * The fallback used to be the code itself, so a response the page had not been
+ * taught about put "VALIDATION_ERROR" on screen in front of whoever was trying
+ * to sign in. That string is a value from the API's own enum: it is not
+ * addressed to a reader, it is not translated, and it tells them nothing they
+ * can act on. Anything unmapped now gets a sentence, and the code goes to the
+ * console where the person who needs it is looking.
+ */
+const FALLBACK = {
+  en: 'Something went wrong. Please try again.',
+  km: 'មានបញ្ហាបានកើតឡើង។ សូមព្យាយាមម្តងទៀត។',
+}
+
 const ERRORS = {
   PHONE_TAKEN: { en: 'That phone number is already registered.', km: 'លេខទូរស័ព្ទនេះមានគណនីរួចហើយ។' },
   EMAIL_TAKEN: { en: 'That email is already registered.', km: 'អ៊ីមែលនេះមានគណនីរួចហើយ។' },
+  // What the server says when a field fails its own validation - the commonest
+  // refusal this form gets, and the one that was reaching the screen as a raw
+  // code. Same wording BecomeOrganizerPage already uses for it.
+  VALIDATION_ERROR: {
+    en: 'Please check the highlighted fields and try again.',
+    km: 'សូមពិនិត្យប្រអប់ដែលបានសម្គាល់ ហើយព្យាយាមម្តងទៀត។',
+  },
   // Google's own answer was fine and ours was not. Vague on purpose: the API
   // returns one code for a bad signature, a wrong audience and an expired
   // token alike, so detail here would be invented.
@@ -172,7 +194,10 @@ export default function RegisterPage() {
         {serverError && (
           <div role="alert">
             <Alert tone="danger">
-              {ERRORS[serverError]?.[locale] || ERRORS[serverError]?.en || serverError}
+              {ERRORS[serverError]?.[locale] ||
+                ERRORS[serverError]?.en ||
+                FALLBACK[locale] ||
+                FALLBACK.en}
             </Alert>
           </div>
         )}

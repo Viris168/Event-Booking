@@ -209,8 +209,10 @@ public class OrganizerTelegramService {
             // CONFIRMED only - a pending hold, an expired one, a failed
             // payment are not a sale, and /stats is "how are my sales doing"
             // read on a phone, not a debug view of the booking table.
+            // No provider filter: /stats is every sale on the event, however it
+            // was paid for.
             var txnPage = organizerTransactionService.listForOrganizer(
-                    organizerId, e.id(), BookingStatus.CONFIRMED, 0, TRANSACTIONS_SHOWN);
+                    organizerId, e.id(), BookingStatus.CONFIRMED, null, 0, TRANSACTIONS_SHOWN);
             // An event with nobody having bought anything yet is not news -
             // /stats is "how are my sales doing", and a wall of zeroes for
             // every unsold event just pushes the ones that DID sell further

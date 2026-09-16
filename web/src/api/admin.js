@@ -209,7 +209,7 @@ export const updateUser = (id, payload) =>
 /**
  * Payment attempts across every organiser, newest first.
  *
- * @param {{ provider?: string, status?: string, stuckOnly?: boolean }} params
+ * @param {{ provider?: string, status?: string, eventId?: number, stuckOnly?: boolean }} params
  *        stuckOnly keeps only attempts still open an hour after they opened.
  *        The threshold is the server's, deliberately: it is a question about
  *        elapsed time, and a tab left open overnight answers it against a clock
@@ -217,6 +217,28 @@ export const updateUser = (id, payload) =>
  */
 export const getPayments = (params) =>
   client.get('/admin/payments', { params }).then((r) => r.data)
+
+/**
+ * Ask the provider about one attempt, now.
+ *
+ * POST, not a read: it can settle the payment, confirm the booking and issue
+ * the tickets. Answers { checked, payment } - `checked` is false when the
+ * provider was not contacted at all, which is a normal outcome rather than a
+ * failure: the attempt may already have closed, or the per-provider rate floor
+ * may say it is too soon to ask again.
+ */
+export const reconcilePayment = (id) =>
+  client.post(`/admin/payments/${id}/reconcile`).then((r) => r.data)
+
+/**
+ * Attempts, settlements and failures per event - worst first.
+ *
+ * Not derivable from getPayments(): that returns one filtered view, and the
+ * question this answers is a comparison across every event. The server sorts
+ * it, because the order is the whole point of the panel.
+ */
+export const getPaymentHealthByEvent = () =>
+  client.get('/admin/payments/by-event').then((r) => r.data)
 
 // --- dashboard --------------------------------------------------------------
 

@@ -2,8 +2,10 @@ package com.eventbooking.controller.Organizer;
 
 import com.eventbooking.security.CurrentUserId;
 import com.eventbooking.Enumeration.BookingStatus;
+import com.eventbooking.Enumeration.PaymentProvider;
 import com.eventbooking.dto.booking.MonthlyRevenueResponse;
 import com.eventbooking.dto.booking.OrganizerTransactionResponse;
+import com.eventbooking.dto.booking.OrganizerTransactionSummaryResponse;
 import com.eventbooking.security.OrganizerResolver;
 import com.eventbooking.service.booking.OrganizerTransactionService;
 import lombok.extern.slf4j.Slf4j;
@@ -51,16 +53,39 @@ public class OrganizerTransactionController {
                 organizerTransactionService.monthlyRevenue(organizerId, months), HttpStatus.OK);
     }
 
+    /**
+     * The heading's figures, for the same filters the list takes. Deliberately
+     * not derived from the page - see the service.
+     */
+    @GetMapping("/summary")
+    public ResponseEntity<OrganizerTransactionSummaryResponse> summary(
+            @CurrentUserId Long actorUserId,
+            @RequestParam(required = false) Long eventId,
+            @RequestParam(required = false) BookingStatus state,
+            @RequestParam(required = false) PaymentProvider provider) {
+        Long organizerId = organizerResolver.requireOrganizerId(actorUserId);
+        return new ResponseEntity<>(
+                organizerTransactionService.summaryForOrganizer(organizerId, eventId, state, provider),
+                HttpStatus.OK);
+    }
+
     @GetMapping
     public ResponseEntity<Page<OrganizerTransactionResponse>> list(
             @CurrentUserId Long actorUserId,
             @RequestParam(required = false) Long eventId,
             @RequestParam(required = false) BookingStatus state,
+            /*
+             * The provider of the booking's most recent attempt - the same one
+             * the row prints. See BookingRepository.findForOrganizer for why it
+             * is the latest attempt rather than any attempt.
+             */
+            @RequestParam(required = false) PaymentProvider provider,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "25") int size) {
         Long organizerId = organizerResolver.requireOrganizerId(actorUserId);
         return new ResponseEntity<>(
-                organizerTransactionService.listForOrganizer(organizerId, eventId, state, page, size),
+                organizerTransactionService.listForOrganizer(
+                        organizerId, eventId, state, provider, page, size),
                 HttpStatus.OK);
     }
 }

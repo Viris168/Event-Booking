@@ -1089,13 +1089,33 @@
      size and far more leading than the Latin script at the same optical
      weight, or the subscript forms collide with the line above. */
   html[lang='km'] .hero h1 {
-    @apply max-w-[18ch];
     font-family: var(--font-display-khmer);
-    font-size: clamp(1.45rem, 0.9rem + 2.3vw, 2.5rem);
-    line-height: 1.75;
-    /* The Khmer headline is 19.4em in Moul against the Latin's 12. Holding it
-       to one line would put it at 15px on a phone, so it keeps wrapping. */
-    white-space: normal;
+    /* One line here too, the same way the Latin rule does it.
+       
+       The headline wrapped before, and the comment here said why: the old
+       string was 19.4em wide in Moul, so a single line meant ~15px on a phone.
+       The string is shorter now - "ព្រឹត្តិការណ៍ផ្ទាល់ទូទាំង កម្ពុជា" rather
+       than a version naming the country twice - which is what makes the line
+       affordable at about 15em, and the divisor below carries headroom on top
+       of that because nowrap turns a bad guess into a headline hanging off the
+       page.
+
+       Re-measure if the copy changes. Same rule as the Latin line above, and
+       the reason both say so. */
+    max-width: none;
+    white-space: nowrap;
+    /* 19: the line carries the full ប្រទេសកម្ពុជា again, so it is back to
+       roughly the width the original wording had, less the នៅ that went. That
+       puts it near 17px on a 320px phone - the price of the single line at this
+       length, and the reason the earlier version wrapped instead. */
+    font-size: min(2.5rem, 100cqw / 19);
+    line-height: 1.5;
+    /* Moul sets tall ascenders and hangs subscript forms below the baseline,
+       and the gilded fill is clipped to the text box - so with no room above
+       and below, the tops and the tails come out shaved rather than gilded.
+       Padding rather than more leading: line-height moves a single line within
+       its box without giving the glyphs anywhere to go. */
+    padding-block: 0.3em;
   }
   .hero p {
     @apply mt-[0.7rem] max-w-[58ch] text-white/[0.82];
@@ -2972,6 +2992,20 @@
   .alert-icon {
     @apply grid size-6 flex-none place-items-center rounded-[7px] bg-white/65;
   }
+  /*
+   * Dark only. A translucent white square works over the light theme's pale
+   * tints - it reads as a lighter chip of the same family - but over the dark
+   * theme's #17251d it is a grey block stuck to the side of a green panel,
+   * which is exactly how it looked.
+   *
+   * currentColor is the alert's own text colour, set by each .alert-* tone
+   * below, so this one rule gives the info chip a green, the warning chip an
+   * amber and the danger chip a red, with nothing to keep in step. 16% is low
+   * enough that the icon on top still reads at full strength.
+   */
+  [data-theme='dark'] .alert-icon {
+    background: color-mix(in oklab, currentColor 16%, transparent);
+  }
   .alert-info {
     @apply border-tint-2 bg-tint text-on-tint;
   }
@@ -3035,6 +3069,46 @@
   .timeline li:not(:last-child)::after {
     content: '';
     @apply absolute bottom-0 left-1 top-[1.1rem] w-px bg-line;
+  }
+
+  /*
+   * Status tabs across the top of a table.
+   *
+   * Deliberately the same contract as .rq-tab in queueStyles.js: underline on
+   * the one you are on, and the count in its own chip so a queue growing from
+   * 9 to 1,204 widens the chip instead of shoving every label sideways. The
+   * values are copied rather than re-chosen - two screens showing status tabs
+   * three clicks apart must not look like two different controls.
+   *
+   * It lives here because this is the shared stylesheet; that one is injected
+   * by the two queue screens alone.
+   *
+   * The horizontal padding matters as much as the rest: the strip sits between
+   * a padded header and a padded table, and without it the tabs started at the
+   * window edge while everything above and below them started 20px in.
+   */
+  .tabbar {
+    @apply flex flex-wrap items-center gap-1 border-b border-line-2 bg-surface-2 px-5;
+  }
+  .tabbar button {
+    @apply inline-flex cursor-pointer items-center gap-[0.4rem] whitespace-nowrap border-0
+      border-b-2 border-transparent bg-transparent px-[0.6rem] py-[0.6rem]
+      text-[0.86rem] font-semibold text-muted;
+  }
+  .tabbar button:hover {
+    @apply text-ink;
+  }
+  .tabbar button[aria-pressed='true'] {
+    @apply text-ink;
+    border-bottom-color: var(--color-brand-600);
+  }
+  .tab-n {
+    @apply inline-grid min-w-[1.35rem] place-items-center rounded-full bg-surface
+      px-[0.32rem] text-[0.74rem] text-muted;
+    font-variant-numeric: tabular-nums;
+  }
+  .tabbar button[aria-pressed='true'] .tab-n {
+    @apply bg-brand-100 text-brand-800;
   }
 
   .pager {

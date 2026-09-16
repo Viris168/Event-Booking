@@ -1,8 +1,10 @@
 package com.eventbooking.service.booking.impl;
 
 import com.eventbooking.Enumeration.BookingStatus;
+import com.eventbooking.Enumeration.PaymentProvider;
 import com.eventbooking.dto.booking.MonthlyRevenueResponse;
 import com.eventbooking.dto.booking.OrganizerTransactionResponse;
+import com.eventbooking.dto.booking.OrganizerTransactionSummaryResponse;
 import com.eventbooking.model.Booking;
 import com.eventbooking.repository.BookingRepository;
 import com.eventbooking.repository.PaymentTransactionRepository;
@@ -13,6 +15,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.EnumSet;
+import java.util.Set;
 import java.time.YearMonth;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -22,6 +26,9 @@ import java.util.Map;
 
 @Service
 public class OrganizerTransactionServiceimpl implements OrganizerTransactionService {
+
+    /** Money that actually landed. The payout invoice counts the same states. */
+    private static final Set<BookingStatus> EARNING = EnumSet.of(BookingStatus.CONFIRMED);
 
     private final BookingRepository bookingRepository;
     private final PaymentTransactionRepository paymentTransactionRepository;
@@ -35,12 +42,11 @@ public class OrganizerTransactionServiceimpl implements OrganizerTransactionServ
     @Override
     @Transactional(readOnly = true)
     public Page<OrganizerTransactionResponse> listForOrganizer(
-            Long organizerId, Long eventId, BookingStatus state, int page, int size) {
+            Long organizerId, Long eventId, BookingStatus state, PaymentProvider provider,
+            int page, int size) {
 
-        
-                
         Page<Booking> bookings = bookingRepository.findForOrganizer(
-                organizerId, eventId, state, PageRequest.of(page, size));
+                organizerId, eventId, state, provider, PageRequest.of(page, size));
 
         Map<Long, String> providers = providersFor(bookings.getContent());
 
@@ -61,6 +67,15 @@ public class OrganizerTransactionServiceimpl implements OrganizerTransactionServ
     
 
     
+
+    @Override
+    @Transactional(readOnly = true)
+    public OrganizerTransactionSummaryResponse summaryForOrganizer(
+            Long organizerId, Long eventId, BookingStatus state, PaymentProvider provider) {
+        var totals = bookingRepository.totalsForOrganizer(organizerId, eventId, state, provider, EARNING);
+        return new OrganizerTransactionSummaryResponse(
+                totals.getTxCount(), totals.getSettledUsdCents());
+    }
 
     @Override
     @Transactional(readOnly = true)

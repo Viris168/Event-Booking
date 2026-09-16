@@ -6,11 +6,24 @@ import { Badge, ResponsiveTable, TablePager } from '../../components/ui.jsx'
 import { SkeletonRegion, TableRowsSkeleton } from '../../components/Skeleton.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
 import { usd } from '../../lib/format.js'
-import { getOrganizerTransactions } from '../../api/bookings.js'
+import { getOrganizerTransactions, getOrganizerTransactionSummary } from '../../api/bookings.js'
 import { getOrganizerEvents } from '../../api/events.js'
 
 /** Money that actually landed. Everything else is an intention. */
 const EARNING = new Set(['CONFIRMED'])
+
+/*
+ * Providers, named the way the table already names them.
+ *
+ * The row prints the provider of the booking's MOST RECENT attempt, and the
+ * filter matches on exactly that - so a booking first tried on Bakong and
+ * settled on ABA appears under ABA, which is what its own column says. The
+ * server enforces that definition; see BookingRepository.findForOrganizer.
+ */
+const PROVIDER_LABEL = {
+  BAKONG_KHQR: 'Bakong KHQR',
+  ABA_PAYWAY: 'ABA PayWay',
+}
 
 const STATES = [
   'PENDING_PAYMENT',
@@ -30,6 +43,7 @@ export default function OrganizerTransactionsPage() {
   const [q, setQ] = useState('')
   const [state, setState] = useState('')
   const [eventId, setEventId] = useState('')
+  const [provider, setProvider] = useState('')
   const [sort, setSort] = useState('newest')
   const [showFilters, setShowFilters] = useState(false)
   const [pageSize, setPageSize] = useState(25)
@@ -47,6 +61,12 @@ export default function OrganizerTransactionsPage() {
 
   const [rows, setRows] = useState([])
   const [total, setTotal] = useState(0)
+  /*
+   * The heading's own figures, for the whole filtered set rather than the page.
+   * Null until the first answer lands, so the heading can stay quiet instead of
+   * flashing a confident zero on the way to the real number.
+   */
+  const [summary, setSummary] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -62,6 +82,7 @@ export default function OrganizerTransactionsPage() {
       size: pageSize,
       ...(state ? { state } : {}),
       ...(eventId ? { eventId } : {}),
+      ...(provider ? { provider } : {}),
     })
       .then((data) => {
         if (cancelled) return
@@ -80,7 +101,27 @@ export default function OrganizerTransactionsPage() {
     return () => {
       cancelled = true
     }
-  }, [page, pageSize, state, eventId])
+  }, [page, pageSize, state, eventId, provider])
+
+  /*
+   * Deliberately not in the effect above: those deps include page and pageSize,
+   * and paging through a result does not change what the result adds up to.
+   */
+  useEffect(() => {
+    let cancelled = false
+    getOrganizerTransactionSummary({
+      ...(state ? { state } : {}),
+      ...(eventId ? { eventId } : {}),
+      ...(provider ? { provider } : {}),
+    })
+      .then((data) => !cancelled && setSummary(data))
+      // The table below reports the failure; a heading that drops back to its
+      // last known figures is better than a second error message.
+      .catch(() => !cancelled && setSummary(null))
+    return () => {
+      cancelled = true
+    }
+  }, [state, eventId, provider])
 
   // Sort and text search act on the page in hand, because the endpoint offers
   // neither yet. That is a real limitation rather than a hidden one - the empty
@@ -109,11 +150,7 @@ export default function OrganizerTransactionsPage() {
     if (page > pageCount) setPage(1)
   }, [page, pageCount])
 
-  const settled = rows
-    .filter((r) => EARNING.has(r.state))
-    .reduce((a, r) => a + r.total_usd_cents, 0)
-
-  const filtered = Boolean(q || state || eventId)
+  const filtered = Boolean(q || state || eventId || provider)
 
   // Defined once and rendered by both the loaded table and its skeleton. Two
   // copies of this markup would be two things to keep in step, and a skeleton
@@ -134,25 +171,42 @@ export default function OrganizerTransactionsPage() {
 
   return (
     <div className="container container-wide">
-      <div className="bg-surface border border-line rounded-hero shadow-card overflow-hidden">
-        {/* ------------------------------------------------------------ head */}
-        <div className="px-5 py-4 border-b border-line-2 flex items-center justify-between gap-4 flex-wrap">
-          <div>
-            <h1 className="text-lg font-bold text-ink m-0">{km ? 'ប្រតិបត្តិការទាំងអស់' : 'All transactions'}</h1>
-            <p className="text-small text-muted m-0 mt-0.5">
-              {/* The headline number describes the filtered view, not the
-                  account - a total that ignored the filters would contradict
-                  the rows directly beneath it. */}
-              {rows.length.toLocaleString()} {km ? 'ប្រតិបត្តិការ' : 'transactions'} ·{' '}
-              <span className="text-success font-semibold">{usd(settled)}</span>{' '}
-              {km ? 'បានទូទាត់' : 'settled'}
-            </p>
-          </div>
-          <Link className="btn btn-primary" to="/organizer/events/new">
-            <Icon name="plus" size={16} />
-            {t('createEvent')}
-          </Link>
+      {/* The page's title and figures sit outside the card, the same .page-head
+          the dashboard, venues, check-in and payouts use. They were inside it,
+          so this screen was a box with a heading rather than a page with a
+          table on it. */}
+      <div className="page-head">
+        <div>
+          <h1>{km ? 'ប្រតិបត្តិការ' : 'Transactions'}</h1>
+          <p>
+            {/* Both figures describe the filtered set, from the server. They
+                used to be counted off `rows`, which is one page since paging
+                moved server-side - so this line read "25 transactions" to an
+                organiser looking at a table of six hundred.
+
+                The money is printed only when the summary actually answered.
+                Falling back to zero put "$0.00 settled" beside a real count -
+                a confident figure for a number nobody had. */}
+            {(summary?.count ?? total).toLocaleString()}{' '}
+            {km ? 'ប្រតិបត្តិការ' : 'transactions'}
+            {summary && (
+              <>
+                {' · '}
+                <span className="text-success font-semibold">
+                  {usd(summary.settled_usd_cents)}
+                </span>{' '}
+                {km ? 'បានទូទាត់' : 'settled'}
+              </>
+            )}
+          </p>
         </div>
+        <Link className="btn btn-primary" to="/organizer/events/new">
+          <Icon name="plus" size={16} />
+          {t('createEvent')}
+        </Link>
+      </div>
+
+      <div className="bg-surface border border-line rounded-hero shadow-card overflow-hidden">
 
         {/* --------------------------------------------------------- toolbar */}
         <div className="px-5 py-3 border-b border-line-2 bg-surface-2 flex items-center gap-3 flex-wrap">
@@ -188,23 +242,35 @@ export default function OrganizerTransactionsPage() {
 
           <button
             type="button"
-            className={`btn btn-sm ${showFilters || filtered ? 'btn-outline' : 'btn-ghost'}`}
+            /*
+              * Solid while something is actually filtered, so the button says
+              * so from across the screen - the outline and the ghost differ by
+              * a hairline, which is not a state you notice you are in.
+              * Opening the panel without setting anything is not that state.
+              */
+            className={`btn min-h-[42px] ${
+              filtered ? 'btn-primary' : showFilters ? 'btn-outline' : 'btn-ghost'
+            }`}
             onClick={() => setShowFilters((v) => !v)}
             aria-expanded={showFilters}
           >
             <Icon name="filter" size={15} />
-            {km ? 'តម្រងបន្ថែម' : 'More filters'}
-            {filtered && <span className="badge badge-mode ml-1">{[q, state, eventId].filter(Boolean).length}</span>}
+            {km ? 'តម្រង' : 'Filters'}
+            {/* The count rides in the label rather than in a pill: a badge
+                borrowed from the table's own vocabulary sat on the green fill
+                looking like a status, which is the one thing it is not. */}
+            {filtered && ` · ${[q, state, eventId, provider].filter(Boolean).length}`}
           </button>
 
           {filtered && (
             <button
               type="button"
-              className="btn btn-sm btn-ghost"
+              className="btn btn-ghost min-h-[42px]"
               onClick={() => {
                 setQ('')
                 setState('')
                 setEventId('')
+                setProvider('')
                 setPage(1)
               }}
             >
@@ -249,6 +315,26 @@ export default function OrganizerTransactionsPage() {
                 {events.map((e) => (
                   <option key={e.id} value={e.id}>
                     {km ? e.title_km : e.title_en}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-tiny font-semibold text-muted uppercase tracking-wide">
+                {km ? 'មធ្យោបាយបង់ប្រាក់' : 'Paid with'}
+              </span>
+              <select
+                className="select w-auto"
+                value={provider}
+                onChange={(e) => {
+                  setProvider(e.target.value)
+                  setPage(1)
+                }}
+              >
+                <option value="">{km ? 'ទាំងអស់' : 'All providers'}</option>
+                {Object.entries(PROVIDER_LABEL).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
                   </option>
                 ))}
               </select>
@@ -325,7 +411,13 @@ export default function OrganizerTransactionsPage() {
                       </td>
                       <td>
                         {r.payment_provider ? (
-                          <span className="badge badge-mode">{r.payment_provider}</span>
+                          /* The same wording as the filter above it. The raw
+                             enum was printed here, so the control offered
+                             "Bakong KHQR" and the column it filtered answered
+                             "BAKONG_KHQR". */
+                          <span className="badge badge-mode">
+                            {PROVIDER_LABEL[r.payment_provider] ?? r.payment_provider}
+                          </span>
                         ) : (
                           /* No attempt started yet - not the same as a failed one. */
                           <span className="text-muted">—</span>
