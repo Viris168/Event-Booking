@@ -40,6 +40,19 @@ public record PayoutRequestResponse(
         String organizerNameEn,
         String organizerNameKm,
 
+        /**
+         * The organiser's Telegram handle, so an admin working the queue can
+         * ask about a transfer without leaving the page - a payout is the one
+         * queue where a question ("is this account still right?") has to reach
+         * a person rather than a status field.
+         *
+         * <p>Null for the organiser reading their own history, the way
+         * {@code EventResponse.organizerTelegramHandle} is: it would be a link
+         * back to themselves. Null too when they never gave one, which is
+         * allowed - the apply form requires neither contact field.
+         */
+        String organizerTelegramHandle,
+
         // ------------------------------------------------------- the money
 
         long grossUsdCents,

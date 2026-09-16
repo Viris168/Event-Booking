@@ -875,6 +875,47 @@
     @apply w-full;
   }
 
+  /* --------------------------------------------------- contact buttons */
+  /* ContactButtons, shared by the three admin screens that review a person:
+     the event queue, the organiser applications queue and the payout queue.
+     Global rather than page-scoped because the last of those does not inject
+     the queue stylesheet the first two share. */
+  .contact-btns {
+    @apply my-2 flex flex-wrap gap-2;
+  }
+  .contact-btns .btn {
+    @apply gap-[0.25rem];
+  }
+  /* Each service in its own colour, tinted rather than solid - it says which
+     app the button opens before the label is read, without competing with the
+     primary action on the same screen. */
+  .contact-btn-telegram,
+  .contact-btn-facebook {
+    @apply border border-solid font-semibold;
+  }
+  .contact-btn-telegram {
+    color: #1c8fc2;
+    background: rgba(34, 158, 217, 0.1);
+    border-color: rgba(34, 158, 217, 0.35);
+  }
+  .contact-btn-telegram:hover {
+    background: rgba(34, 158, 217, 0.18);
+  }
+  .contact-btn-facebook {
+    color: #1461d1;
+    background: rgba(24, 119, 242, 0.1);
+    border-color: rgba(24, 119, 242, 0.35);
+  }
+  .contact-btn-facebook:hover {
+    background: rgba(24, 119, 242, 0.18);
+  }
+  [data-theme='dark'] .contact-btn-telegram {
+    color: #7cd0f4;
+  }
+  [data-theme='dark'] .contact-btn-facebook {
+    color: #8fb4f7;
+  }
+
   /* ----------------------------------------------------------------- cards */
   .card {
     @apply overflow-hidden rounded-card border border-line bg-surface shadow-card;

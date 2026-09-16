@@ -22,6 +22,7 @@ import com.eventbooking.repository.EventRepository;
 import com.eventbooking.repository.OrganizerProfileRepository;
 import com.eventbooking.repository.PayoutRequestRepository;
 import com.eventbooking.repository.TicketRepository;
+import com.eventbooking.service.Organizer.OrganizerContactLookup;
 import com.eventbooking.service.notification.NotificationEvents;
 import com.eventbooking.service.payout.PayoutService;
 import org.springframework.context.ApplicationEventPublisher;
@@ -77,6 +78,7 @@ public class PayoutServiceimpl implements PayoutService {
     private final TicketRepository ticketRepository;
     private final OrganizerProfileRepository organizerProfileRepository;
     private final AppUserRepository appUserRepository;
+    private final OrganizerContactLookup organizerContactLookup;
     private final PayoutProperties properties;
     private final ApplicationEventPublisher events;
     private final Clock clock;
@@ -87,6 +89,7 @@ public class PayoutServiceimpl implements PayoutService {
                              TicketRepository ticketRepository,
                              OrganizerProfileRepository organizerProfileRepository,
                              AppUserRepository appUserRepository,
+                             OrganizerContactLookup organizerContactLookup,
                              PayoutProperties properties,
                              ApplicationEventPublisher events,
                              Clock clock) {
@@ -96,6 +99,7 @@ public class PayoutServiceimpl implements PayoutService {
         this.ticketRepository = ticketRepository;
         this.organizerProfileRepository = organizerProfileRepository;
         this.appUserRepository = appUserRepository;
+        this.organizerContactLookup = organizerContactLookup;
         this.properties = properties;
         this.events = events;
         this.clock = clock;
@@ -218,7 +222,7 @@ public class PayoutServiceimpl implements PayoutService {
         // told the platform owes them money until the row saying so is durable.
         events.publishEvent(new NotificationEvents.PayoutRequested(payout.getId()));
 
-        return toResponse(payout, event, true);
+        return toResponse(payout, event, true, false);
     }
 
     /**
@@ -240,7 +244,7 @@ public class PayoutServiceimpl implements PayoutService {
                 : payoutRequestRepository.findByOrganizerIdAndStatusOrderByRequestedAtDesc(organizerId, status);
         // The organiser owns every row here, so the account number is their own
         // to read back.
-        return rows.stream().map(row -> toResponse(row, null, true)).toList();
+        return rows.stream().map(row -> toResponse(row, null, true, false)).toList();
     }
 
     @Override
@@ -252,7 +256,7 @@ public class PayoutServiceimpl implements PayoutService {
                 // from "does not exist" turns a sequential invoice number into
                 // an oracle for how much other organisers have been paid.
                 .orElseThrow(() -> new PayoutRequestNotFoundException(payoutId));
-        return toResponse(payout, null, true);
+        return toResponse(payout, null, true, false);
     }
 
     // ----------------------------------------------------------------- admin
@@ -261,7 +265,7 @@ public class PayoutServiceimpl implements PayoutService {
     @Transactional(readOnly = true)
     public List<PayoutRequestResponse> queue(PayoutStatus status) {
         return payoutRequestRepository.findByStatusOrderByRequestedAtAsc(status).stream()
-                .map(row -> toResponse(row, null, false))
+                .map(row -> toResponse(row, null, false, true))
                 .toList();
     }
 
@@ -286,7 +290,7 @@ public class PayoutServiceimpl implements PayoutService {
         // cannot read is an account they cannot pay. The masking in the list
         // view is about how many accounts are on screen at once, not about
         // withholding them from admins.
-        return toResponse(require(payoutId), null, true);
+        return toResponse(require(payoutId), null, true, true);
     }
 
     @Override
@@ -302,7 +306,7 @@ public class PayoutServiceimpl implements PayoutService {
         payoutRequestRepository.save(payout);
 
         events.publishEvent(new NotificationEvents.PayoutDecided(payout.getId(), PayoutStatus.APPROVED));
-        return toResponse(payout, null, false);
+        return toResponse(payout, null, false, true);
     }
 
     @Override
@@ -326,7 +330,7 @@ public class PayoutServiceimpl implements PayoutService {
         payoutRequestRepository.save(payout);
 
         events.publishEvent(new NotificationEvents.PayoutDecided(payout.getId(), PayoutStatus.PAID));
-        return toResponse(payout, null, false);
+        return toResponse(payout, null, false, true);
     }
 
     // ------------------------------------------------------------- internals
@@ -371,10 +375,14 @@ public class PayoutServiceimpl implements PayoutService {
      *                 as a per-row findById for now because a payout list is
      *                 tens of rows, not thousands - if the admin queue ever
      *                 pages, this is the N+1 to fix first.
-     * @param unmasked whether the reader owns this row. Only the organiser's
-     *                 own paths pass true.
+     * @param unmasked whether the account number goes out in full. Not an
+     *                 audience flag, despite reading like one: {@code
+     *                 getForAdmin} passes true, because an admin about to make
+     *                 a transfer has to read the account they are paying.
+     * @param forAdmin who is reading. Admin-only fields hang off this one.
      */
-    private PayoutRequestResponse toResponse(PayoutRequest payout, Event event, boolean unmasked) {
+    private PayoutRequestResponse toResponse(PayoutRequest payout, Event event,
+                                             boolean unmasked, boolean forAdmin) {
         Event e = event != null ? event : eventRepository.findById(payout.getEventId()).orElse(null);
         OrganizerProfile profile = organizerProfileRepository.findById(payout.getOrganizerId()).orElse(null);
 
@@ -393,6 +401,12 @@ public class PayoutServiceimpl implements PayoutService {
                 payout.getOrganizerId(),
                 profile == null ? null : profile.getOrgNameEn(),
                 profile == null ? null : profile.getOrgNameKm(),
+                /* Skipped entirely for an organiser rather than fetched and
+                   discarded: the lookup is two reads per row, and this method
+                   runs once per row of the queue. */
+                forAdmin
+                        ? organizerContactLookup.forOrganizer(payout.getOrganizerId()).telegramHandle()
+                        : null,
                 payout.getGrossUsdCents(),
                 payout.getFeeBps(),
                 payout.getFeeUsdCents(),

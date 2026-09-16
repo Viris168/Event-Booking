@@ -199,26 +199,10 @@ export const RQ_CSS = `
 .rq-section > h3 { margin: 0 0 var(--rq-2); font-size: .9rem; font-weight: 600;
                    letter-spacing: -.005em; color: var(--color-ink); }
 
-.rq-contact-btns { display: flex; flex-wrap: wrap; gap: var(--rq-2);
-                    margin: var(--rq-2) 0; }
-.rq-contact-btns .btn { gap: var(--rq-1, 4px); }
-
-/* Each service's own colour, tinted rather than solid - it says which app it
-   opens before you read the label, without shouting louder than the primary
-   Approve button below it. */
-.contact-btn-telegram, .contact-btn-facebook {
-  font-weight: 600; border-width: 1px; border-style: solid;
-}
-.contact-btn-telegram {
-  color: #1c8fc2; background: rgba(34, 158, 217, .1); border-color: rgba(34, 158, 217, .35);
-}
-.contact-btn-telegram:hover { background: rgba(34, 158, 217, .18); }
-.contact-btn-facebook {
-  color: #1461d1; background: rgba(24, 119, 242, .1); border-color: rgba(24, 119, 242, .35);
-}
-.contact-btn-facebook:hover { background: rgba(24, 119, 242, .18); }
-[data-theme='dark'] .contact-btn-telegram { color: #7cd0f4; }
-[data-theme='dark'] .contact-btn-facebook { color: #8fb4f7; }
+/* ContactButtons' own styles used to sit here. They moved to index.css when
+   the payout queue started rendering the component: this stylesheet is injected
+   by the two split-view queues only, so a shared component styled from it was
+   unstyled anywhere else. */
 
 .rq-kv { display: flex; justify-content: space-between; gap: var(--rq-4);
          padding: var(--rq-2) 0; font-size: .875rem; align-items: baseline;

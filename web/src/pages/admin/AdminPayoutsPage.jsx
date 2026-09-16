@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import ContactButtons from '../../components/ContactButtons.jsx'
 import Icon from '../../components/Icon.jsx'
 import ConfirmDialog from '../../components/ConfirmDialog.jsx'
 import FormDialog from '../../components/FormDialog.jsx'
@@ -237,7 +238,16 @@ export default function AdminPayoutsPage() {
                         <span className="font-mono text-small">{p.invoice_no}</span>
                         <p className="text-tiny text-muted m-0">{dateTime(p.requested_at)}</p>
                       </td>
-                      <td>{km ? p.organizer_name_km : p.organizer_name_en}</td>
+                      <td>
+                        {km ? p.organizer_name_km : p.organizer_name_en}
+                        {/* The same button the review queue carries, and for
+                            the same reason: the question an admin has here is
+                            usually for the payee, not for the record. Facebook
+                            is left off - a transfer query wants the channel the
+                            organiser actually watches, and two buttons in a
+                            table row is a toolbar. */}
+                        <ContactButtons telegram={p.organizer_telegram_handle} km={km} />
+                      </td>
                       <td>
                         {km ? p.event_title_km : p.event_title_en}
                         <p className="text-tiny text-muted m-0">

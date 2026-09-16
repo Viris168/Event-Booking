@@ -2,11 +2,13 @@ import { useDocumentTitle } from '../../lib/useDocumentTitle.js'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ConfirmDialog from '../../components/ConfirmDialog.jsx'
 import QueueDialog from './QueueDialog.jsx'
+import ContactButtons from '../../components/ContactButtons.jsx'
 import Icon from '../../components/Icon.jsx'
 import { Alert, Empty, Field, ResponsiveTable } from '../../components/ui.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
 import { RQ_CSS } from './queueStyles.js'
 import { useToast } from '../../context/ToastContext.jsx'
+import { facebookUrl, telegramUrl } from '../../lib/contactLinks.js'
 import { formatDateTime, timeAgo } from '../../lib/format.js'
 import {
   approveApplication,
@@ -420,6 +422,10 @@ function ApplicationPanel({ application, km, locale, busy, onApprove, onReject }
    */
   const noContact = !telegram && !facebook
 
+  /* Given something, but nothing that resolves - a mistyped handle, or a
+     scheme contactLinks refuses to put behind a click. */
+  const unreachable = !noContact && !telegramUrl(telegram) && !facebookUrl(facebook)
+
   /*
    * Only a PENDING application can still be decided.
    *
@@ -466,22 +472,28 @@ function ApplicationPanel({ application, km, locale, busy, onApprove, onReject }
           <Row label={km ? 'ដាក់ស្នើនៅ' : 'Submitted'}>{fmt(submittedAt, locale)}</Row>
         </div>
 
+        {/*
+          * The buttons are the links; the rows underneath are the record of
+          * what was actually typed, so an admin can still read and copy a
+          * handle whose button did not render.
+          */}
         <Section title={km ? 'ទំនាក់ទំនង' : 'Contact'}>
+          <ContactButtons telegram={telegram} facebook={facebook} km={km} />
           <Row label="Telegram">
             {telegram ? <span className="mono">{telegram}</span> : '—'}
           </Row>
           <Row label="Facebook">
-            {facebook ? (
-              /* noreferrer as well as noopener: this URL was typed by the
-                 person being reviewed, and an admin session is not a referrer
-                 worth handing to a stranger's site. */
-              <a href={facebook} target="_blank" rel="noopener noreferrer">
-                {km ? 'បើកទំព័រ' : 'Open page'}
-              </a>
-            ) : (
-              '—'
-            )}
+            {facebook ? <span className="mono">{facebook}</span> : '—'}
           </Row>
+          {/* A value that is present but unusable would otherwise read as a
+              missing button with no explanation. */}
+          {unreachable && (
+            <p className="small muted mt-2 mb-0">
+              {km
+                ? 'អ្វីដែលបានបញ្ចូលមិនអាចបង្កើតតំណបានទេ។'
+                : 'What they entered here does not form a link that can be opened.'}
+            </p>
+          )}
         </Section>
 
         <Section title={km ? 'អ្វីដែលពួកគេចង់រៀបចំ' : 'What they want to run'}>

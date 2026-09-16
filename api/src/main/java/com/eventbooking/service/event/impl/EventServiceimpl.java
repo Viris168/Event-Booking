@@ -23,6 +23,7 @@ import com.eventbooking.service.notification.NotificationEvents;
 import com.eventbooking.service.Image.CloudinaryResponse;
 import com.eventbooking.service.Image.CloudinaryService;
 import com.eventbooking.security.OrganizerResolver;
+import com.eventbooking.service.Organizer.OrganizerContactLookup;
 import com.eventbooking.service.event.EventService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -62,10 +63,9 @@ public class EventServiceimpl implements EventService {
     private final EventSeatRepository eventSeatRepository;
     private final EventSnapshotter eventSnapshotter;
     private final ApplicationEventPublisher events;
-    private final OrganizerProfileRepository organizerProfileRepository;
-    private final OrganizerApplicationRepository organizerApplicationRepository;
+    private final OrganizerContactLookup organizerContactLookup;
 
-    public EventServiceimpl(VenueRepository venueRepository, EventRepository eventRepository, SeatClassRepository seatClassRepository, EventZoneRepository eventZoneRepository, CloudinaryService cloudinaryService, OrganizerResolver organizerResolver, EventStateMachine stateMachine, EventReviewRepository eventReviewRepository, AppUserRepository appUserRepository, EventSeatRepository eventSeatRepository, EventSnapshotter eventSnapshotter, ApplicationEventPublisher events, OrganizerProfileRepository organizerProfileRepository, OrganizerApplicationRepository organizerApplicationRepository) {
+    public EventServiceimpl(VenueRepository venueRepository, EventRepository eventRepository, SeatClassRepository seatClassRepository, EventZoneRepository eventZoneRepository, CloudinaryService cloudinaryService, OrganizerResolver organizerResolver, EventStateMachine stateMachine, EventReviewRepository eventReviewRepository, AppUserRepository appUserRepository, EventSeatRepository eventSeatRepository, EventSnapshotter eventSnapshotter, ApplicationEventPublisher events, OrganizerContactLookup organizerContactLookup) {
         this.organizerResolver = organizerResolver;
         this.stateMachine = stateMachine;
         this.eventReviewRepository = eventReviewRepository;
@@ -78,8 +78,7 @@ public class EventServiceimpl implements EventService {
         this.eventSeatRepository = eventSeatRepository;
         this.eventSnapshotter = eventSnapshotter;
         this.events = events;
-        this.organizerProfileRepository = organizerProfileRepository;
-        this.organizerApplicationRepository = organizerApplicationRepository;
+        this.organizerContactLookup = organizerContactLookup;
     }
 
     @Override
@@ -844,23 +843,16 @@ public class EventServiceimpl implements EventService {
     }
 
     /**
-     * The organiser's Telegram handle and Facebook page, from their most recent
-     * organiser application - not organizer_profile.telegram_chat_id, which is
-     * the bot's numeric chat id, not a human-readable handle to link to.
+     * The organiser's Telegram handle and Facebook page. The lookup itself is
+     * {@link OrganizerContactLookup}, shared with the payout queue, which needs
+     * the same answer for the same reason.
      *
      * <p>Only ever called for Audience.ADMIN: an organiser has no use for a
      * link back to their own contact details on their own event.
      */
     private String[] organizerContact(Long organizerId) {
-        var profile = organizerProfileRepository.findById(organizerId).orElse(null);
-        if (profile == null) return new String[] { null, null };
-        var latest = organizerApplicationRepository
-                .findByUserIdOrderBySubmittedAtDesc(profile.getUserId())
-                .stream()
-                .findFirst()
-                .orElse(null);
-        if (latest == null) return new String[] { null, null };
-        return new String[] { latest.getTelegramHandle(), latest.getFacebookUrl() };
+        var contact = organizerContactLookup.forOrganizer(organizerId);
+        return new String[] { contact.telegramHandle(), contact.facebookUrl() };
     }
 
     private EventResponse toEventResponse(Event event, Audience audience) {

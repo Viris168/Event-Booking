@@ -1,6 +1,7 @@
 import { useDocumentTitle } from '../../lib/useDocumentTitle.js'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ConfirmDialog from '../../components/ConfirmDialog.jsx'
+import SharedContactButtons from '../../components/ContactButtons.jsx'
 import QueueDialog from './QueueDialog.jsx'
 import Icon from '../../components/Icon.jsx'
 import { Alert, Badge, Empty, Field, Pager, ResponsiveTable } from '../../components/ui.jsx'
@@ -758,41 +759,19 @@ function EventReviewPanel({ event, km, locale, busy, onApprove, onRequestChanges
   )
 }
 
-/** @sokha or plain "sokha" both arrive from the applicant's own typing. */
-const telegramUrl = (handle) => `https://t.me/${handle.replace(/^@/, '').trim()}`
-
 /**
- * Message the organiser directly, on whichever of Telegram or Facebook they
- * gave when they applied - the server only sends these two fields for
- * Audience.ADMIN, so an organiser never sees a link back to themselves here.
+ * The organiser behind the event under review, reachable on whichever service
+ * they gave. The buttons themselves live in components/ContactButtons - the
+ * application queue renders the same pair from the applicant's own row - so
+ * this wrapper is only the field lookup.
  */
 function ContactButtons({ event, km }) {
-  const telegram = pick(event, 'organizer_telegram_handle', 'organizerTelegramHandle')
-  const facebook = pick(event, 'organizer_facebook_url', 'organizerFacebookUrl')
-  if (!telegram && !facebook) return null
-
   return (
-    <div className="rq-contact-btns">
-      {telegram && (
-        <a
-          className="btn btn-sm contact-btn-telegram"
-          href={telegramUrl(telegram)}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Icon name="external" size={14} />
-          {km ? 'ទាក់ទងតាម Telegram' : 'Message on Telegram'}
-        </a>
-      )}
-      {facebook && (
-        /* noreferrer as well as noopener: this URL was typed by the organiser
-           being reviewed, not chosen by the platform. */
-        <a className="btn btn-sm contact-btn-facebook" href={facebook} target="_blank" rel="noopener noreferrer">
-          <Icon name="external" size={14} />
-          {km ? 'ទាក់ទងតាម Facebook' : 'Message on Facebook'}
-        </a>
-      )}
-    </div>
+    <SharedContactButtons
+      telegram={pick(event, 'organizer_telegram_handle', 'organizerTelegramHandle')}
+      facebook={pick(event, 'organizer_facebook_url', 'organizerFacebookUrl')}
+      km={km}
+    />
   )
 }
 
