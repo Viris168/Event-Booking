@@ -19,6 +19,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+
+import java.util.Locale;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -77,19 +79,25 @@ public class AuthController {
                                                HttpServletRequest http) {
         String address = http.getRemoteAddr();
 
+        // Folded and trimmed, because the limiter counts per key: "Foo@x.com"
+        // and "foo@x.com" are one account since V31, and leaving them as two
+        // keys would give an attacker a fresh budget for every casing of the
+        // same address.
+        String key = request.identifier().trim().toLowerCase(Locale.ROOT);
+
         // Before the password is checked, so a refused attempt costs a map
         // lookup instead of a BCrypt hash.
-        loginRateLimiter.check(address, request.phoneE164());
+        loginRateLimiter.check(address, key);
 
         try {
             TokenResponse tokens = authService.login(request, http.getHeader("User-Agent"));
-            loginRateLimiter.recordSuccess(request.phoneE164());
+            loginRateLimiter.recordSuccess(key);
             return issued(tokens, HttpStatus.OK);
         } catch (InvalidCredentialsException e) {
             // Only a wrong credential counts. A disabled account is not a
             // guess, and locking it out would let anyone freeze an account they
             // know the number of by failing against it repeatedly.
-            loginRateLimiter.recordFailure(address, request.phoneE164());
+            loginRateLimiter.recordFailure(address, key);
             throw e;
         }
     }

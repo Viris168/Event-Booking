@@ -6,7 +6,7 @@ import com.eventbooking.exception.ErrorCode;
 
 /**
  * The booking is in a state that cannot take money: already expired or
- * cancelled (its seats are back on sale), or somewhere on the refund path.
+ * cancelled (its seats are back on sale), or already paid for.
  */
 public class BookingNotPayableException extends ApiException {
     public BookingNotPayableException(Long bookingId, BookingStatus state) {

@@ -1,9 +1,10 @@
 import { useDocumentTitle } from '../../lib/useDocumentTitle.js'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ConfirmDialog from '../../components/ConfirmDialog.jsx'
+import SharedContactButtons from '../../components/ContactButtons.jsx'
 import QueueDialog from './QueueDialog.jsx'
 import Icon from '../../components/Icon.jsx'
-import { Alert, Badge, Empty, Field, Pager } from '../../components/ui.jsx'
+import { Alert, Badge, Empty, Field, Pager, ResponsiveTable } from '../../components/ui.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
 import { RQ_CSS } from './queueStyles.js'
 import { useToast } from '../../context/ToastContext.jsx'
@@ -161,9 +162,10 @@ export default function AdminReviewPage() {
    *
    * `selectedId` is what the reviewer clicked. It stops matching the moment a
    * decision lands, because the row leaves this status and drops out of the
-   * list. Falling back to the same POSITION is what makes the queue advance on
-   * its own: the index that row occupied now holds the next one, so approving
-   * repeatedly walks down the queue without a click in between.
+   * list. Falling back to the same POSITION keeps the highlight where the
+   * reviewer was looking rather than dropping it to the top - the dialog has
+   * closed by then, so this positions the LIST, it no longer pulls an unread
+   * submission into an open dialog.
    *
    * Deriving rather than syncing in an effect is also what keeps this off the
    * cascading-render rule - there is no setState during commit to begin with.
@@ -192,11 +194,11 @@ export default function AdminReviewPage() {
   /*
    * Where the open submission sits, and how to step through without deciding.
    *
-   * The dialog already advanced on its own after a decision - the approved row
-   * leaves the list and the same index now holds the next one. What it had no
-   * way to express was WHERE you were, or how to move on from something you did
-   * not want to rule on yet: the only exits were a decision or closing. A queue
-   * you cannot skip through is a queue that stalls on its first hard case.
+   * Stepping is now the ONLY way the dialog moves between submissions. A
+   * decision closes it instead of advancing: the queue used to slide the next
+   * event in underneath, which put an unread submission under a cursor already
+   * travelling towards Approve. Landing back on the list makes the next one a
+   * deliberate click, and the decision that just landed visible in the table.
    */
   const selectedIndex = useMemo(
     () => (selected ? rows.findIndex((r) => r.id === selected.id) : -1),
@@ -255,6 +257,7 @@ export default function AdminReviewPage() {
     try {
       await approveEvent(selected.id)
       toast(km ? 'បានអនុម័ត' : 'Approved', 'success')
+      closePanel()
       refresh()
     } catch (e) {
       toast(errorText(e, km ? 'អនុម័តមិនបានសម្រេច' : 'Could not approve'), 'error')
@@ -276,6 +279,7 @@ export default function AdminReviewPage() {
       }
       setDeciding(null)
       setMessage('')
+      closePanel()
       refresh()
     } catch (e) {
       toast(errorText(e, km ? 'មិនបានសម្រេច' : 'Could not save decision'), 'error')
@@ -345,7 +349,7 @@ export default function AdminReviewPage() {
         <div className="rq-split">
           {/* ------------------------------------------- the queue, as a table */}
           <div className="rq-col">
-            <div className="rq-tablewrap">
+            <ResponsiveTable className="rq-tablewrap">
               <table className="rq-queue">
                 <thead>
                   <tr>
@@ -429,7 +433,7 @@ export default function AdminReviewPage() {
                   })}
                 </tbody>
               </table>
-            </div>
+            </ResponsiveTable>
 
             {/* Pager counts from 1; Spring's Pageable counts from 0. Without
                 this the 21st submission is unreachable. */}
@@ -755,41 +759,19 @@ function EventReviewPanel({ event, km, locale, busy, onApprove, onRequestChanges
   )
 }
 
-/** @sokha or plain "sokha" both arrive from the applicant's own typing. */
-const telegramUrl = (handle) => `https://t.me/${handle.replace(/^@/, '').trim()}`
-
 /**
- * Message the organiser directly, on whichever of Telegram or Facebook they
- * gave when they applied - the server only sends these two fields for
- * Audience.ADMIN, so an organiser never sees a link back to themselves here.
+ * The organiser behind the event under review, reachable on whichever service
+ * they gave. The buttons themselves live in components/ContactButtons - the
+ * application queue renders the same pair from the applicant's own row - so
+ * this wrapper is only the field lookup.
  */
 function ContactButtons({ event, km }) {
-  const telegram = pick(event, 'organizer_telegram_handle', 'organizerTelegramHandle')
-  const facebook = pick(event, 'organizer_facebook_url', 'organizerFacebookUrl')
-  if (!telegram && !facebook) return null
-
   return (
-    <div className="rq-contact-btns">
-      {telegram && (
-        <a
-          className="btn btn-sm contact-btn-telegram"
-          href={telegramUrl(telegram)}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Icon name="external" size={14} />
-          {km ? 'ទាក់ទងតាម Telegram' : 'Message on Telegram'}
-        </a>
-      )}
-      {facebook && (
-        /* noreferrer as well as noopener: this URL was typed by the organiser
-           being reviewed, not chosen by the platform. */
-        <a className="btn btn-sm contact-btn-facebook" href={facebook} target="_blank" rel="noopener noreferrer">
-          <Icon name="external" size={14} />
-          {km ? 'ទាក់ទងតាម Facebook' : 'Message on Facebook'}
-        </a>
-      )}
-    </div>
+    <SharedContactButtons
+      telegram={pick(event, 'organizer_telegram_handle', 'organizerTelegramHandle')}
+      facebook={pick(event, 'organizer_facebook_url', 'organizerFacebookUrl')}
+      km={km}
+    />
   )
 }
 

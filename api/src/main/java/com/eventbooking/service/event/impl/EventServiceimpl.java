@@ -23,6 +23,7 @@ import com.eventbooking.service.notification.NotificationEvents;
 import com.eventbooking.service.Image.CloudinaryResponse;
 import com.eventbooking.service.Image.CloudinaryService;
 import com.eventbooking.security.OrganizerResolver;
+import com.eventbooking.service.Organizer.OrganizerContactLookup;
 import com.eventbooking.service.event.EventService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -62,10 +63,9 @@ public class EventServiceimpl implements EventService {
     private final EventSeatRepository eventSeatRepository;
     private final EventSnapshotter eventSnapshotter;
     private final ApplicationEventPublisher events;
-    private final OrganizerProfileRepository organizerProfileRepository;
-    private final OrganizerApplicationRepository organizerApplicationRepository;
+    private final OrganizerContactLookup organizerContactLookup;
 
-    public EventServiceimpl(VenueRepository venueRepository, EventRepository eventRepository, SeatClassRepository seatClassRepository, EventZoneRepository eventZoneRepository, CloudinaryService cloudinaryService, OrganizerResolver organizerResolver, EventStateMachine stateMachine, EventReviewRepository eventReviewRepository, AppUserRepository appUserRepository, EventSeatRepository eventSeatRepository, EventSnapshotter eventSnapshotter, ApplicationEventPublisher events, OrganizerProfileRepository organizerProfileRepository, OrganizerApplicationRepository organizerApplicationRepository) {
+    public EventServiceimpl(VenueRepository venueRepository, EventRepository eventRepository, SeatClassRepository seatClassRepository, EventZoneRepository eventZoneRepository, CloudinaryService cloudinaryService, OrganizerResolver organizerResolver, EventStateMachine stateMachine, EventReviewRepository eventReviewRepository, AppUserRepository appUserRepository, EventSeatRepository eventSeatRepository, EventSnapshotter eventSnapshotter, ApplicationEventPublisher events, OrganizerContactLookup organizerContactLookup) {
         this.organizerResolver = organizerResolver;
         this.stateMachine = stateMachine;
         this.eventReviewRepository = eventReviewRepository;
@@ -78,8 +78,7 @@ public class EventServiceimpl implements EventService {
         this.eventSeatRepository = eventSeatRepository;
         this.eventSnapshotter = eventSnapshotter;
         this.events = events;
-        this.organizerProfileRepository = organizerProfileRepository;
-        this.organizerApplicationRepository = organizerApplicationRepository;
+        this.organizerContactLookup = organizerContactLookup;
     }
 
     @Override
@@ -244,6 +243,18 @@ public class EventServiceimpl implements EventService {
     private void applyUpdate(Event event, UpdateEventRequest request, Long organizerIdForVenueCheck) {
         Long eventId = event.getId();
 
+        /*
+         * The show is over, so there is nothing left for an edit to affect -
+         * and every field on this PATCH would now contradict what actually
+         * happened. Sits here rather than in either caller because it holds
+         * against both of them, which the isEditable gate above deliberately
+         * does not: that one protects review from the organiser and has
+         * nothing to say to the admin doing the reviewing.
+         */
+        if (event.getStartsAt() != null && event.getStartsAt().isBefore(Instant.now())) {
+            throw EventAlreadyFinishedException.cannotEdit(eventId);
+        }
+
         if (request.inventoryMode() != null
                 && request.inventoryMode() != event.getInventoryMode()
                 && (seatClassRepository.existsByEventId(eventId)
@@ -319,7 +330,7 @@ public class EventServiceimpl implements EventService {
      *
      * <p>No inventory is touched. verifyEventIsOnSale already requires
      * PUBLISHED, so sales stop the moment this commits; holds and bookings that
-     * already exist stay valid, which is what refunding or honouring them
+     * already exist stay valid, which is what returning money or honouring them
      * needs.
      *
      * <p>Terminal by construction: publishEvent only accepts DRAFT, so nothing
@@ -385,7 +396,7 @@ public class EventServiceimpl implements EventService {
          * Sales only block this while the show is still ahead of everyone.
          *
          * The rule exists because pulling a listing that people hold tickets
-         * to is a refund decision, and refunds are the platform's call. Once
+         * to is a money-back decision, and refunds are the platform's call. Once
          * the event has actually happened that reasoning is spent: nobody is
          * going to turn up to it, the tickets were used or they were not, and
          * taking the listing down decides nothing for anybody. Leaving it
@@ -832,23 +843,16 @@ public class EventServiceimpl implements EventService {
     }
 
     /**
-     * The organiser's Telegram handle and Facebook page, from their most recent
-     * organiser application - not organizer_profile.telegram_chat_id, which is
-     * the bot's numeric chat id, not a human-readable handle to link to.
+     * The organiser's Telegram handle and Facebook page. The lookup itself is
+     * {@link OrganizerContactLookup}, shared with the payout queue, which needs
+     * the same answer for the same reason.
      *
      * <p>Only ever called for Audience.ADMIN: an organiser has no use for a
      * link back to their own contact details on their own event.
      */
     private String[] organizerContact(Long organizerId) {
-        var profile = organizerProfileRepository.findById(organizerId).orElse(null);
-        if (profile == null) return new String[] { null, null };
-        var latest = organizerApplicationRepository
-                .findByUserIdOrderBySubmittedAtDesc(profile.getUserId())
-                .stream()
-                .findFirst()
-                .orElse(null);
-        if (latest == null) return new String[] { null, null };
-        return new String[] { latest.getTelegramHandle(), latest.getFacebookUrl() };
+        var contact = organizerContactLookup.forOrganizer(organizerId);
+        return new String[] { contact.telegramHandle(), contact.facebookUrl() };
     }
 
     private EventResponse toEventResponse(Event event, Audience audience) {
@@ -910,7 +914,7 @@ public class EventServiceimpl implements EventService {
                 /*
                  * TAKE_DOWN is the one transition both audiences share, and the
                  * organiser's copy only holds while nothing has sold - past that
-                 * it is a refund decision and the service refuses it.
+                 * it is a money-back decision and the service refuses it.
                  *
                  * Filtered here rather than left to the refusal because this is
                  * what the organiser's footer renders: offering a button that
@@ -921,7 +925,7 @@ public class EventServiceimpl implements EventService {
                  * TAKE_DOWN is the one transition both audiences share, and the
                  * organiser's copy holds while nothing has sold OR once the
                  * event is over - see takeDownOwnEvent for why finishing ends
-                 * the refund argument. Filtered here rather than left to the
+                 * the money-back argument. Filtered here rather than left to the
                  * refusal because this is what the organiser's footer renders,
                  * and a button that always answers 409 is worse than no button.
                  */
@@ -931,7 +935,7 @@ public class EventServiceimpl implements EventService {
                  *   - the event has finished, for anyone: it already left the
                  *     catalogue, so there is nothing left to stop
                  *   - it has sold tickets, for the organiser: pulling a show
-                 *     people hold tickets to is a refund decision
+                 *     people hold tickets to is a money-back decision
                  */
                 .filter(t -> t != EventTransition.TAKE_DOWN || !finished)
                 .filter(t -> !(audience == Audience.ORGANIZER

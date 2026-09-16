@@ -3,6 +3,7 @@ package com.eventbooking.service.notification.telegram;
 import com.eventbooking.model.AppUser;
 import com.eventbooking.model.Event;
 import com.eventbooking.model.OrganizerApplication;
+import com.eventbooking.model.PayoutRequest;
 
 import java.time.Instant;
 import java.time.ZoneId;
@@ -72,8 +73,6 @@ public final class TelegramMessages {
             case "PENDING_PAYMENT", "AWAITING_CONFIRMATION" -> "⏳";
             case "PAYMENT_FAILED" -> "⚠️";
             case "CANCELLED", "EXPIRED" -> "❌";
-            case "REFUND_REQUESTED" -> "🔄";
-            case "REFUNDED" -> "💸";
             default -> "•";
         };
     }
@@ -303,6 +302,80 @@ public final class TelegramMessages {
             if (max != min) sb.append(" – ").append(usd(max));
             sb.append('\n');
         }
+    }
+
+    /**
+     * An organiser wants to be paid, and somebody has to move money.
+     *
+     * <p>The invoice's own lines rather than only the total, because the
+     * decision an admin is about to make is whether the total is right - and
+     * checking that from a phone means seeing what it was derived from. The
+     * reference an admin will need after transferring is the invoice number,
+     * so it leads.
+     *
+     * <p>English only, like every other message in this file - see the note on
+     * {@link #organizerApplication}.
+     */
+    public static String payoutRequested(PayoutRequest payout,
+                                         String eventTitleEn,
+                                         String organizerName) {
+        StringBuilder sb = new StringBuilder("\uD83D\uDCB0 <b>Payout requested</b>\n\n");
+
+        sb.append("<b>").append(escape(payout.getInvoiceNo())).append("</b>\n");
+        if (eventTitleEn != null) {
+            sb.append("\uD83C\uDFAB ").append(escape(eventTitleEn)).append('\n');
+        }
+        sb.append('\n');
+
+        line(sb, "Organiser", organizerName);
+        sb.append("Tickets: ").append(payout.getTicketsSold())
+          .append(" across ").append(payout.getBookingsCount()).append(" bookings\n");
+
+        sb.append(DIVIDER).append('\n');
+        sb.append("Gross: ").append(usd(payout.getGrossUsdCents())).append('\n');
+        sb.append("Platform fee (").append(pct(payout.getFeeBps())).append("): −")
+          .append(usd(payout.getFeeUsdCents())).append('\n');
+        sb.append("<b>Payable: ").append(usd(payout.getNetUsdCents())).append("</b>\n");
+        sb.append(DIVIDER).append('\n');
+
+        line(sb, "Send to", payout.getPayoutMethod() + " · " + payout.getAccountName());
+        line(sb, "Account", payout.getAccountNumber());
+        sb.append("Requested: ").append(at(payout.getRequestedAt())).append(" (Phnom Penh)\n");
+
+        if (payout.getNote() != null && !payout.getNote().isBlank()) {
+            sb.append("\n<i>").append(escape(payout.getNote())).append("</i>\n");
+        }
+
+        sb.append("\nDecide it under <b>Payouts</b> in the admin console.");
+        return sb.toString();
+    }
+
+    /**
+     * The transfer was made - the organiser's side of the same row.
+     *
+     * <p>Carries the reference, because that is what they will quote at their
+     * bank when the money has not appeared. A "you have been paid" with nothing
+     * to look up is the message that generates the support conversation rather
+     * than preventing it.
+     */
+    public static String payoutPaid(PayoutRequest payout, String eventTitleEn) {
+        StringBuilder sb = new StringBuilder("\u2705 <b>You have been paid</b>\n" + DIVIDER + "\n");
+        if (eventTitleEn != null) {
+            sb.append("\uD83C\uDFAB <b>").append(escape(eventTitleEn)).append("</b>\n");
+        }
+        sb.append('\n');
+        sb.append("\uD83D\uDCB5 <b>").append(usd(payout.getNetUsdCents())).append("</b> sent to ")
+          .append(escape(payout.getPayoutMethod())).append('\n');
+        line(sb, "Reference", payout.getPaidReference());
+        line(sb, "Invoice", payout.getInvoiceNo());
+        sb.append("\nKeep the reference — it is what your bank will ask for.");
+        return sb.toString();
+    }
+
+    /** Basis points as a percentage a person reads: 1000 becomes "10%", 250 "2.5%". */
+    private static String pct(int bps) {
+        if (bps % 100 == 0) return (bps / 100) + "%";
+        return String.format(Locale.ENGLISH, "%.2f%%", bps / 100.0).replaceAll("0+%$", "%");
     }
 
     /** Cents to dollars. The API speaks cents; nothing a person reads should. */

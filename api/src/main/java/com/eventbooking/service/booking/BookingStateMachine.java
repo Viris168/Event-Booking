@@ -24,8 +24,6 @@ import static com.eventbooking.Enumeration.BookingStatus.CONFIRMED;
 import static com.eventbooking.Enumeration.BookingStatus.EXPIRED;
 import static com.eventbooking.Enumeration.BookingStatus.PAYMENT_FAILED;
 import static com.eventbooking.Enumeration.BookingStatus.PENDING_PAYMENT;
-import static com.eventbooking.Enumeration.BookingStatus.REFUNDED;
-import static com.eventbooking.Enumeration.BookingStatus.REFUND_REQUESTED;
 
 /**
  * The single gate for every booking.state write.
@@ -51,11 +49,7 @@ import static com.eventbooking.Enumeration.BookingStatus.REFUND_REQUESTED;
  *        +-----------+         |      |                  |
  *        | CONFIRMED |         |      +---> CANCELLED <--+
  *        +-----------+         +------------> EXPIRED <--+
- *          |      ^
- *          v      |  rejected
- *  +------------------+
- *  | REFUND_REQUESTED |----> REFUNDED
- *  +------------------+
+ *         (terminal)
  * </pre>
  *
  * Note there is no HELD state here despite the issue title: HELD lives on
@@ -68,11 +62,19 @@ public class BookingStateMachine {
     private static final Logger log = LoggerFactory.getLogger(BookingStateMachine.class);
 
     /**
-     * States from which nothing further is possible. Reaching one is what
-     * releases inventory back to the pool (BookingService handles that side).
+     * States whose inventory goes back on sale.
+     *
+     * <p>This used to be called TERMINAL, and while the refund path existed the
+     * two ideas coincided: every dead-end state also freed its seats. They have
+     * come apart. CONFIRMED is now a dead end - nothing follows a paid booking -
+     * but it must never appear here, because releasing on CONFIRMED would put
+     * every paid booking's seats back on sale the moment the payment settled.
+     *
+     * <p>So the two questions are asked separately now: {@link #isDeadEnd} for
+     * "can this booking go anywhere", this for "do the seats come back".
      */
-    private static final Set<BookingStatus> TERMINAL = Collections.unmodifiableSet(
-            EnumSet.of(REFUNDED, EXPIRED, CANCELLED));
+    private static final Set<BookingStatus> RELEASES_INVENTORY = Collections.unmodifiableSet(
+            EnumSet.of(EXPIRED, CANCELLED));
 
     private static final Map<BookingStatus, Set<BookingStatus>> LEGAL_TRANSITIONS;
 
@@ -95,16 +97,20 @@ public class BookingStateMachine {
         // still theirs.
         t.put(PAYMENT_FAILED, EnumSet.of(PENDING_PAYMENT, EXPIRED, CANCELLED));
 
-        // Paid. The only way out is the refund path - never straight to
-        // CANCELLED, because money has changed hands and uq_payment_txn_one_
-        // success_per_booking means it cannot simply be un-charged.
-        t.put(CONFIRMED, EnumSet.of(REFUND_REQUESTED));
+        /*
+         * Paid, and the end of the line. Money has changed hands and
+         * uq_payment_txn_one_success_per_booking means it cannot simply be
+         * un-charged, so there is nowhere legal to go from here - not
+         * CANCELLED, and no refund path, because the platform does not reverse
+         * a settled booking.
+         *
+         * Note what this makes impossible: there is no in-product way to undo a
+         * confirmed sale. A duplicate charge or a cancelled event has to be
+         * settled with the customer out of band, by whoever holds the merchant
+         * account.
+         */
+        t.put(CONFIRMED, EnumSet.noneOf(BookingStatus.class));
 
-        // An organizer or admin either grants the refund or turns it down, in
-        // which case the booking is still a valid, paid, scannable ticket.
-        t.put(REFUND_REQUESTED, EnumSet.of(REFUNDED, CONFIRMED));
-
-        t.put(REFUNDED, EnumSet.noneOf(BookingStatus.class));
         t.put(EXPIRED, EnumSet.noneOf(BookingStatus.class));
         t.put(CANCELLED, EnumSet.noneOf(BookingStatus.class));
 
@@ -135,8 +141,21 @@ public class BookingStateMachine {
         return legalTargets(from).contains(to);
     }
 
-    public boolean isTerminal(BookingStatus state) {
-        return TERMINAL.contains(state);
+    /**
+     * Whether reaching this state puts the booking's seats and zone capacity
+     * back on sale. Not the same as {@link #isDeadEnd} - see
+     * {@link #RELEASES_INVENTORY}.
+     */
+    public boolean releasesInventory(BookingStatus state) {
+        return RELEASES_INVENTORY.contains(state);
+    }
+
+    /**
+     * Whether anything at all can follow this state. CONFIRMED, EXPIRED and
+     * CANCELLED are all dead ends; only the last two give their seats back.
+     */
+    public boolean isDeadEnd(BookingStatus state) {
+        return legalTargets(state).isEmpty();
     }
 
     /**

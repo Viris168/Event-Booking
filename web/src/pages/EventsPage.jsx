@@ -4,7 +4,15 @@ import { useSearchParams } from 'react-router-dom'
 import EventCard from '../components/EventCard.jsx'
 import Icon from '../components/Icon.jsx'
 import { EventGridSkeleton, Skeleton } from '../components/Skeleton.jsx'
-import { ActiveFilters, Empty, Field, IconSelect, Pager, SearchInput } from '../components/ui.jsx'
+import {
+  ActiveFilters,
+  Empty,
+  Field,
+  IconSelect,
+  Pager,
+  RangeSlider,
+  SearchInput,
+} from '../components/ui.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
 import { useProvinces } from '../lib/useProvinces.js'
 import { getEvents } from '../api/events.js'
@@ -12,6 +20,19 @@ import { mapEvent } from '../api/adapters.js'
 
 const PAGE_SIZE = 8
 const EMPTY = { q: '', province: '', from: '', to: '', minUsd: '', maxUsd: '', sort: 'soonest' }
+
+/*
+ * The price slider's ends, in whole dollars.
+ *
+ * PRICE_MAX is a ceiling for the control, not a claim about the catalogue: the
+ * seeded events top out at $90, and the top of the track means "no maximum"
+ * rather than "$100", so an event priced above it is never filtered out by a
+ * slider the visitor left alone. Both ends drop out of the URL when they sit at
+ * their extremes, which keeps a default range out of the query string and out
+ * of the filter chips.
+ */
+const PRICE_MIN = 0
+const PRICE_MAX = 100
 
 /** How long typing has to pause before the search reaches the URL and the API. */
 const SEARCH_DEBOUNCE_MS = 300
@@ -61,6 +82,16 @@ export default function EventsPage() {
   const [qDraft, setQDraft] = useState(filters.q)
   const [syncedQ, setSyncedQ] = useState(filters.q)
 
+  // Same draft-then-commit shape as the search box above, and for the same
+  // reason: a drag fires a change per step, and writing the URL on each one
+  // would refetch the catalogue dozens of times across a single gesture.
+  const priceOf = (f) => [
+    f.minUsd === '' ? PRICE_MIN : Number(f.minUsd),
+    f.maxUsd === '' ? PRICE_MAX : Number(f.maxUsd),
+  ]
+  const [priceDraft, setPriceDraft] = useState(() => priceOf(filters))
+  const [syncedPrice, setSyncedPrice] = useState(`${filters.minUsd}|${filters.maxUsd}`)
+
   // The search changed from somewhere other than the box: arriving from the
   // home page's search bar, removing the chip, Reset, or the back button.
   // Adjusted here rather than in an effect because that is what React
@@ -69,6 +100,14 @@ export default function EventsPage() {
   if (filters.q !== syncedQ) {
     setSyncedQ(filters.q)
     setQDraft(filters.q)
+  }
+
+  // The range changed from outside the slider — the chip's x, Reset, or the
+  // back button. Same derived-state adjustment as the search box.
+  const priceKey = `${filters.minUsd}|${filters.maxUsd}`
+  if (priceKey !== syncedPrice) {
+    setSyncedPrice(priceKey)
+    setPriceDraft(priceOf(filters))
   }
 
   // Typing used to write the URL on every keystroke, and every write refetched
@@ -80,6 +119,21 @@ export default function EventsPage() {
     const timer = setTimeout(() => update({ q: qDraft }), SEARCH_DEBOUNCE_MS)
     return () => clearTimeout(timer)
   }, [qDraft]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // An end sitting at its extreme is not a filter, so it leaves the URL
+  // entirely — otherwise "$0 and up" would show as a chip and would pin the
+  // upper bound at PRICE_MAX, hiding anything dearer than the slider can reach.
+  useEffect(() => {
+    const [low, high] = priceDraft
+    const nextMin = low <= PRICE_MIN ? '' : String(low)
+    const nextMax = high >= PRICE_MAX ? '' : String(high)
+    if (nextMin === filters.minUsd && nextMax === filters.maxUsd) return
+    const timer = setTimeout(
+      () => update({ minUsd: nextMin, maxUsd: nextMax }),
+      SEARCH_DEBOUNCE_MS,
+    )
+    return () => clearTimeout(timer)
+  }, [priceDraft]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     let active = true
@@ -152,20 +206,21 @@ export default function EventsPage() {
       label: `${t('to')} ${date(filters.to)}`,
       onRemove: () => update({ to: '' }),
     })
-  if (filters.minUsd)
+  /*
+   * One chip for the pair, not one per end. They are now two handles on a
+   * single control, so clearing "from $20" while "to $60" stayed behind would
+   * leave the slider in a state the visitor never chose.
+   */
+  if (filters.minUsd || filters.maxUsd) {
+    const low = filters.minUsd || PRICE_MIN
+    const high = filters.maxUsd ? `$${filters.maxUsd}` : locale === 'km' ? 'ឡើងទៅ' : 'any'
     chips.push({
-      key: 'minUsd',
+      key: 'price',
       icon: 'wallet',
-      label: `≥ $${filters.minUsd}`,
-      onRemove: () => update({ minUsd: '' }),
+      label: `$${low} – ${high}`,
+      onRemove: () => update({ minUsd: '', maxUsd: '' }),
     })
-  if (filters.maxUsd)
-    chips.push({
-      key: 'maxUsd',
-      icon: 'wallet',
-      label: `≤ $${filters.maxUsd}`,
-      onRemove: () => update({ maxUsd: '' }),
-    })
+  }
 
   const advancedActive = !!(filters.from || filters.to || filters.minUsd || filters.maxUsd)
 
@@ -257,25 +312,36 @@ export default function EventsPage() {
                   onChange={(e) => update({ to: e.target.value })}
                 />
               </Field>
-              <Field label={t('minPrice')}>
-                <input
-                  className="input"
-                  type="number"
-                  min="0"
-                  placeholder="0"
-                  value={filters.minUsd}
-                  onChange={(e) => update({ minUsd: e.target.value })}
-                />
-              </Field>
-              <Field label={t('maxPrice')}>
-                <input
-                  className="input"
-                  type="number"
-                  min="0"
-                  placeholder="100"
-                  value={filters.maxUsd}
-                  onChange={(e) => update({ maxUsd: e.target.value })}
-                />
+              {/*
+                The value rides on the label row and the track gets the input's
+                own shell, so this reads as a control of the same family as the
+                two date fields beside it. Loose text over a hairline did not:
+                against two bordered boxes it looked like a caption that had
+                come adrift rather than a third field.
+              */}
+              <Field
+                className="range-field"
+                label={
+                  <span className="range-label">
+                    {t('priceRange')}
+                    <b>
+                      ${priceDraft[0]} –{' '}
+                      {priceDraft[1] >= PRICE_MAX ? `$${PRICE_MAX}+` : `$${priceDraft[1]}`}
+                    </b>
+                  </span>
+                }
+              >
+                <div className="range-box">
+                  <RangeSlider
+                    min={PRICE_MIN}
+                    max={PRICE_MAX}
+                    step={1}
+                    value={priceDraft}
+                    onChange={setPriceDraft}
+                    lowLabel={t('minPrice')}
+                    highLabel={t('maxPrice')}
+                  />
+                </div>
               </Field>
             </div>
           )}

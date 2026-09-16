@@ -27,6 +27,8 @@ import SeatMapEditorPage from './pages/organizer/SeatMapEditorPage.jsx'
 import EventFormPage from './pages/organizer/EventFormPage.jsx'
 import EventSalesPage from './pages/organizer/EventSalesPage.jsx'
 import OrganizerTransactionsPage from './pages/organizer/OrganizerTransactionsPage.jsx'
+import OrganizerPayoutsPage from './pages/organizer/OrganizerPayoutsPage.jsx'
+import PayoutInvoicePage from './pages/organizer/PayoutInvoicePage.jsx'
 import CheckInPage from './pages/organizer/CheckInPage.jsx'
 
 import AdminLayout from './pages/admin/AdminLayout.jsx'
@@ -36,6 +38,7 @@ import AdminEventsPage from './pages/admin/AdminEventsPage.jsx'
 import AdminReviewPage from './pages/admin/AdminReviewPage.jsx'
 import AdminApplicationsPage from './pages/admin/AdminApplicationsPage.jsx'
 import AdminPaymentsPage from './pages/admin/AdminPaymentsPage.jsx'
+import AdminPayoutsPage from './pages/admin/AdminPayoutsPage.jsx'
 
 export default function App() {
   /*
@@ -96,6 +99,13 @@ export default function App() {
               <Route path="events/:id/edit" element={<EventFormPage />} />
               <Route path="events/:id/sales" element={<EventSalesPage />} />
               <Route path="transactions" element={<OrganizerTransactionsPage />} />
+              {/* What the organiser is owed, vs. transactions, which is what
+                  customers paid. Different money moving in different
+                  directions, so a tab each. */}
+              <Route path="payouts" element={<OrganizerPayoutsPage />} />
+              {/* The printable invoice. Under the organiser subtree because the
+                  ownership check is the same one; it just renders for paper. */}
+              <Route path="payouts/:id" element={<PayoutInvoicePage />} />
               <Route path="check-in" element={<CheckInPage />} />
             </Route>
           </Route>
@@ -113,6 +123,10 @@ export default function App() {
               <Route path="applications" element={<AdminApplicationsPage />} />
               <Route path="events" element={<AdminEventsPage />} />
               <Route path="payments" element={<AdminPaymentsPage />} />
+              {/* /admin/payments is money coming in from customers;
+                  /admin/payouts is money going out to organisers. Neither
+                  screen's filters or actions make sense on the other. */}
+              <Route path="payouts" element={<AdminPayoutsPage />} />
             </Route>
           </Route>
 

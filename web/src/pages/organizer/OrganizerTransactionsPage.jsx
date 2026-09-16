@@ -2,17 +2,15 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useDocumentTitle } from '../../lib/useDocumentTitle.js'
 import Icon from '../../components/Icon.jsx'
-import { Badge } from '../../components/ui.jsx'
+import { Badge, ResponsiveTable } from '../../components/ui.jsx'
 import { SkeletonRegion, TableRowsSkeleton } from '../../components/Skeleton.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
 import { usd } from '../../lib/format.js'
 import { getOrganizerTransactions } from '../../api/bookings.js'
 import { getOrganizerEvents } from '../../api/events.js'
 
-/** Money that actually landed. Everything else is an intention or a reversal. */
+/** Money that actually landed. Everything else is an intention. */
 const EARNING = new Set(['CONFIRMED'])
-/** Money going back out, so it reads as a negative rather than more income. */
-const OUTGOING = new Set(['REFUNDED'])
 
 const STATES = [
   'PENDING_PAYMENT',
@@ -21,8 +19,6 @@ const STATES = [
   'CANCELLED',
   'EXPIRED',
   'PAYMENT_FAILED',
-  'REFUND_REQUESTED',
-  'REFUNDED',
 ]
 
 const PAGE_SIZES = [25, 50, 100]
@@ -125,16 +121,14 @@ export default function OrganizerTransactionsPage() {
   // whose columns have drifted from the real ones is worse than none.
   const tableHead = (
     <thead>
-      <tr className="bg-surface-2 border-b border-line text-tiny text-muted font-bold uppercase tracking-wide">
-        <th className="px-5 py-3">{km ? 'ព្រឹត្តិការណ៍' : 'Event'}</th>
-        <th className="px-5 py-3 whitespace-nowrap">{km ? 'ពេលវេលា' : 'Time'}</th>
-        <th className="px-5 py-3">{km ? 'អ្នកទិញ' : 'Customer'}</th>
-        <th className="px-5 py-3">{km ? 'វិធីបង់' : 'Method'}</th>
-        <th className="px-5 py-3">{km ? 'លេខយោង' : 'Reference'}</th>
-        <th className="px-5 py-3">{t('status')}</th>
-        <th className="px-5 py-3 text-right whitespace-nowrap">
-          {km ? 'ចំនួនទឹកប្រាក់' : 'Amount'}
-        </th>
+      <tr>
+        <th>{km ? 'ព្រឹត្តិការណ៍' : 'Event'}</th>
+        <th>{km ? 'ពេលវេលា' : 'Time'}</th>
+        <th>{km ? 'អ្នកទិញ' : 'Customer'}</th>
+        <th>{km ? 'វិធីបង់' : 'Method'}</th>
+        <th>{km ? 'លេខយោង' : 'Reference'}</th>
+        <th>{t('status')}</th>
+        <th className="num">{km ? 'ចំនួនទឹកប្រាក់' : 'Amount'}</th>
       </tr>
     </thead>
   )
@@ -272,12 +266,12 @@ export default function OrganizerTransactionsPage() {
             className="overflow-x-auto"
             label={km ? 'កំពុងផ្ទុក…' : 'Loading transactions…'}
           >
-            <table className="w-full text-left border-collapse">
+            <table className="table">
               {tableHead}
               <TableRowsSkeleton
                 rows={8}
                 cols={7}
-                cellClassName="px-5 py-3"
+                cellClassName="px-[0.9rem] py-[0.7rem]"
                 rowClassName="border-b border-line-2"
               />
             </table>
@@ -299,12 +293,11 @@ export default function OrganizerTransactionsPage() {
             </p>
           </div>
         ) : visible.length ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+          <ResponsiveTable>
+            <table className="table">
               {tableHead}
               <tbody className="text-small text-ink">
                 {visible.map((r, i) => {
-                  const outgoing = OUTGOING.has(r.state)
                   const earning = EARNING.has(r.state)
                   return (
                     <tr
@@ -313,12 +306,12 @@ export default function OrganizerTransactionsPage() {
                          the theme instead of staying light grey on dark. */
                       className={`border-b border-line-2 ${i % 2 ? 'bg-surface-2/40' : ''}`}
                     >
-                      <td className="px-5 py-3">
+                      <td>
                         <Link className="font-semibold" to={`/organizer/events/${r.event_id}/sales`}>
                           {km ? r.event_title_km : r.event_title_en}
                         </Link>
                       </td>
-                      <td className="px-5 py-3 whitespace-nowrap">
+                      <td className="whitespace-nowrap">
                         <div className="font-medium text-ink">{date(r.created_at)}</div>
                         <div className="text-tiny text-muted">
                           {new Date(r.created_at).toLocaleTimeString(km ? 'km-KH' : 'en-GB', {
@@ -327,11 +320,11 @@ export default function OrganizerTransactionsPage() {
                           })}
                         </div>
                       </td>
-                      <td className="px-5 py-3">
+                      <td>
                         <div className="font-medium">{r.buyer_name}</div>
                         <div className="text-tiny text-muted">{r.buyer_phone_e164}</div>
                       </td>
-                      <td className="px-5 py-3">
+                      <td>
                         {r.payment_provider ? (
                           <span className="badge badge-mode">{r.payment_provider}</span>
                         ) : (
@@ -339,20 +332,20 @@ export default function OrganizerTransactionsPage() {
                           <span className="text-muted">—</span>
                         )}
                       </td>
-                      <td className="px-5 py-3">
+                      <td>
                         <Link className="mono text-small" to={`/bookings/${r.booking_id}`}>
                           {r.booking_ref}
                         </Link>
                       </td>
-                      <td className="px-5 py-3">
+                      <td>
                         <Badge status={r.state} />
                       </td>
                       <td
-                        className={`px-5 py-3 text-right font-bold tabular-nums whitespace-nowrap ${
-                          outgoing ? 'text-refund' : earning ? 'text-success' : 'text-muted'
+                        className={`num font-bold whitespace-nowrap ${
+                          earning ? 'text-success' : 'text-muted'
                         }`}
                       >
-                        {outgoing ? '− ' : earning ? '+ ' : ''}
+                        {earning ? '+ ' : ''}
                         {usd(r.total_usd_cents)}
                       </td>
                     </tr>
@@ -360,7 +353,7 @@ export default function OrganizerTransactionsPage() {
                 })}
               </tbody>
             </table>
-          </div>
+          </ResponsiveTable>
         ) : (
           <div className="px-5 py-16 text-center">
             <Icon name="wallet" size={28} className="text-muted" />

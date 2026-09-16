@@ -500,16 +500,19 @@ public class PaymentService {
         if (booking.getState() == BookingStatus.CONFIRMED) {
             return; // Someone already got here. Nothing to write, nothing to audit.
         }
-        if (stateMachine.isTerminal(booking.getState())
-                || booking.getState() == BookingStatus.REFUND_REQUESTED
-                || booking.getState() == BookingStatus.REFUNDED) {
-            // The booking died - expired, cancelled, refunded - and the money
-            // turned up anyway. Confirming would re-sell inventory that has
-            // already gone back to the pool, so the payment stands as a SUCCESS
-            // row flagged for a human, and the booking is left alone.
+        if (stateMachine.releasesInventory(booking.getState())) {
+            // The booking died - expired or cancelled - and the money turned up
+            // anyway. Confirming would re-sell inventory that has already gone
+            // back to the pool, so the payment stands as a SUCCESS row flagged
+            // for a human, and the booking is left alone.
+            //
+            // There is no in-product way to give this back: the platform has no
+            // refund flow, so returning it is an out-of-band transfer by
+            // whoever holds the merchant account. That is exactly why this logs
+            // at ERROR rather than WARN - nothing downstream will catch it.
             attempt.setNote("Paid after the booking reached " + booking.getState()
-                    + " - needs manual refund");
-            log.error("Booking {} was {} when payment {} settled; refund required",
+                    + " - money must be returned out of band");
+            log.error("Booking {} was {} when payment {} settled; money taken with nothing to apply it to",
                     booking.getId(), booking.getState(), attempt.getId());
             return;
         }

@@ -14,9 +14,8 @@ import java.util.List;
  * the person, neither of which a moderation screen has any use for. What is
  * here is what the table prints plus the booking history behind its expander.
  *
- * <p>{@code lifetimeSpend} counts CONFIRMED and REFUND_REQUESTED only, matching
- * the arithmetic the screen did for itself while it ran on the mock store. A
- * refund that has been asked for but not yet granted is still money taken.
+ * <p>{@code lifetimeSpend} counts CONFIRMED only - the single state in which a
+ * payment has settled, and the end of the line for a booking.
  */
 public record AdminUserResponse(
         Long id,
@@ -31,7 +30,7 @@ public record AdminUserResponse(
         /** How many bookings this account has, in any state. */
         int bookingCount,
 
-        /** Sum of CONFIRMED and REFUND_REQUESTED booking totals, in USD cents. */
+        /** Sum of CONFIRMED booking totals, in USD cents. */
         long lifetimeSpendUsdCents,
 
         /** Newest first. Backs the expandable history row. */

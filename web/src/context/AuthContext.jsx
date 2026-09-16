@@ -96,7 +96,7 @@ export function AuthProvider({ children }) {
   const login = useCallback(
     async ({ identifier, password }) => {
       try {
-        storeTokens(await apiLogin({ phone_e164: identifier.trim(), password }))
+        storeTokens(await apiLogin({ identifier: identifier.trim(), password }))
         return { user: await loadMe() }
       } catch (error) {
         clearTokens()

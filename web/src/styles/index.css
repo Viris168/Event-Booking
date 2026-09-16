@@ -65,8 +65,6 @@
   --color-danger-soft: #f8e0d9;
   --color-info: #1057b8;
   --color-info-soft: #dde8f8;
-  --color-refund: #6b3aa0;
-  --color-refund-soft: #e9e0f2;
   --color-settled: #0e6266;
   --color-settled-soft: #d9eced;
   --color-quiet: #6a6256;
@@ -95,6 +93,12 @@
   --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-khmer: 'Noto Sans Khmer', 'Khmer OS Battambang', 'Hanuman', var(--font-sans);
   --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+  /* The hero headline, and nothing else. A script face is unreadable at body
+     sizes and has no system fallback that resembles it, so it is scoped to the
+     one line it was chosen for. Khmer gets Moul rather than a Latin script,
+     which cannot render the script at all. */
+  --font-display: 'Berkshire Swash', Georgia, 'Times New Roman', serif;
+  --font-display-khmer: 'Moul', var(--font-khmer);
 
   --text-small: 0.82rem;
   --text-tiny: 0.74rem;
@@ -149,8 +153,6 @@
   --color-danger-soft: #32201a;
   --color-info: #8ab4f7;
   --color-info-soft: #1a2336;
-  --color-refund: #c1a8e8;
-  --color-refund-soft: #261f33;
   --color-settled: #6cc9ce;
   --color-settled-soft: #16292b;
   --color-quiet: #b0a696;
@@ -356,8 +358,23 @@
     @apply text-muted max-w-[60ch];
   }
 
+  /*
+   * The action holds its line; the heading is what gives way.
+   *
+   * With both free to shrink, a narrow phone broke "View all" across two lines
+   * beside a heading that had also wrapped — four ragged lines where there
+   * should be two. The link is short and fixed, so it is the one thing here
+   * that should never wrap; min-w-0 lets the heading take the hit instead,
+   * which it can absorb because it wraps on word boundaries.
+   */
   .section-head {
-    @apply mb-[0.9rem] flex items-baseline justify-between gap-4;
+    @apply mb-[0.9rem] flex items-baseline justify-between gap-3;
+  }
+  .section-head > :first-child {
+    @apply min-w-0;
+  }
+  .section-head > a {
+    @apply flex-none whitespace-nowrap;
   }
 
   .breadcrumb {
@@ -368,9 +385,23 @@
   }
 
   /* ---------------------------------------------------------------- navbar */
+  /*
+   * The same ground as the footer, from the same token.
+   *
+   * These two bookend every page and are read as one chrome colour, but they
+   * were never the same: the footer is a solid --color-brand-900 (#062718)
+   * while this was #041b10 at 94%, which let 6% of the page through and
+   * composited to #12271c in light mode — lighter and greyer than the footer —
+   * and to something different again over the dark theme's ground. Being
+   * translucent meant it could not match anything for long, since whatever
+   * scrolled underneath changed it.
+   *
+   * backdrop-blur went with the transparency: over an opaque background it
+   * renders nothing and only costs a compositing layer.
+   */
   .nav {
-    @apply sticky top-0 z-40 text-white backdrop-blur-[8px];
-    background: color-mix(in srgb, #041b10 94%, transparent);
+    @apply sticky top-0 z-40 text-white;
+    background: var(--color-brand-900);
     @apply border-b border-white/[0.09];
     box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04);
   }
@@ -586,6 +617,10 @@
     @apply absolute right-0 top-[calc(100%+0.5rem)] z-50 flex flex-col overflow-hidden
            rounded-card border border-line bg-surface text-ink shadow-float;
     width: min(370px, calc(100vw - 1.6rem));
+    /* The bar is sticky, so the panel hangs from a fixed point on the screen
+       and cannot scroll back into view: left uncapped it runs off the bottom
+       of a short window, taking the "See all" link with it. */
+    max-height: calc(100dvh - 5rem);
     animation: rise 0.14s ease-out;
   }
   .notif-head {
@@ -621,7 +656,7 @@
   }
 
   .notif-list {
-    @apply flex flex-col overflow-y-auto;
+    @apply flex min-h-0 flex-col overflow-y-auto;
     max-height: min(60vh, 430px);
   }
   .notif-empty {
@@ -683,6 +718,23 @@
            py-[0.55rem] text-[0.82rem] font-semibold text-link;
   }
 
+  /* The bell is not the last control in the bar - the avatar and the burger
+     sit to its right - so a panel hung from the bell's right edge runs off the
+     LEFT of the screen well before it runs out of width to shrink into. Below
+     this it stops hanging from the bell and hangs from the bar: dropping
+     .notif-wrap out of the positioning chain leaves the sticky .nav as the
+     containing block, and that is exactly as wide as the viewport. `top` still
+     resolves against the bar's own height, so nothing moves vertically. */
+  @media (max-width: 520px) {
+    .notif-wrap {
+      @apply static;
+    }
+    .notif-panel {
+      @apply left-page right-page;
+      width: auto;
+    }
+  }
+
   /* The full page: same rows, given a card to sit in rather than a dropdown. */
   .notif-page-list {
     @apply overflow-hidden rounded-card border border-line bg-surface shadow-card;
@@ -708,8 +760,46 @@
   .subnav {
     @apply border-b border-line bg-surface;
   }
+  /*
+   * Horizontal scroll with an edge that says so.
+   *
+   * Four layers: two cover panels painted in the container's own colour that
+   * scroll WITH the content (`local`), and two soft shadows pinned to the box
+   * (`scroll`). At the left end the cover sits over the left shadow and hides
+   * it; scroll right and the cover travels off, revealing it. Each shadow
+   * therefore appears exactly when there is something off-screen that way, and
+   * vanishes at the end of the track.
+   *
+   * No scroll listener, so it costs nothing per frame and cannot fall out of
+   * step with the real scroll position.
+   *
+   * Mixed from --color-ink rather than black: ink is near-black on the light
+   * theme and near-white on the dark one, so the edge stays visible in both. A
+   * black shadow is simply not there on a dark surface.
+   *
+   * Set --scroll-hint-bg wherever the container is not on --color-surface, or
+   * the cover panels will not match and the ends will look smudged.
+   */
+  .scroll-hint-x {
+    --scroll-hint-bg: var(--color-surface);
+    @apply overflow-x-auto;
+    background:
+      linear-gradient(to right, var(--scroll-hint-bg) 40%, transparent) left center / 2.5rem 100% no-repeat local,
+      linear-gradient(to left, var(--scroll-hint-bg) 40%, transparent) right center / 2.5rem 100% no-repeat local,
+      radial-gradient(farthest-side at 0 50%, color-mix(in oklab, var(--color-ink) 20%, transparent), transparent)
+        left center / 0.9rem 100% no-repeat scroll,
+      radial-gradient(farthest-side at 100% 50%, color-mix(in oklab, var(--color-ink) 20%, transparent), transparent)
+        right center / 0.9rem 100% no-repeat scroll;
+    /* A trough inside a 46px bar eats a third of the text. Touch, trackpad and
+       keyboard scrolling are all unaffected; the shadow is the affordance. */
+    scrollbar-width: none;
+  }
+  .scroll-hint-x::-webkit-scrollbar {
+    @apply hidden;
+  }
+
   .subnav-inner {
-    @apply mx-auto flex max-w-shell gap-1 overflow-x-auto px-page;
+    @apply mx-auto flex max-w-shell gap-1 px-page;
   }
   .subnav a {
     @apply whitespace-nowrap border-b-2 border-transparent px-[0.7rem] py-3 text-[0.88rem] font-semibold text-muted;
@@ -785,6 +875,47 @@
     @apply w-full;
   }
 
+  /* --------------------------------------------------- contact buttons */
+  /* ContactButtons, shared by the three admin screens that review a person:
+     the event queue, the organiser applications queue and the payout queue.
+     Global rather than page-scoped because the last of those does not inject
+     the queue stylesheet the first two share. */
+  .contact-btns {
+    @apply my-2 flex flex-wrap gap-2;
+  }
+  .contact-btns .btn {
+    @apply gap-[0.25rem];
+  }
+  /* Each service in its own colour, tinted rather than solid - it says which
+     app the button opens before the label is read, without competing with the
+     primary action on the same screen. */
+  .contact-btn-telegram,
+  .contact-btn-facebook {
+    @apply border border-solid font-semibold;
+  }
+  .contact-btn-telegram {
+    color: #1c8fc2;
+    background: rgba(34, 158, 217, 0.1);
+    border-color: rgba(34, 158, 217, 0.35);
+  }
+  .contact-btn-telegram:hover {
+    background: rgba(34, 158, 217, 0.18);
+  }
+  .contact-btn-facebook {
+    color: #1461d1;
+    background: rgba(24, 119, 242, 0.1);
+    border-color: rgba(24, 119, 242, 0.35);
+  }
+  .contact-btn-facebook:hover {
+    background: rgba(24, 119, 242, 0.18);
+  }
+  [data-theme='dark'] .contact-btn-telegram {
+    color: #7cd0f4;
+  }
+  [data-theme='dark'] .contact-btn-facebook {
+    color: #8fb4f7;
+  }
+
   /* ----------------------------------------------------------------- cards */
   .card {
     @apply overflow-hidden rounded-card border border-line bg-surface shadow-card;
@@ -840,8 +971,8 @@
   .hero {
     @apply relative isolate overflow-hidden pt-[4.4rem] pb-0 text-white;
     background:
-      radial-gradient(820px 500px at 74% 120%, rgba(8, 46, 29, 0.5), transparent 62%),
-      linear-gradient(168deg, #04140c 0%, #052117 50%, #072b1b 100%);
+      radial-gradient(820px 500px at 74% 120%, rgba(8, 46, 29, 0.42), transparent 62%),
+      linear-gradient(168deg, #02100a 0%, #03150f 52%, #051d14 100%);
     box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.12);
   }
 
@@ -856,8 +987,12 @@
     content: '';
     @apply pointer-events-none absolute inset-0 -z-10;
     background:
-      linear-gradient(100deg, rgba(3, 16, 9, 0.82) 0%, rgba(4, 22, 13, 0.68) 38%, rgba(5, 30, 18, 0.34) 72%, rgba(6, 36, 22, 0.2) 100%),
-      linear-gradient(180deg, rgba(4, 20, 12, 0.34) 0%, transparent 34%, rgba(4, 18, 11, 0.62) 100%);
+      /* Warm bloom behind the headline. Gold type on a photograph needs
+         something warm and dark directly under it or the strokes read as dirt
+         on the picture rather than as lettering. */
+      radial-gradient(720px 420px at 22% 38%, rgba(190, 124, 44, 0.22), transparent 66%),
+      linear-gradient(100deg, rgba(2, 9, 14, 0.9) 0%, rgba(3, 13, 18, 0.79) 38%, rgba(4, 20, 22, 0.44) 72%, rgba(5, 26, 26, 0.24) 100%),
+      linear-gradient(180deg, rgba(2, 10, 14, 0.5) 0%, transparent 32%, rgba(2, 9, 12, 0.76) 100%);
   }
   /* Fine dot grid for texture, faded out before it reaches the content. */
   .hero::after {
@@ -869,27 +1004,93 @@
     -webkit-mask-image: radial-gradient(120% 90% at 80% 0%, rgba(0, 0, 0, 0.95), transparent 62%);
   }
 
-  /* One accented word carries the eye; the rest of the headline stays white. */
+  /* The headline runs as one unbroken gold script, so the accent word is no
+     longer a second colour - it just inherits the gradient. The rule survives
+     as the flat fallback for the no-background-clip path below. */
   .hero-accent {
-    color: #f0a05a;
+    color: #f2c877;
   }
   /* Same box shape as .nav-inner / .container / .footer-inner: the max-width
      carries its own horizontal padding, so all four content edges are flush. */
   .hero-inner {
     @apply mx-auto max-w-shell px-page;
   }
+  /* Display script, gilded - the one place in the product that uses either.
+     Explicitly asked for rather than reached for: it is the whole point of the
+     hero, and it stays quarantined to this single line.
+
+     `color` is the real colour and the gradient is layered over it only where
+     background-clip: text actually works; without that guard an unsupported
+     browser gets transparent fill over no clip, which is an invisible
+     headline. */
   .hero h1 {
-    @apply max-w-[22ch] text-white;
-    font-size: clamp(1.9rem, 1.3rem + 2.6vw, 3rem);
+    @apply max-w-[16ch];
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: clamp(2.15rem, 1.15rem + 4vw, 4rem);
+    line-height: 1.1;
+    letter-spacing: 0.004em;
+    color: #f2c877;
+    text-shadow: 0 2px 14px rgba(2, 9, 14, 0.62);
+  }
+  /* One line, at every width.
+
+     Set in Berkshire Swash, "Live events across Cambodia" is 11.97em wide, so
+     the size that exactly fills the column is its width over 11.97. The divisor
+     below is 12.4 - about 3.5% of headroom, because `nowrap` turns a bad guess
+     into a headline hanging off the side of the page rather than a second line.
+     cqw and not vw: the column is the viewport minus the 320px card, and vw
+     would overset by exactly that card.
+
+     Shrink-to-fit rather than wrap means a 320px phone gets this at ~23px. That
+     is the trade the single line costs, and it is only sound because the ratio
+     is measured from the real string - translate the headline and it has to be
+     measured again. */
+  @supports (container-type: inline-size) {
+    .hero h1 {
+      max-width: none;
+      white-space: nowrap;
+      font-size: min(4rem, 100cqw / 12.4);
+    }
+  }
+  @supports (background-clip: text) or (-webkit-background-clip: text) {
+    .hero h1 {
+      background: linear-gradient(174deg, #fdf3d8 4%, #f4cd82 40%, #dda253 74%, #bd8236 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      /* text-shadow paints under transparent fill, so the lift has to come from
+         a filter on the painted glyphs instead. */
+      text-shadow: none;
+      filter:
+        drop-shadow(0 2px 10px rgba(2, 9, 14, 0.66))
+        drop-shadow(0 0 30px rgba(226, 165, 82, 0.26));
+    }
+  }
+  /* Moul is a display face in its own right, and a heavy one: Khmer needs less
+     size and far more leading than the Latin script at the same optical
+     weight, or the subscript forms collide with the line above. */
+  html[lang='km'] .hero h1 {
+    @apply max-w-[18ch];
+    font-family: var(--font-display-khmer);
+    font-size: clamp(1.45rem, 0.9rem + 2.3vw, 2.5rem);
+    line-height: 1.75;
+    /* The Khmer headline is 19.4em in Moul against the Latin's 12. Holding it
+       to one line would put it at 15px on a phone, so it keeps wrapping. */
+    white-space: normal;
   }
   .hero p {
     @apply mt-[0.7rem] max-w-[58ch] text-white/[0.82];
   }
-  /* Copy on the left, the next event on sale on the right. Below 1080px the
-     card drops under the search rather than squeezing both. */
-  /* Copy on the left, the rotating rail on the right. Below 1080px the rail
-     goes rather than stacking: it is a browsing aid, and pushing the search
-     below a 400px card is the wrong trade on a phone. */
+  /* Copy on the left, the rotating rail on the right. Below 1080px the two
+     stack, and the rail goes wide-and-short instead of disappearing.
+     It used to be hidden outright, on the reasoning that a 400px square card
+     above the fold is the wrong trade against the search box on a phone. The
+     square was the problem, not the card: at 16/10 it costs about 210px, sits
+     under the quick links where it interrupts nothing, and a phone is exactly
+     where one tap into the next event on sale is worth most. (The loading
+     skeleton never honoured the old rule anyway, so a phone flashed a
+     spotlight placeholder and then lost the card it promised.) */
   .hero-grid {
     @apply grid items-center gap-10;
     grid-template-columns: minmax(0, 1fr) 320px;
@@ -898,12 +1099,19 @@
     .hero-grid {
       @apply block;
     }
-    .hero-rail {
-      @apply hidden;
+    .hero-rail,
+    .hero-grid > .spotlight {
+      @apply mx-auto mt-8 max-w-[440px];
+    }
+    .hero-slide > .rail-card {
+      aspect-ratio: 16 / 10;
     }
   }
+  /* A container, so the headline can size itself against the column it sits in
+     rather than against the viewport - the two differ by the 320px card. */
   .hero-copy {
     @apply min-w-0 max-w-[720px];
+    container-type: inline-size;
   }
 
   /* -------------------------------------------------- hero rotating rail */
@@ -1218,6 +1426,84 @@
     }
   }
 
+  /* ---------------------------------------------------------- range slider */
+  /* Two stacked range inputs over one drawn track. The inputs are invisible and
+     transparent to the pointer; only their thumbs accept it, which is what lets
+     both be grabbed even where they overlap. */
+  .range {
+    @apply relative flex h-full w-full items-center;
+  }
+  /* 5px, not a hairline: at 1-2px the track disappeared next to the bordered
+     date inputs and the thumbs looked like they were floating on nothing. */
+  .range-track {
+    @apply absolute inset-x-0 h-[5px] rounded-full;
+    background: var(--color-line-2, var(--color-line));
+  }
+  .range-fill {
+    @apply absolute inset-y-0 rounded-full bg-brand-600;
+  }
+  .range input[type='range'] {
+    @apply absolute inset-x-0 m-0 w-full bg-transparent;
+    -webkit-appearance: none;
+    appearance: none;
+    pointer-events: none;
+  }
+  .range input[type='range']::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    pointer-events: auto;
+    height: 16px;
+    width: 16px;
+    border-radius: 9999px;
+    border: 2px solid var(--color-surface);
+    background: var(--color-brand-600);
+    box-shadow: var(--shadow-float);
+    cursor: grab;
+  }
+  .range input[type='range']::-moz-range-thumb {
+    pointer-events: auto;
+    height: 16px;
+    width: 16px;
+    border-radius: 9999px;
+    border: 2px solid var(--color-surface);
+    background: var(--color-brand-600);
+    cursor: grab;
+  }
+  .range input[type='range']:active::-webkit-slider-thumb {
+    cursor: grabbing;
+  }
+  .range input[type='range']:focus-visible::-webkit-slider-thumb {
+    box-shadow: var(--shadow-focus);
+  }
+  .range input[type='range']:focus-visible::-moz-range-thumb {
+    box-shadow: var(--shadow-focus);
+  }
+  /* The advanced row's columns are sized for a date or a number; a two-thumb
+     track needs more than 150px before the ends stop colliding, so it takes two
+     of them where there is room and the whole row where there is not. */
+  .range-field {
+    grid-column: span 2;
+  }
+  @media (max-width: 520px) {
+    .range-field {
+      grid-column: 1 / -1;
+    }
+  }
+
+  /* Label on the left, the value it is currently set to on the right — one row,
+     so the control below is exactly one input-height box like its neighbours. */
+  .range-label {
+    @apply flex w-full items-baseline justify-between gap-2;
+  }
+  .range-label b {
+    @apply text-ink;
+    font-variant-numeric: tabular-nums;
+  }
+  /* The same shell as .input, so the three fields in this row are one family. */
+  .range-box {
+    @apply flex min-h-[42px] w-full items-center rounded-[10px] border border-line
+      bg-surface px-[0.85rem];
+  }
+
   /* Removable summary of what is currently filtering the result set. */
   .active-filters {
     @apply flex flex-wrap items-center gap-[0.4rem];
@@ -1237,20 +1523,81 @@
 
   /* ----------------------------------------------------------------- auth */
   /* One centred column — no marketing panel, no split screen. */
+  /*
+   * 439px is not arbitrary: it is 400 + 2x1px panel border + 2x1.15rem
+   * panel-body padding, so the column inside the card is exactly 400px wide.
+   *
+   * That 400 is Google's ceiling. renderButton takes a pixel width and clamps
+   * anything above 400, and it draws into a cross-origin iframe, so the sign-in
+   * button cannot be widened to meet a full-width submit button — the card has
+   * to come down to meet it instead. At 460 the submit button was 421px against
+   * Google's 400 and the pair read as misaligned; now both are 400.
+   */
   .auth-wrap {
-    @apply mx-auto flex max-w-[460px] flex-col gap-4;
+    @apply mx-auto flex max-w-[439px] flex-col gap-4;
   }
+  /* Wordmark inside the card, so the page says whose it is without a second
+     element above competing with the heading for first read. */
+  .auth-brand {
+    @apply mb-5 inline-flex items-center gap-[0.55rem] text-ink no-underline;
+  }
+  .auth-brand img {
+    @apply h-7 w-auto;
+  }
+  .auth-brand span {
+    @apply text-[0.95rem] tracking-[-0.01em];
+    font-weight: 680;
+  }
+  .auth-brand:hover span {
+    @apply text-link;
+  }
+
+  /* Ruled off rather than merely spaced: the heading pair introduces the form,
+     and a line says that more cheaply than the extra margin it replaces. */
   .auth-head {
-    @apply mb-5;
+    @apply mb-5 border-b border-line-2 pb-4;
   }
   .auth-head h1 {
-    @apply text-[1.5rem];
+    @apply text-[1.55rem] leading-[1.2] tracking-[-0.02em];
   }
+  .auth-head p {
+    @apply mt-1 text-small;
+  }
+
   .auth-switch {
     @apply mt-4 text-center text-small text-muted;
   }
   .auth-back {
     @apply inline-flex items-center justify-center gap-[0.35rem] self-center text-small text-muted;
+  }
+
+  /* Google sign-in. The button itself is drawn by Google's script into
+     .gsi-host at a pixel width the component measures — these rules are only
+     the frame around it. They lived in a <style> tag inside the component,
+     which re-injected the same block for every instance mounted; the rest of
+     the app keeps its styles here, so this does too. */
+  /*
+   * mt-3 matches the gap-3 below, and that symmetry is the whole point: the
+   * rule sits at the vertical centre of .gsi-sep, so the space above it is
+   * (this margin + half the separator's line box) and the space below is (half
+   * that line box + the flex gap). With no top margin the two came out 12px and
+   * 23px, and the rule sat visibly closer to the submit button than to the
+   * Google one. Any change to gap-3 has to be mirrored here.
+   */
+  .gsi-wrap {
+    @apply mt-3 flex w-full flex-col items-center gap-3;
+  }
+  .gsi-sep {
+    @apply flex w-full items-center gap-3 text-small text-muted;
+  }
+  .gsi-sep::before,
+  .gsi-sep::after {
+    content: '';
+    @apply flex-1 border-t border-line;
+  }
+  /* Height reserved so the card does not jump when the widget arrives. */
+  .gsi-host {
+    @apply flex min-h-[44px] w-full justify-center;
   }
 
   /* Password input with a reveal toggle. */
@@ -1672,12 +2019,6 @@
   .s-CONFIRMED {
     @apply bg-success-soft text-success;
   }
-  .s-REFUND_REQUESTED {
-    @apply bg-refund-soft text-refund;
-  }
-  .s-REFUNDED {
-    @apply bg-settled-soft text-settled;
-  }
   .s-EXPIRED {
     @apply bg-quiet-soft text-quiet;
   }
@@ -1738,6 +2079,21 @@
   .s-CONSUMED {
     @apply bg-quiet-soft text-quiet;
   }
+
+  /* Payout lifecycle (V29). Reuses the review family's logic exactly:
+     warning = with the platform, waiting on us
+     settled = agreed but not finished — APPROVED is already this colour, and a
+               payout that is approved-but-unsent is the same kind of "yes, in
+               progress" an approved-but-unpublished event is
+     success = money actually moved; PAID is the only green here, the way
+               PUBLISHED is the only green that means "on sale"
+     danger  = refused, same family as REJECTED because it is the same answer */
+  .s-REQUESTED {
+    @apply bg-warning-soft text-warning;
+  }
+  .s-PAID {
+    @apply bg-success-soft text-success;
+  }
   .s-RELEASED {
     @apply bg-quiet-soft text-quiet;
   }
@@ -1788,9 +2144,12 @@
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238b96b1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   }
   /* Surfaces that stay light in both themes — a QR must keep its contrast to
-     scan, and the date chip sits on cover art. Re-declaring the neutral tokens
-     locally re-themes every descendant utility in one place. */
-  [data-theme='dark'] :is(.qr-frame, .ev-media .ev-date) {
+     scan, and the date chips sit on cover art. Re-declaring the neutral tokens
+     locally re-themes every descendant utility in one place.
+     Both chips belong here: .rail-date is the hero's copy of .ev-date on a
+     white plate of its own, and being left off this list is what left it
+     printing near-white text on near-white in dark mode. */
+  [data-theme='dark'] :is(.qr-frame, .ev-media .ev-date, .rail-date) {
     /* Re-declaring the tokens fixes descendants that apply a colour utility… */
     --color-ink: #1d1a16;
     --color-ink-2: #4a443b;
@@ -2674,9 +3033,13 @@
   .footer-inner {
     @apply mx-auto max-w-shell px-page;
   }
+  /* The brand column is sized to the measure its paragraph is capped at, not
+     the other way round. At 2.2fr against a 46ch cap the column was ~230px
+     wider than anything ever drawn in it, which read as a hole punched between
+     the wordmark and the nav rather than as breathing room. */
   .footer-grid {
-    @apply grid gap-x-8 gap-y-[1.6rem];
-    grid-template-columns: minmax(0, 2.2fr) repeat(3, minmax(0, 1fr));
+    @apply grid gap-x-10 gap-y-[1.6rem];
+    grid-template-columns: minmax(0, 1.5fr) repeat(3, minmax(0, 1fr));
   }
   @media (max-width: 900px) {
     .footer-grid {
@@ -2693,7 +3056,7 @@
   }
 
   .footer-brand {
-    @apply flex max-w-[46ch] flex-col items-start gap-[0.8rem];
+    @apply flex max-w-[52ch] flex-col items-start gap-[0.8rem];
   }
   .footer-mark {
     @apply h-[38px] w-auto;
@@ -2726,19 +3089,27 @@
   .footer-pay {
     @apply inline-flex items-center gap-[0.4rem] text-white/[0.74];
   }
-  .footer-fx {
-    @apply mt-[0.35rem] font-mono text-[0.76rem] text-white/55;
+
+  /* Same plate as .footer-lang and .nav-icon-btn, at 40px so it clears the
+     touch-target floor - these are the only footer links small enough to miss
+     with a thumb. */
+  .footer-social {
+    @apply mt-[0.9rem] flex list-none flex-wrap gap-[0.45rem] p-0;
   }
-  .footer-fx em {
-    @apply mt-[0.2rem] block font-sans text-[0.76rem] not-italic text-white/40;
+  .footer-social a {
+    @apply grid size-10 place-items-center rounded-full border border-white/[0.14]
+      bg-white/[0.06] text-white/[0.74];
+  }
+  .footer-social a:hover {
+    @apply border-white/[0.28] bg-white/[0.14] text-white no-underline;
   }
 
+  /* Was white/45, which measures 4.27:1 on the brand ground — the identical
+     shortfall the column headings above were already corrected for, and this
+     line is smaller than they are. white/56 takes it to 5.87:1. */
   .footer-bottom {
     @apply mt-8 flex flex-wrap items-center justify-between gap-x-[1.4rem] gap-y-[0.8rem]
-      border-t border-white/10 pt-4 text-[0.78rem] text-white/45;
-  }
-  .footer-note {
-    @apply inline-flex items-center gap-[0.35rem];
+      border-t border-white/10 pt-4 text-[0.78rem] text-white/[0.56];
   }
   .footer-lang {
     @apply inline-flex gap-[2px] rounded-full border border-white/[0.14] bg-white/[0.06] p-[2px];
@@ -4676,4 +5047,234 @@
 .org-apply-summary dd {
   margin: 0;
   color: var(--color-ink);
+}
+
+/* ============================================================
+   Payout invoice (V29)
+   ============================================================
+   Outside @layer components, matching the venue-layout and org-apply blocks
+   above: this is one page's furniture rather than a reusable primitive, and
+   nothing else in the app should be reaching for .invoice-line.
+
+   The whole point of the block is the @media print rule at the bottom. There
+   is no PDF library in this project on purpose - the document is bilingual,
+   and embedding a Khmer face into a server-rendered PDF is real work for a
+   result the browser already produces from the fonts the app has loaded. So
+   the invoice is a page that prints, and these rules are what make the printed
+   copy look like a document rather than like a screenshot of an app. */
+
+.invoice {
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: 14px;
+  padding: 2.2rem 2.4rem;
+  max-width: 52rem;
+  margin: 0 auto;
+}
+
+.invoice-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  padding-bottom: 1.4rem;
+  border-bottom: 2px solid var(--color-ink);
+}
+.invoice-brand {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  color: var(--color-brand-600);
+}
+.invoice-brand-sub,
+.invoice-label {
+  margin: 0.1rem 0 0;
+  font-size: 0.78rem;
+  color: var(--color-muted);
+}
+.invoice-label {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+}
+.invoice-no {
+  margin: 0.1rem 0 0.4rem;
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.invoice-parties {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 1.4rem;
+  padding: 1.4rem 0;
+  border-bottom: 1px solid var(--color-line-2);
+}
+.invoice-section-label {
+  margin: 0 0 0.35rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-muted);
+}
+
+.invoice-money {
+  padding: 1.2rem 0 0.2rem;
+}
+.invoice-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 2rem;
+  padding: 0.5rem 0;
+  font-size: 0.95rem;
+  color: var(--color-ink-2);
+}
+/* The total is the one line somebody reads if they read nothing else, so it
+   gets the rule above it and the weight - not a background tint, which stops
+   being visible the moment the page is printed in greyscale. */
+.invoice-line-total {
+  margin-top: 0.4rem;
+  padding-top: 0.8rem;
+  border-top: 2px solid var(--color-ink);
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--color-ink);
+}
+
+.invoice-fineprint {
+  margin: 1rem 0 0;
+  font-size: 0.78rem;
+  color: var(--color-muted);
+}
+
+.invoice-paid {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1.4rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--color-success);
+  border-radius: 10px;
+  color: var(--color-success);
+}
+
+.invoice-note {
+  margin-top: 1.2rem;
+  padding: 0.8rem 1rem;
+  border-left: 3px solid var(--color-line);
+  background: var(--color-surface-2);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.invoice-foot {
+  margin-top: 1.8rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-line-2);
+  font-size: 0.75rem;
+  color: var(--color-muted);
+  text-align: center;
+}
+
+/* ------------------------------------------------------------------ print */
+/* .no-print is deliberately global rather than scoped to .invoice: the navbar
+   and footer are rendered by App, outside this page's tree, and they are the
+   first things that have to go. */
+.no-print {
+  /* nothing on screen - this class exists only for the rule below */
+}
+
+@media print {
+  /* Everything that is app rather than document. The invoice is the page. */
+  .no-print,
+  .nav,
+  .subnav,
+  .footer,
+  .toast-wrap,
+  .skip-link {
+    display: none !important;
+  }
+
+  /* Printers waste ink on the page's warm paper colour and then render the
+     off-white as grey, which makes a document look photocopied. */
+  html,
+  body {
+    background: #fff !important;
+  }
+
+  .container,
+  .invoice-page {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+  }
+
+  .invoice {
+    border: none;
+    border-radius: 0;
+    padding: 0;
+    max-width: none;
+  }
+
+  /* A money table split across two sheets is the one break that makes an
+     invoice unreadable - the total lands alone on page two with nothing above
+     it to total. */
+  .invoice-money,
+  .invoice-paid,
+  .invoice-parties {
+    break-inside: avoid;
+  }
+
+  /* Links print as their text; a blue underline on paper is just noise. */
+  a {
+    color: inherit !important;
+    text-decoration: none !important;
+  }
+}
+
+/*
+ * Sign in with Google, sized to match .btn-lg beside it.
+ *
+ * GIS draws the standard button as ordinary DOM in this document — the
+ * cross-origin iframe is only used for the One Tap prompt — so its box is ours
+ * to set. Left alone it is 40px tall with 4px corners next to a 48px button
+ * with 12px ones, which is the mismatch this fixes. The mark, wordmark and
+ * label inside are Google's and are not touched; only the box is. Google ships
+ * `shape` and `size` options of its own, so the box is theirs to vary.
+ *
+ * DELIBERATELY OUTSIDE @layer components. Google injects its stylesheet into
+ * the document unlayered, and unlayered rules beat layered ones outright, no
+ * matter how specific the layered one is — inside the layer this rule parsed
+ * fine, matched the element, and silently lost every time. Matched on the ARIA
+ * role rather than Google's class names, which are minified per release.
+ */
+.gsi-host [role='button'] {
+  height: 3rem; /* .btn-lg is min-h-12 */
+  border-radius: var(--radius-ui);
+}
+
+/*
+ * Dark mode only: drop the white plate behind the G.
+ *
+ * Google's dark button puts the mark on a 36px white chip rounded 3px on its
+ * LEFT side alone — it is drawn to sit flush in the button's left corner as a
+ * leading panel. `logo_alignment: 'center'` moves it to the middle, where a
+ * half-rounded white square floats in the centre of a dark pill and reads as a
+ * rendering fault. Centring is what makes the mark and the label one group, so
+ * the plate goes instead and the G sits straight on the button.
+ *
+ * Light mode is untouched: the outline theme's button is already white, so the
+ * chip is invisible there and Google's own composition is left alone.
+ *
+ * Matched through :has() on the element wrapping the logo rather than on
+ * Google's minified class names. If they restructure, this stops matching and
+ * the plate comes back — visible, not broken.
+ */
+:root[data-theme='dark'] .gsi-host [role='button'] div:has(svg) {
+  background-color: transparent;
 }

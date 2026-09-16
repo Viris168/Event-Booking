@@ -4,13 +4,16 @@ import com.eventbooking.Enumeration.BookingStatus;
 import com.eventbooking.Enumeration.EventTransition;
 import com.eventbooking.Enumeration.NotificationType;
 import com.eventbooking.Enumeration.OrganizerApplicationStatus;
+import com.eventbooking.Enumeration.PayoutStatus;
 import com.eventbooking.model.Booking;
 import com.eventbooking.model.AppUser;
 import com.eventbooking.model.Event;
 import com.eventbooking.model.OrganizerApplication;
+import com.eventbooking.model.PayoutRequest;
 import com.eventbooking.repository.BookingRepository;
 import com.eventbooking.repository.EventRepository;
 import com.eventbooking.repository.OrganizerApplicationRepository;
+import com.eventbooking.repository.PayoutRequestRepository;
 import com.eventbooking.repository.AppUserRepository;
 import com.eventbooking.service.notification.telegram.TelegramMessages;
 import com.eventbooking.service.notification.telegram.TelegramNotifier;
@@ -62,6 +65,7 @@ public class NotificationListener {
     private final TelegramNotifier telegram;
     private final PaymentTransactionRepository paymentTransactionRepository;
     private final EventService eventService;
+    private final PayoutRequestRepository payoutRequestRepository;
 
     private static final Set<BookingStatus> REVENUE_STATES = EnumSet.of(BookingStatus.CONFIRMED);
 
@@ -73,7 +77,8 @@ public class NotificationListener {
                                 AppUserRepository appUserRepository,
                                 TelegramNotifier telegram,
                                 PaymentTransactionRepository paymentTransactionRepository,
-                                EventService eventService) {
+                                EventService eventService,
+                                PayoutRequestRepository payoutRequestRepository) {
         this.notificationService = notificationService;
         this.bookingRepository = bookingRepository;
         this.eventRepository = eventRepository;
@@ -83,6 +88,7 @@ public class NotificationListener {
         this.telegram = telegram;
         this.paymentTransactionRepository = paymentTransactionRepository;
         this.eventService = eventService;
+        this.payoutRequestRepository = payoutRequestRepository;
     }
 
     /**
@@ -183,21 +189,14 @@ public class NotificationListener {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onBookingStateChanged(NotificationEvents.BookingStateChanged e) {
         NotificationType customerType = switch (e.to()) {
-            // Arriving at CONFIRMED from REFUND_REQUESTED is a refused refund,
-            // not a completed purchase. Same destination, opposite news.
-            case CONFIRMED -> e.from() == BookingStatus.REFUND_REQUESTED
-                    ? NotificationType.BOOKING_REFUND_DECLINED
-                    : NotificationType.BOOKING_CONFIRMED;
+            case CONFIRMED -> NotificationType.BOOKING_CONFIRMED;
             case PAYMENT_FAILED -> NotificationType.BOOKING_PAYMENT_FAILED;
             case CANCELLED -> NotificationType.BOOKING_CANCELLED;
             case EXPIRED -> NotificationType.BOOKING_EXPIRED;
-            case REFUNDED -> NotificationType.BOOKING_REFUNDED;
             default -> null;
         };
 
-        boolean tellAdmins = e.to() == BookingStatus.REFUND_REQUESTED;
-
-        if (customerType == null && !tellAdmins) {
+        if (customerType == null) {
             return;
         }
 
@@ -227,12 +226,7 @@ public class NotificationListener {
         // they get that is not about moderation. Same dedupe key as the
         // customer's: the key is scoped per recipient and per type, so the two
         // rows do not collide.
-        //
-        // Excluding the refused-refund path explicitly rather than leaving the
-        // dedupe key to absorb it. It would - the ref is the same - but that
-        // makes "the organiser is not told twice about one sale" a property of
-        // the write guard instead of a decision anybody made.
-        if (e.to() == BookingStatus.CONFIRMED && e.from() != BookingStatus.REFUND_REQUESTED) {
+        if (e.to() == BookingStatus.CONFIRMED) {
             notificationService.notifyUser(
                     organizerUserId(event.getOrganizerId()),
                     NotificationType.EVENT_TICKETS_SOLD,
@@ -241,20 +235,10 @@ public class NotificationListener {
                     params);
 
             // The Telegram half, for whichever organisers have connected one.
-            // Same guard as the in-app write above - a refused refund landing
-            // back on CONFIRMED is not a new sale.
             organizerProfileRepository.findById(event.getOrganizerId())
                     .filter(p -> p.getTelegramChatId() != null)
                     .ifPresent(p -> telegram.sendToChat(p.getTelegramChatId(),
                             TelegramMessages.ticketSold(eventStat(event), transactionLine(booking))));
-        }
-
-        if (tellAdmins) {
-            notificationService.notifyAdmins(
-                    NotificationType.REFUND_REQUESTED,
-                    booking.getBookingRef(),
-                    "/admin/payments",
-                    params);
         }
     }
 
@@ -429,5 +413,121 @@ public class NotificationListener {
                 // organiser area they cannot open.
                 approved ? "/organizer" : "/become-an-organizer",
                 params);
+    }
+
+    // ------------------------------------------------------------------ payouts
+
+    /**
+     * An organiser wants their money. Straight into the admin queue.
+     *
+     * <p>Shaped exactly like {@link #onOrganizerApplicationSubmitted}, and for
+     * the same reason: this is the second thing on the platform that sits
+     * blocked until a specific human does something, and the in-app bell only
+     * reaches an admin who is already looking at the console.
+     *
+     * <p>The params carry the amount and the invoice number rather than only
+     * the event title. An admin reading "Sokha requested a payout" has to open
+     * the queue to learn whether it is worth $40 or $4,000, and the first of
+     * those does not need interrupting anybody.
+     */
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void onPayoutRequested(NotificationEvents.PayoutRequested e) {
+        PayoutRequest payout = payoutRequestRepository.findById(e.payoutId()).orElse(null);
+        if (payout == null) {
+            log.warn("Payout request {} vanished between commit and notification", e.payoutId());
+            return;
+        }
+
+        Event event = eventRepository.findById(payout.getEventId()).orElse(null);
+        String organizerName = organizerName(payout.getOrganizerId());
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("invoiceNo", payout.getInvoiceNo());
+        params.put("netUsdCents", payout.getNetUsdCents());
+        params.put("orgNameEn", organizerName);
+        params.put("orgNameKm", organizerName);
+        if (event != null) {
+            params.put("titleEn", event.getTitleEn());
+            params.put("titleKm", event.getTitleKm());
+        }
+
+        notificationService.notifyAdmins(
+                NotificationType.PAYOUT_REQUESTED,
+                // The invoice number, not the payout id. Both are unique, but
+                // this is the one that appears in the message and in the admin
+                // console, so a support conversation about a duplicate can be
+                // had in the same vocabulary as the notification.
+                payout.getInvoiceNo(),
+                "/admin/payouts",
+                params);
+
+        telegram.send(TelegramMessages.payoutRequested(
+                payout, event == null ? null : event.getTitleEn(), organizerName));
+    }
+
+    /**
+     * The platform's answer, in whichever of two directions it went.
+     *
+     * <p>Both reach the organiser in-app. Only PAID also goes to Telegram:
+     * approval is "still waiting, but it is moving", which is not the moment a
+     * phone should buzz. Money arriving is.
+     */
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void onPayoutDecided(NotificationEvents.PayoutDecided e) {
+        NotificationType type = switch (e.decision()) {
+            case APPROVED -> NotificationType.PAYOUT_APPROVED;
+            case PAID -> NotificationType.PAYOUT_PAID;
+            // REQUESTED is PayoutRequested's event and a different audience.
+            // Unreachable rather than defensive: the service only publishes
+            // this record from the three decision paths.
+            case REQUESTED -> null;
+        };
+        if (type == null) return;
+
+        PayoutRequest payout = payoutRequestRepository.findById(e.payoutId()).orElse(null);
+        if (payout == null) {
+            log.warn("Payout request {} vanished between commit and notification", e.payoutId());
+            return;
+        }
+
+        Event event = eventRepository.findById(payout.getEventId()).orElse(null);
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("invoiceNo", payout.getInvoiceNo());
+        params.put("netUsdCents", payout.getNetUsdCents());
+        params.put("reference", payout.getPaidReference());
+        if (event != null) {
+            params.put("titleEn", event.getTitleEn());
+            params.put("titleKm", event.getTitleKm());
+        }
+
+        Long recipientUserId = organizerUserId(payout.getOrganizerId());
+
+        notificationService.notifyUser(
+                recipientUserId,
+                type,
+                /*
+                 * Scoped per status, not per payout. One row moves REQUESTED →
+                 * APPROVED → PAID and each step is its own news; keyed on the
+                 * invoice number alone, the "you have been paid" would be
+                 * deduplicated against the earlier "approved" and never written.
+                 *
+                 * Dedupe still does its job within a status: the listener fires
+                 * AFTER_COMMIT on a transition already applied, and the state
+                 * machine refuses a second approve, so there is exactly one
+                 * firing per status per row.
+                 */
+                payout.getInvoiceNo() + ":" + e.decision(),
+                "/organizer/payouts/" + payout.getId(),
+                params);
+
+        if (e.decision() == PayoutStatus.PAID) {
+            organizerProfileRepository.findById(payout.getOrganizerId())
+                    .filter(p -> p.getTelegramChatId() != null)
+                    .ifPresent(p -> telegram.sendToChat(p.getTelegramChatId(),
+                            TelegramMessages.payoutPaid(payout, event == null ? null : event.getTitleEn())));
+        }
     }
 }

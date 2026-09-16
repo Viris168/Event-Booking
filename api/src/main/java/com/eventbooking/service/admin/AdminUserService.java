@@ -27,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -44,11 +45,6 @@ import java.util.stream.Collectors;
 public class AdminUserService {
 
     /**
-     * What counts as money this account has spent. REFUND_REQUESTED is in here
-     * with CONFIRMED because asking for a refund does not un-take the payment -
-     * only REFUNDED does, and that state is deliberately absent.
-     */
-    /**
      * How many administrators the platform will hold.
      *
      * <p>Small on purpose. Every admin sees all platform data and can act on
@@ -59,8 +55,12 @@ public class AdminUserService {
      */
     private static final int MAX_ADMINS = 3;
 
+    /**
+     * What counts as money this account has spent. CONFIRMED alone: it is the
+     * only state in which a payment has settled, and nothing follows it.
+     */
     private static final Set<BookingStatus> SPEND_STATES =
-            Collections.unmodifiableSet(EnumSet.of(BookingStatus.CONFIRMED, BookingStatus.REFUND_REQUESTED));
+            Collections.unmodifiableSet(EnumSet.of(BookingStatus.CONFIRMED));
 
     private final AppUserRepository userRepository;
     private final BookingRepository bookingRepository;
@@ -204,7 +204,7 @@ public class AdminUserService {
         AppUser user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException(userId));
 
-        String email = emptyToNull(request.email());
+        String email = normaliseEmail(request.email());
         String phone = emptyToNull(request.phoneE164());
 
         // Checked rather than left to the UNIQUE indexes, so a second account
@@ -391,5 +391,16 @@ public class AdminUserService {
         if (value == null) return null;
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    /**
+     * Folds an address the way AuthService does, for the same reason: since V31
+     * the unique index is on {@code lower(email)}, so an admin typing an address
+     * in a different casing from the one already stored would otherwise write a
+     * value this table then fails to match.
+     */
+    private static String normaliseEmail(String value) {
+        String trimmed = emptyToNull(value);
+        return trimmed == null ? null : trimmed.toLowerCase(Locale.ROOT);
     }
 }

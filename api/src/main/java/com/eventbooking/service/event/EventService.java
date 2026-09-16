@@ -36,7 +36,7 @@ public interface EventService {
     /**
      * Organiser: pull their own listing, but only while nothing has sold.
      *
-     * <p>Once a ticket exists the action becomes a refund decision, and
+     * <p>Once a ticket exists the action becomes a money-back decision, and
      * {@link #takeDownEvent} - the admin's - is the only one left.
      */
     EventResponse takeDownOwnEvent(Long organizerId, Long eventId);

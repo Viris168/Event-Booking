@@ -3,6 +3,7 @@ package com.eventbooking.service.notification;
 import com.eventbooking.Enumeration.BookingStatus;
 import com.eventbooking.Enumeration.EventTransition;
 import com.eventbooking.Enumeration.OrganizerApplicationStatus;
+import com.eventbooking.Enumeration.PayoutStatus;
 
 /**
  * What the domain announces. Not what anybody is told about it.
@@ -62,5 +63,33 @@ public final class NotificationEvents {
 
     /** An admin decided on that application. */
     public record OrganizerApplicationDecided(Long applicationId, OrganizerApplicationStatus decision) {
+    }
+
+    /**
+     * An organiser asked to be paid for a finished event.
+     *
+     * <p>Like every record here, an id and nothing else. The listener loads the
+     * row and reads the money off it rather than being handed the amount,
+     * because an amount passed through here would be a second copy of a number
+     * whose whole point is that there is exactly one - the snapshot in
+     * {@code payout_request}.
+     */
+    public record PayoutRequested(Long payoutId) {
+    }
+
+    /**
+     * The platform answered: approved, or paid.
+     *
+     * <p>One record for both rather than two, unlike the booking and event
+     * families above. Those carry different audiences and different payloads
+     * per transition; these two go to the same person, about the same row, and
+     * differ only in which sentence gets rendered - which is a switch in the
+     * listener, not two event types.
+     *
+     * @param decision the status the row landed in. Never REQUESTED: that is
+     *                 {@link PayoutRequested}, which goes to a different
+     *                 audience entirely
+     */
+    public record PayoutDecided(Long payoutId, PayoutStatus decision) {
     }
 }

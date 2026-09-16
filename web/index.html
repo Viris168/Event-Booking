@@ -55,11 +55,14 @@
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
-    <!-- Latin + Khmer faces: Khmer script needs its own family, not a fallback. -->
+    <!-- Latin + Khmer faces: Khmer script needs its own family, not a fallback.
+         Berkshire Swash and Moul are the hero headline only - one weight each,
+         Latin and Khmer, loaded because a script face has no system fallback
+         worth the name. Everything else stays on Inter / Noto Sans Khmer. -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Khmer:wght@400;500;600;700;800&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Berkshire+Swash&family=Inter:wght@400;500;600;700;800&family=Moul&family=Noto+Sans+Khmer:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
     <!-- Deferred: this is a third-party script on someone else's network, and

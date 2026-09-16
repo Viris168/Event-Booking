@@ -155,7 +155,7 @@ class NotificationIT {
         notificationService.notifyUser(
                 customerId, NotificationType.BOOKING_CONFIRMED, "KH-0004", null, Map.of());
         notificationService.notifyUser(
-                customerId, NotificationType.BOOKING_REFUNDED, "KH-0004", null, Map.of());
+                customerId, NotificationType.BOOKING_CANCELLED, "KH-0004", null, Map.of());
 
         assertThat(notificationRepository.countByRecipientUserIdAndReadAtIsNull(customerId)).isEqualTo(2);
     }
@@ -167,8 +167,8 @@ class NotificationIT {
         // Same type, same key, two people: the unique index is scoped per
         // recipient, so both get their own row rather than one of them missing
         // out because somebody else was told first.
-        notificationService.notifyUser(customerId, NotificationType.REFUND_REQUESTED, "KH-0005", null, Map.of());
-        notificationService.notifyUser(otherUser, NotificationType.REFUND_REQUESTED, "KH-0005", null, Map.of());
+        notificationService.notifyUser(customerId, NotificationType.BOOKING_CANCELLED, "KH-0005", null, Map.of());
+        notificationService.notifyUser(otherUser, NotificationType.BOOKING_CANCELLED, "KH-0005", null, Map.of());
 
         assertThat(notificationRepository.countByRecipientUserIdAndReadAtIsNull(customerId)).isEqualTo(1);
         assertThat(notificationRepository.countByRecipientUserIdAndReadAtIsNull(otherUser)).isEqualTo(1);
@@ -222,7 +222,7 @@ class NotificationIT {
     @Test
     void unreadOnlyDropsWhatHasBeenRead() {
         notificationService.notifyUser(customerId, NotificationType.BOOKING_CONFIRMED, "A", null, Map.of());
-        notificationService.notifyUser(customerId, NotificationType.BOOKING_REFUNDED, "B", null, Map.of());
+        notificationService.notifyUser(customerId, NotificationType.BOOKING_CANCELLED, "B", null, Map.of());
 
         Long firstId = notificationRepository
                 .findByRecipientUserIdOrderByCreatedAtDesc(customerId, page(10))
@@ -236,7 +236,7 @@ class NotificationIT {
     @Test
     void markAllReadClearsTheBadgeAndReportsWhatItTouched() {
         notificationService.notifyUser(customerId, NotificationType.BOOKING_CONFIRMED, "A", null, Map.of());
-        notificationService.notifyUser(customerId, NotificationType.BOOKING_REFUNDED, "B", null, Map.of());
+        notificationService.notifyUser(customerId, NotificationType.BOOKING_CANCELLED, "B", null, Map.of());
         notificationService.notifyUser(customerId, NotificationType.BOOKING_EXPIRED, "C", null, Map.of());
 
         assertThat(notificationService.markAllRead(customerId)).isEqualTo(3);

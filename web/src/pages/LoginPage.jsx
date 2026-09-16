@@ -14,8 +14,8 @@ const ERRORS = {
   // same 401 either way, on purpose: a difference between the two would let
   // anyone use this form to discover which phone numbers hold accounts.
   BAD_CREDENTIALS: {
-    en: 'Incorrect phone number or password.',
-    km: 'លេខទូរស័ព្ទ ឬពាក្យសម្ងាត់មិនត្រឹមត្រូវ។',
+    en: 'Incorrect phone number, email or password.',
+    km: 'លេខទូរស័ព្ទ អ៊ីមែល ឬពាក្យសម្ងាត់មិនត្រឹមត្រូវ។',
   },
   NETWORK: {
     en: 'Could not reach the server. Check your connection and try again.',
@@ -49,6 +49,7 @@ const ERRORS = {
 
 export default function LoginPage() {
   const { t, locale } = useLocale()
+  const km = locale === 'km'
   useDocumentTitle(t('login'))
   const { login, loginWithGoogle } = useAuth()
   const navigate = useNavigate()
@@ -110,28 +111,64 @@ export default function LoginPage() {
       )}
 
       <form className="stack" onSubmit={submit} noValidate>
-        <Field label={t('phone')} hint="012 345 678">
+        {/*
+          Labelled for what it accepts, not for the commoner half of it. The
+          subtitle above already promises "phone or email" and the field is
+          called `identifier` precisely because either works — but the label
+          read "Phone", so anyone signing in with the email they registered had
+          to ignore it to get it right. No inputMode: `tel` opens a pad that on
+          many phone keyboards has no way to reach "@", so the numeric default
+          would have made the address half of this field untypeable on exactly
+          the devices most people use. autoComplete accepts either credential.
+        */}
+        <Field
+          htmlFor="login-identifier"
+          label={km ? 'លេខទូរស័ព្ទ ឬអ៊ីមែល' : 'Phone or email'}
+          hint="012 345 678"
+        >
           <span className="field-icon">
             <Icon name="user" size={16} />
             <input
+              id="login-identifier"
               className="input"
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
-              autoComplete="tel"
-              inputMode="tel"
+              aria-describedby="login-identifier-message"
+              aria-invalid={error === 'BAD_CREDENTIALS' || undefined}
+              autoComplete="username"
+              autoFocus
             />
           </span>
         </Field>
 
-        <Field label={t('password')}>
-          <PasswordField value={password} onChange={setPassword} />
+        <Field htmlFor="login-password" label={t('password')}>
+          <PasswordField
+            id="login-password"
+            value={password}
+            onChange={setPassword}
+            invalid={error === 'BAD_CREDENTIALS'}
+          />
         </Field>
 
-        {error && <Alert tone="danger">{ERRORS[error]?.[locale] || ERRORS[error]?.en || error}</Alert>}
+        {/*
+          Announced when it appears, rather than only drawn. Submitting sets
+          `error` and moves nothing else, so without this a screen reader user
+          gets silence and a form that simply did not proceed.
+
+          Rendered only when there is something to say: role="alert" is
+          announced on insertion (unlike an aria-live region, which has to
+          pre-exist to be watched), and an always-present wrapper is still a
+          flex item — it was adding a gap above the button on every load.
+        */}
+        {error && (
+          <div role="alert">
+            <Alert tone="danger">{ERRORS[error]?.[locale] || ERRORS[error]?.en || error}</Alert>
+          </div>
+        )}
 
         <button className="btn btn-primary btn-lg btn-block" type="submit" disabled={busy}>
-          <Icon name="login" size={17} />
-          {t('login')}
+          {busy ? <span className="spinner" aria-hidden="true" /> : <Icon name="login" size={17} />}
+          {busy ? (km ? 'កំពុងចូល…' : 'Signing in…') : t('login')}
         </button>
       </form>
 

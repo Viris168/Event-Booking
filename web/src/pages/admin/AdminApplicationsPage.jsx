@@ -2,11 +2,13 @@ import { useDocumentTitle } from '../../lib/useDocumentTitle.js'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ConfirmDialog from '../../components/ConfirmDialog.jsx'
 import QueueDialog from './QueueDialog.jsx'
+import ContactButtons from '../../components/ContactButtons.jsx'
 import Icon from '../../components/Icon.jsx'
-import { Alert, Empty, Field } from '../../components/ui.jsx'
+import { Alert, Empty, Field, ResponsiveTable } from '../../components/ui.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
 import { RQ_CSS } from './queueStyles.js'
 import { useToast } from '../../context/ToastContext.jsx'
+import { facebookUrl, telegramUrl } from '../../lib/contactLinks.js'
 import { formatDateTime, timeAgo } from '../../lib/format.js'
 import {
   approveApplication,
@@ -122,9 +124,10 @@ export default function AdminApplicationsPage() {
    *
    * `selectedId` is what the admin clicked. It stops matching the moment a
    * decision lands, because a decided application is no longer PENDING and
-   * drops out of the queue. Falling back to the same POSITION is what makes the
-   * queue advance on its own: the index that row occupied now holds the next
-   * one, so deciding repeatedly walks down the list without a click in between.
+   * drops out of the queue. Falling back to the same POSITION keeps the
+   * highlight where the admin was looking rather than dropping it to the top.
+   * It no longer pulls the next application into an open dialog: a decision
+   * closes the dialog, so opening the next one is a deliberate click.
    */
   const selected = useMemo(() => {
     if (!rows.length) return null
@@ -181,6 +184,7 @@ export default function AdminApplicationsPage() {
     try {
       await approveApplication(selected.id)
       toast(km ? 'បានអនុម័ត' : 'Approved', 'success')
+      closePanel()
       refresh()
     } catch (e) {
       toast(errorText(e, km ? 'អនុម័តមិនបានសម្រេច' : 'Could not approve'), 'error')
@@ -197,6 +201,7 @@ export default function AdminApplicationsPage() {
       toast(km ? 'បានបដិសេធ' : 'Rejected', 'success')
       setRejecting(false)
       setMessage('')
+      closePanel()
       refresh()
     } catch (e) {
       toast(errorText(e, km ? 'មិនបានសម្រេច' : 'Could not save decision'), 'error')
@@ -260,7 +265,7 @@ export default function AdminApplicationsPage() {
       {rows.length > 0 && (
         <div className="rq-split">
           <div className="rq-col">
-            <div className="rq-tablewrap">
+            <ResponsiveTable className="rq-tablewrap">
               <table className="rq-queue">
                 <thead>
                   <tr>
@@ -312,7 +317,7 @@ export default function AdminApplicationsPage() {
                   })}
                 </tbody>
               </table>
-            </div>
+            </ResponsiveTable>
           </div>
 
         </div>
@@ -417,6 +422,10 @@ function ApplicationPanel({ application, km, locale, busy, onApprove, onReject }
    */
   const noContact = !telegram && !facebook
 
+  /* Given something, but nothing that resolves - a mistyped handle, or a
+     scheme contactLinks refuses to put behind a click. */
+  const unreachable = !noContact && !telegramUrl(telegram) && !facebookUrl(facebook)
+
   /*
    * Only a PENDING application can still be decided.
    *
@@ -463,22 +472,28 @@ function ApplicationPanel({ application, km, locale, busy, onApprove, onReject }
           <Row label={km ? 'ដាក់ស្នើនៅ' : 'Submitted'}>{fmt(submittedAt, locale)}</Row>
         </div>
 
+        {/*
+          * The buttons are the links; the rows underneath are the record of
+          * what was actually typed, so an admin can still read and copy a
+          * handle whose button did not render.
+          */}
         <Section title={km ? 'ទំនាក់ទំនង' : 'Contact'}>
+          <ContactButtons telegram={telegram} facebook={facebook} km={km} />
           <Row label="Telegram">
             {telegram ? <span className="mono">{telegram}</span> : '—'}
           </Row>
           <Row label="Facebook">
-            {facebook ? (
-              /* noreferrer as well as noopener: this URL was typed by the
-                 person being reviewed, and an admin session is not a referrer
-                 worth handing to a stranger's site. */
-              <a href={facebook} target="_blank" rel="noopener noreferrer">
-                {km ? 'បើកទំព័រ' : 'Open page'}
-              </a>
-            ) : (
-              '—'
-            )}
+            {facebook ? <span className="mono">{facebook}</span> : '—'}
           </Row>
+          {/* A value that is present but unusable would otherwise read as a
+              missing button with no explanation. */}
+          {unreachable && (
+            <p className="small muted mt-2 mb-0">
+              {km
+                ? 'អ្វីដែលបានបញ្ចូលមិនអាចបង្កើតតំណបានទេ។'
+                : 'What they entered here does not form a link that can be opened.'}
+            </p>
+          )}
         </Section>
 
         <Section title={km ? 'អ្វីដែលពួកគេចង់រៀបចំ' : 'What they want to run'}>

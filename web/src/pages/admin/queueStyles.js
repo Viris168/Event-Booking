@@ -199,26 +199,10 @@ export const RQ_CSS = `
 .rq-section > h3 { margin: 0 0 var(--rq-2); font-size: .9rem; font-weight: 600;
                    letter-spacing: -.005em; color: var(--color-ink); }
 
-.rq-contact-btns { display: flex; flex-wrap: wrap; gap: var(--rq-2);
-                    margin: var(--rq-2) 0; }
-.rq-contact-btns .btn { gap: var(--rq-1, 4px); }
-
-/* Each service's own colour, tinted rather than solid - it says which app it
-   opens before you read the label, without shouting louder than the primary
-   Approve button below it. */
-.contact-btn-telegram, .contact-btn-facebook {
-  font-weight: 600; border-width: 1px; border-style: solid;
-}
-.contact-btn-telegram {
-  color: #1c8fc2; background: rgba(34, 158, 217, .1); border-color: rgba(34, 158, 217, .35);
-}
-.contact-btn-telegram:hover { background: rgba(34, 158, 217, .18); }
-.contact-btn-facebook {
-  color: #1461d1; background: rgba(24, 119, 242, .1); border-color: rgba(24, 119, 242, .35);
-}
-.contact-btn-facebook:hover { background: rgba(24, 119, 242, .18); }
-[data-theme='dark'] .contact-btn-telegram { color: #7cd0f4; }
-[data-theme='dark'] .contact-btn-facebook { color: #8fb4f7; }
+/* ContactButtons' own styles used to sit here. They moved to index.css when
+   the payout queue started rendering the component: this stylesheet is injected
+   by the two split-view queues only, so a shared component styled from it was
+   unstyled anywhere else. */
 
 .rq-kv { display: flex; justify-content: space-between; gap: var(--rq-4);
          padding: var(--rq-2) 0; font-size: .875rem; align-items: baseline;
@@ -304,6 +288,61 @@ export const RQ_CSS = `
 /* The panel inside loses the border it had as a rail - the dialog draws it. */
 .rq-dialog .rq-panel { border: 0; border-radius: inherit; background: none;
   max-height: none; flex: 1; min-height: 0; }
+
+/*
+ * Under 900px the queue stops being a table and becomes a list of cards.
+ *
+ * 900px because that is where every other table in the app already switches
+ * (see .table in styles/index.css). Two tables changing shape at two different
+ * widths is the kind of inconsistency nobody can name but everybody feels.
+ *
+ * Four columns squeezed into a phone is not a table anyone can read: the widest
+ * value decides every column, so the organisation name wraps to four lines
+ * while "3d" keeps a quarter of the screen. Rows already open a dialog on tap,
+ * so a card is also a better target than a 30px-tall strip.
+ *
+ * Labels come from <ResponsiveTable>, which copies each <th> onto the cells
+ * below it after every render - so they follow the EN/KM toggle without being
+ * written twice.
+ */
+@media (max-width: 900px) {
+  .rq-tablewrap { overflow-x: visible; }
+  .rq-queue thead { display: none; }
+  .rq-queue tbody { display: block; }
+
+  .rq-queue tbody tr.rq-qrow {
+    display: block; margin-bottom: var(--rq-3); padding: var(--rq-1) var(--rq-3);
+    border: 1px solid var(--color-line); border-radius: var(--radius-card);
+    background: var(--color-surface);
+  }
+  .rq-queue tbody tr.rq-qrow:last-child { margin-bottom: 0; }
+  /* The row-level hover tint and the leading-edge shadow both said "this is the
+     row under the pointer" in a list of ruled lines. A card already looks
+     separate, and on a touch screen there is no pointer to follow. */
+  .rq-qrow:hover > td { background: none; }
+
+  .rq-qrow > td {
+    display: grid; align-items: start; gap: var(--rq-3);
+    grid-template-columns: minmax(80px, min(34%, 170px)) minmax(0, 1fr);
+    padding: var(--rq-2) 0; box-shadow: none;
+    border-bottom: 1px dashed var(--color-line-2);
+  }
+  .rq-qrow > td:last-child { border-bottom: 0; }
+  .rq-qrow > td:last-child, .rq-qrow > td:first-child { padding-inline: 0; }
+
+  .rq-qrow > td[data-label]::before {
+    content: attr(data-label);
+    font-size: .68rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .05em; color: var(--color-muted);
+  }
+  /* Keep a multi-line cell (name + its Khmer second line) in the value column
+     instead of letting the second child wrap back under the label. */
+  .rq-qrow > td[data-label] > * { grid-column: 2; justify-self: start; }
+
+  /* Numbers were right-aligned to line up down a column. There is no column
+     to line up with once each value sits beside its own label. */
+  .rq-qrow > td.rq-num { text-align: start; }
+}
 
 /* No room for a 460px rail beside the table under ~860px - back to a
    centred, full-scrim dialog like a normal mobile modal. */
