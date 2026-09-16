@@ -93,6 +93,12 @@
   --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-khmer: 'Noto Sans Khmer', 'Khmer OS Battambang', 'Hanuman', var(--font-sans);
   --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+  /* The hero headline, and nothing else. A script face is unreadable at body
+     sizes and has no system fallback that resembles it, so it is scoped to the
+     one line it was chosen for. Khmer gets Moul rather than a Latin script,
+     which cannot render the script at all. */
+  --font-display: 'Berkshire Swash', Georgia, 'Times New Roman', serif;
+  --font-display-khmer: 'Moul', var(--font-khmer);
 
   --text-small: 0.82rem;
   --text-tiny: 0.74rem;
@@ -924,8 +930,8 @@
   .hero {
     @apply relative isolate overflow-hidden pt-[4.4rem] pb-0 text-white;
     background:
-      radial-gradient(820px 500px at 74% 120%, rgba(8, 46, 29, 0.5), transparent 62%),
-      linear-gradient(168deg, #04140c 0%, #052117 50%, #072b1b 100%);
+      radial-gradient(820px 500px at 74% 120%, rgba(8, 46, 29, 0.42), transparent 62%),
+      linear-gradient(168deg, #02100a 0%, #03150f 52%, #051d14 100%);
     box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.12);
   }
 
@@ -940,8 +946,12 @@
     content: '';
     @apply pointer-events-none absolute inset-0 -z-10;
     background:
-      linear-gradient(100deg, rgba(3, 16, 9, 0.82) 0%, rgba(4, 22, 13, 0.68) 38%, rgba(5, 30, 18, 0.34) 72%, rgba(6, 36, 22, 0.2) 100%),
-      linear-gradient(180deg, rgba(4, 20, 12, 0.34) 0%, transparent 34%, rgba(4, 18, 11, 0.62) 100%);
+      /* Warm bloom behind the headline. Gold type on a photograph needs
+         something warm and dark directly under it or the strokes read as dirt
+         on the picture rather than as lettering. */
+      radial-gradient(720px 420px at 22% 38%, rgba(190, 124, 44, 0.22), transparent 66%),
+      linear-gradient(100deg, rgba(2, 9, 14, 0.9) 0%, rgba(3, 13, 18, 0.79) 38%, rgba(4, 20, 22, 0.44) 72%, rgba(5, 26, 26, 0.24) 100%),
+      linear-gradient(180deg, rgba(2, 10, 14, 0.5) 0%, transparent 32%, rgba(2, 9, 12, 0.76) 100%);
   }
   /* Fine dot grid for texture, faded out before it reaches the content. */
   .hero::after {
@@ -953,27 +963,93 @@
     -webkit-mask-image: radial-gradient(120% 90% at 80% 0%, rgba(0, 0, 0, 0.95), transparent 62%);
   }
 
-  /* One accented word carries the eye; the rest of the headline stays white. */
+  /* The headline runs as one unbroken gold script, so the accent word is no
+     longer a second colour - it just inherits the gradient. The rule survives
+     as the flat fallback for the no-background-clip path below. */
   .hero-accent {
-    color: #f0a05a;
+    color: #f2c877;
   }
   /* Same box shape as .nav-inner / .container / .footer-inner: the max-width
      carries its own horizontal padding, so all four content edges are flush. */
   .hero-inner {
     @apply mx-auto max-w-shell px-page;
   }
+  /* Display script, gilded - the one place in the product that uses either.
+     Explicitly asked for rather than reached for: it is the whole point of the
+     hero, and it stays quarantined to this single line.
+
+     `color` is the real colour and the gradient is layered over it only where
+     background-clip: text actually works; without that guard an unsupported
+     browser gets transparent fill over no clip, which is an invisible
+     headline. */
   .hero h1 {
-    @apply max-w-[22ch] text-white;
-    font-size: clamp(1.9rem, 1.3rem + 2.6vw, 3rem);
+    @apply max-w-[16ch];
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: clamp(2.15rem, 1.15rem + 4vw, 4rem);
+    line-height: 1.1;
+    letter-spacing: 0.004em;
+    color: #f2c877;
+    text-shadow: 0 2px 14px rgba(2, 9, 14, 0.62);
+  }
+  /* One line, at every width.
+
+     Set in Berkshire Swash, "Live events across Cambodia" is 11.97em wide, so
+     the size that exactly fills the column is its width over 11.97. The divisor
+     below is 12.4 - about 3.5% of headroom, because `nowrap` turns a bad guess
+     into a headline hanging off the side of the page rather than a second line.
+     cqw and not vw: the column is the viewport minus the 320px card, and vw
+     would overset by exactly that card.
+
+     Shrink-to-fit rather than wrap means a 320px phone gets this at ~23px. That
+     is the trade the single line costs, and it is only sound because the ratio
+     is measured from the real string - translate the headline and it has to be
+     measured again. */
+  @supports (container-type: inline-size) {
+    .hero h1 {
+      max-width: none;
+      white-space: nowrap;
+      font-size: min(4rem, 100cqw / 12.4);
+    }
+  }
+  @supports (background-clip: text) or (-webkit-background-clip: text) {
+    .hero h1 {
+      background: linear-gradient(174deg, #fdf3d8 4%, #f4cd82 40%, #dda253 74%, #bd8236 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      /* text-shadow paints under transparent fill, so the lift has to come from
+         a filter on the painted glyphs instead. */
+      text-shadow: none;
+      filter:
+        drop-shadow(0 2px 10px rgba(2, 9, 14, 0.66))
+        drop-shadow(0 0 30px rgba(226, 165, 82, 0.26));
+    }
+  }
+  /* Moul is a display face in its own right, and a heavy one: Khmer needs less
+     size and far more leading than the Latin script at the same optical
+     weight, or the subscript forms collide with the line above. */
+  html[lang='km'] .hero h1 {
+    @apply max-w-[18ch];
+    font-family: var(--font-display-khmer);
+    font-size: clamp(1.45rem, 0.9rem + 2.3vw, 2.5rem);
+    line-height: 1.75;
+    /* The Khmer headline is 19.4em in Moul against the Latin's 12. Holding it
+       to one line would put it at 15px on a phone, so it keeps wrapping. */
+    white-space: normal;
   }
   .hero p {
     @apply mt-[0.7rem] max-w-[58ch] text-white/[0.82];
   }
-  /* Copy on the left, the next event on sale on the right. Below 1080px the
-     card drops under the search rather than squeezing both. */
-  /* Copy on the left, the rotating rail on the right. Below 1080px the rail
-     goes rather than stacking: it is a browsing aid, and pushing the search
-     below a 400px card is the wrong trade on a phone. */
+  /* Copy on the left, the rotating rail on the right. Below 1080px the two
+     stack, and the rail goes wide-and-short instead of disappearing.
+     It used to be hidden outright, on the reasoning that a 400px square card
+     above the fold is the wrong trade against the search box on a phone. The
+     square was the problem, not the card: at 16/10 it costs about 210px, sits
+     under the quick links where it interrupts nothing, and a phone is exactly
+     where one tap into the next event on sale is worth most. (The loading
+     skeleton never honoured the old rule anyway, so a phone flashed a
+     spotlight placeholder and then lost the card it promised.) */
   .hero-grid {
     @apply grid items-center gap-10;
     grid-template-columns: minmax(0, 1fr) 320px;
@@ -982,12 +1058,19 @@
     .hero-grid {
       @apply block;
     }
-    .hero-rail {
-      @apply hidden;
+    .hero-rail,
+    .hero-grid > .spotlight {
+      @apply mx-auto mt-8 max-w-[440px];
+    }
+    .hero-slide > .rail-card {
+      aspect-ratio: 16 / 10;
     }
   }
+  /* A container, so the headline can size itself against the column it sits in
+     rather than against the viewport - the two differ by the 320px card. */
   .hero-copy {
     @apply min-w-0 max-w-[720px];
+    container-type: inline-size;
   }
 
   /* -------------------------------------------------- hero rotating rail */
