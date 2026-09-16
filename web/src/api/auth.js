@@ -75,7 +75,7 @@ export function logout() {
 }
 
 /**
- * Edits your own record: display name and email.
+ * Edits your own record: display name, email and Telegram handle.
  *
  * No id parameter. The server edits the row the token names, so "update someone
  * else's profile" is unrepresentable rather than merely refused - the same rule
@@ -91,12 +91,23 @@ export function logout() {
  *
  * Rejects 409 EMAIL_ALREADY_REGISTERED if the address belongs to another
  * account. Submitting the form without touching the email is not a conflict.
+ *
+ * Rejects 400 INVALID_TELEGRAM_USERNAME when what was typed is not a handle
+ * once the @ or t.me/ around it is stripped. Any of "@sokha", "sokha",
+ * "t.me/sokha" and the full link are sent as typed - the server does that
+ * stripping, so this has no shape of its own to enforce.
+ *
+ * Every field goes on every call, including the empty ones. The endpoint
+ * replaces what it is given rather than merging, so omitting a field clears it
+ * - which is what makes "delete my email" expressible, and what makes sending
+ * a partial body a way to erase the rest by accident.
  */
 export const updateProfile = (data) =>
   client
     .patch('/auth/me', {
       display_name: data.display_name,
       email: data.email || null,
+      telegram_username: data.telegram_username || null,
     })
     .then((r) => r.data)
 

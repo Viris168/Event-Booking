@@ -527,8 +527,8 @@ FROM booking WHERE booking_ref = 'KH-3MD9XK4T';
 -- look wrong. So the PAYMENT_FAILED row below is stamped now(): it is the one
 -- state here that only survives while it is fresh.
 INSERT INTO hold (event_id, user_id, status, expires_at)
-VALUES (1,  7, 'CONSUMED', now() + interval '1 hour'),   -- -> REFUND_REQUESTED
-       (3,  8, 'CONSUMED', now() + interval '1 hour'),   -- -> REFUNDED
+VALUES (1,  7, 'CONSUMED', now() + interval '1 hour'),   -- -> CONFIRMED
+       (3,  8, 'CONSUMED', now() + interval '1 hour'),   -- -> CONFIRMED
        (5,  9, 'EXPIRED',  now() - interval '2 hours'),  -- -> EXPIRED
        (6,  7, 'RELEASED', now() - interval '3 hours'),  -- -> CANCELLED
        (8,  8, 'CONSUMED', now() + interval '1 hour'),   -- -> PAYMENT_FAILED
@@ -544,8 +544,12 @@ SELECT v.ref, v.event_id, v.user_id,
        v.state, v.buyer_name, v.phone, v.cents, v.cents, 4100.0000, v.cents * 41,
        v.created_at::timestamptz, coalesce(v.changed_at::timestamptz, now())
 FROM (VALUES
-    ('KH-5RT8WQ2N', 1,  7, 'REFUND_REQUESTED', 'Chenda Pich', '078220011', 4400, '2026-09-09 14:02+07', '2026-09-12 09:30+07'),
-    ('KH-9BN4LC6V', 3,  8, 'REFUNDED',         'Nita Chhun',  '092667788', 4000, '2026-09-02 10:15+07', '2026-09-08 16:20+07'),
+    -- These two were REFUND_REQUESTED and REFUNDED until V30 removed both
+    -- states. They keep their SUCCESS payments and are CONFIRMED, which is
+    -- what the product now says about money it has taken: a refund is settled
+    -- out of band and the booking row does not change.
+    ('KH-5RT8WQ2N', 1,  7, 'CONFIRMED',        'Chenda Pich', '078220011', 4400, '2026-09-09 14:02+07', '2026-09-09 14:04+07'),
+    ('KH-9BN4LC6V', 3,  8, 'CONFIRMED',        'Nita Chhun',  '092667788', 4000, '2026-09-02 10:15+07', '2026-09-02 10:17+07'),
     ('KH-2XG7HP3K', 5,  9, 'EXPIRED',          'Ratana Kim',  '070998877', 9000, '2026-09-11 20:41+07', '2026-09-11 21:01+07'),
     ('KH-6WD1ZT5M', 6,  7, 'CANCELLED',        'Chenda Pich', '078220011', 2800, '2026-09-10 11:26+07', '2026-09-10 11:58+07'),
     ('KH-4KQ2VS9J', 8,  8, 'PAYMENT_FAILED',   'Nita Chhun',  '092667788', 6000, '2026-09-12 18:12+07', NULL),
@@ -598,15 +602,15 @@ FROM (VALUES
 JOIN booking b   ON b.booking_ref = v.ref
 JOIN event_zone z ON z.event_id = v.event_id AND z.name_en = v.zone_name;
 
--- One ticket per unit bought. Only CONFIRMED and REFUND_REQUESTED bookings get
--- them: a ticket is proof of a completed purchase, and issuing one against an
+-- One ticket per unit bought. Only CONFIRMED bookings get them: a ticket is
+-- proof of a completed purchase, and issuing one against an
 -- awaiting-confirmation booking is how somebody walks in without having paid.
 INSERT INTO ticket (booking_item_id, unit_seq)
 SELECT bi.id, g.seq
 FROM booking_item bi
 JOIN booking b ON b.id = bi.booking_id
 CROSS JOIN LATERAL generate_series(1, bi.qty) AS g(seq)
-WHERE b.state IN ('CONFIRMED', 'REFUND_REQUESTED');
+WHERE b.state = 'CONFIRMED';
 
 -- The past event's tickets were actually scanned at the door; the upcoming
 -- ones have not been. checked_in_by is the admin standing in for a gate

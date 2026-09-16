@@ -3010,8 +3010,22 @@
     @apply cursor-not-allowed opacity-45;
   }
 
+  /* Above everything, dialogs and drawers included - 1200 is the ceiling in
+     this stylesheet (.action-menu-pop, .crop-overlay), so 1300 clears it.
+
+     A toast reports what just happened, and what just happened was usually
+     done INSIDE one of those layers: "Saved" from the account panel, a failed
+     approval from a queue dialog. It was z-60, which tied with .acct-overlay -
+     and a tie is broken by DOM order, where a panel portalled to <body> always
+     comes after the provider's wrap in the React root. So the message that
+     confirms the save rendered behind the thing that saved.
+
+     pointer-events off, because this wrap spans the bottom-right corner for as
+     long as a toast is up and nothing in it is clickable. A notification that
+     swallows the button underneath it for four seconds is worse than one
+     nobody sees. */
   .toast-wrap {
-    @apply fixed bottom-4 right-4 z-[60] flex flex-col gap-2;
+    @apply pointer-events-none fixed bottom-4 right-4 z-[1300] flex flex-col gap-2;
     max-width: min(360px, calc(100vw - 2rem));
   }
   .toast {

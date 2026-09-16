@@ -40,6 +40,13 @@ public enum ErrorCode {
     UNKNOWN_OPERATOR(HttpStatus.BAD_REQUEST),
     INVALID_ADMIT_COUNT(HttpStatus.BAD_REQUEST),
     EMPTY_UPLOAD(HttpStatus.BAD_REQUEST),
+    /* The Telegram handle on a profile edit is not one: something is left
+       after the @ and t.me/ decoration is stripped, and it is not 5-32
+       characters of [A-Za-z0-9_]. Its own code rather than VALIDATION_ERROR so
+       the account panel can put the message under that field instead of
+       failing the whole form - the display name and email in the same request
+       are usually fine. */
+    INVALID_TELEGRAM_USERNAME(HttpStatus.BAD_REQUEST),
 
     // 401 Unauthorized
     /* One code for every way a login can fail. Splitting it into "no such user"
