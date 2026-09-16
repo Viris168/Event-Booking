@@ -1,8 +1,10 @@
 package com.eventbooking.service.booking;
 
 import com.eventbooking.Enumeration.BookingStatus;
+import com.eventbooking.Enumeration.PaymentProvider;
 import com.eventbooking.dto.booking.MonthlyRevenueResponse;
 import com.eventbooking.dto.booking.OrganizerTransactionResponse;
+import com.eventbooking.dto.booking.OrganizerTransactionSummaryResponse;
 import org.springframework.data.domain.Page;
 
 import java.util.List;
@@ -17,7 +19,19 @@ public interface OrganizerTransactionService {
      * and nobody else's, which a client-supplied id would hand away.
      */
     Page<OrganizerTransactionResponse> listForOrganizer(
-            Long organizerId, Long eventId, BookingStatus state, int page, int size);
+            Long organizerId, Long eventId, BookingStatus state, PaymentProvider provider,
+            int page, int size);
+
+    /**
+     * Totals for the same filtered set {@link #listForOrganizer} pages through.
+     *
+     * <p>Its own call rather than a field on the page, because the heading
+     * describes every matching transaction while the page holds twenty-five of
+     * them - and the two numbers being the same shape is what let the screen
+     * quietly print one where the other belonged.
+     */
+    OrganizerTransactionSummaryResponse summaryForOrganizer(
+            Long organizerId, Long eventId, BookingStatus state, PaymentProvider provider);
 
     /**
      * Confirmed revenue per month for the last {@code months} months, oldest

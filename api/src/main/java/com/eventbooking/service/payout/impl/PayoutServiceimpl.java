@@ -22,7 +22,10 @@ import com.eventbooking.repository.EventRepository;
 import com.eventbooking.repository.OrganizerProfileRepository;
 import com.eventbooking.repository.PayoutRequestRepository;
 import com.eventbooking.repository.TicketRepository;
+import com.eventbooking.dto.payout.ExtractedReceiptResponse;
 import com.eventbooking.service.Organizer.OrganizerContactLookup;
+import com.eventbooking.service.payout.PayoutReceiptExtractor;
+import org.springframework.web.multipart.MultipartFile;
 import com.eventbooking.service.notification.NotificationEvents;
 import com.eventbooking.service.payout.PayoutService;
 import org.springframework.context.ApplicationEventPublisher;
@@ -79,6 +82,7 @@ public class PayoutServiceimpl implements PayoutService {
     private final OrganizerProfileRepository organizerProfileRepository;
     private final AppUserRepository appUserRepository;
     private final OrganizerContactLookup organizerContactLookup;
+    private final PayoutReceiptExtractor receiptExtractor;
     private final PayoutProperties properties;
     private final ApplicationEventPublisher events;
     private final Clock clock;
@@ -90,6 +94,7 @@ public class PayoutServiceimpl implements PayoutService {
                              OrganizerProfileRepository organizerProfileRepository,
                              AppUserRepository appUserRepository,
                              OrganizerContactLookup organizerContactLookup,
+                             PayoutReceiptExtractor receiptExtractor,
                              PayoutProperties properties,
                              ApplicationEventPublisher events,
                              Clock clock) {
@@ -100,6 +105,7 @@ public class PayoutServiceimpl implements PayoutService {
         this.organizerProfileRepository = organizerProfileRepository;
         this.appUserRepository = appUserRepository;
         this.organizerContactLookup = organizerContactLookup;
+        this.receiptExtractor = receiptExtractor;
         this.properties = properties;
         this.events = events;
         this.clock = clock;
@@ -331,6 +337,20 @@ public class PayoutServiceimpl implements PayoutService {
 
         events.publishEvent(new NotificationEvents.PayoutDecided(payout.getId(), PayoutStatus.PAID));
         return toResponse(payout, null, false, true);
+    }
+
+    @Override
+    public ExtractedReceiptResponse extractReceipt(Long payoutId, MultipartFile image) {
+        // Same gate as markPaid, and deliberately the same exception: an admin
+        // who has had the dialog open while somebody else settled the row
+        // should be told that before spending a vision call, not after.
+        requireIn(payoutId, PayoutStatus.APPROVED);
+
+        // No @Transactional. Nothing here writes, and holding a connection open
+        // across a network call to somebody else's API - for as long as the
+        // configured timeout allows - is how a pool gets exhausted by a queue
+        // of admins all uploading at once.
+        return receiptExtractor.extract(image);
     }
 
     // ------------------------------------------------------------- internals

@@ -3,6 +3,7 @@ package com.eventbooking.dto.auth;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
 /**
  * The parts of your own record you are allowed to change.
@@ -18,6 +19,7 @@ import jakarta.validation.constraints.NotBlank;
  * <p>{@code email} is nullable on purpose: it is optional at registration and
  * clearing it has to stay possible. A blank string is normalised to null rather
  * than stored, so the UNIQUE index never has to arbitrate between "" and "".
+ * {@code telegram_username} follows the same rule.
  */
 public record UpdateProfileRequest(
 
@@ -25,6 +27,20 @@ public record UpdateProfileRequest(
         @JsonProperty("display_name") String displayName,
 
         /** Null or blank clears it. Non-null must be unique across app_user. */
-        @Email String email
+        @Email String email,
+
+        /**
+         * A Telegram handle, in any of the spellings a person uses for one.
+         *
+         * <p>Only a length bound here, and a generous one. "@sokha",
+         * "t.me/sokha" and "https://t.me/sokha" all name the same account, and
+         * a @Pattern strict enough to describe a handle would reject two of
+         * them as malformed input when they are simply how people write it
+         * down. AuthService strips the decoration first and judges what is
+         * left; the cap exists so that nothing longer than a URL around a
+         * 32-character handle gets as far as being parsed.
+         */
+        @Size(max = 64)
+        @JsonProperty("telegram_username") String telegramUsername
 ) {
 }

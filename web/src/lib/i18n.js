@@ -28,10 +28,29 @@ const dict = {
   },
   // Split so the last word can carry the accent treatment in the hero.
   heroTitleLead: {
+    /*
+     * The Khmer is shorter than a literal translation, deliberately. It used to
+     * read "ព្រឹត្តិការណ៍ផ្ទាល់នៅទូទាំងប្រទេស កម្ពុជា" - "live events across the
+     * country Cambodia" - which names the country twice and, at 19.4em in Moul
+     * against the Latin's 12, could not be held to one line without shrinking
+     * to about 15px on a phone.
+     *
+     * Shortening the line is what buys the single line, so the two belong
+     * together: changing this string means re-measuring the divisor in the
+     * html[lang='km'] .hero h1 rule.
+     */
     en: "Live events across",
-    km: "ព្រឹត្តិការណ៍ផ្ទាល់នៅទូទាំងប្រទេស",
+    km: "ព្រឹត្តិការណ៍ផ្ទាល់ទូទាំង",
   },
-  heroTitleAccent: { en: "Cambodia", km: "កម្ពុជា" },
+  /*
+   * ប្រទេសកម្ពុជា, not the bare កម្ពុជា - the full name, as it is said.
+   *
+   * The lead above drops its own ទូទាំងប្រទេស so that this can carry ប្រទេស
+   * instead of the line saying it twice, which is what the original wording
+   * did. The two strings are therefore a pair: shortening one is what pays for
+   * the other.
+   */
+  heroTitleAccent: { en: "Cambodia", km: "ប្រទេសកម្ពុជា" },
   heroSub: {
     en: "Concerts, festivals and conferences. Pick a seat or buy general admission, and show your QR at the door.",
     km: "ការប្រគំតន្ត្រី ពិធីបុណ្យ និងសន្និសីទ។ ជ្រើសរើសកៅអី ឬទិញសំបុត្រចូលទូទៅ រួចបង្ហាញ QR កូដនៅច្រកចូល។",
@@ -316,7 +335,17 @@ const dict = {
     en: "The page you are looking for does not exist.",
     km: "ទំព័រដែលអ្នកកំពុងស្វែងរកមិនមានទេ។",
   },
-  loginRequired: { en: "Log in to continue", km: "សូមចូលគណនីដើម្បីបន្ត" },
+  /*
+   * Shown only after a redirect from a page that needed an account, so it says
+   * what happened rather than what to do. "Log in to continue" was the third
+   * instruction in a column that already reads "Welcome back" and "Log in with
+   * your phone or email" - the one thing this line knows and those two do not
+   * is WHY the person is suddenly looking at a login form.
+   */
+  loginRequired: {
+    en: "That page needs an account. Sign in and we will take you back to it.",
+    km: "ទំព័រនោះត្រូវការគណនី។ សូមចូល ហើយយើងនឹងនាំអ្នកត្រឡប់ទៅវិញ។",
+  },
 };
 
 export function translate(key, locale) {

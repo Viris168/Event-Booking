@@ -1,6 +1,7 @@
 // Small shared presentational pieces used across all three role areas.
 
 import { useLayoutEffect, useRef } from 'react'
+import { Link } from 'react-router-dom'
 import Icon from './Icon.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
 import { usd } from '../lib/format.js'
@@ -56,9 +57,19 @@ export function Empty({ icon = 'ticket', title, children }) {
   )
 }
 
-export function Stat({ label, value, sub, icon, tone = '', alert = false }) {
+/**
+ * One figure on a dashboard.
+ *
+ * <p>Pass `to` and the whole tile becomes the link to the screen that figure
+ * belongs to. That is for the tiles that count work waiting - a reader who sees
+ * "4 need review" wants the review queue, and making them find it in the nav
+ * afterwards is a step for nothing. Tiles that merely report, like a user
+ * count, take no `to`: there is nothing to do about them.
+ */
+export function Stat({ label, value, sub, icon, tone = '', alert = false, to }) {
+  const Box = to ? Link : 'div'
   return (
-    <div className={`stat ${alert ? 'stat-flagged' : ''}`}>
+    <Box className={`stat ${alert ? 'stat-flagged' : ''} ${to ? 'stat-link' : ''}`} to={to}>
       <div className="stat-head">
         <span className="stat-label">{label}</span>
         {icon && (
@@ -69,7 +80,7 @@ export function Stat({ label, value, sub, icon, tone = '', alert = false }) {
       </div>
       <div className="stat-value">{value}</div>
       {sub && <div className="stat-sub">{sub}</div>}
-    </div>
+    </Box>
   )
 }
 
@@ -284,6 +295,77 @@ export function Steps({ current, labels }) {
           </span>
         </span>
       ))}
+    </div>
+  )
+}
+
+/** The page sizes the bar below offers. */
+const PAGE_SIZES = [25, 50, 100]
+
+/**
+ * The footer bar on a long table: how many rows per page, and which page.
+ *
+ * Distinct from {@link Pager} below, which is a row of numbered buttons for
+ * browsing a catalogue - you go to page 7 of the events list because page 7 is
+ * where you were. Nobody browses the admin tables that way. What they do is
+ * work down a queue, so this offers a bigger page rather than a way to jump to
+ * a numbered one, and spends its width on the size control instead.
+ *
+ * Presentational and controlled: it holds no state and does not care whether
+ * the caller slices an array in the browser (usePaging) or asks the server for
+ * one page (OrganizerTransactionsPage). Both render this.
+ *
+ * Renders nothing at all when there is one page at the smallest size - a pager
+ * under nine rows is furniture that only says "there is no more".
+ */
+export function TablePager({ page, pages, pageSize, onPage, onPageSize, sizes = PAGE_SIZES }) {
+  const { locale } = useLocale()
+  const km = locale === 'km'
+  if (pages <= 1 && pageSize <= sizes[0]) return null
+
+  return (
+    <div className="table-pager">
+      <div className="flex items-center gap-2">
+        <div className="pager-sizes">
+          {sizes.map((n) => (
+            <button
+              key={n}
+              type="button"
+              onClick={() => onPageSize(n)}
+              aria-pressed={pageSize === n}
+              className={pageSize === n ? 'active' : ''}
+            >
+              {n}
+            </button>
+          ))}
+        </div>
+        <span className="text-small text-muted">{km ? 'ក្នុងមួយទំព័រ' : 'per page'}</span>
+      </div>
+
+      <div className="flex items-center gap-2 text-small text-muted">
+        <span>
+          {km ? 'ទំព័រ' : 'Page'} <b className="text-ink tabular-nums">{page}</b>{' '}
+          {km ? 'នៃ' : 'of'} <b className="text-ink tabular-nums">{pages}</b>
+        </span>
+        <button
+          type="button"
+          className="btn btn-sm btn-outline"
+          disabled={page <= 1}
+          onClick={() => onPage(page - 1)}
+          aria-label={km ? 'ទំព័រមុន' : 'Previous page'}
+        >
+          <Icon name="chevronLeft" size={15} />
+        </button>
+        <button
+          type="button"
+          className="btn btn-sm btn-outline"
+          disabled={page >= pages}
+          onClick={() => onPage(page + 1)}
+          aria-label={km ? 'ទំព័របន្ទាប់' : 'Next page'}
+        >
+          <Icon name="chevronRight" size={15} />
+        </button>
+      </div>
     </div>
   )
 }

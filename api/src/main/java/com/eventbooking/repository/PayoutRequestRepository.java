@@ -51,6 +51,24 @@ public interface PayoutRequestRepository extends JpaRepository<PayoutRequest, Lo
     @Query("select p.status, count(p) from PayoutRequest p group by p.status")
     List<Object[]> countByStatus();
 
+    /** How many payout requests are outstanding - the dashboard's queue figure. */
+    long countByStatusIn(Collection<PayoutStatus> statuses);
+
+    /**
+     * What those outstanding requests come to.
+     *
+     * <p>Net rather than gross, because net is the number that leaves the
+     * platform's account; gross includes the fee, which stays. An admin reading
+     * "to pay out" against a figure they cannot transfer would be reading the
+     * wrong number.
+     *
+     * <p>Separate from the count above rather than one two-column row: an
+     * aggregate tuple has to be unpacked out of an Object[] at the call site,
+     * and two named methods that each return a long say what they are.
+     */
+    @Query("select coalesce(sum(p.netUsdCents), 0) from PayoutRequest p where p.status in :statuses")
+    long sumNetUsdCentsByStatusIn(@Param("statuses") Collection<PayoutStatus> statuses);
+
     /**
      * The next invoice number, straight off the sequence.
      *
@@ -63,11 +81,4 @@ public interface PayoutRequestRepository extends JpaRepository<PayoutRequest, Lo
      */
     @Query(value = "select nextval('payout_invoice_seq')", nativeQuery = true)
     long nextInvoiceSequence();
-
-    /** Admin totals: how much money is sitting in a given set of states. */
-    @Query("""
-            select coalesce(sum(p.netUsdCents), 0) from PayoutRequest p
-            where p.status in :states
-            """)
-    long sumNetUsdCentsByStatusIn(@Param("states") Collection<PayoutStatus> states);
 }

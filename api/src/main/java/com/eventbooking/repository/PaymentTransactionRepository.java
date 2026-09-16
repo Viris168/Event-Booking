@@ -126,9 +126,9 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
     // --- admin ---------------------------------------------------------------
 
     /**
-     * The admin payments table. Both filters are nullable, meaning "do not
-     * filter on this", so one query serves every combination of the two
-     * controls above the table.
+     * The admin payments table. Every filter is nullable, meaning "do not
+     * filter on this", so one query serves each combination of the controls
+     * above the table.
      *
      * <p>booking and event are fetched with it because every row prints a
      * booking reference and an event title. Left as lazy proxies they would be
@@ -143,13 +143,58 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
     @Query("""
             select p from PaymentTransaction p
             join fetch p.booking b
-            join fetch b.event
+            join fetch b.event e
             where (:provider is null or p.provider = :provider)
               and (:status is null or p.status = :status)
+              and (:eventId is null or e.id = :eventId)
             order by p.createdAt desc
             """)
     List<PaymentTransaction> findForAdmin(@Param("provider") PaymentProvider provider,
-                                          @Param("status") PaymentStatus status);
+                                          @Param("status") PaymentStatus status,
+                                          @Param("eventId") Long eventId);
+
+    /**
+     * One attempt, with its booking and event already attached.
+     *
+     * <p>Not findById: the admin row prints a booking reference and an event
+     * title, and both associations are lazy. The caller maps the row AFTER the
+     * reconcile round trip has finished and its transaction has closed, so a
+     * lazy proxy there is a LazyInitializationException rather than a title.
+     */
+    @Query("""
+            select p from PaymentTransaction p
+            join fetch p.booking b
+            join fetch b.event
+            where p.id = :id
+            """)
+    Optional<PaymentTransaction> findForAdminById(@Param("id") Long id);
+
+    /**
+     * Attempts per event per status - what the payment-health panel is built
+     * from.
+     *
+     * <p>Returns {@code [eventId, titleEn, titleKm, status, count, usdCents]},
+     * one row per status an event actually has, so the caller folds at most six
+     * rows into each event rather than reading a fixed shape.
+     *
+     * <p>Grouped in SQL rather than counted over the list the table already
+     * loads, and the difference is the whole point: the table shows one page of
+     * a filtered view, while the question here is "which event is failing to
+     * collect", which cannot be answered from any single event's rows.
+     *
+     * <p>Plain joins, not fetch joins: nothing here loads an entity, and the
+     * three event columns are selected precisely so the caller does not have to
+     * go back for a title per row.
+     */
+    @Query("""
+            select e.id, e.titleEn, e.titleKm, p.status, count(p),
+                   coalesce(sum(p.amountUsdCents), 0)
+            from PaymentTransaction p
+            join p.booking b
+            join b.event e
+            group by e.id, e.titleEn, e.titleKm, p.status
+            """)
+    List<Object[]> countByEventAndStatus();
 
     /** Open attempts older than the cutoff - the dashboard's stuck counter. */
     long countByStatusInAndCreatedAtLessThanEqual(Collection<PaymentStatus> statuses, Instant cutoff);

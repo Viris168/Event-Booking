@@ -19,6 +19,7 @@ import com.eventbooking.exception.security.GoogleAlreadyLinkedException;
 import com.eventbooking.exception.security.GoogleNotLinkedException;
 import com.eventbooking.exception.security.InvalidCredentialsException;
 import com.eventbooking.exception.security.InvalidRefreshTokenException;
+import com.eventbooking.exception.security.InvalidTelegramUsernameException;
 import com.eventbooking.exception.security.LastSignInMethodException;
 import com.eventbooking.exception.security.NotAuthenticatedException;
 import com.eventbooking.exception.security.PasswordAlreadySetException;
@@ -34,6 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Locale;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 /**
  * Register, sign in, refresh, sign out.
@@ -47,6 +49,13 @@ import java.util.Optional;
 public class AuthService {
 
     private static final Logger log = LoggerFactory.getLogger(AuthService.class);
+
+    /** Telegram's own rule for a handle: 5-32 of letters, digits, underscore. */
+    private static final Pattern TELEGRAM_USERNAME = Pattern.compile("^[A-Za-z0-9_]{5,32}$");
+
+    /** The decoration people put around a handle when they write one down. */
+    private static final Pattern TELEGRAM_PREFIX =
+            Pattern.compile("^(?:https?://)?(?:t\\.me/|telegram\\.me/)?@?", Pattern.CASE_INSENSITIVE);
 
     private final AppUserRepository appUserRepository;
     private final OrganizerProfileRepository organizerProfileRepository;
@@ -214,6 +223,13 @@ public class AuthService {
      * exclusion, saving the form without touching the email - which is what
      * happens every time someone edits only their display name - collides with
      * the address already stored against this very account and comes back 409.
+     *
+     * <p>Every editable field is written from the request, including the ones
+     * that arrive null. PATCH by method, replacement by behaviour: an omitted
+     * email has always cleared the stored one, because clearing it needs to be
+     * possible and a body cannot distinguish "leave it" from "empty it". The
+     * Telegram handle follows that established rule rather than inventing a
+     * second one, so a client sending a partial body erases what it left out.
      */
     @Transactional
     public MeResponse updateProfile(Long actorUserId, UpdateProfileRequest request) {
@@ -231,6 +247,7 @@ public class AuthService {
 
         user.setDisplayName(request.displayName());
         user.setEmail(email);
+        user.setTelegramUsername(normaliseTelegramUsername(request.telegramUsername()));
         appUserRepository.save(user);
 
         log.info("User {} updated their profile", user.getId());
@@ -578,5 +595,41 @@ public class AuthService {
                 .map(v -> v.trim().toLowerCase(Locale.ROOT))
                 .filter(v -> !v.isEmpty())
                 .orElse(null);
+    }
+
+    /**
+     * Reduces however someone wrote their Telegram handle to the handle itself.
+     *
+     * <p>The field asks for a username and shows a leading @, and people still
+     * paste the link - their own profile is something they reach by tapping
+     * "share", which produces {@code https://t.me/sokha}. All four spellings
+     * name one account, so all four are accepted and stored identically;
+     * web/src/lib/contactLinks.js does the same reduction on the way out, for
+     * the organiser handles that arrive through a different form.
+     *
+     * <p>Blank clears the column, as with email. What survives the strip and is
+     * still not a handle is refused rather than saved: V32's CHECK would refuse
+     * it a moment later as a bare 23514, and that reaches the browser as a 500
+     * with nothing to show the person who typed it.
+     *
+     * <p>Case is left as typed. Telegram resolves handles case-insensitively,
+     * so folding would be safe for lookups - but this column is never looked up
+     * by, only displayed and linked, and {@code @SokhaPhoto} is how its owner
+     * writes their own name.
+     */
+    private static String normaliseTelegramUsername(String value) {
+        String typed = blankToNull(value);
+        if (typed == null) {
+            return null;
+        }
+        String handle = TELEGRAM_PREFIX.matcher(typed).replaceFirst("")
+                .replaceAll("/+$", "");
+        if (handle.isEmpty()) {
+            return null;
+        }
+        if (!TELEGRAM_USERNAME.matcher(handle).matches()) {
+            throw new InvalidTelegramUsernameException();
+        }
+        return handle;
     }
 }

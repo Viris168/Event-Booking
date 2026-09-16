@@ -14,10 +14,12 @@ import {
   Money,
   ResponsiveTable,
   SearchInput,
+  TablePager,
 } from '../../components/ui.jsx'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
+import { usePaging } from '../../lib/usePaging.js'
 import { getUsers, setUserDisabled, updateUser } from '../../api/admin.js'
 
 const ROLES = ['CUSTOMER', 'ORGANIZER', 'PLATFORM_ADMIN']
@@ -102,6 +104,16 @@ export default function AdminUsersPage() {
   }, [q, role, disabled, version])
 
   const refresh = useCallback(() => setVersion((v) => v + 1), [])
+
+  /*
+   * Paging happens here rather than on /admin/users.
+   *
+   * The filters above are already the server's, which is what keeps the row
+   * count sane; this only decides how much of the answer is on screen at once.
+   * The reset key is those same three controls, so narrowing a search returns
+   * to page 1 instead of stranding the reader past the end of a shorter result.
+   */
+  const paged = usePaging(users, `${q}|${role}|${disabled}`)
 
   /*
    * Who is signed in, so the dialog can grey out the role control on the
@@ -270,7 +282,7 @@ export default function AdminUsersPage() {
               </tr>
             </thead>
             <tbody>
-              {users.map((u) => {
+              {paged.visible.map((u) => {
                 const bookings = u.bookings ?? []
                 return (
                   <Fragment key={u.id}>
@@ -395,7 +407,14 @@ export default function AdminUsersPage() {
               })}
             </tbody>
           </table>
-</ResponsiveTable>
+        </ResponsiveTable>
+        <TablePager
+          page={paged.page}
+          pages={paged.pageCount}
+          pageSize={paged.pageSize}
+          onPage={paged.setPage}
+          onPageSize={paged.setPageSize}
+        />
       </div>
       )}
 

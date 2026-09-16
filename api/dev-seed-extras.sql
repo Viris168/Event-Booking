@@ -44,13 +44,13 @@ DELETE FROM booking_status_history WHERE booking_id BETWEEN 1 AND 9;
 -- --------------------------------------------------- booking_status_history
 -- The audit trail behind each booking's timeline. Every row in `booking`
 -- reached its current state somehow, and this is that path written down -
--- including the two-step ones, because a REFUNDED booking that appears to have
--- gone straight from PENDING_PAYMENT is a timeline that teaches the reader
--- nothing.
+-- including the intermediate steps, because a CONFIRMED booking that appears
+-- to have gone straight from PENDING_PAYMENT is a timeline that teaches the
+-- reader nothing.
 --
 -- changed_by_user_id is null wherever the system moved it: an expiry is a job
--- noticing a clock, not a person clicking. Admin id 1 signs the refund, which
--- is the one transition here a human actually decided.
+-- noticing a clock, not a person clicking, and so is a settled payment. The
+-- rows carrying a user id are the ones somebody actually decided.
 INSERT INTO booking_status_history (booking_id, from_state, to_state, changed_by_user_id, note, changed_at) VALUES
     (1, NULL,                   'PENDING_PAYMENT',       5,    NULL,                          '2026-09-13 08:59:01+00'),
     (1, 'PENDING_PAYMENT',      'AWAITING_CONFIRMATION', 5,    'KHQR issued',                 '2026-09-13 08:59:30+00'),
@@ -62,12 +62,9 @@ INSERT INTO booking_status_history (booking_id, from_state, to_state, changed_by
     (3, NULL,                   'PENDING_PAYMENT',       7,    NULL,                          '2026-09-09 07:02:00+00'),
     (3, 'PENDING_PAYMENT',      'AWAITING_CONFIRMATION', 7,    NULL,                          '2026-09-09 07:03:10+00'),
     (3, 'AWAITING_CONFIRMATION','CONFIRMED',             NULL, NULL,                          '2026-09-09 07:04:02+00'),
-    (3, 'CONFIRMED',            'REFUND_REQUESTED',      7,    'Cannot attend - work trip',   '2026-09-12 02:30:00+00'),
 
     (4, NULL,                   'PENDING_PAYMENT',       8,    NULL,                          '2026-09-02 03:15:00+00'),
     (4, 'PENDING_PAYMENT',      'CONFIRMED',             NULL, NULL,                          '2026-09-02 03:16:40+00'),
-    (4, 'CONFIRMED',            'REFUND_REQUESTED',      8,    'Double booked by mistake',    '2026-09-06 10:05:00+00'),
-    (4, 'REFUND_REQUESTED',     'REFUNDED',              1,    'Refunded in full via Bakong', '2026-09-08 09:20:00+00'),
 
     (5, NULL,                   'PENDING_PAYMENT',       9,    NULL,                          '2026-09-11 13:41:00+00'),
     (5, 'PENDING_PAYMENT',      'EXPIRED',               NULL, 'Hold expired unpaid',         '2026-09-11 14:01:00+00'),
@@ -183,18 +180,15 @@ INSERT INTO notification (recipient_user_id, type, params, link_url, dedupe_key,
     (7, 'BOOKING_CONFIRMED',
      '{"ref":"KH-5RT8WQ2N","titleEn":"Bassac Riverside Live","titleKm":"បាសាក់រីវឺសាយ ឡាយ"}'::jsonb,
      '/bookings/3', 'booking:3:CONFIRMED', '2026-09-09 08:00:00+00', '2026-09-09 07:04:02+00'),
-    (8, 'BOOKING_REFUNDED',
+    (8, 'BOOKING_CONFIRMED',
      '{"ref":"KH-9BN4LC6V","titleEn":"Sbek Thom Shadow Play","titleKm":"ស្បែកធំ"}'::jsonb,
-     '/bookings/4', 'booking:4:REFUNDED', NULL, '2026-09-08 09:20:00+00'),
+     '/bookings/4', 'booking:4:CONFIRMED', NULL, '2026-09-02 03:16:40+00'),
     (9, 'BOOKING_EXPIRED',
      '{"ref":"KH-2XG7HP3K","titleEn":"Mekong DevFest 2026","titleKm":"មេគង្គ ដេវហ្វេស្ត ២០២៦"}'::jsonb,
      '/bookings/5', 'booking:5:EXPIRED', NULL, '2026-09-11 14:01:00+00'),
     (8, 'BOOKING_PAYMENT_FAILED',
      '{"ref":"KH-4KQ2VS9J","titleEn":"PP Esports Finals","titleKm":"ភ្នំពេញ អ៊ីស្ព័រ ហ្វាយណល"}'::jsonb,
      '/bookings/7', 'booking:7:PAYMENT_FAILED', NULL, '2026-09-12 11:14:20+00'),
-    (7, 'REFUND_APPROVED',
-     '{"ref":"KH-5RT8WQ2N","titleEn":"Bassac Riverside Live","titleKm":"បាសាក់រីវឺសាយ ឡាយ"}'::jsonb,
-     '/bookings/3', 'refund:3:APPROVED', NULL, '2026-09-12 03:00:00+00'),
 
     -- Organisers
     (2, 'EVENT_TICKETS_SOLD',
@@ -228,10 +222,7 @@ INSERT INTO notification (recipient_user_id, type, params, link_url, dedupe_key,
      '/admin/review', 'review:7', NULL, '2026-09-12 07:40:00+00'),
     (1, 'ORGANIZER_APPLICATION_SUBMITTED',
      '{"orgNameEn":"Battambang Arts Collective","orgNameKm":"សមាគមសិល្បៈបាត់ដំបង"}'::jsonb,
-     '/admin/applications', '1', NULL, '2026-09-13 02:05:00+00'),
-    (1, 'REFUND_REQUESTED',
-     '{"ref":"KH-5RT8WQ2N","titleEn":"Bassac Riverside Live","titleKm":"បាសាក់រីវឺសាយ ឡាយ"}'::jsonb,
-     '/admin/payments', 'refund:3:REQUESTED', NULL, '2026-09-12 02:30:00+00');
+     '/admin/applications', '1', NULL, '2026-09-13 02:05:00+00');
 
 COMMIT;
 

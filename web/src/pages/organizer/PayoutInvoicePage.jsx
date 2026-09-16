@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
 import Icon from '../../components/Icon.jsx'
 import { Alert, Badge } from '../../components/ui.jsx'
 import { SkeletonPanel } from '../../components/Skeleton.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
 import { useDocumentTitle } from '../../lib/useDocumentTitle.js'
 import { usd } from '../../lib/format.js'
-import { feePercent, getMyPayout } from '../../api/payouts.js'
+import { feePercent, getAdminPayout, getMyPayout } from '../../api/payouts.js'
 
 /**
  * One row of the money table. Signed so a deduction reads as one at a glance
@@ -44,11 +44,31 @@ function Line({ label, value, negative = false, strong = false }) {
  * The chrome - nav, buttons, the back link - is hidden at print time by
  * `.no-print`, defined once in the stylesheet beside the ticket's own print
  * rules rather than in a style tag here.
+ *
+ * <p><b>Two audiences, one document.</b> The organiser reads it at
+ * /organizer/payouts/:id and an admin at /admin/payouts/:id, and which route
+ * you came in by decides only which endpoint fetches the row and where "back"
+ * goes. The invoice itself is deliberately identical: it is the settlement
+ * record, and an admin discussing it with an organiser needs to be looking at
+ * the same piece of paper, down to the wording.
+ *
+ * <p>The admin could not reach it at all until now, which meant the one
+ * printable per-event financial document on the platform was invisible to the
+ * person who actually makes the transfer.
  */
 export default function PayoutInvoicePage() {
   const { id } = useParams()
   const { locale, dateTime, date } = useLocale()
   const km = locale === 'km'
+
+  /*
+   * Read off the path rather than off the signed-in role. An admin is allowed
+   * to hold both, and the question here is not "what may this person do" - the
+   * server settles that - but "which list did they arrive from", which is the
+   * only thing the back link can honestly answer.
+   */
+  const admin = useLocation().pathname.startsWith('/admin')
+  const backTo = admin ? '/admin/payouts' : '/organizer/payouts'
 
   const [payout, setPayout] = useState(null)
   const [error, setError] = useState(null)
@@ -56,7 +76,7 @@ export default function PayoutInvoicePage() {
 
   useEffect(() => {
     let cancelled = false
-    getMyPayout(id)
+    ;(admin ? getAdminPayout : getMyPayout)(id)
       .then((data) => !cancelled && setPayout(data))
       // 404 covers both "no such invoice" and "not yours" on purpose - see the
       // note on the endpoint. Nothing here needs to tell them apart.
@@ -64,13 +84,13 @@ export default function PayoutInvoicePage() {
     return () => {
       cancelled = true
     }
-  }, [id])
+  }, [id, admin])
 
   if (error) {
     return (
       <div className="container">
         <Alert tone="danger" title={km ? 'រកមិនឃើញវិក្កយបត្រ' : 'Invoice not found'}>
-          <Link to="/organizer/payouts">{km ? 'ត្រឡប់ទៅការទូទាត់' : 'Back to payouts'}</Link>
+          <Link to={backTo}>{km ? 'ត្រឡប់ទៅការទូទាត់' : 'Back to payouts'}</Link>
         </Alert>
       </div>
     )
@@ -88,7 +108,7 @@ export default function PayoutInvoicePage() {
     <div className="container invoice-page">
       {/* ------------------------------------------------------ the chrome */}
       <div className="no-print flex items-center justify-between gap-3 flex-wrap mb-4">
-        <Link className="btn btn-ghost btn-sm" to="/organizer/payouts">
+        <Link className="btn btn-ghost btn-sm" to={backTo}>
           <Icon name="arrowLeft" size={15} />
           {km ? 'ត្រឡប់ក្រោយ' : 'Back to payouts'}
         </Link>

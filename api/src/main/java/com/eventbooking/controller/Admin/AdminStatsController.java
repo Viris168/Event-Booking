@@ -2,6 +2,7 @@ package com.eventbooking.controller.Admin;
 
 import com.eventbooking.dto.admin.PlatformStatsResponse;
 import com.eventbooking.dto.admin.RecentBookingResponse;
+import com.eventbooking.dto.admin.RecentEventResponse;
 import com.eventbooking.security.AdminResolver;
 import com.eventbooking.security.CurrentUserId;
 import com.eventbooking.service.admin.AdminStatsService;
@@ -13,10 +14,10 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 /**
- * The admin dashboard's two reads.
+ * The admin dashboard's reads.
  *
  * <p>Kept apart from the moderation controllers because nothing here is a
- * decision: both endpoints are pure reporting, and neither writes a row or an
+ * decision: every endpoint is pure reporting, and none writes a row or an
  * audit entry.
  */
 @RestController
@@ -50,5 +51,18 @@ public class AdminStatsController {
         adminResolver.requireAdminUserId(actorUserId);
         return new ResponseEntity<>(
                 adminStatsService.recentBookings(Math.clamp(limit, 1, 50)), HttpStatus.OK);
+    }
+
+    /**
+     * Latest events, newest listing first. Same cap and same reasoning as the
+     * bookings strip above.
+     */
+    @GetMapping("/recent-events")
+    public ResponseEntity<List<RecentEventResponse>> recentEvents(
+            @CurrentUserId Long actorUserId,
+            @RequestParam(defaultValue = "8") int limit) {
+        adminResolver.requireAdminUserId(actorUserId);
+        return new ResponseEntity<>(
+                adminStatsService.recentEvents(Math.clamp(limit, 1, 50)), HttpStatus.OK);
     }
 }

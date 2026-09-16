@@ -17,6 +17,7 @@ import {
   updateProfile,
 } from '../api/auth.js'
 import { toLocalPhone } from '../lib/format.js'
+import { telegramUrl } from '../lib/contactLinks.js'
 import GoogleSignInButton from './GoogleSignInButton.jsx'
 
 /** Must match the .is-closing animation in ACCT_CSS below. */
@@ -187,12 +188,13 @@ export default function AccountPanel({ open, onClose }) {
              * setState would do, without the cascading render.
              */
             <DetailsForm
-              key={`${user.display_name}|${user.email}`}
+              key={`${user.display_name}|${user.email}|${user.telegram_username}`}
               user={user}
               km={km}
               t={t}
               toast={toast}
               refreshUser={refreshUser}
+              onSaved={() => setView('menu')}
             />
           ) : view === 'signin' ? (
             <GoogleLinkCard km={km} user={user} toast={toast} refreshUser={refreshUser} />
@@ -325,6 +327,10 @@ function AccountMenu({ user, km, t, onGo, onSignOut, onLeave }) {
   // outright, so offering the row here would be an invitation to a 403.
   const canApply = user.role === 'CUSTOMER'
 
+  // Stored bare, shown with the @ that people read a handle by.
+  const handle = user.telegram_username
+  const handleUrl = telegramUrl(handle)
+
   return (
     <>
       <div className="acct-hero">
@@ -333,7 +339,48 @@ function AccountMenu({ user, km, t, onGo, onSignOut, onLeave }) {
         </div>
         <div className="acct-hero-text">
           <div className="acct-hero-name">{user.display_name}</div>
-          {user.email && <div className="acct-hero-sub">{user.email}</div>}
+
+          {/*
+           * Email and Telegram on one line, each behind its own mark. They
+           * answer the same question - how this person is reached - and a mark
+           * apiece is what lets them share a line without being read as one
+           * long string. Either may be absent, and the row simply holds
+           * whichever exists; it wraps on a narrow panel rather than pushing
+           * the avatar out of shape.
+           *
+           * The handle links: tapping it opens the account Telegram actually
+           * resolves, which is the one thing a handle typed from memory cannot
+           * confirm on its own. telegramUrl returns null for anything it
+           * cannot build a link from, and a row that predates AuthService's
+           * stripping - or was edited straight in psql - is still worth
+           * showing, so that case falls back to plain text.
+           */}
+          {(user.email || handle) && (
+            <div className="acct-hero-contact">
+              {user.email && (
+                <span className="acct-hero-sub">
+                  <Icon name="mail" size={13} />
+                  {user.email}
+                </span>
+              )}
+              {handle &&
+                (handleUrl ? (
+                  <a
+                    className="acct-hero-sub acct-hero-tg"
+                    href={handleUrl}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                  >
+                    <Icon name="telegram" size={13} />@{handle}
+                  </a>
+                ) : (
+                  <span className="acct-hero-sub">
+                    <Icon name="telegram" size={13} />@{handle}
+                  </span>
+                ))}
+            </div>
+          )}
+
           <span className="acct-role">
             <Icon name="shield" size={12} />
             {roleLabel}
@@ -362,7 +409,7 @@ function AccountMenu({ user, km, t, onGo, onSignOut, onLeave }) {
             icon="user"
             tone="brand"
             title={km ? 'ព័ត៌មានផ្ទាល់ខ្លួន' : 'Personal details'}
-            sub={km ? 'ឈ្មោះ និងអ៊ីមែល' : 'Name and email'}
+            sub={km ? 'ឈ្មោះ អ៊ីមែល និង Telegram' : 'Name, email and Telegram'}
             onClick={() => onGo('details')}
           />
           <Row
@@ -490,34 +537,58 @@ function AccountMenu({ user, km, t, onGo, onSignOut, onLeave }) {
   )
 }
 
-/** Display name and email - the two fields a user owns. */
-function DetailsForm({ user, km, t, toast, refreshUser }) {
+/**
+ * Display name, email and Telegram - the fields a user owns.
+ *
+ * <p>A successful save returns to the menu. Staying put leaves someone looking
+ * at the same three inputs they just submitted, with a toast as the only sign
+ * anything happened and a Save button that has gone quiet again - which reads
+ * as "nothing was saved" rather than as "nothing is left to save". The menu
+ * shows what was written: the name in the heading, the email under it, the
+ * handle beside them. That is the confirmation.
+ */
+function DetailsForm({ user, km, t, toast, refreshUser, onSaved }) {
   const [displayName, setDisplayName] = useState(user.display_name ?? '')
   const [email, setEmail] = useState(user.email ?? '')
+  const [telegram, setTelegram] = useState(user.telegram_username ?? '')
   const [busy, setBusy] = useState(false)
   const [emailError, setEmailError] = useState('')
+  const [telegramError, setTelegramError] = useState('')
 
   const dirty =
-    displayName !== (user.display_name ?? '') || email !== (user.email ?? '')
+    displayName !== (user.display_name ?? '') ||
+    email !== (user.email ?? '') ||
+    telegram !== (user.telegram_username ?? '')
 
   async function save(e) {
     e.preventDefault()
     if (!displayName.trim()) return
     setBusy(true)
     setEmailError('')
+    setTelegramError('')
     try {
       await updateProfile({
         display_name: displayName.trim(),
         email: email.trim(),
+        telegram_username: telegram.trim(),
       })
       // The navbar renders the display name, so the context has to re-read or
       // the change is invisible until the next reload.
       await refreshUser()
       toast(km ? 'បានរក្សាទុក' : 'Saved', 'success')
+      // After the refresh, so the menu this returns to is already showing the
+      // saved record rather than the one from before the submit.
+      onSaved()
     } catch (err) {
       const code = err?.response?.data?.errorCode
       if (code === 'EMAIL_ALREADY_REGISTERED') {
         setEmailError(km ? 'អ៊ីមែលនេះមានគណនីរួចហើយ។' : 'That email already has an account.')
+      } else if (code === 'INVALID_TELEGRAM_USERNAME') {
+        setTelegramError(
+          km
+            ? 'ឈ្មោះអ្នកប្រើ Telegram មាន ៥ ដល់ ៣២ តួ៖ អក្សរ លេខ ឬ _ ។'
+            : 'A Telegram username is 5 to 32 letters, numbers or underscores.',
+        )
       } else {
         toast(km ? 'រក្សាទុកមិនបានសម្រេច' : 'Could not save', 'error')
       }
@@ -562,6 +633,51 @@ function DetailsForm({ user, km, t, toast, refreshUser }) {
             setEmailError('')
           }}
         />
+      </Field>
+
+      {/*
+       * Telegram, because a phone number in Cambodia is a Telegram account
+       * more dependably than it is a line anyone picks up. This is how support
+       * reaches someone about a payment that stalled or a refund that needs a
+       * word - it is contact information, not another way to sign in, and the
+       * hint says so before anyone wonders.
+       *
+       * The "@" sits inside the field rather than in the placeholder, the same
+       * arrangement the organiser application form uses: a placeholder vanishes
+       * at the first keystroke, taking with it the only cue that the bare
+       * handle is what is wanted. Typing it anyway is fine - so is pasting the
+       * whole t.me link, which is what the share sheet gives you - because the
+       * server strips both before storing.
+       */}
+      <Field
+        label="Telegram"
+        optional
+        error={telegramError}
+        hint={
+          telegramError
+            ? undefined
+            : km
+              ? 'ដើម្បីឱ្យក្រុមការងារទាក់ទងអ្នកបាន។ មិនមែនជាវិធីចូលប្រើទេ។'
+              : 'So we can reach you about a booking. Not a way to sign in.'
+        }
+      >
+        <span className="acct-prefixed">
+          <span className="acct-prefix" aria-hidden="true">
+            @
+          </span>
+          <input
+            className="input"
+            value={telegram}
+            maxLength={64}
+            autoComplete="off"
+            spellCheck={false}
+            placeholder="yourhandle"
+            onChange={(e) => {
+              setTelegram(e.target.value)
+              setTelegramError('')
+            }}
+          />
+        </span>
       </Field>
 
       <div className="acct-actions">
@@ -1088,8 +1204,29 @@ const ACCT_CSS = `
 .acct-hero-text { min-width: 0; display: flex; flex-direction: column;
                   align-items: flex-start; gap: 2px; }
 .acct-hero-name { font-size: 1.15rem; font-weight: 600; letter-spacing: -.02em; }
-.acct-hero-sub { font-size: .85rem; color: var(--color-muted);
+.acct-hero-sub { display: inline-flex; align-items: center; gap: var(--acct-1);
+                 min-width: 0; font-size: .85rem; color: var(--color-muted);
                  overflow-wrap: anywhere; }
+/* A flex item shrinks; a 13px mark that shrinks with a long address stops
+   being the thing that identifies which contact this is. */
+.acct-hero-sub svg { flex: none; }
+
+/* Both contacts on one line, each behind its own mark. The gap is wide enough
+   that the second mark reads as the start of something new rather than as
+   punctuation belonging to the address before it, and the row wraps instead of
+   forcing the panel to scroll sideways on a long address. */
+.acct-hero-contact { display: flex; flex-wrap: wrap; align-items: center;
+                     gap: var(--acct-1) var(--acct-3); }
+
+/* The handle is set exactly like the email beside it: .acct-hero-sub carries
+   the size, the colour and the mark's spacing, and this adds only what being a
+   link requires. Colour and underline on hover rather than a fade - a link that
+   merely dims gives no sign it is one until the pointer is already on it. */
+.acct-hero-tg { text-decoration: none; color: inherit;
+                transition: color .12s; }
+.acct-hero-tg:hover { color: var(--color-brand-600); text-decoration: underline; }
+.acct-hero-tg:focus-visible { outline: 2px solid var(--color-brand-500);
+                              outline-offset: 2px; border-radius: 4px; }
 .acct-role { margin-top: var(--acct-1); display: inline-flex; align-items: center;
              gap: var(--acct-1); padding: 2px var(--acct-2);
              border-radius: 999px; background: var(--color-tint);
@@ -1183,6 +1320,15 @@ button.acct-row:focus-visible { outline: 2px solid var(--color-brand-500);
 .acct-card h2 { margin: 0; font-size: 1.05rem; font-weight: 600;
                 letter-spacing: -.015em; }
 .acct-lede { margin: calc(var(--acct-3) * -1) 0 0; }
+
+/* The "@" belongs in the field, not in the placeholder that disappears the
+   moment someone starts typing their handle. Same arrangement, and the same
+   reasoning, as .org-apply-prefixed in styles/index.css. */
+.acct-prefixed { position: relative; display: block; }
+.acct-prefix { position: absolute; inset-inline-start: .7rem; top: 50%;
+               transform: translateY(-50%); pointer-events: none;
+               color: var(--color-muted); font-size: .9rem; }
+.acct-prefixed .input { padding-inline-start: 1.6rem; }
 
 .acct-actions { display: flex; justify-content: flex-end;
                 padding-top: var(--acct-2);

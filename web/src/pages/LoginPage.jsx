@@ -9,6 +9,21 @@ import { toLocalPhone } from '../lib/format.js'
 import GoogleSignInButton from '../components/GoogleSignInButton.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
 
+/*
+ * Wording for any code this page has no entry for.
+ *
+ * The fallback used to be the code itself, so a response the page had not been
+ * taught about put "VALIDATION_ERROR" on screen in front of whoever was trying
+ * to sign in. That string is a value from the API's own enum: it is not
+ * addressed to a reader, it is not translated, and it tells them nothing they
+ * can act on. Anything unmapped now gets a sentence, and the code goes to the
+ * console where the person who needs it is looking.
+ */
+const FALLBACK = {
+  en: 'Something went wrong. Please try again.',
+  km: 'មានបញ្ហាបានកើតឡើង។ សូមព្យាយាមម្តងទៀត។',
+}
+
 const ERRORS = {
   // One message for an unknown number AND a wrong password. The API answers the
   // same 401 either way, on purpose: a difference between the two would let
@@ -162,7 +177,9 @@ export default function LoginPage() {
         */}
         {error && (
           <div role="alert">
-            <Alert tone="danger">{ERRORS[error]?.[locale] || ERRORS[error]?.en || error}</Alert>
+            <Alert tone="danger">
+              {ERRORS[error]?.[locale] || ERRORS[error]?.en || FALLBACK[locale] || FALLBACK.en}
+            </Alert>
           </div>
         )}
 

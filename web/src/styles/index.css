@@ -756,9 +756,27 @@
     @apply border-white/30 bg-white/20;
   }
 
-  /* Role-scoped sub-navigation for organizer/admin areas. */
+  /*
+   * Role-scoped sub-navigation for organizer/admin areas.
+   *
+   * Sticky rather than fixed, and parked against the bottom of the navbar.
+   *
+   * Fixed would take the strip out of flow, which means reserving its height by
+   * hand somewhere else - and getting that wrong hides the top of whatever
+   * screen it sits over. Sticky keeps it in the document: it scrolls like part
+   * of the page until it reaches the navbar, then stays. Nothing below it has
+   * to know it exists.
+   *
+   * --nav-h is published by Navbar, which measures itself. See the comment
+   * there for why the offset cannot be a constant. The 0px fallback is for the
+   * first paint before that lands, where the strip is on screen anyway.
+   *
+   * z-30 sits under the navbar's z-40 on purpose: if the two ever meet, the bar
+   * that owns the top of the window wins.
+   */
   .subnav {
-    @apply border-b border-line bg-surface;
+    @apply sticky z-30 border-b border-line bg-surface;
+    top: var(--nav-h, 0px);
   }
   /*
    * Horizontal scroll with an edge that says so.
@@ -1071,13 +1089,33 @@
      size and far more leading than the Latin script at the same optical
      weight, or the subscript forms collide with the line above. */
   html[lang='km'] .hero h1 {
-    @apply max-w-[18ch];
     font-family: var(--font-display-khmer);
-    font-size: clamp(1.45rem, 0.9rem + 2.3vw, 2.5rem);
-    line-height: 1.75;
-    /* The Khmer headline is 19.4em in Moul against the Latin's 12. Holding it
-       to one line would put it at 15px on a phone, so it keeps wrapping. */
-    white-space: normal;
+    /* One line here too, the same way the Latin rule does it.
+       
+       The headline wrapped before, and the comment here said why: the old
+       string was 19.4em wide in Moul, so a single line meant ~15px on a phone.
+       The string is shorter now - "ព្រឹត្តិការណ៍ផ្ទាល់ទូទាំង កម្ពុជា" rather
+       than a version naming the country twice - which is what makes the line
+       affordable at about 15em, and the divisor below carries headroom on top
+       of that because nowrap turns a bad guess into a headline hanging off the
+       page.
+
+       Re-measure if the copy changes. Same rule as the Latin line above, and
+       the reason both say so. */
+    max-width: none;
+    white-space: nowrap;
+    /* 19: the line carries the full ប្រទេសកម្ពុជា again, so it is back to
+       roughly the width the original wording had, less the នៅ that went. That
+       puts it near 17px on a 320px phone - the price of the single line at this
+       length, and the reason the earlier version wrapped instead. */
+    font-size: min(2.5rem, 100cqw / 19);
+    line-height: 1.5;
+    /* Moul sets tall ascenders and hangs subscript forms below the baseline,
+       and the gilded fill is clipped to the text box - so with no room above
+       and below, the tops and the tails come out shaved rather than gilded.
+       Padding rather than more leading: line-height moves a single line within
+       its box without giving the glyphs anywhere to go. */
+    padding-block: 0.3em;
   }
   .hero p {
     @apply mt-[0.7rem] max-w-[58ch] text-white/[0.82];
@@ -2433,6 +2471,29 @@
   .stat-head .icon-chip {
     @apply size-7 rounded-[9px];
   }
+  /*
+   * A tile that is a link to the queue it counts.
+   *
+   * The hover moves the border and lifts the shadow rather than fading the
+   * whole tile: this is a card with a number in it, and dimming the number to
+   * signal "you may click me" makes the one thing it exists to say harder to
+   * read. The 1px rise is the same affordance the event cards use.
+   */
+  .stat-link {
+    @apply block text-ink no-underline;
+    transition: transform 0.06s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .stat-link:hover {
+    @apply -translate-y-px border-brand-500 no-underline shadow-pop;
+  }
+  .stat-link:focus-visible {
+    @apply border-brand-500;
+  }
+  /* The value stays ink on a flagged tile; only the label follows the warning
+     colour, so the number reads at full contrast either way. */
+  .stat-link .stat-value {
+    @apply text-ink;
+  }
 
   .progress {
     @apply flex h-[7px] overflow-hidden rounded-full bg-line-2;
@@ -2773,6 +2834,35 @@
     animation: spin 0.8s linear infinite;
   }
 
+  /* ------------------------------------------- payout receipt drop zone
+     One row inside the "record the transfer" dialog, not a panel: the
+     reference box below it is the field that matters and the dialog already
+     carries the transfer details above. Dashed like the other optional
+     surfaces on this screen, and a <label> wrapping a visually-hidden input,
+     so a click anywhere on it opens the picker and a keyboard reaches it
+     without a tabindex of its own. */
+  .receipt-drop {
+    @apply flex cursor-pointer items-center justify-center gap-2 rounded-ui border-2 border-dashed border-brand-500
+      bg-tint-2 px-3 py-[0.7rem] text-center text-small font-semibold text-link;
+    transition:
+      border-color 0.15s ease,
+      background-color 0.15s ease,
+      color 0.15s ease;
+  }
+  /* Goes fully solid on hover rather than just deepening: the dashed outline
+     has said "drop here" from the moment the dialog opened, so the useful
+     thing for it to say under the cursor is "yes, this one". */
+  .receipt-drop:hover,
+  .receipt-drop:focus-within {
+    @apply border-brand-600 bg-brand-600 text-white;
+  }
+  /* Back to paper while it works. Not greyed out - the input inside is already
+     disabled, and draining the colour out of the whole row mid-read says "this
+     broke" rather than "this is busy". */
+  .receipt-drop.is-busy {
+    @apply pointer-events-none border-line bg-surface-2 text-muted;
+  }
+
   /* ------------------------------------------------------- ABA PayWay checkout
      The sheet PayWay returns from Create Transaction: a modal on desktop, a
      bottom sheet on phones. ABA's own red heads it; the body follows the app's
@@ -2931,6 +3021,20 @@
   .alert-icon {
     @apply grid size-6 flex-none place-items-center rounded-[7px] bg-white/65;
   }
+  /*
+   * Dark only. A translucent white square works over the light theme's pale
+   * tints - it reads as a lighter chip of the same family - but over the dark
+   * theme's #17251d it is a grey block stuck to the side of a green panel,
+   * which is exactly how it looked.
+   *
+   * currentColor is the alert's own text colour, set by each .alert-* tone
+   * below, so this one rule gives the info chip a green, the warning chip an
+   * amber and the danger chip a red, with nothing to keep in step. 16% is low
+   * enough that the icon on top still reads at full strength.
+   */
+  [data-theme='dark'] .alert-icon {
+    background: color-mix(in oklab, currentColor 16%, transparent);
+  }
   .alert-info {
     @apply border-tint-2 bg-tint text-on-tint;
   }
@@ -2996,6 +3100,46 @@
     @apply absolute bottom-0 left-1 top-[1.1rem] w-px bg-line;
   }
 
+  /*
+   * Status tabs across the top of a table.
+   *
+   * Deliberately the same contract as .rq-tab in queueStyles.js: underline on
+   * the one you are on, and the count in its own chip so a queue growing from
+   * 9 to 1,204 widens the chip instead of shoving every label sideways. The
+   * values are copied rather than re-chosen - two screens showing status tabs
+   * three clicks apart must not look like two different controls.
+   *
+   * It lives here because this is the shared stylesheet; that one is injected
+   * by the two queue screens alone.
+   *
+   * The horizontal padding matters as much as the rest: the strip sits between
+   * a padded header and a padded table, and without it the tabs started at the
+   * window edge while everything above and below them started 20px in.
+   */
+  .tabbar {
+    @apply flex flex-wrap items-center gap-1 border-b border-line-2 bg-surface-2 px-5;
+  }
+  .tabbar button {
+    @apply inline-flex cursor-pointer items-center gap-[0.4rem] whitespace-nowrap border-0
+      border-b-2 border-transparent bg-transparent px-[0.6rem] py-[0.6rem]
+      text-[0.86rem] font-semibold text-muted;
+  }
+  .tabbar button:hover {
+    @apply text-ink;
+  }
+  .tabbar button[aria-pressed='true'] {
+    @apply text-ink;
+    border-bottom-color: var(--color-brand-600);
+  }
+  .tab-n {
+    @apply inline-grid min-w-[1.35rem] place-items-center rounded-full bg-surface
+      px-[0.32rem] text-[0.74rem] text-muted;
+    font-variant-numeric: tabular-nums;
+  }
+  .tabbar button[aria-pressed='true'] .tab-n {
+    @apply bg-brand-100 text-brand-800;
+  }
+
   .pager {
     @apply mt-[1.6rem] flex items-center justify-center gap-[0.35rem];
   }
@@ -3010,8 +3154,63 @@
     @apply cursor-not-allowed opacity-45;
   }
 
+  /*
+   * The table footer bar - page size on the left, page position on the right.
+   *
+   * Sits INSIDE the panel and is painted on surface-2 with a top rule, so it
+   * reads as the end of the table rather than as a separate control that
+   * happens to be underneath. .pager above is the opposite: it is centred in
+   * the page's own background, because a catalogue's pages belong to the page,
+   * not to a box.
+   *
+   * Wraps on a phone, where the two halves do not fit on one line and the size
+   * control is the one that should keep its full width.
+   */
+  .table-pager {
+    @apply flex flex-wrap items-center justify-between gap-4 border-t border-line-2
+      bg-surface-2 px-5 py-3;
+  }
+  .pager-sizes {
+    @apply inline-flex overflow-hidden rounded-ui border border-line bg-surface;
+  }
+  .pager-sizes button {
+    @apply border-r border-line px-3 py-1 text-small font-semibold text-muted last:border-r-0;
+  }
+  .pager-sizes button:hover {
+    @apply text-ink;
+  }
+  /* Solid brand fill for the size in force. aria-pressed carries the same fact
+     to a screen reader, which is why the class is only doing paint. */
+  .pager-sizes button.active {
+    @apply bg-brand-500 text-white;
+  }
+  /* .panel rounds its corners but does not clip its children, so the bar's
+     own fill has to follow the curve or it paints square over it. */
+  .panel > .table-pager:last-child {
+    @apply rounded-b-card;
+  }
+  /* The queue screens have no panel to sit inside - their table is a bare
+     column - so the bar draws its own box there instead of a top rule. */
+  .rq-col > .table-pager {
+    @apply rounded-ui border border-line;
+  }
+
+  /* Above everything, dialogs and drawers included - 1200 is the ceiling in
+     this stylesheet (.action-menu-pop, .crop-overlay), so 1300 clears it.
+
+     A toast reports what just happened, and what just happened was usually
+     done INSIDE one of those layers: "Saved" from the account panel, a failed
+     approval from a queue dialog. It was z-60, which tied with .acct-overlay -
+     and a tie is broken by DOM order, where a panel portalled to <body> always
+     comes after the provider's wrap in the React root. So the message that
+     confirms the save rendered behind the thing that saved.
+
+     pointer-events off, because this wrap spans the bottom-right corner for as
+     long as a toast is up and nothing in it is clickable. A notification that
+     swallows the button underneath it for four seconds is worse than one
+     nobody sees. */
   .toast-wrap {
-    @apply fixed bottom-4 right-4 z-[60] flex flex-col gap-2;
+    @apply pointer-events-none fixed bottom-4 right-4 z-[1300] flex flex-col gap-2;
     max-width: min(360px, calc(100vw - 2rem));
   }
   .toast {
@@ -3027,8 +3226,17 @@
 
   /* ----------------------------------------------------------------- footer */
   /* Dark, to bookend the navbar; same shell width so its edges stay flush. */
+  /*
+   * A deliberate edge rather than a colour change.
+   *
+   * The page's warm paper meets the brand ground with nothing between them, so
+   * the footer read as the point where the page ran out. Gold at a third
+   * strength is the product's one accent - the same one the hero headline is
+   * set in - and a hairline of it is enough to make the boundary look chosen.
+   */
   .footer {
     @apply bg-brand-900 pb-[1.1rem] pt-[2.4rem] text-[0.85rem] text-white/[0.62];
+    border-top: 1px solid color-mix(in oklab, var(--color-gold-500) 32%, transparent);
   }
   .footer-inner {
     @apply mx-auto max-w-shell px-page;
@@ -3037,9 +3245,12 @@
      the other way round. At 2.2fr against a 46ch cap the column was ~230px
      wider than anything ever drawn in it, which read as a hole punched between
      the wordmark and the nav rather than as breathing room. */
+  /* Three columns, not four. The fourth held two unclickable payment marks
+     between two navs, so a third of the row was a list of links that were not
+     links; those moved to the bottom bar, where a trust mark belongs. */
   .footer-grid {
     @apply grid gap-x-10 gap-y-[1.6rem];
-    grid-template-columns: minmax(0, 1.5fr) repeat(3, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1.6fr) repeat(2, minmax(0, 1fr));
   }
   @media (max-width: 900px) {
     .footer-grid {
@@ -3058,6 +3269,12 @@
   .footer-brand {
     @apply flex max-w-[52ch] flex-col items-start gap-[0.8rem];
   }
+  /* Mark and wordmark as one lockup on a single line. The mark is optically
+     larger than the cap height beside it, which is why it is set by height
+     rather than matched to the text. */
+  .footer-lockup {
+    @apply flex items-center gap-[0.6rem];
+  }
   .footer-mark {
     @apply h-[38px] w-auto;
   }
@@ -3065,15 +3282,18 @@
     @apply block text-[1rem] tracking-[-0.01em] text-white;
     font-family: var(--font-sans);
   }
+  /* No top margin any more: the paragraph used to sit directly under the
+     wordmark and needed clearing from it. The wordmark is in the lockup above
+     now, and .footer-brand's own gap is what separates them. */
   .footer-brand p {
-    @apply mt-1 leading-[1.7];
+    @apply leading-[1.7];
   }
   .footer-reach {
     @apply mt-[0.6rem] inline-flex items-center gap-[0.35rem] text-[0.78rem] text-white/50;
   }
 
   .footer-col {
-    @apply flex min-w-0 flex-col items-start gap-[0.45rem];
+    @apply flex min-w-0 flex-col items-start gap-[0.6rem];
   }
   /* 0.72rem uppercase is small text, so it needs the full 4.5:1 — at white/45
      it measured 4.27:1 on the brand ground. */
@@ -3089,12 +3309,23 @@
   .footer-pay {
     @apply inline-flex items-center gap-[0.4rem] text-white/[0.74];
   }
+  /* The two marks travel together and wrap together, so they never end up on
+     opposite sides of the bottom bar with the copyright between them. */
+  .footer-pay-row {
+    @apply flex flex-wrap items-center gap-x-[1.1rem] gap-y-[0.4rem];
+  }
 
-  /* Same plate as .footer-lang and .nav-icon-btn, at 40px so it clears the
-     touch-target floor - these are the only footer links small enough to miss
-     with a thumb. */
+  /* Same plate as .nav-icon-btn, at 40px so it clears the touch-target floor -
+     these are the only footer links small enough to miss with a thumb.
+
+     Sits in the middle of the closing bar, between the copyright on the left
+     and the payment marks on the right. */
+  /* m-0 matters here: a <ul> carries a 1em block margin by default, which the
+     old mt-[0.9rem] happened to cover on top and never did on the bottom. In a
+     centred grid row that leftover margin sits the plates above their own
+     cell's centre line, out of step with the copyright beside them. */
   .footer-social {
-    @apply mt-[0.9rem] flex list-none flex-wrap gap-[0.45rem] p-0;
+    @apply m-0 flex list-none flex-wrap justify-start gap-[0.45rem] p-0;
   }
   .footer-social a {
     @apply grid size-10 place-items-center rounded-full border border-white/[0.14]
@@ -3107,19 +3338,51 @@
   /* Was white/45, which measures 4.27:1 on the brand ground — the identical
      shortfall the column headings above were already corrected for, and this
      line is smaller than they are. white/56 takes it to 5.87:1. */
+  /*
+   * The closing bar runs on the same grid as the columns above it.
+   *
+   * It was a justify-between flex, which spreads three items across the full
+   * width and lands them wherever the middle one happens to be wide - so the
+   * social plates floated between Explore and nothing, and the payment marks
+   * pinned themselves to the right edge while the Admin column above started
+   * 300px short of it. Nothing in the bar lined up with anything above it.
+   *
+   * Sharing the template instead means the copyright sits under the brand, the
+   * social plates under the second column and the payment marks under the
+   * third, at every width - and the breakpoints below keep it in step with
+   * .footer-grid's own.
+   */
   .footer-bottom {
-    @apply mt-8 flex flex-wrap items-center justify-between gap-x-[1.4rem] gap-y-[0.8rem]
+    @apply mt-8 grid items-center gap-x-10 gap-y-[0.9rem]
       border-t border-white/10 pt-4 text-[0.78rem] text-white/[0.56];
+    grid-template-columns: minmax(0, 1.6fr) repeat(2, minmax(0, 1fr));
   }
-  .footer-lang {
-    @apply inline-flex gap-[2px] rounded-full border border-white/[0.14] bg-white/[0.06] p-[2px];
+  /*
+   * These two sit AFTER the rule above, not beside .footer-grid's breakpoints
+   * where they started - and that is load-bearing.
+   *
+   * A media query adds no specificity. Both it and the base rule match
+   * .footer-bottom with the same weight, so whichever comes later in the file
+   * wins, and .footer-bottom is declared a hundred lines below where
+   * .footer-grid's breakpoints live. The bar therefore kept its three desktop
+   * columns at every width: a copyright, four 40px plates and two payment
+   * marks squeezed into 1.6fr/1fr/1fr on a 375px phone.
+   */
+  @media (max-width: 900px) {
+    .footer-bottom {
+      @apply grid-cols-2;
+    }
+    /* The copyright takes the full row once there are only two columns, or it
+       sits alone beside the social plates with the payment marks wrapped
+       underneath - three items in a two-column bar. */
+    .footer-bottom > :first-child {
+      @apply col-span-full;
+    }
   }
-  .footer-lang button {
-    @apply rounded-full border-0 bg-transparent px-[0.7rem] py-[0.22rem] text-[0.76rem] text-white/60;
-    font-weight: 650;
-  }
-  .footer-lang button[aria-pressed='true'] {
-    @apply bg-white/[0.18] text-white;
+  @media (max-width: 560px) {
+    .footer-bottom {
+      @apply grid-cols-1;
+    }
   }
 
   /* ------------------------------------------------------------ event hero */

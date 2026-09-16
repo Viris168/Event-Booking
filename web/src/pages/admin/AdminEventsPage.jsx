@@ -13,6 +13,7 @@ import {
   Progress,
   ResponsiveTable,
   SearchInput,
+  TablePager,
 } from '../../components/ui.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
@@ -26,6 +27,7 @@ import {
   takeDownEvent,
   updateEventAsAdmin,
 } from '../../api/admin.js'
+import { usePaging } from '../../lib/usePaging.js'
 import { useProvinces } from '../../lib/useProvinces.js'
 import { SALES_UI, displayStatus, isPast, salesState } from '../../lib/salesState.js'
 
@@ -147,6 +149,16 @@ export default function AdminEventsPage() {
     () => (status === 'ALL' ? events : events.filter((e) => displayStatus(e) === status)),
     [events, status],
   )
+
+  /*
+   * Paging is client-side, and on `rows` rather than on `events`.
+   *
+   * It has to be: FINISHED is derived from each row's date rather than stored,
+   * so the filter above runs in the browser and the server cannot know how many
+   * rows the reader is actually looking at. Slicing the server's answer instead
+   * would hand out pages of wildly different lengths under that one filter.
+   */
+  const paged = usePaging(rows, `${q}|${status}|${province}`)
 
   const refresh = useCallback(() => setVersion((v) => v + 1), [])
 
@@ -384,7 +396,7 @@ export default function AdminEventsPage() {
               {/* The tint follows the badge, not the stored status. A finished
                   event reads "Finished" whatever it was taken down from, so
                   colouring it as taken down contradicted its own label. */}
-              {rows.map((e) => (
+              {paged.visible.map((e) => (
                 <tr key={e.id} className={displayStatus(e) === 'TAKEN_DOWN' ? 'flagged' : ''}>
                   <td>
                     <Link to={`/events/${e.id}`} className="font-bold">
@@ -523,7 +535,14 @@ export default function AdminEventsPage() {
               ))}
             </tbody>
           </table>
-</ResponsiveTable>
+        </ResponsiveTable>
+        <TablePager
+          page={paged.page}
+          pages={paged.pageCount}
+          pageSize={paged.pageSize}
+          onPage={paged.setPage}
+          onPageSize={paged.setPageSize}
+        />
       </div>
       )}
 

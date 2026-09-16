@@ -40,6 +40,13 @@ public enum ErrorCode {
     UNKNOWN_OPERATOR(HttpStatus.BAD_REQUEST),
     INVALID_ADMIT_COUNT(HttpStatus.BAD_REQUEST),
     EMPTY_UPLOAD(HttpStatus.BAD_REQUEST),
+    /* The Telegram handle on a profile edit is not one: something is left
+       after the @ and t.me/ decoration is stripped, and it is not 5-32
+       characters of [A-Za-z0-9_]. Its own code rather than VALIDATION_ERROR so
+       the account panel can put the message under that field instead of
+       failing the whole form - the display name and email in the same request
+       are usually fine. */
+    INVALID_TELEGRAM_USERNAME(HttpStatus.BAD_REQUEST),
 
     // 401 Unauthorized
     /* One code for every way a login can fail. Splitting it into "no such user"
@@ -199,8 +206,20 @@ public enum ErrorCode {
     // adapter for it yet (ABA PayWay).
     PAYMENT_PROVIDER_UNSUPPORTED(HttpStatus.NOT_IMPLEMENTED),
 
+    // 502 Bad Gateway
+    /* The vision provider was reached and the answer was not usable - a
+       timeout, a refusal, or a reply that was not the JSON it was asked for.
+       One code for all of them: the admin's next move is to type the reference
+       themselves regardless of which it was. */
+    RECEIPT_EXTRACTION_FAILED(HttpStatus.BAD_GATEWAY),
+
     // 503 Service Unavailable
     INVENTORY_CONTENTION(HttpStatus.SERVICE_UNAVAILABLE),
+
+    /* No vision key on this deployment, which is a supported configuration
+       rather than a fault. The transfer dialog hides its drop zone and the
+       admin types, exactly as before the feature existed. */
+    RECEIPT_EXTRACTION_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE),
 
     // 500 Internal Server Error
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR);

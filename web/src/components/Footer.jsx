@@ -31,7 +31,10 @@ const SOCIAL = [
 const isLive = (url) => url.startsWith("http");
 
 export default function Footer() {
-  const { t, locale, setLocale } = useLocale();
+  // No setLocale: the language switch lives in the navbar and the account
+  // panel, which are reachable from every page. A third copy at the bottom of
+  // the document was the one nobody scrolled to.
+  const { t, locale } = useLocale();
   const { isAuthenticated, isOrganizer, isAdmin } = useAuth();
   const km = locale === "km";
   const social = SOCIAL.filter((s) => s.url);
@@ -104,17 +107,22 @@ export default function Footer() {
         <div className="footer-grid">
           {/* ------------------------------------------------------- brand */}
           <div className="footer-brand">
-            <img
-              className="footer-mark"
-              src="/logo/CB-mark.png"
-              alt=""
-              width="280"
-              height="320"
-              loading="lazy"
-              aria-hidden="true"
-            />
-            <div>
+            {/* Mark and wordmark read as one lockup, which is what they are -
+                stacked, the mark looked like an image that happened to sit
+                above a heading. */}
+            <div className="footer-lockup">
+              <img
+                className="footer-mark"
+                src="/logo/CB-mark.png"
+                alt=""
+                width="280"
+                height="320"
+                loading="lazy"
+                aria-hidden="true"
+              />
               <strong>{t("brand")}</strong>
+            </div>
+            <div>
               <p>
                 {km
                   ? "កក់សំបុត្រព្រឹត្តិការណ៍ទូទាំងព្រះរាជាណាចក្រកម្ពុជា — កៅអីកក់ទុក ឬចូលទូទៅ ជាមួយសំបុត្រ QR។"
@@ -125,31 +133,6 @@ export default function Footer() {
                   <Icon name="mapPin" size={13} />
                   {provinceCount} {km ? "ខេត្ត/ក្រុង" : "provinces covered"}
                 </span>
-              )}
-
-              {social.length > 0 && (
-                <ul className="footer-social" aria-label={km ? "បណ្តាញសង្គម" : "Social"}>
-                  {social.map((s) => (
-                    <li key={s.name}>
-                      {/* The outbound attributes go only on links that lead
-                          somewhere. noreferrer as well as noopener, because
-                          there is no reason to hand another site this page's
-                          URL as a referrer - but on the "#" placeholder
-                          target="_blank" would open a second copy of the page
-                          the visitor is already reading. */}
-                      <a
-                        href={s.url}
-                        {...(isLive(s.url)
-                          ? { target: "_blank", rel: "noreferrer noopener" }
-                          : {})}
-                        aria-label={s.name}
-                        title={s.name}
-                      >
-                        <Icon name={s.icon} size={17} />
-                      </a>
-                    </li>
-                  ))}
-                </ul>
               )}
             </div>
           </div>
@@ -174,9 +157,57 @@ export default function Footer() {
             ))}
           </nav>
 
-          {/* ----------------------------------------------------- payments */}
-          <div className="footer-col">
-            <h4>{km ? "ការទូទាត់" : "Payments"}</h4>
+        </div>
+
+        {/* -------------------------------------------------------- bottom */}
+        <div className="footer-bottom">
+          <span>
+            © {new Date().getFullYear()} {t("brand")}
+          </span>
+
+          {/* Centre of the closing bar: these are the platform's accounts, not
+              the brand column's.
+
+              A "#" entry is drawn as a plate rather than an anchor. It looks
+              identical, and that is the point - what it does NOT do is take a
+              visitor who clicks it and jump them to the top of the page they
+              are already reading, which is where href="#" leads. Put a real
+              https URL in SOCIAL above and that same entry becomes a proper
+              outbound link with no other change. */}
+          {social.length > 0 && (
+            <ul className="footer-social" aria-label={km ? "បណ្តាញសង្គម" : "Social"}>
+              {social.map((s) => (
+                <li key={s.name}>
+                  {/* The outbound attributes go only on a link that actually
+                      leaves the site. noreferrer as well as noopener, because
+                      there is no reason to hand another site this page's URL
+                      as a referrer - but on the "#" placeholder
+                      target="_blank" would open a second copy of the page the
+                      visitor is already reading.
+
+                      Swapping "#" for an https URL in SOCIAL is the entire
+                      change: this branch picks the attributes up on its own. */}
+                  <a
+                    href={s.url}
+                    {...(isLive(s.url)
+                      ? { target: "_blank", rel: "noreferrer noopener" }
+                      : {})}
+                    aria-label={s.name}
+                    title={s.name}
+                  >
+                    <Icon name={s.icon} size={17} />
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {/* The payment marks, which used to hold a nav column of their own
+              between Explore and the organiser links. They are a trust signal
+              rather than somewhere to go - nothing in that column was
+              clickable - and a column of two unclickable words read as a list
+              of links that had stopped working. */}
+          <span className="footer-pay-row">
             <span className="footer-pay">
               <Icon name="bank" size={14} />
               {t("payway")}
@@ -185,34 +216,6 @@ export default function Footer() {
               <Icon name="qr" size={14} />
               ABA PAY / KHQR
             </span>
-          </div>
-        </div>
-
-        {/* -------------------------------------------------------- bottom */}
-        <div className="footer-bottom">
-          <span>
-            © {new Date().getFullYear()} {t("brand")}
-          </span>
-          <span
-            className="footer-lang"
-            role="group"
-            aria-label={km ? "ភាសា" : "Language"}
-          >
-            <button
-              type="button"
-              aria-pressed={locale === "en"}
-              onClick={() => setLocale("en")}
-            >
-              English
-            </button>
-            <button
-              type="button"
-              className="km"
-              aria-pressed={locale === "km"}
-              onClick={() => setLocale("km")}
-            >
-              ភាសាខ្មែរ
-            </button>
           </span>
         </div>
       </div>

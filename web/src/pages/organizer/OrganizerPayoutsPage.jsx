@@ -2,12 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Icon from '../../components/Icon.jsx'
 import FormDialog from '../../components/FormDialog.jsx'
-import { Alert, Badge, Empty, Field, ResponsiveTable, Stat } from '../../components/ui.jsx'
+import { Alert, Badge, Empty, Field, ResponsiveTable, Stat, TablePager } from '../../components/ui.jsx'
 import { SkeletonRegion, TableRowsSkeleton } from '../../components/Skeleton.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
 import { useDocumentTitle } from '../../lib/useDocumentTitle.js'
 import { usd } from '../../lib/format.js'
+import { usePaging } from '../../lib/usePaging.js'
 import { feePercent, getMyPayouts, getPayableEvents, requestPayout } from '../../api/payouts.js'
 
 /**
@@ -21,6 +22,26 @@ import { feePercent, getMyPayouts, getPayableEvents, requestPayout } from '../..
  */
 
 const METHODS = ['ABA', 'ACLEDA', 'WING', 'CANADIA', 'OTHER']
+
+/*
+ * What each status means for the person waiting on the money.
+ *
+ * The badge names the state - Requested, Approved, Paid - which is the
+ * platform's vocabulary for its own workflow. None of those words tell an
+ * organiser whether anybody has looked at their request yet, or whether the
+ * transfer is coming, which is the only thing they opened this page to find
+ * out. PAID says it with its reference instead, so it takes no line here.
+ */
+const STATUS_NOTE = {
+  REQUESTED: {
+    en: 'Waiting to be reviewed.',
+    km: 'កំពុងរង់ចាំការពិនិត្យ។',
+  },
+  APPROVED: {
+    en: 'Approved — the transfer is on its way.',
+    km: 'បានអនុម័ត — កំពុងផ្ទេរប្រាក់។',
+  },
+}
 
 /**
  * The 409s the server can answer a claim with, in the organiser's words.
@@ -79,6 +100,13 @@ export default function OrganizerPayoutsPage() {
   }, [load])
 
   // ------------------------------------------------------------ claim form
+
+  /*
+   * Invoices accumulate one per finished event and are never deleted, so this
+   * list only grows. Claimable events above are a queue that empties; they do
+   * not need paging and do not get it.
+   */
+  const pagedPayouts = usePaging(payouts, 'payouts')
 
   const [claiming, setClaiming] = useState(null) // the PayableEventResponse
   const [busy, setBusy] = useState(false)
@@ -155,6 +183,29 @@ export default function OrganizerPayoutsPage() {
 
   return (
     <div className="container container-wide">
+      {/* The page's own title, outside the cards - the same .page-head the
+          dashboard, venues and check-in use, and the admin side throughout.
+          This screen had none: its <h1> was "Ready to claim", which is the
+          name of the first section rather than of the page, so the document
+          title and the heading disagreed and the two sections below read as
+          siblings of the thing that was supposed to contain them. */}
+      <div className="page-head">
+        <div>
+          <h1>{km ? 'ការទូទាត់' : 'Payouts'}</h1>
+          {/* The rule, not a summary. The two sections below already say
+              "events that have finished and still have money owing" and "every
+              request you have made" - a page subtitle that said both again
+              would be the third line in a column saying one thing. What is
+              said nowhere else is when you may claim, how often, and that the
+              fee comes out before the transfer rather than after it. */}
+          <p>
+            {km
+              ? 'ស្នើសុំបានពេលព្រឹត្តិការណ៍បញ្ចប់ — មួយសំណើក្នុងមួយព្រឹត្តិការណ៍ ហើយកាត់កម្រៃសេវារួចមុនផ្ទេរ។'
+              : 'Claimable once an event has finished — one request per event, paid net of the platform fee.'}
+          </p>
+        </div>
+      </div>
+
       {/* ----------------------------------------------------------- stats */}
       <div className="stats" style={{ marginBottom: '1.2rem' }}>
         <Stat
@@ -182,9 +233,9 @@ export default function OrganizerPayoutsPage() {
       {/* -------------------------------------------------- claimable events */}
       <section className="bg-surface border border-line rounded-hero shadow-card overflow-hidden mb-5">
         <div className="px-5 py-4 border-b border-line-2">
-          <h1 className="text-lg font-bold text-ink m-0">
+          <h2 className="text-lg font-bold text-ink m-0">
             {km ? 'ព្រឹត្តិការណ៍ដែលអាចស្នើសុំប្រាក់' : 'Ready to claim'}
-          </h1>
+          </h2>
           <p className="text-small text-muted m-0 mt-0.5">
             {km
               ? 'ព្រឹត្តិការណ៍ដែលបានបញ្ចប់ ហើយនៅមានប្រាក់មិនទាន់ទូទាត់'
@@ -283,7 +334,7 @@ export default function OrganizerPayoutsPage() {
                     </td>
                   </tr>
                 ) : (
-                  payouts.map((p) => (
+                  pagedPayouts.visible.map((p) => (
                     <tr key={p.id} className="border-b border-line-2">
                       <td className="font-mono text-small">{p.invoice_no}</td>
                       <td>{km ? p.event_title_km : p.event_title_en}</td>
@@ -293,6 +344,11 @@ export default function OrganizerPayoutsPage() {
                         {p.status === 'PAID' && p.paid_reference && (
                           <p className="text-tiny text-muted m-0 mt-1">
                             {km ? 'លេខយោង' : 'Ref'}: {p.paid_reference}
+                          </p>
+                        )}
+                        {STATUS_NOTE[p.status] && (
+                          <p className="text-tiny text-muted m-0 mt-1">
+                            {STATUS_NOTE[p.status][locale] || STATUS_NOTE[p.status].en}
                           </p>
                         )}
                       </td>
@@ -311,6 +367,15 @@ export default function OrganizerPayoutsPage() {
             )}
           </table>
         </ResponsiveTable>
+        {!loading && (
+          <TablePager
+            page={pagedPayouts.page}
+            pages={pagedPayouts.pageCount}
+            pageSize={pagedPayouts.pageSize}
+            onPage={pagedPayouts.setPage}
+            onPageSize={pagedPayouts.setPageSize}
+          />
+        )}
       </section>
 
       {/* --------------------------------------------------------- the form */}

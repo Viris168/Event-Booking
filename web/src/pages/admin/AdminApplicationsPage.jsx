@@ -4,12 +4,13 @@ import ConfirmDialog from '../../components/ConfirmDialog.jsx'
 import QueueDialog from './QueueDialog.jsx'
 import ContactButtons from '../../components/ContactButtons.jsx'
 import Icon from '../../components/Icon.jsx'
-import { Alert, Empty, Field, ResponsiveTable } from '../../components/ui.jsx'
+import { Alert, Empty, Field, ResponsiveTable, TablePager } from '../../components/ui.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
 import { RQ_CSS } from './queueStyles.js'
 import { useToast } from '../../context/ToastContext.jsx'
 import { facebookUrl, telegramUrl } from '../../lib/contactLinks.js'
 import { formatDateTime, timeAgo } from '../../lib/format.js'
+import { usePaging } from '../../lib/usePaging.js'
 import {
   approveApplication,
   getApplicationStatusCounts,
@@ -134,6 +135,14 @@ export default function AdminApplicationsPage() {
     return rows.find((a) => a.id === selectedId) ?? rows[Math.min(lastIndex, rows.length - 1)]
   }, [rows, selectedId, lastIndex])
 
+  /*
+   * Paging. The reset key is the status tab, because each tab is its own queue -
+   * and the decided ones are the reason this screen needed a pager at all: the
+   * PENDING tab is meant to be emptied, while APPROVED and REJECTED only ever
+   * grow.
+   */
+  const paged = usePaging(rows, status)
+
   /** Clicking an application opens it in the dialog. */
   const selectRow = (application, index) => {
     setSelectedId(application.id)
@@ -168,9 +177,15 @@ export default function AdminApplicationsPage() {
     if (next < 0 || next >= rows.length) return
     setSelectedId(rows[next].id)
     setLastIndex(next)
+    // Stepping walks the whole queue, so it can cross a page boundary. The list
+    // follows, or closing the dialog would leave the reader on a page that does
+    // not contain the application they were just reading.
+    paged.setPage(Math.floor(next / paged.pageSize) + 1)
   }
 
-  // Unpaged endpoint, so the index IS the position - no page offset to add.
+  // Counted through the whole queue rather than the page on screen: "3 of 40"
+  // is where this application sits in the work, which is not the same question
+  // as which slice of it is currently rendered.
   const position = selectedIndex < 0 ? null : selectedIndex + 1
 
   const refresh = useCallback(() => {
@@ -280,7 +295,12 @@ export default function AdminApplicationsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((application, i) => {
+                  {paged.visible.map((application, pageRow) => {
+                    // The absolute position in the queue, not the position on
+                    // this page: selection, stepping and the dialog's "3 of 40"
+                    // all count through the whole list, and a page-local index
+                    // would silently renumber them on every page but the first.
+                    const i = (paged.page - 1) * paged.pageSize + pageRow
                     const nameEn = pick(application, 'org_name_en', 'orgNameEn')
                     const nameKm = pick(application, 'org_name_km', 'orgNameKm')
                     const submittedAt = pick(application, 'submitted_at', 'submittedAt')
@@ -318,6 +338,13 @@ export default function AdminApplicationsPage() {
                 </tbody>
               </table>
             </ResponsiveTable>
+            <TablePager
+              page={paged.page}
+              pages={paged.pageCount}
+              pageSize={paged.pageSize}
+              onPage={paged.setPage}
+              onPageSize={paged.setPageSize}
+            />
           </div>
 
         </div>

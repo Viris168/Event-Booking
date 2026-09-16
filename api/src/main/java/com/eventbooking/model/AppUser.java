@@ -26,6 +26,16 @@ public class AppUser {
     @Column(unique = true)
     private String email;
 
+    /**
+     * A Telegram handle, stored bare - no leading @ and no t.me/ prefix.
+     *
+     * <p>Contact information and nothing more. It is not a sign-in method, it
+     * is not unique, and V32 deliberately leaves it unindexed: authentication
+     * reads phone_e164 and provider_subject, never this.
+     */
+    @Column(name = "telegram_username")
+    private String telegramUsername;
+
     @Column(name = "password_hash")
     private String passwordHash;
 

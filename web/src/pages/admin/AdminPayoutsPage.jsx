@@ -1,16 +1,20 @@
 import { useCallback, useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import ContactButtons from '../../components/ContactButtons.jsx'
 import Icon from '../../components/Icon.jsx'
 import ConfirmDialog from '../../components/ConfirmDialog.jsx'
 import FormDialog from '../../components/FormDialog.jsx'
-import { Alert, Badge, Empty, Field, ResponsiveTable } from '../../components/ui.jsx'
+import { Alert, Badge, Empty, Field, ResponsiveTable, TablePager } from '../../components/ui.jsx'
 import { TableRowsSkeleton } from '../../components/Skeleton.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
 import { useDocumentTitle } from '../../lib/useDocumentTitle.js'
-import { usd } from '../../lib/format.js'
+import { timeAgo, usd } from '../../lib/format.js'
+import { usePaging } from '../../lib/usePaging.js'
+import { downscaleImage } from '../../lib/downscaleImage.js'
 import {
   approvePayout,
+  extractPayoutReceipt,
   feePercent,
   getAdminPayout,
   getAdminPayoutCounts,
@@ -94,12 +98,40 @@ export default function AdminPayoutsPage() {
     load(tab)
   }, [load, tab])
 
+  /*
+   * Paging, keyed on the tab: each one is a different list, so switching starts
+   * at its first page rather than wherever the last tab was being read.
+   *
+   * PAID is why this is here. Waiting and To transfer are queues that get
+   * emptied, but every payout the platform has ever made stays in Paid.
+   */
+  const paged = usePaging(rows, tab)
+
+  /*
+   * What the tab on screen is worth. The badge beside each tab says how many
+   * requests are in it; this says how much money they are, which is the number
+   * that decides whether the queue can wait until tomorrow.
+   *
+   * Net, not gross - net is what leaves the platform's account. Summed over
+   * `rows` rather than `paged.visible` on purpose: this describes the tab, not
+   * the page of it currently rendered.
+   */
+  const tabTotal = rows.reduce((a, r) => a + r.net_usd_cents, 0)
+
   // ---------------------------------------------------------------- actions
 
   const [busy, setBusy] = useState(false)
   const [approving, setApproving] = useState(null)
   const [paying, setPaying] = useState(null)
   const [payForm, setPayForm] = useState({ reference: '', note: '' })
+  /*
+   * The receipt reader that fills the reference box for the admin.
+   *
+   * `off` is sticky for the session once the server has said it has no vision
+   * key: that answer cannot change between two clicks, and a drop zone that
+   * re-offers itself after saying it does not work is worse than no drop zone.
+   */
+  const [receipt, setReceipt] = useState({ busy: false, fields: null, error: '', off: false })
 
   /**
    * Every action funnels through here so the stale-row case is handled once.
@@ -138,6 +170,8 @@ export default function AdminPayoutsPage() {
    */
   const openPay = async (row) => {
     setPayForm({ reference: '', note: '' })
+    // `off` survives, deliberately - see the state declaration.
+    setReceipt((r) => ({ busy: false, fields: null, error: '', off: r.off }))
     setPaying(row)
     try {
       const full = await getAdminPayout(row.id)
@@ -149,48 +183,123 @@ export default function AdminPayoutsPage() {
     }
   }
 
+  /**
+   * Read a dropped confirmation screenshot and fill the reference box with it.
+   *
+   * The image is downscaled here and discarded on the server - see
+   * lib/downscaleImage.js and PayoutReceiptExtractor. What lands in the form is
+   * a SUGGESTION: the admin still reads it against the screenshot they took it
+   * from, can overwrite it, and has to submit the form themselves. Every
+   * failure path leaves them exactly where they were, typing.
+   */
+  const readReceipt = async (file) => {
+    if (!file || !paying || receipt.busy) return
+
+    setReceipt((r) => ({ ...r, busy: true, error: '', fields: null }))
+    try {
+      const small = await downscaleImage(file)
+      const fields = await extractPayoutReceipt(paying.id, small)
+
+      // Only the reference is written into the form. The other three are shown
+      // beside it as context for judging whether this is the right transfer -
+      // nothing else on this dialog is theirs to fill.
+      setReceipt({ busy: false, fields, error: '', off: false })
+      if (fields.reference_number) {
+        setPayForm((f) => ({ ...f, reference: fields.reference_number }))
+      }
+    } catch (e) {
+      const code = e?.response?.data?.errorCode
+
+      if (code === 'RECEIPT_EXTRACTION_UNAVAILABLE') {
+        setReceipt({ busy: false, fields: null, error: '', off: true })
+        return
+      }
+      // Somebody else settled this row while the dialog was open. Same
+      // treatment as any other stale-row case: say so, close, reload.
+      if (code === 'PAYOUT_ALREADY_DECIDED') {
+        setReceipt({ busy: false, fields: null, error: '', off: false })
+        toast(
+          km ? 'សំណើនេះត្រូវបានសម្រេចរួចហើយ' : 'Somebody has already decided this one.',
+          'error',
+        )
+        setPaying(null)
+        await load(tab)
+        return
+      }
+
+      setReceipt({
+        busy: false,
+        fields: null,
+        off: false,
+        error:
+          code === 'FILE_TOO_LARGE'
+            ? km
+              ? 'រូបភាពធំពេក'
+              : 'That image is too large.'
+            : km
+              ? 'មិនអាចអានរូបភាពបានទេ សូមវាយលេខយោងដោយដៃ'
+              : 'Could not read that one. Type the reference instead.',
+      })
+    }
+  }
+
   return (
     <div className="container container-wide">
-      <div className="bg-surface border border-line rounded-hero shadow-card overflow-hidden">
-        <div className="px-5 py-4 border-b border-line-2">
-          <h1 className="text-lg font-bold text-ink m-0">
-            {km ? 'ការទូទាត់ជូនអ្នករៀបចំ' : 'Organizer payouts'}
-          </h1>
-          <p className="text-small text-muted m-0 mt-0.5">
+      {/* Title and subtitle outside the card, like every other screen in both
+          role areas. They lived in the card's own header, so the page had no
+          heading of its own and the card carried one instead. */}
+      <div className="page-head">
+        <div>
+          <h1>{km ? 'ការទូទាត់ជូនអ្នករៀបចំ' : 'Organizer payouts'}</h1>
+          <p>
             {km
               ? 'អនុម័តសំណើ រួចកត់ត្រាការផ្ទេរប្រាក់ជាមួយលេខយោង'
               : 'Approve a request, then record the transfer against its reference.'}
           </p>
         </div>
+      </div>
+
+      <div className="bg-surface border border-line rounded-hero shadow-card overflow-hidden">
 
         {/* ------------------------------------------------------------ tabs */}
-        <div className="border-b border-line-2 bg-surface-2 flex items-center gap-2 flex-wrap">
+        {/* Tabs, not buttons. They were drawn as a row of btn-sm, so the one
+            you were on differed from the other two by a hairline border - and
+            the strip sat flush against the window edge while the header and
+            table above and below it were padded. */}
+        <div className="tabbar" role="tablist" aria-label={km ? 'ស្ថានភាព' : 'Status'}>
           {PAYOUT_STATUSES.map((s) => (
             <button
               key={s}
               type="button"
-              className={`btn btn-sm ${tab === s ? 'btn-outline' : 'btn-ghost'}`}
+              role="tab"
               aria-pressed={tab === s}
+              aria-selected={tab === s}
               onClick={() => setTab(s)}
             >
               {TAB_LABELS[s][locale] || TAB_LABELS[s].en}
-              <span className="badge badge-mode ml-1">{counts[s] ?? 0}</span>
+              <span className="tab-n">{counts[s] ?? 0}</span>
             </button>
           ))}
         </div>
 
-        {/* Money agreed but not sent, said once at the top. The tab badge says
-            how many; this says how much, which is the number that decides
-            whether it can wait until tomorrow. */}
-        {tab === 'APPROVED' && rows.length > 0 && (
-          <div className="px-5 pt-4">
-            <Alert tone="warn" title={km ? 'រង់ចាំការផ្ទេរ' : 'Waiting to be transferred'}>
-              {usd(rows.reduce((a, r) => a + r.net_usd_cents, 0))}{' '}
-              {km
-                ? 'ត្រូវបានអនុម័ត ប៉ុន្តែមិនទាន់ផ្ញើ។'
-                : 'has been approved and not yet sent.'}
-            </Alert>
-          </div>
+
+
+        {/* The open tab, in money, directly under the tabs that select it.
+            Replaces an alert that said this for the APPROVED tab alone - the
+            other two had a count and no idea what it was worth. It follows the
+            tabs rather than the title because it changes with them. */}
+        {!loading && !error && rows.length > 0 && (
+          <p className="px-5 pt-3 text-small text-muted m-0">
+            {rows.length} {km ? 'សំណើ' : rows.length === 1 ? 'request' : 'requests'} ·{' '}
+            <span className="font-semibold text-ink">{usd(tabTotal)}</span>{' '}
+            {tab === 'PAID'
+              ? km
+                ? 'បានផ្ទេររួច'
+                : 'transferred'
+              : km
+                ? 'ត្រូវទូទាត់'
+                : 'payable'}
+          </p>
         )}
 
         {/* ----------------------------------------------------------- table */}
@@ -232,10 +341,16 @@ export default function AdminPayoutsPage() {
                     </td>
                   </tr>
                 ) : (
-                  rows.map((p) => (
+                  paged.visible.map((p) => (
                     <tr key={p.id} className="border-b border-line-2">
                       <td>
-                        <span className="font-mono text-small">{p.invoice_no}</span>
+                        {/* The invoice number opens the invoice. It was plain
+                            text until now, so the admin who makes the transfer
+                            had no way to read the document it is made against
+                            - while the organiser could print theirs. */}
+                        <Link className="font-mono text-small" to={`/admin/payouts/${p.id}`}>
+                          {p.invoice_no}
+                        </Link>
                         <p className="text-tiny text-muted m-0">{dateTime(p.requested_at)}</p>
                       </td>
                       <td>
@@ -268,6 +383,15 @@ export default function AdminPayoutsPage() {
                       </td>
                       <td>
                         <Badge status={p.status} />
+                        {/* Age, on the rows where waiting is the problem. The
+                            queue is ordered oldest-first, so this is what that
+                            order is showing - and a request sitting for eleven
+                            days reads as a date nobody subtracts. */}
+                        {p.status !== 'PAID' && (
+                          <p className="text-tiny text-muted m-0 mt-1">
+                            {km ? 'រង់ចាំ' : 'waiting'} {timeAgo(p.requested_at).replace(' ago', '')}
+                          </p>
+                        )}
                         {p.reviewed_by_name && (
                           <p className="text-tiny text-muted m-0 mt-1">
                             {km ? 'ដោយ' : 'by'} {p.reviewed_by_name}
@@ -305,6 +429,17 @@ export default function AdminPayoutsPage() {
             )}
           </table>
         </ResponsiveTable>
+        {/* Not while the skeleton is up: a pager over rows that have not
+            arrived says "page 1 of 1", then contradicts itself a moment later. */}
+        {!loading && !error && (
+          <TablePager
+            page={paged.page}
+            pages={paged.pageCount}
+            pageSize={paged.pageSize}
+            onPage={paged.setPage}
+            onPageSize={paged.setPageSize}
+          />
+        )}
       </div>
 
       {/* ------------------------------------------------------- approve */}
@@ -368,12 +503,87 @@ export default function AdminPayoutsPage() {
               <dd className="m-0 font-mono">{paying.account_number}</dd>
             </dl>
 
+            {/* --------------------------------------------- receipt reader
+                Above the reference box rather than beside it, because it is
+                the step that comes first: transfer, screenshot, drop, check,
+                record. Hidden entirely on a deployment with no vision key, so
+                the dialog is the plain form it has always been. */}
+            {!receipt.off && (
+              <div className="mb-3">
+                <label
+                  className={`receipt-drop${receipt.busy ? ' is-busy' : ''}`}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    readReceipt(e.dataTransfer.files?.[0])
+                  }}
+                >
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="sr-only"
+                    disabled={receipt.busy}
+                    onChange={(e) => {
+                      readReceipt(e.target.files?.[0])
+                      // Cleared so that picking the SAME file twice still
+                      // fires onChange - after a failed read, re-picking the
+                      // one file they have is the obvious thing to try.
+                      e.target.value = ''
+                    }}
+                  />
+                  {receipt.busy ? (
+                    <>
+                      <span className="spinner" />
+                      <span>{km ? 'កំពុងអានបង្កាន់ដៃ...' : 'Reading the receipt...'}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Icon name="scan" size={16} />
+                      <span>
+                        {km
+                          ? 'ទម្លាក់រូបបញ្ជាក់ការផ្ទេរ ដើម្បីបំពេញលេខយោង'
+                          : 'Drop the transfer screenshot to fill in the reference'}
+                      </span>
+                    </>
+                  )}
+                </label>
+
+                {/* Said once, here, and not repeated in the hint below: the
+                    question an admin asks of an upload box on a screen full of
+                    bank details is what happens to the picture. */}
+                <p className="text-small text-muted m-0 mt-1">
+                  {km
+                    ? 'រូបភាពមិនត្រូវបានរក្សាទុកទេ'
+                    : 'The image is read once and never stored.'}
+                </p>
+
+                {receipt.error && (
+                  <p className="text-small text-danger m-0 mt-1">{receipt.error}</p>
+                )}
+
+                {/* What was read, minus the reference - that one is already in
+                    the box below, and printing it twice invites the admin to
+                    check the copy against the copy rather than against the
+                    screenshot. */}
+                {receipt.fields && (
+                  <dl className="text-small m-0 mt-2 p-2 rounded-card bg-surface-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
+                    <dt className="text-muted m-0">{km ? 'ចំនួន' : 'Amount read'}</dt>
+                    <dd className="m-0">{receipt.fields.amount || (km ? 'រកមិនឃើញ' : 'not found')}</dd>
+                    <dt className="text-muted m-0">{km ? 'កាលបរិច្ឆេទ' : 'Date read'}</dt>
+                    <dd className="m-0">{receipt.fields.date || (km ? 'រកមិនឃើញ' : 'not found')}</dd>
+                    <dt className="text-muted m-0">{km ? 'អ្នកផ្ញើ' : 'Payer'}</dt>
+                    <dd className="m-0">{receipt.fields.payer_name || (km ? 'រកមិនឃើញ' : 'not found')}</dd>
+                  </dl>
+                )}
+              </div>
+            )}
+
             <Field
               label={km ? 'លេខយោងពីធនាគារ' : 'Bank reference'}
               hint={
                 km
-                  ? 'អ្នករៀបចំនឹងឃើញលេខនេះ ហើយប្រើវាពេលសួរធនាគារ'
-                  : 'The organizer sees this and will quote it to their bank.'
+                  ? 'អ្នករៀបចំនឹងឃើញលេខនេះ ហើយប្រើវាពេលសួរធនាគារ។ សូមផ្ទៀងផ្ទាត់មុនកត់ត្រា'
+                  : 'The organizer sees this and will quote it to their bank, so check it against the screenshot before recording.'
               }
             >
               <input

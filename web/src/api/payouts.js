@@ -104,6 +104,33 @@ export const markPayoutPaid = (id, reference, note) =>
     .then((r) => r.data)
 
 /**
+ * Read the bank reference off a transfer confirmation screenshot.
+ *
+ * NOTHING IS STORED - not the image, not what came back. The response prefills
+ * the reference box on the transfer dialog and the admin checks it against the
+ * screenshot before submitting; markPayoutPaid is still the only call that
+ * records anything.
+ *
+ * Only legal on an APPROVED payout, so this 409s with PAYOUT_ALREADY_DECIDED in
+ * the same case markPayoutPaid would. The other two worth handling are
+ * RECEIPT_EXTRACTION_UNAVAILABLE (503, no vision key on this deployment - hide
+ * the drop zone) and RECEIPT_EXTRACTION_FAILED (502, the model could not read
+ * it - leave the admin typing). Both mean the same thing to the person in front
+ * of the dialog: the text field still works.
+ */
+export const extractPayoutReceipt = (id, file) => {
+  const body = new FormData()
+  body.append('image', file)
+  return client
+    .post(`/admin/payouts/${id}/extract-receipt`, body, {
+      // Explicitly unset: the shared client sets application/json, and axios
+      // must be left to write its own multipart boundary.
+      headers: { 'Content-Type': undefined },
+    })
+    .then((r) => r.data)
+}
+
+/**
  * Basis points as a percentage a person reads: 1000 → "10%", 250 → "2.5%".
  *
  * Here rather than in each page because three screens print the fee line and a

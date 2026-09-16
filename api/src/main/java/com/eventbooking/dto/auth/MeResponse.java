@@ -36,6 +36,16 @@ public record MeResponse(
 
         @JsonProperty("email") String email,
 
+        /**
+         * A Telegram handle, bare - no @ and no t.me/ around it.
+         *
+         * <p>Contact information the account's owner supplies, not a way in:
+         * nothing authenticates against it. The panel that renders it puts the
+         * @ back, the same way the organiser screens do for the handle on an
+         * application.
+         */
+        @JsonProperty("telegram_username") String telegramUsername,
+
         @JsonProperty("display_name") String displayName,
 
         @JsonProperty("role") Role role,
@@ -87,6 +97,7 @@ public record MeResponse(
                 user.getId(),
                 user.getPhoneE164(),
                 user.getEmail(),
+                user.getTelegramUsername(),
                 user.getDisplayName(),
                 user.getRole(),
                 user.getProvider(),

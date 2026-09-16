@@ -1,6 +1,7 @@
 package com.eventbooking.repository;
 
 import com.eventbooking.Enumeration.BookingStatus;
+import com.eventbooking.Enumeration.PaymentProvider;
 import com.eventbooking.model.Booking;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
@@ -62,20 +63,82 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
      * caller where it can be forgotten.
      *
      * <p>The optional filters are null-checked in the query so one method serves
-     * the unfiltered list and every combination of the two, rather than four
-     * derived methods that drift apart.
+     * the unfiltered list and every combination of them, rather than a derived
+     * method per combination, all drifting apart.
+     *
+     * <p><b>The provider filter matches the most recent attempt only</b>, which
+     * is deliberate: {@code OrganizerTransactionResponse.paymentProvider} is
+     * the latest attempt's provider, so that is the value the row displays. A
+     * plain {@code exists} would also return a booking that was first tried on
+     * Bakong and settled on ABA - it would appear under the Bakong filter with
+     * "ABA PayWay" printed in its own column, and the filter would look broken
+     * to the one person who noticed.
      */
     @Query("""
             select b from Booking b
              where b.event.organizerId = :organizerId
                and (:eventId is null or b.event.id = :eventId)
                and (:state is null or b.state = :state)
+               and (:provider is null or exists (
+                     select 1 from PaymentTransaction pt
+                      where pt.booking = b
+                        and pt.provider = :provider
+                        and pt.createdAt = (select max(pt2.createdAt)
+                                              from PaymentTransaction pt2
+                                             where pt2.booking = b)))
              order by b.createdAt desc
             """)
     Page<Booking> findForOrganizer(@Param("organizerId") Long organizerId,
                                    @Param("eventId") Long eventId,
                                    @Param("state") BookingStatus state,
+                                   @Param("provider") PaymentProvider provider,
                                    Pageable pageable);
+
+    /**
+     * The totals under the organiser's transactions heading, for the SAME
+     * filtered set {@link #findForOrganizer} pages through.
+     *
+     * <p>Its own query rather than a sum over the page, which is what the screen
+     * used to do: paging moved to the server and the heading kept counting
+     * {@code rows.length}, so an organiser with six hundred transactions read
+     * "25 transactions" above a table that had six hundred.
+     *
+     * <p><b>The where clause is a copy of findForOrganizer's and has to stay
+     * one.</b> Two filters that disagree would put a total over a table it does
+     * not describe - the exact bug this replaces, in a form that is harder to
+     * see. Any change to one belongs in the other in the same edit.
+     */
+    @Query("""
+            select count(b) as txCount,
+                   coalesce(sum(case when b.state in :earning then b.totalUsdCents else 0 end), 0)
+                       as settledUsdCents
+              from Booking b
+             where b.event.organizerId = :organizerId
+               and (:eventId is null or b.event.id = :eventId)
+               and (:state is null or b.state = :state)
+               and (:provider is null or exists (
+                     select 1 from PaymentTransaction pt
+                      where pt.booking = b
+                        and pt.provider = :provider
+                        and pt.createdAt = (select max(pt2.createdAt)
+                                              from PaymentTransaction pt2
+                                             where pt2.booking = b)))
+            """)
+    OrganizerTotals totalsForOrganizer(@Param("organizerId") Long organizerId,
+                                       @Param("eventId") Long eventId,
+                                       @Param("state") BookingStatus state,
+                                       @Param("provider") PaymentProvider provider,
+                                       @Param("earning") Collection<BookingStatus> earning);
+
+    /**
+     * Two numbers off one pass. An interface projection rather than an
+     * {@code Object[]}, so the call site reads what it is getting instead of
+     * casting row[1] and hoping.
+     */
+    interface OrganizerTotals {
+        long getTxCount();
+        long getSettledUsdCents();
+    }
 
     /** Backs GET /me/bookings, served by idx_booking_user_state. */
     Page<Booking> findByUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
@@ -133,6 +196,23 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     /** Gross receipts. Only CONFIRMED counts - see PlatformStatsResponse. */
     @Query("select coalesce(sum(b.totalUsdCents), 0) from Booking b where b.state in :states")
     long sumTotalUsdCentsByStateIn(@Param("states") Collection<BookingStatus> states);
+
+    /**
+     * The same sum, but only since a cutoff - the dashboard's recent-takings
+     * figure.
+     *
+     * <p>Sits beside the lifetime total rather than replacing it, because the
+     * two say different things and the lifetime one alone says very little: it
+     * only ever goes up, so it cannot tell a good month from a dead one. The
+     * cutoff is the caller's rather than a constant here, so the window stays a
+     * product decision.
+     */
+    @Query("""
+            select coalesce(sum(b.totalUsdCents), 0) from Booking b
+            where b.state in :states and b.createdAt >= :since
+            """)
+    long sumTotalUsdCentsByStateInSince(@Param("states") Collection<BookingStatus> states,
+                                        @Param("since") Instant since);
 
     /**
      * Confirmed revenue per event, for every event at once.

@@ -127,6 +127,11 @@ export default function App() {
                   /admin/payouts is money going out to organisers. Neither
                   screen's filters or actions make sense on the other. */}
               <Route path="payouts" element={<AdminPayoutsPage />} />
+              {/* The same invoice the organiser gets, fetched through the
+                  admin endpoint - see PayoutInvoicePage. The admin is the one
+                  making the transfer and had no way to print the document it
+                  is made against. */}
+              <Route path="payouts/:id" element={<PayoutInvoicePage />} />
             </Route>
           </Route>
 
