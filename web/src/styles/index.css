@@ -756,9 +756,27 @@
     @apply border-white/30 bg-white/20;
   }
 
-  /* Role-scoped sub-navigation for organizer/admin areas. */
+  /*
+   * Role-scoped sub-navigation for organizer/admin areas.
+   *
+   * Sticky rather than fixed, and parked against the bottom of the navbar.
+   *
+   * Fixed would take the strip out of flow, which means reserving its height by
+   * hand somewhere else - and getting that wrong hides the top of whatever
+   * screen it sits over. Sticky keeps it in the document: it scrolls like part
+   * of the page until it reaches the navbar, then stays. Nothing below it has
+   * to know it exists.
+   *
+   * --nav-h is published by Navbar, which measures itself. See the comment
+   * there for why the offset cannot be a constant. The 0px fallback is for the
+   * first paint before that lands, where the strip is on screen anyway.
+   *
+   * z-30 sits under the navbar's z-40 on purpose: if the two ever meet, the bar
+   * that owns the top of the window wins.
+   */
   .subnav {
-    @apply border-b border-line bg-surface;
+    @apply sticky z-30 border-b border-line bg-surface;
+    top: var(--nav-h, 0px);
   }
   /*
    * Horizontal scroll with an edge that says so.
@@ -2433,6 +2451,29 @@
   .stat-head .icon-chip {
     @apply size-7 rounded-[9px];
   }
+  /*
+   * A tile that is a link to the queue it counts.
+   *
+   * The hover moves the border and lifts the shadow rather than fading the
+   * whole tile: this is a card with a number in it, and dimming the number to
+   * signal "you may click me" makes the one thing it exists to say harder to
+   * read. The 1px rise is the same affordance the event cards use.
+   */
+  .stat-link {
+    @apply block text-ink no-underline;
+    transition: transform 0.06s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .stat-link:hover {
+    @apply -translate-y-px border-brand-500 no-underline shadow-pop;
+  }
+  .stat-link:focus-visible {
+    @apply border-brand-500;
+  }
+  /* The value stays ink on a flagged tile; only the label follows the warning
+     colour, so the number reads at full contrast either way. */
+  .stat-link .stat-value {
+    @apply text-ink;
+  }
 
   .progress {
     @apply flex h-[7px] overflow-hidden rounded-full bg-line-2;
@@ -3008,6 +3049,47 @@
   }
   .pager button:disabled {
     @apply cursor-not-allowed opacity-45;
+  }
+
+  /*
+   * The table footer bar - page size on the left, page position on the right.
+   *
+   * Sits INSIDE the panel and is painted on surface-2 with a top rule, so it
+   * reads as the end of the table rather than as a separate control that
+   * happens to be underneath. .pager above is the opposite: it is centred in
+   * the page's own background, because a catalogue's pages belong to the page,
+   * not to a box.
+   *
+   * Wraps on a phone, where the two halves do not fit on one line and the size
+   * control is the one that should keep its full width.
+   */
+  .table-pager {
+    @apply flex flex-wrap items-center justify-between gap-4 border-t border-line-2
+      bg-surface-2 px-5 py-3;
+  }
+  .pager-sizes {
+    @apply inline-flex overflow-hidden rounded-ui border border-line bg-surface;
+  }
+  .pager-sizes button {
+    @apply border-r border-line px-3 py-1 text-small font-semibold text-muted last:border-r-0;
+  }
+  .pager-sizes button:hover {
+    @apply text-ink;
+  }
+  /* Solid brand fill for the size in force. aria-pressed carries the same fact
+     to a screen reader, which is why the class is only doing paint. */
+  .pager-sizes button.active {
+    @apply bg-brand-500 text-white;
+  }
+  /* .panel rounds its corners but does not clip its children, so the bar's
+     own fill has to follow the curve or it paints square over it. */
+  .panel > .table-pager:last-child {
+    @apply rounded-b-card;
+  }
+  /* The queue screens have no panel to sit inside - their table is a bare
+     column - so the bar draws its own box there instead of a top rule. */
+  .rq-col > .table-pager {
+    @apply rounded-ui border border-line;
   }
 
   /* Above everything, dialogs and drawers included - 1200 is the ceiling in

@@ -228,6 +228,18 @@ export const getPlatformStats = () =>
 export const getRecentBookings = (limit = 8) =>
   client.get('/admin/stats/recent-bookings', { params: { limit } }).then((r) => r.data)
 
+/**
+ * The latest-events strip, newest listing first. Server caps limit at 50.
+ *
+ * Deliberately not getEventsOverview({ ... }).slice(): that one returns every
+ * event on the platform with five aggregates attached, sorted by show date -
+ * so filling an eight-row strip would mean fetching the whole moderation table
+ * and throwing away the sort it came in. Drafts are excluded here for the same
+ * reason they are there: an organiser's private workspace is not platform news.
+ */
+export const getRecentEvents = (limit = 8) =>
+  client.get('/admin/stats/recent-events', { params: { limit } }).then((r) => r.data)
+
 // --- moderation table -------------------------------------------------------
 
 /**

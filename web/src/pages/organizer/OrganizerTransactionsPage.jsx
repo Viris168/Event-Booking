@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useDocumentTitle } from '../../lib/useDocumentTitle.js'
 import Icon from '../../components/Icon.jsx'
-import { Badge, ResponsiveTable } from '../../components/ui.jsx'
+import { Badge, ResponsiveTable, TablePager } from '../../components/ui.jsx'
 import { SkeletonRegion, TableRowsSkeleton } from '../../components/Skeleton.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
 import { usd } from '../../lib/format.js'
@@ -21,7 +21,6 @@ const STATES = [
   'PAYMENT_FAILED',
 ]
 
-const PAGE_SIZES = [25, 50, 100]
 
 export default function OrganizerTransactionsPage() {
   const { t, locale, date } = useLocale()
@@ -374,55 +373,20 @@ export default function OrganizerTransactionsPage() {
         )}
 
         {/* ------------------------------------------------------ pagination */}
+        {/* The same bar the admin tables use. It is presentational, so it does
+            not know that this page's pages come from the server while theirs
+            are sliced in the browser - which is the point of it being shared. */}
         {!loading && !error && total > 0 && (
-          <div className="px-5 py-3 border-t border-line-2 bg-surface-2 flex items-center justify-between gap-4 flex-wrap">
-            <div className="flex items-center gap-2">
-              <div className="inline-flex rounded-ui border border-line overflow-hidden bg-surface">
-                {PAGE_SIZES.map((n) => (
-                  <button
-                    key={n}
-                    type="button"
-                    onClick={() => {
-                      setPageSize(n)
-                      setPage(1)
-                    }}
-                    aria-pressed={pageSize === n}
-                    className={`px-3 py-1 text-small font-semibold border-r border-line last:border-r-0 ${
-                      pageSize === n ? 'bg-brand-500 text-white' : 'text-muted hover:text-ink'
-                    }`}
-                  >
-                    {n}
-                  </button>
-                ))}
-              </div>
-              <span className="text-small text-muted">{km ? 'ក្នុងមួយទំព័រ' : 'per page'}</span>
-            </div>
-
-            <div className="flex items-center gap-2 text-small text-muted">
-              <span>
-                {km ? 'ទំព័រ' : 'Page'} <b className="text-ink tabular-nums">{page}</b> {km ? 'នៃ' : 'of'}{' '}
-                <b className="text-ink tabular-nums">{pageCount}</b>
-              </span>
-              <button
-                type="button"
-                className="btn btn-sm btn-outline"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                aria-label={km ? 'ទំព័រមុន' : 'Previous page'}
-              >
-                <Icon name="chevronLeft" size={15} />
-              </button>
-              <button
-                type="button"
-                className="btn btn-sm btn-outline"
-                disabled={page >= pageCount}
-                onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
-                aria-label={km ? 'ទំព័របន្ទាប់' : 'Next page'}
-              >
-                <Icon name="chevronRight" size={15} />
-              </button>
-            </div>
-          </div>
+          <TablePager
+            page={page}
+            pages={pageCount}
+            pageSize={pageSize}
+            onPage={setPage}
+            onPageSize={(n) => {
+              setPageSize(n)
+              setPage(1)
+            }}
+          />
         )}
       </div>
     </div>

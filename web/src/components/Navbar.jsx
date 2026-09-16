@@ -42,6 +42,29 @@ export default function Navbar({ onOpenAccount }) {
     }
   }, [menuOpen])
 
+  /*
+   * Publish the navbar's height as --nav-h, for whatever has to sit under it.
+   *
+   * The role sub-nav sticks to the bottom edge of this bar, and needs a number
+   * to stick at. That number is not a constant: the bar is taller in Khmer,
+   * taller again when a live hold countdown appears inside it, and different on
+   * a phone - so a hard-coded offset leaves the tab strip either overlapping
+   * the navbar or floating below it with a gap of page showing through.
+   *
+   * Measured rather than computed, and re-measured on resize, because the only
+   * thing that reliably knows the height of a wrapping flex row is the browser.
+   */
+  useEffect(() => {
+    const el = navRef.current
+    if (!el || typeof ResizeObserver === 'undefined') return undefined
+    const publish = () =>
+      document.documentElement.style.setProperty('--nav-h', `${el.offsetHeight}px`)
+    publish()
+    const observer = new ResizeObserver(publish)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
   const [hold, setHold] = useState(null)
   const [now, setNow] = useState(Date.now())
 

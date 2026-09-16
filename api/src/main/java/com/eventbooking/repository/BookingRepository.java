@@ -135,6 +135,23 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     long sumTotalUsdCentsByStateIn(@Param("states") Collection<BookingStatus> states);
 
     /**
+     * The same sum, but only since a cutoff - the dashboard's recent-takings
+     * figure.
+     *
+     * <p>Sits beside the lifetime total rather than replacing it, because the
+     * two say different things and the lifetime one alone says very little: it
+     * only ever goes up, so it cannot tell a good month from a dead one. The
+     * cutoff is the caller's rather than a constant here, so the window stays a
+     * product decision.
+     */
+    @Query("""
+            select coalesce(sum(b.totalUsdCents), 0) from Booking b
+            where b.state in :states and b.createdAt >= :since
+            """)
+    long sumTotalUsdCentsByStateInSince(@Param("states") Collection<BookingStatus> states,
+                                        @Param("since") Instant since);
+
+    /**
      * Confirmed revenue per event, for every event at once.
      *
      * <p>Returns {@code [eventId, sumUsdCents]} per row; events with no

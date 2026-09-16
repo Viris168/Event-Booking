@@ -212,4 +212,59 @@ public interface EventRepository extends JpaRepository<Event, Long> {
      */
     @Query("select e.status, count(e) from Event e group by e.status")
     List<Object[]> countGroupedByStatus();
+
+    /**
+     * How many events are actually selling right now.
+     *
+     * <p>Not the same question as {@code countByStatus(PUBLISHED)}, which is
+     * what the dashboard used to show. Publishing is a decision an organiser
+     * made once and it never expires, so that count folds in every show that
+     * finished last year - it can only go up, and it says nothing about what is
+     * on sale today.
+     *
+     * <p>The three conditions are the stored half of the browser's salesState():
+     * published, the sales window is open, and the event has not happened yet.
+     * The one condition NOT reproduced here is sold-out, which needs the zone
+     * and seat aggregates - so a sold-out event still counts as on sale. That is
+     * the honest reading anyway: it is listed and its window is open, there is
+     * simply nothing left to sell.
+     */
+    @Query("""
+            select count(e) from Event e
+            where e.status = com.eventbooking.Enumeration.EventStatus.PUBLISHED
+              and e.salesOpenAt <= :now
+              and e.salesCloseAt >= :now
+              and e.startsAt > :now
+            """)
+    long countOnSale(@Param("now") Instant now);
+
+    /**
+     * The dashboard's latest-events strip: newest listing first.
+     *
+     * <p>Ordered by {@code createdAt}, not {@code startsAt} like
+     * {@link #searchForAdmin}. The moderation table is a diary - what is coming
+     * up - while this answers "what has just appeared on the platform", and the
+     * two disagree completely: an event put up this morning for next year sorts
+     * last in the table and first here.
+     *
+     * <p>DRAFT is excluded for the same reason the moderation table and the
+     * review queue exclude it: a draft is the organiser's private workspace,
+     * not something that has been shown to anybody.
+     *
+     * <p>venue is fetched with it because the strip prints a venue name, and a
+     * lazy proxy resolved during serialisation is the same N+1 by a quieter
+     * route.
+     *
+     * <p>id breaks ties because {@code created_at} is not unique: a seeded or
+     * bulk-imported batch shares one timestamp to the microsecond, and without
+     * a second key Postgres is free to return a different eight of them each
+     * time the dashboard is opened.
+     */
+    @Query("""
+            select e from Event e
+            join fetch e.venue
+            where e.status <> com.eventbooking.Enumeration.EventStatus.DRAFT
+            order by e.createdAt desc, e.id desc
+            """)
+    List<Event> findRecentForAdmin(Pageable pageable);
 }

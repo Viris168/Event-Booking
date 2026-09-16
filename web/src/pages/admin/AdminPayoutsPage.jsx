@@ -3,12 +3,13 @@ import ContactButtons from '../../components/ContactButtons.jsx'
 import Icon from '../../components/Icon.jsx'
 import ConfirmDialog from '../../components/ConfirmDialog.jsx'
 import FormDialog from '../../components/FormDialog.jsx'
-import { Alert, Badge, Empty, Field, ResponsiveTable } from '../../components/ui.jsx'
+import { Alert, Badge, Empty, Field, ResponsiveTable, TablePager } from '../../components/ui.jsx'
 import { TableRowsSkeleton } from '../../components/Skeleton.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
 import { useDocumentTitle } from '../../lib/useDocumentTitle.js'
 import { usd } from '../../lib/format.js'
+import { usePaging } from '../../lib/usePaging.js'
 import {
   approvePayout,
   feePercent,
@@ -93,6 +94,15 @@ export default function AdminPayoutsPage() {
   useEffect(() => {
     load(tab)
   }, [load, tab])
+
+  /*
+   * Paging, keyed on the tab: each one is a different list, so switching starts
+   * at its first page rather than wherever the last tab was being read.
+   *
+   * PAID is why this is here. Waiting and To transfer are queues that get
+   * emptied, but every payout the platform has ever made stays in Paid.
+   */
+  const paged = usePaging(rows, tab)
 
   // ---------------------------------------------------------------- actions
 
@@ -232,7 +242,7 @@ export default function AdminPayoutsPage() {
                     </td>
                   </tr>
                 ) : (
-                  rows.map((p) => (
+                  paged.visible.map((p) => (
                     <tr key={p.id} className="border-b border-line-2">
                       <td>
                         <span className="font-mono text-small">{p.invoice_no}</span>
@@ -305,6 +315,17 @@ export default function AdminPayoutsPage() {
             )}
           </table>
         </ResponsiveTable>
+        {/* Not while the skeleton is up: a pager over rows that have not
+            arrived says "page 1 of 1", then contradicts itself a moment later. */}
+        {!loading && !error && (
+          <TablePager
+            page={paged.page}
+            pages={paged.pageCount}
+            pageSize={paged.pageSize}
+            onPage={paged.setPage}
+            onPageSize={paged.setPageSize}
+          />
+        )}
       </div>
 
       {/* ------------------------------------------------------- approve */}
