@@ -2519,9 +2519,7 @@
     background: var(--color-brand-900);
   }
   /* Centred as a BLOCK — w-fit shrinks the section to its widest row, then the
-     auto margins centre that. Centring each row on its own instead would let a
-     short row drift out of line with a long one and take the row letters with
-     it, so A and B would no longer start at the same x.
+     auto margins centre that.
      When a row is wider than the panel the auto margins collapse to zero and
      .seatmap-wrap's overflow takes over, so nothing is cut off on the left. */
   .seatmap-section {
@@ -3544,10 +3542,29 @@
   .z-count.zero { @apply bg-line-2 text-muted; }
 
   .seatmap-scroll { @apply overflow-x-auto; }
-  .rows { @apply flex flex-col gap-[10px]; }
+  /* Shrink-wrapped to the widest row, then centred as a block. Both seat maps
+     draw with these classes - the buyer's picker and the organiser's preview -
+     and a house laid out one way for the person who built it and another for
+     the person buying a seat in it is two maps, which is the split this markup
+     exists to avoid. When a row is wider than its panel the auto margins
+     collapse to zero and the scroll container takes over. */
+  .rows { @apply mx-auto flex w-max flex-col gap-[10px]; }
   .row { @apply flex items-center gap-[10px]; }
   .row-label { @apply w-[18px] text-center text-[12px] font-semibold text-muted; }
-  .seats { @apply flex flex-nowrap gap-2; }
+  /* Ragged rows straddle the middle of the widest one, the way a real house is
+     laid out: a 12-seat row in front of a 14-seat row sits centred over it
+     rather than flush left with an empty gap down the right-hand side. Rows
+     became able to differ when the editor started taking one seat count per
+     row, so until then this alignment could not be seen.
+     Centring the ROW is the wrong way to do it - that carries the row label
+     along with the seats, so row A and row B stop starting at the same x.
+     AUTO MARGINS rather than flex-1 + justify-center: a flex-1 strip cannot
+     shrink below its own content, so on a row wider than the panel it became
+     the thing that set the width, squeezed .row-label to nothing and left the
+     short rows centred on a width no one can see. Auto margins only ever
+     consume space that is already spare, so the overflow case falls back to
+     plain left alignment and scrolls, which is what it did before. */
+  .seats { @apply mx-auto flex flex-nowrap gap-2; }
   .seat {
     @apply relative grid size-[34px] cursor-pointer place-items-center rounded-tiny text-[12.5px] font-bold;
     color: #fff;
