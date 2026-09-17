@@ -82,12 +82,22 @@ export default function VenueLayoutPanel({ imageUrl, venue }) {
       </div>
 
       {hasLayout && (
-        <QrLightbox
-          open={zoomed}
-          onClose={() => setZoomed(false)}
-          caption={name}
-          subtitle={address}
-        >
+        /*
+         * `media`, not the default `qr`.
+         *
+         * The default panel is 30rem wide because it was sized around a square
+         * QR code - narrower than this card renders the layout at, so opening
+         * it made the picture SMALLER, which is the opposite of what "tap to
+         * enlarge" promises. `media` gives it 76rem and drops the panel chrome.
+         *
+         * It also drops the ticket copy. The default footer reads "turn your
+         * screen brightness up and show this at the gate", which under a
+         * seating chart is simply untrue.
+         *
+         * The name and address are not passed: `media` suppresses them, and
+         * they are already on the card this opened from.
+         */
+        <QrLightbox open={zoomed} onClose={() => setZoomed(false)} variant="media" caption={name}>
           <img className="venue-layout-full" src={imageUrl} alt="" />
         </QrLightbox>
       )}
