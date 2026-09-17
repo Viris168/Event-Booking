@@ -11,8 +11,10 @@ import { useToast } from '../../context/ToastContext.jsx'
 import { useDocumentTitle } from '../../lib/useDocumentTitle.js'
 import { timeAgo, usd } from '../../lib/format.js'
 import { usePaging } from '../../lib/usePaging.js'
+import { downscaleImage } from '../../lib/downscaleImage.js'
 import {
   approvePayout,
+  extractPayoutReceipt,
   feePercent,
   getAdminPayout,
   getAdminPayoutCounts,
@@ -122,6 +124,14 @@ export default function AdminPayoutsPage() {
   const [approving, setApproving] = useState(null)
   const [paying, setPaying] = useState(null)
   const [payForm, setPayForm] = useState({ reference: '', note: '' })
+  /*
+   * The receipt reader that fills the reference box for the admin.
+   *
+   * `off` is sticky for the session once the server has said it has no vision
+   * key: that answer cannot change between two clicks, and a drop zone that
+   * re-offers itself after saying it does not work is worse than no drop zone.
+   */
+  const [receipt, setReceipt] = useState({ busy: false, fields: null, error: '', off: false })
 
   /**
    * Every action funnels through here so the stale-row case is handled once.
@@ -160,6 +170,8 @@ export default function AdminPayoutsPage() {
    */
   const openPay = async (row) => {
     setPayForm({ reference: '', note: '' })
+    // `off` survives, deliberately - see the state declaration.
+    setReceipt((r) => ({ busy: false, fields: null, error: '', off: r.off }))
     setPaying(row)
     try {
       const full = await getAdminPayout(row.id)
@@ -168,6 +180,66 @@ export default function AdminPayoutsPage() {
       // The masked row is still enough to identify the payout; the dialog says
       // so rather than refusing to open over a failed second request.
       toast(km ? 'មិនអាចផ្ទុកលេខគណនីបានទេ' : 'Could not load the full account number', 'error')
+    }
+  }
+
+  /**
+   * Read a dropped confirmation screenshot and fill the reference box with it.
+   *
+   * The image is downscaled here and discarded on the server - see
+   * lib/downscaleImage.js and PayoutReceiptExtractor. What lands in the form is
+   * a SUGGESTION: the admin still reads it against the screenshot they took it
+   * from, can overwrite it, and has to submit the form themselves. Every
+   * failure path leaves them exactly where they were, typing.
+   */
+  const readReceipt = async (file) => {
+    if (!file || !paying || receipt.busy) return
+
+    setReceipt((r) => ({ ...r, busy: true, error: '', fields: null }))
+    try {
+      const small = await downscaleImage(file)
+      const fields = await extractPayoutReceipt(paying.id, small)
+
+      // Only the reference is written into the form. The other three are shown
+      // beside it as context for judging whether this is the right transfer -
+      // nothing else on this dialog is theirs to fill.
+      setReceipt({ busy: false, fields, error: '', off: false })
+      if (fields.reference_number) {
+        setPayForm((f) => ({ ...f, reference: fields.reference_number }))
+      }
+    } catch (e) {
+      const code = e?.response?.data?.errorCode
+
+      if (code === 'RECEIPT_EXTRACTION_UNAVAILABLE') {
+        setReceipt({ busy: false, fields: null, error: '', off: true })
+        return
+      }
+      // Somebody else settled this row while the dialog was open. Same
+      // treatment as any other stale-row case: say so, close, reload.
+      if (code === 'PAYOUT_ALREADY_DECIDED') {
+        setReceipt({ busy: false, fields: null, error: '', off: false })
+        toast(
+          km ? 'សំណើនេះត្រូវបានសម្រេចរួចហើយ' : 'Somebody has already decided this one.',
+          'error',
+        )
+        setPaying(null)
+        await load(tab)
+        return
+      }
+
+      setReceipt({
+        busy: false,
+        fields: null,
+        off: false,
+        error:
+          code === 'FILE_TOO_LARGE'
+            ? km
+              ? 'រូបភាពធំពេក'
+              : 'That image is too large.'
+            : km
+              ? 'មិនអាចអានរូបភាពបានទេ សូមវាយលេខយោងដោយដៃ'
+              : 'Could not read that one. Type the reference instead.',
+      })
     }
   }
 
@@ -431,12 +503,87 @@ export default function AdminPayoutsPage() {
               <dd className="m-0 font-mono">{paying.account_number}</dd>
             </dl>
 
+            {/* --------------------------------------------- receipt reader
+                Above the reference box rather than beside it, because it is
+                the step that comes first: transfer, screenshot, drop, check,
+                record. Hidden entirely on a deployment with no vision key, so
+                the dialog is the plain form it has always been. */}
+            {!receipt.off && (
+              <div className="mb-3">
+                <label
+                  className={`receipt-drop${receipt.busy ? ' is-busy' : ''}`}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    readReceipt(e.dataTransfer.files?.[0])
+                  }}
+                >
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="sr-only"
+                    disabled={receipt.busy}
+                    onChange={(e) => {
+                      readReceipt(e.target.files?.[0])
+                      // Cleared so that picking the SAME file twice still
+                      // fires onChange - after a failed read, re-picking the
+                      // one file they have is the obvious thing to try.
+                      e.target.value = ''
+                    }}
+                  />
+                  {receipt.busy ? (
+                    <>
+                      <span className="spinner" />
+                      <span>{km ? 'កំពុងអានបង្កាន់ដៃ...' : 'Reading the receipt...'}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Icon name="scan" size={16} />
+                      <span>
+                        {km
+                          ? 'ទម្លាក់រូបបញ្ជាក់ការផ្ទេរ ដើម្បីបំពេញលេខយោង'
+                          : 'Drop the transfer screenshot to fill in the reference'}
+                      </span>
+                    </>
+                  )}
+                </label>
+
+                {/* Said once, here, and not repeated in the hint below: the
+                    question an admin asks of an upload box on a screen full of
+                    bank details is what happens to the picture. */}
+                <p className="text-small text-muted m-0 mt-1">
+                  {km
+                    ? 'រូបភាពមិនត្រូវបានរក្សាទុកទេ'
+                    : 'The image is read once and never stored.'}
+                </p>
+
+                {receipt.error && (
+                  <p className="text-small text-danger m-0 mt-1">{receipt.error}</p>
+                )}
+
+                {/* What was read, minus the reference - that one is already in
+                    the box below, and printing it twice invites the admin to
+                    check the copy against the copy rather than against the
+                    screenshot. */}
+                {receipt.fields && (
+                  <dl className="text-small m-0 mt-2 p-2 rounded-card bg-surface-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
+                    <dt className="text-muted m-0">{km ? 'ចំនួន' : 'Amount read'}</dt>
+                    <dd className="m-0">{receipt.fields.amount || (km ? 'រកមិនឃើញ' : 'not found')}</dd>
+                    <dt className="text-muted m-0">{km ? 'កាលបរិច្ឆេទ' : 'Date read'}</dt>
+                    <dd className="m-0">{receipt.fields.date || (km ? 'រកមិនឃើញ' : 'not found')}</dd>
+                    <dt className="text-muted m-0">{km ? 'អ្នកផ្ញើ' : 'Payer'}</dt>
+                    <dd className="m-0">{receipt.fields.payer_name || (km ? 'រកមិនឃើញ' : 'not found')}</dd>
+                  </dl>
+                )}
+              </div>
+            )}
+
             <Field
               label={km ? 'លេខយោងពីធនាគារ' : 'Bank reference'}
               hint={
                 km
-                  ? 'អ្នករៀបចំនឹងឃើញលេខនេះ ហើយប្រើវាពេលសួរធនាគារ'
-                  : 'The organizer sees this and will quote it to their bank.'
+                  ? 'អ្នករៀបចំនឹងឃើញលេខនេះ ហើយប្រើវាពេលសួរធនាគារ។ សូមផ្ទៀងផ្ទាត់មុនកត់ត្រា'
+                  : 'The organizer sees this and will quote it to their bank, so check it against the screenshot before recording.'
               }
             >
               <input

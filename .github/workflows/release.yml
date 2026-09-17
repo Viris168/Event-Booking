@@ -1,7 +1,12 @@
 name: Release
 
 # Fires only on v* tags — the tag ruleset means only Viris168 can push them.
-# Nothing here touches the server; the job is purely: build → push to GHCR.
+# Pushing a tag ships: build both images → push to GHCR → SSH the production
+# box and deploy. There is no separate manual step and no approval gate, so a
+# v* tag is the release, not a rehearsal for one.
+#
+# What reaches the server is the immutable sha-<short> tag, never the semver
+# one — see the deploy job below.
 on:
   push:
     tags: ['v*']

@@ -249,6 +249,32 @@ app:
     # dev upload can overwrite a live poster.
     folder: ${CLOUDINARY_FOLDER:event-booking/dev}
 
+  # ------------------------------------------------------------------
+  # Reading a transfer receipt instead of retyping it
+  # ------------------------------------------------------------------
+  # Turns the bank-reference box on the admin's "record the transfer" dialog
+  # into a drop zone: the screenshot goes to a vision model, the transaction id
+  # comes back, and the admin confirms it.
+  #
+  # NOTHING IS STORED. The image is held for one request and dropped - see
+  # PayoutReceiptExtractor. The only thing that survives is whatever the admin
+  # leaves in the reference box, exactly as before this existed.
+  #
+  # api-key blank is a SUPPORTED state, not a broken one, and it is the default
+  # so that no deployment starts spending somebody's vision quota by accident.
+  # Blank hides the drop zone and the dialog goes back to being a text field.
+  receipt-extraction:
+    api-key: ${RECEIPT_EXTRACTION_API_KEY:}
+    # In the URL, so a retired model is a redeploy rather than a rebuild.
+    model: ${RECEIPT_EXTRACTION_MODEL:gemini-3.6-flash}
+    base-url: ${RECEIPT_EXTRACTION_BASE_URL:https://generativelanguage.googleapis.com/v1beta/models}
+    # Short: an admin is waiting on this with a banking app open in the next
+    # window, and past about this long they will have typed it themselves.
+    timeout: ${RECEIPT_EXTRACTION_TIMEOUT:20s}
+    # The browser downscales to 1024px before uploading, so a receipt arrives
+    # well under this. Anything near it is a client that skipped that step.
+    max-bytes: ${RECEIPT_EXTRACTION_MAX_BYTES:4194304}
+
 # Swagger UI at http://localhost:8080/swagger-ui.html, spec at /v3/api-docs
 springdoc:
   swagger-ui:

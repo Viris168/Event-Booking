@@ -1,6 +1,7 @@
 package com.eventbooking.controller.Admin;
 
 import com.eventbooking.Enumeration.PayoutStatus;
+import com.eventbooking.dto.payout.ExtractedReceiptResponse;
 import com.eventbooking.dto.payout.MarkPaidRequest;
 import com.eventbooking.dto.payout.PayoutRequestResponse;
 import com.eventbooking.security.AdminResolver;
@@ -10,7 +11,10 @@ import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -134,5 +138,31 @@ public class AdminPayoutController {
         Long adminUserId = adminResolver.requireAdminUserId(actorUserId);
         return ResponseEntity.ok(
                 payoutService.markPaid(adminUserId, id, request.reference(), request.note()));
+    }
+
+    /**
+     * Read the bank reference off a transfer confirmation screenshot.
+     *
+     * <p><b>Nothing is saved - not the image, and not what was read from it.</b>
+     * This is a typing aid for the form above: the response prefills the
+     * reference box, the admin checks it against the screenshot still open in
+     * their banking app, and {@code mark-paid} is what actually records
+     * anything. An admin who would rather type, or who is working on a
+     * deployment with no vision key configured, loses nothing.
+     *
+     * <p>Admin-only by the {@code /api/v1/admin/**} rule in SecurityConfig,
+     * like every sibling here, and narrowed further by the service to payouts
+     * that are actually APPROVED.
+     *
+     * <p>{@code @RequestParam}, not {@code @RequestBody}: this is multipart, and
+     * the part is named {@code image} to match what the browser sends.
+     */
+    @PostMapping(value = "/{id}/extract-receipt", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ExtractedReceiptResponse> extractReceipt(
+            @CurrentUserId Long actorUserId,
+            @PathVariable Long id,
+            @RequestParam("image") MultipartFile image) {
+        adminResolver.requireAdminUserId(actorUserId);
+        return ResponseEntity.ok(payoutService.extractReceipt(id, image));
     }
 }
