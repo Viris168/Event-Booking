@@ -3967,6 +3967,16 @@
    */
   width: 96vw;
   height: 94vh;
+  /*
+   * minmax(0, 1fr), not the implicit `auto`. .qr-lightbox-code centres its child
+   * with a grid, and an auto track sizes to its content - so a chart taller than
+   * the screen made the ROW 2000px tall, the `max-height: 100%` on the image
+   * resolved against that rather than against this box, and the picture ran off
+   * the bottom instead of being scaled down. Capping the track at the box is
+   * what makes those percentages mean "the space available".
+   */
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   padding: 0;
   background: transparent;
   border-radius: 0;
@@ -5049,17 +5059,31 @@
 
 .venue-layout-full {
   /*
-   * Fills its box without cropping: `contain` scales the picture up until one
-   * axis meets an edge and leaves the other short. A seating plan with its back
-   * rows cut off is a section somebody cannot find themselves in, so `cover` is
-   * not an option.
+   * Takes the room available but never more than the file has to give.
    *
-   * No white ground. The leftover space on the short axis would show as bars
+   * The box around this is 96vw x 94vh, and stretching into it was upscaling:
+   * a 1024px-wide chart was being painted at ~1382px on a 1440px screen, which
+   * adds no detail a reader can use and softens every seat number and row
+   * letter that was legible at 1:1. `auto` sizing with max-* caps renders the
+   * file at its own pixels when it fits and shrinks it when it does not, so the
+   * picture is as large as it can be while still being sharp.
+   *
+   * This keeps the half of the fixed 76rem panel that was worth keeping - a
+   * chart LARGER than the viewport now uses the whole screen instead of being
+   * held to 1216px - and drops the half that hurt, which was inflating small
+   * files to fill space they have no detail for.
+   *
+   * No cropping either way: a seating plan with its back rows cut off is a
+   * section somebody cannot find themselves in.
+   *
+   * No white ground. Space left over on the short axis would show as bars
    * beside the picture, and the dark backdrop reads as "nothing here" where a
    * white slab reads as part of the image.
    */
-  width: 100%;
-  height: 100%;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
   object-fit: contain;
   display: block;
   background: transparent;
