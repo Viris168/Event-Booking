@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import ConfirmDialog from './ConfirmDialog.jsx'
 import Icon from './Icon.jsx'
@@ -157,6 +157,22 @@ export default function SeatMapEditor({ venueId, showVenueWarning = false, onCha
   const [venue, setVenue] = useState(null)
   const [seats, setSeats] = useState([])
   const [busy, setBusy] = useState(false)
+  /*
+   * The real guard against a second submit, because `busy` cannot be one.
+   *
+   * `busy` is state: the handler reads it from the render closure, and
+   * setBusy(true) does not change that closure - it schedules a re-render. Two
+   * submits raised before React gets to re-render (a double click, Enter in a
+   * field followed by a click) therefore BOTH read false and both proceed, and
+   * the disabled attribute on the button is applied too late to stop the
+   * second. Each one then generates a block, so asking for rows 1-9 quietly
+   * produced 10-13 as well.
+   *
+   * A ref mutates synchronously, so the second handler sees it set. The first
+   * runs to its await before any other event is dispatched, which is what makes
+   * this airtight where the state check was not.
+   */
+  const submitting = useRef(false)
   // The section the confirm dialog is asking about, and the one mid-request.
   // Separate: the dialog stays open and busy while the request is in flight.
   const [confirming, setConfirming] = useState(null)
@@ -252,7 +268,7 @@ export default function SeatMapEditor({ venueId, showVenueWarning = false, onCha
   async function generate(e) {
     e.preventDefault()
     const label = section.trim()
-    if (!label || busy) return
+    if (!label || submitting.current || busy) return
     if (!counts) {
       toast(
         locale === 'km'
@@ -296,6 +312,10 @@ export default function SeatMapEditor({ venueId, showVenueWarning = false, onCha
       return
     }
 
+    // Set BEFORE the first await, so a second submit raised while this one is in
+    // flight finds it already true. Every validation refusal above returns
+    // without touching it, so nothing has to be unwound on those paths.
+    submitting.current = true
     setBusy(true)
     try {
       // Directly under the rows this section already has when extending one, so
@@ -346,6 +366,7 @@ export default function SeatMapEditor({ venueId, showVenueWarning = false, onCha
       const detail = err?.response?.data?.detail || err?.response?.data?.message || err.message
       toast(`${locale === 'km' ? '\u1794\u1784\u17d2\u1780\u17be\u178f\u1798\u17b7\u1793\u1794\u17b6\u1793' : 'Could not add seats'}: ${detail}`, 'error')
     } finally {
+      submitting.current = false
       setBusy(false)
     }
   }
