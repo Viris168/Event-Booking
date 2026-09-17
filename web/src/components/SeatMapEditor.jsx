@@ -1,15 +1,19 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import ConfirmDialog from './ConfirmDialog.jsx'
 import Icon from './Icon.jsx'
 import { Alert, Field, ResponsiveTable } from './ui.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
 import { useToast } from '../context/ToastContext.jsx'
 import {
+  MAX_ROWS,
   SEAT_PITCH,
   createVenueSeats,
+  deleteVenueSeatSection,
   generateSeatGrid,
   getVenue,
   getVenueSeatMap,
+  parseSeatCounts,
 } from '../api/venues.js'
 import { mapVenue } from '../api/adapters.js'
 
@@ -138,7 +142,12 @@ export default function SeatMapEditor({ venueId, showVenueWarning = false, onCha
 
   const [section, setSection] = useState('')
   const [rows, setRows] = useState(8)
-  const [cols, setCols] = useState(12)
+  // A string, not a number: '12' is the rectangle, '12, 14' is a VIP block whose
+  // second row is wider. Rows that differ are the normal case in a real room.
+  const [cols, setCols] = useState('12')
+  // Blank means "the next free letter in this section", resolved below. Typed
+  // in, it lets a block start wherever the organiser says.
+  const [startRow, setStartRow] = useState('')
 
   // From the SERVER. These used to come from mock/store.js, so seats generated
   // here were written to an in-memory object nothing else read and vanished on
@@ -146,6 +155,10 @@ export default function SeatMapEditor({ venueId, showVenueWarning = false, onCha
   const [venue, setVenue] = useState(null)
   const [seats, setSeats] = useState([])
   const [busy, setBusy] = useState(false)
+  // The section the confirm dialog is asking about, and the one mid-request.
+  // Separate: the dialog stays open and busy while the request is in flight.
+  const [confirming, setConfirming] = useState(null)
+  const [deleting, setDeleting] = useState(null)
   const [version, setVersion] = useState(0)
 
   useEffect(() => {
@@ -166,40 +179,112 @@ export default function SeatMapEditor({ venueId, showVenueWarning = false, onCha
   const sections = useMemo(() => {
     const map = new Map()
     for (const s of seats) {
-      const entry = map.get(s.section_label) || { rows: new Set(), count: 0 }
+      const entry = map.get(s.section_label) || { rows: new Set(), count: 0, bottom: -Infinity }
       entry.rows.add(s.row_label)
       entry.count += 1
+      entry.bottom = Math.max(entry.bottom, s.pos_y)
       map.set(s.section_label, entry)
     }
-    return [...map.entries()].map(([label, e]) => ({ label, rows: e.rows.size, count: e.count }))
+    return [...map.entries()].map(([label, e]) => ({
+      label,
+      rows: e.rows.size,
+      count: e.count,
+      rowLabels: e.rows,
+      bottom: e.bottom,
+    }))
   }, [seats])
+
+  /** The section being typed, if it is one that already exists (case-insensitively). */
+  const existing = useMemo(
+    () => sections.find((x) => x.label.toLowerCase() === section.trim().toLowerCase()) || null,
+    [sections, section],
+  )
+
+  /**
+   * What a blank "start row" means: the first letter this section has not used.
+   *
+   * Not simply "one past the last row" — a section whose rows are A and C has a
+   * free B, and refusing to reuse it would be arbitrary.
+   */
+  const nextFreeRow = useMemo(() => {
+    const taken = existing?.rowLabels ?? new Set()
+    for (let i = 0; i < MAX_ROWS; i += 1) {
+      const letter = String.fromCharCode(65 + i)
+      if (!taken.has(letter)) return letter
+    }
+    return 'A'
+  }, [existing])
+
+  const effectiveStartRow = (startRow.trim().toUpperCase() || nextFreeRow).slice(0, 1)
+  const counts = parseSeatCounts(cols)
+  // One count per row means the count list IS the row count; the Rows field
+  // would be a second, contradicting answer to the same question.
+  const perRow = counts && counts.length > 1
+  const rowCount = perRow ? counts.length : Number(rows) || 0
+  const plannedRows = counts
+    ? Array.from({ length: rowCount }, (_, i) => ({
+        label: String.fromCharCode(effectiveStartRow.charCodeAt(0) + i),
+        count: perRow ? counts[i] : counts[0],
+      }))
+    : []
+  const plannedTotal = plannedRows.reduce((n, r) => n + r.count, 0)
 
   async function generate(e) {
     e.preventDefault()
     const label = section.trim()
     if (!label || busy) return
-    if (rows < 1 || rows > 26 || cols < 1 || cols > 40) {
-      toast('Rows 1\u201326, seats per row 1\u201340', 'error')
+    if (!counts) {
+      toast(
+        locale === 'km'
+          ? '\u1780\u17c5\u17a2\u17b8/\u1787\u17bd\u179a \u2014 \u179b\u17c1\u1781\u1796\u17b8 1 \u178a\u179b\u17cb 40 \u1785\u17c6\u178e\u17bb\u1785\u1780\u17b6\u178f\u17cb \u17a1\u17c2\u1780\u178a\u17c4\u1799\u179f\u1789\u17d2\u1789\u17b6 , \u1780\u17d2\u1793\u17bb\u1784\u1780\u179a\u178e\u17b8\u1787\u17bd\u179a\u1798\u17b7\u1793\u179f\u17d2\u1798\u17be\u1782\u17d2\u1793\u17b6'
+          : 'Seats per row: 1\u201340, or a comma-separated count per row (e.g. 12, 14)',
+        'error',
+      )
+      return
+    }
+    if (rowCount < 1 || effectiveStartRow.charCodeAt(0) - 65 + rowCount > MAX_ROWS) {
+      toast(
+        locale === 'km'
+          ? `\u1787\u17bd\u179a\u1798\u17b7\u1793\u17a2\u17b6\u1785\u17a0\u17bc\u179f Z \u1791\u17c1`
+          : `Rows run past Z \u2014 start row ${effectiveStartRow} leaves room for ${MAX_ROWS - (effectiveStartRow.charCodeAt(0) - 65)}`,
+        'error',
+      )
       return
     }
     // Caught here rather than relying on the server's unique constraint, so the
-    // message names the section instead of surfacing a 409 about a database key.
-    if (sections.some((x) => x.label.toLowerCase() === label.toLowerCase())) {
-      toast(locale === 'km' ? '\u1795\u17d2\u1793\u17c2\u1780\u1793\u17c1\u17c7\u1798\u17b6\u1793\u179a\u17bd\u1785\u17a0\u17be\u1799' : 'That section already exists', 'error')
+    // message names the rows instead of surfacing a 409 about a database key.
+    // The SECTION existing is no longer the problem it once was — adding row C
+    // to a section that has A and B is the whole point. A row that is already
+    // there still is.
+    const taken = plannedRows.filter((r) => existing?.rowLabels.has(r.label)).map((r) => r.label)
+    if (taken.length) {
+      toast(
+        locale === 'km'
+          ? `\u1787\u17bd\u179a ${taken.join(', ')} \u1798\u17b6\u1793\u179a\u17bd\u1785\u17a0\u17be\u1799\u1780\u17d2\u1793\u17bb\u1784 ${existing.label}`
+          : `${existing.label} already has row${taken.length > 1 ? 's' : ''} ${taken.join(', ')}`,
+        'error',
+      )
       return
     }
 
     setBusy(true)
     try {
-      // Below everything already on the map, with a gap for its label — so
-      // sections read as separate blocks instead of overlapping at one origin.
-      const startY = seats.length
-        ? Math.max(...seats.map((s) => s.pos_y)) + SEAT_PITCH * 2
-        : 0
+      // Directly under the rows this section already has when extending one, so
+      // an added row sits with its own block. For a NEW section, below
+      // everything on the map with a gap for its label — otherwise every section
+      // generates at one origin and they overlap into a single blob.
+      const startY = existing
+        ? existing.bottom + SEAT_PITCH
+        : seats.length
+          ? Math.max(...seats.map((s) => s.pos_y)) + SEAT_PITCH * 2
+          : 0
       const grid = generateSeatGrid({
-        sectionLabel: label,
-        rows: Number(rows),
-        cols: Number(cols),
+        // The stored spelling wins when extending, so 'vip' typed into a section
+        // called 'VIP' extends it instead of creating a second, near-identical one.
+        sectionLabel: existing?.label ?? label,
+        seatsPerRow: perRow ? counts : counts[0],
+        rows: rowCount,
+        startRow: effectiveStartRow,
         startY,
       })
       await createVenueSeats(venueId, grid)
@@ -207,7 +292,10 @@ export default function SeatMapEditor({ venueId, showVenueWarning = false, onCha
         `${grid.length} ${locale === 'km' ? '\u1780\u17c5\u17a2\u17b8\u178f\u17d2\u179a\u17bc\u179c\u1794\u17b6\u1793\u1794\u1784\u17d2\u1780\u17be\u178f' : 'seats generated'}`,
         'success',
       )
-      setSection('')
+      // The section label STAYS. Adding row B right after row A is the common
+      // next action, and the refetch below advances the suggested start row to
+      // the next free letter on its own.
+      setStartRow('')
       setVersion((v) => v + 1)
       onChange?.()
     } catch (err) {
@@ -215,6 +303,32 @@ export default function SeatMapEditor({ venueId, showVenueWarning = false, onCha
       toast(`${locale === 'km' ? '\u1794\u1784\u17d2\u1780\u17be\u178f\u1798\u17b7\u1793\u1794\u17b6\u1793' : 'Could not add seats'}: ${detail}`, 'error')
     } finally {
       setBusy(false)
+    }
+  }
+
+  async function removeSection(label) {
+    if (deleting) return
+
+    setDeleting(label)
+    try {
+      await deleteVenueSeatSection(venueId, label)
+      toast(
+        locale === 'km' ? `បានលុបផ្នែក ${label}` : `Section ${label} deleted`,
+        'success',
+      )
+      setConfirming(null)
+      setVersion((v) => v + 1)
+      onChange?.()
+    } catch (err) {
+      // The 409 carries the events that are using the section, and THAT is the
+      // part the organiser can act on - so it is shown rather than flattened
+      // into "could not delete". The dialog closes either way: the answer is in
+      // the toast, and an open dialog invites a pointless retry.
+      const detail = err?.response?.data?.detail || err?.response?.data?.message || err.message
+      toast(`${locale === 'km' ? 'លុបមិនបាន' : 'Could not delete'}: ${detail}`, 'error')
+      setConfirming(null)
+    } finally {
+      setDeleting(null)
     }
   }
 
@@ -269,36 +383,83 @@ export default function SeatMapEditor({ venueId, showVenueWarning = false, onCha
           <form className="panel-body stack-sm" onSubmit={generate}>
             <Field
               label={locale === 'km' ? 'ឈ្មោះផ្នែក' : 'Section label'}
-              hint="e.g. Zone A, Grandstand B"
+              hint={
+                existing
+                  ? locale === 'km'
+                    ? `បន្ថែមទៅផ្នែក ${existing.label} ដែលមានស្រាប់`
+                    : `Adding to the existing ${existing.label} section`
+                  : 'e.g. VIP, Normal, Grandstand B'
+              }
             >
-              <input className="input" value={section} onChange={(e) => setSection(e.target.value)} />
+              {/* A plain input with a datalist, so an existing section can be
+                  picked without being retyped — and typing a new one still
+                  works. Extending a section is now ordinary, not an error. */}
+              <input
+                className="input"
+                list="seatmap-sections"
+                value={section}
+                onChange={(e) => setSection(e.target.value)}
+              />
+              <datalist id="seatmap-sections">
+                {sections.map((x) => (
+                  <option key={x.label} value={x.label} />
+                ))}
+              </datalist>
             </Field>
             <div className="row">
-              <Field label={locale === 'km' ? 'ជួរ' : 'Rows'} className="flex-auto min-w-0">
+              <Field
+                label={locale === 'km' ? 'ជួរចាប់ផ្ដើម' : 'Start row'}
+                className="flex-auto min-w-0"
+              >
+                <input
+                  className="input"
+                  maxLength="1"
+                  placeholder={nextFreeRow}
+                  value={startRow}
+                  onChange={(e) => setStartRow(e.target.value)}
+                />
+              </Field>
+              <Field
+                label={locale === 'km' ? 'ជួរ' : 'Rows'}
+                className="flex-auto min-w-0"
+              >
                 <input
                   className="input"
                   type="number"
                   min="1"
                   max="26"
-                  value={rows}
+                  value={perRow ? counts.length : rows}
+                  disabled={perRow}
+                  title={
+                    perRow
+                      ? locale === 'km'
+                        ? 'កំណត់ដោយចំនួនកៅអីក្នុងមួយជួរ'
+                        : 'Set by the per-row seat counts'
+                      : undefined
+                  }
                   onChange={(e) => setRows(e.target.value)}
                 />
               </Field>
               <Field label={locale === 'km' ? 'កៅអី/ជួរ' : 'Seats per row'} className="flex-auto min-w-0">
+                {/* Text, not number: '12' is a rectangle, '12, 14' is a block
+                    whose second row is wider. The server has always taken
+                    explicit rows; only this form insisted on a grid. */}
                 <input
                   className="input"
-                  type="number"
-                  min="1"
-                  max="40"
+                  inputMode="numeric"
                   value={cols}
                   onChange={(e) => setCols(e.target.value)}
                 />
               </Field>
             </div>
             <p className="hint">
-              {locale === 'km'
-                ? `នឹងបង្កើត ${rows * cols} កៅអី (ជួរ A–${String.fromCharCode(64 + Number(rows || 1))})`
-                : `Creates ${rows * cols} seats, rows A–${String.fromCharCode(64 + Number(rows || 1))}.`}
+              {counts
+                ? locale === 'km'
+                  ? `នឹងបង្កើត ${plannedTotal} កៅអី — ${plannedRows.map((r) => `${r.label}×${r.count}`).join(', ')}`
+                  : `Creates ${plannedTotal} seats \u2014 ${plannedRows.map((r) => `${r.label}\u00d7${r.count}`).join(', ')}.`
+                : locale === 'km'
+                  ? 'ចំនួនកៅអី៖ 12 ឬ 12, 14'
+                  : 'Seats per row: a number, or one count per row \u2014 12, 14'}
             </p>
             <button
               className="btn btn-primary btn-block"
@@ -317,7 +478,7 @@ export default function SeatMapEditor({ venueId, showVenueWarning = false, onCha
             <p className="hint">
               {locale === 'km'
                 ? 'កម្មវិធីកែប្លង់ដោយអូសទាញនឹងមកក្នុងជំហានបន្ទាប់។'
-                : 'Drag-and-drop authoring is out of scope for v1 — the grid generator covers it.'}
+                : 'Uneven rows are supported \u2014 type one seat count per row. Drag-and-drop authoring is out of scope for v1.'}
             </p>
           </form>
         </div>
@@ -343,29 +504,34 @@ export default function SeatMapEditor({ venueId, showVenueWarning = false, onCha
                     <td className="num">{s.rows}</td>
                     <td className="num">{s.count}</td>
                     <td>
-                      {/* Disabled, not removed.
+                      {/* Live, and backed by a server that refuses the unsafe
+                          case: DELETE /venue/{id}/seats?section= returns 409
+                          naming the events when any event_seat points at these
+                          rows. The refusal is the server's to make - it is the
+                          side that can see every event at this venue - so this
+                          button asks and reports rather than pre-judging.
 
-                          There is no endpoint for it: DELETE /venue/{id} drops
-                          the whole venue, and dropping a section on its own is
-                          not a small operation - event_seat rows point at these
-                          venue_seat ids, and tickets point at those. A delete
-                          that did not first refuse when a seat is sold would
-                          take a paying customer's seat out from under them.
-
-                          It used to edit the prototype store, so it looked like
-                          it worked and changed nothing on the server. A button
-                          that lies is worse than one that is greyed out. */}
+                          It was disabled before that endpoint existed, and
+                          before that it edited a prototype store, so it looked
+                          like it worked and changed nothing. */}
                       <button
                         className="btn btn-sm btn-danger"
-                        disabled
+                        onClick={() => setConfirming(s.label)}
+                        disabled={deleting !== null}
                         title={
                           locale === 'km'
-                            ? 'មិនទាន់អាចលុបបានទេ'
-                            : 'Not available yet — deleting seats another event has sold would break those tickets'
+                            ? `លុបផ្នែក ${s.label}`
+                            : `Delete section ${s.label} \u2014 refused if any event uses these seats`
                         }
                       >
                         <Icon name="trash" size={14} />
-                        {locale === 'km' ? 'លុប' : 'Delete'}
+                        {deleting === s.label
+                          ? locale === 'km'
+                            ? 'កំពុងលុប…'
+                            : 'Deleting…'
+                          : locale === 'km'
+                            ? 'លុប'
+                            : 'Delete'}
                       </button>
                     </td>
                   </tr>
@@ -383,6 +549,22 @@ export default function SeatMapEditor({ venueId, showVenueWarning = false, onCha
         </div>
       </div>
     </div>
+
+    <ConfirmDialog
+      open={Boolean(confirming)}
+      tone="danger"
+      busy={Boolean(deleting)}
+      title={locale === 'km' ? `លុបផ្នែក ${confirming}?` : `Delete section ${confirming}?`}
+      confirmLabel={locale === 'km' ? 'លុបចោល' : 'Delete'}
+      onConfirm={() => removeSection(confirming)}
+      onClose={() => setConfirming(null)}
+    >
+      <p className="small muted">
+        {locale === 'km'
+          ? `កៅអីទាំងអស់ក្នុងផ្នែក ${confirming} នឹងត្រូវលុបចេញពីប្លង់របស់ ${venue.name_en} ជាអចិន្ត្រៃយ៍។ បើមានព្រឹត្តិការណ៍ណាប្រើកៅអីទាំងនេះ ការលុបនឹងត្រូវបានបដិសេធ។`
+          : `Every seat in ${confirming} is removed from ${venue.name_en}'s map for good. If any event has already been laid out over these seats the server refuses and nothing changes \u2014 it will name the events.`}
+      </p>
+    </ConfirmDialog>
     </>
   )
 }

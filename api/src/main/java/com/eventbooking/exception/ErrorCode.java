@@ -90,6 +90,13 @@ public enum ErrorCode {
     DUPLICATE_SEAT_CLASS_ORDER(HttpStatus.CONFLICT),
     DUPLICATE_ZONE_NAME(HttpStatus.CONFLICT),
     DUPLICATE_SEAT_LOCATION(HttpStatus.CONFLICT),
+
+    /* A venue seat section was asked to be deleted while event_seat rows still
+       point at it. Those rows are somebody's seat map - possibly with tickets
+       behind them - and venue_seat has no ON DELETE behaviour that could make
+       the removal safe. CONFLICT, not FORBIDDEN: the caller owns the venue and
+       is allowed to ask; the events using it are what make the answer no. */
+    VENUE_SEATS_IN_USE(HttpStatus.CONFLICT),
     BOOKING_NOT_PAYABLE(HttpStatus.CONFLICT),
     TICKET_NOT_CHECKED_IN(HttpStatus.CONFLICT),
     PAYMENT_ALREADY_SETTLED(HttpStatus.CONFLICT),
