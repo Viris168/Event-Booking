@@ -47,6 +47,9 @@ export const deleteVenueSeatSection = (venueId, sectionLabel) =>
     .delete(`/venue/${venueId}/seats`, { params: { section: sectionLabel } })
     .then((r) => r.data)
 
+/** Row letters are A–Z; nothing in the schema forbids 'AA', but nothing reads it either. */
+export const MAX_ROWS = 26
+
 /** The spacing every seat map in this database already uses. */
 export const SEAT_PITCH = 30
 
@@ -73,17 +76,26 @@ export const SEAT_PITCH = 30
  * rather than colliding with its row A.
  */
 export function generateSeatGrid({ sectionLabel, seatsPerRow, rows, startY = 0, startRow = 'A' }) {
+  const start = parseStartRow(startRow)
+  // Refuse rather than write nonsense. The previous version did charCode
+  // arithmetic on whatever it was handed, so a start row of '9' ran off the end
+  // of the numerals and produced rows named ':', ';', '<', '=' - straight into
+  // the database, where a seat map is expensive to correct because it is shared
+  // by every event at the venue.
+  if (!start) throw new Error(`Start row must be a letter A-Z or a number: got "${startRow}"`)
+
   const counts = Array.isArray(seatsPerRow)
     ? seatsPerRow
     : Array.from({ length: Number(rows) || 0 }, () => Number(seatsPerRow))
-  const firstRow = String(startRow).toUpperCase().charCodeAt(0) - 65
 
   const seats = []
   counts.forEach((count, r) => {
+    const rowLabel = rowLabelAt(start, r)
+    if (rowLabel == null) throw new Error('Rows run past Z')
     for (let c = 0; c < Number(count); c += 1) {
       seats.push({
         section_label: sectionLabel,
-        row_label: String.fromCharCode(65 + firstRow + r),
+        row_label: rowLabel,
         seat_number: String(c + 1),
         pos_x: (c + 1) * SEAT_PITCH,
         pos_y: startY + r * SEAT_PITCH,
@@ -93,8 +105,26 @@ export function generateSeatGrid({ sectionLabel, seatsPerRow, rows, startY = 0, 
   return seats
 }
 
-/** Row letters are A–Z; nothing in the schema forbids 'AA', but nothing reads it either. */
-export const MAX_ROWS = 26
+/**
+ * Where a block of rows starts, and in which of the two systems.
+ *
+ * A house names its rows with letters or with numbers - both are ordinary, and
+ * the venues in this database already hold each. Returns null for anything
+ * else, so the caller can refuse instead of inventing a label.
+ */
+export function parseStartRow(value) {
+  const raw = String(value ?? '').trim()
+  if (/^[A-Za-z]$/.test(raw)) return { kind: 'alpha', from: raw.toUpperCase().charCodeAt(0) - 65 }
+  if (/^\d{1,3}$/.test(raw)) return { kind: 'numeric', from: Number(raw) }
+  return null
+}
+
+/** The label `index` rows after a parsed start. null once letters pass Z. */
+export function rowLabelAt(start, index) {
+  if (start.kind === 'numeric') return String(start.from + index)
+  const i = start.from + index
+  return i < MAX_ROWS ? String.fromCharCode(65 + i) : null
+}
 
 /**
  * '12' → [12]; '12, 14, 14' → [12, 14, 14].

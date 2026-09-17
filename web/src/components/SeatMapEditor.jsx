@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import ConfirmDialog from './ConfirmDialog.jsx'
 import Icon from './Icon.jsx'
@@ -14,6 +14,8 @@ import {
   getVenue,
   getVenueSeatMap,
   parseSeatCounts,
+  parseStartRow,
+  rowLabelAt,
 } from '../api/venues.js'
 import { mapVenue } from '../api/adapters.js'
 
@@ -155,6 +157,22 @@ export default function SeatMapEditor({ venueId, showVenueWarning = false, onCha
   const [venue, setVenue] = useState(null)
   const [seats, setSeats] = useState([])
   const [busy, setBusy] = useState(false)
+  /*
+   * The real guard against a second submit, because `busy` cannot be one.
+   *
+   * `busy` is state: the handler reads it from the render closure, and
+   * setBusy(true) does not change that closure - it schedules a re-render. Two
+   * submits raised before React gets to re-render (a double click, Enter in a
+   * field followed by a click) therefore BOTH read false and both proceed, and
+   * the disabled attribute on the button is applied too late to stop the
+   * second. Each one then generates a block, so asking for rows 1-9 quietly
+   * produced 10-13 as well.
+   *
+   * A ref mutates synchronously, so the second handler sees it set. The first
+   * runs to its await before any other event is dispatched, which is what makes
+   * this airtight where the state check was not.
+   */
+  const submitting = useRef(false)
   // The section the confirm dialog is asking about, and the one mid-request.
   // Separate: the dialog stays open and busy while the request is in flight.
   const [confirming, setConfirming] = useState(null)
@@ -201,13 +219,24 @@ export default function SeatMapEditor({ venueId, showVenueWarning = false, onCha
   )
 
   /**
-   * What a blank "start row" means: the first letter this section has not used.
+   * What a blank "start row" means: the first label this section has not used,
+   * in whichever system it already names its rows by.
    *
-   * Not simply "one past the last row" — a section whose rows are A and C has a
-   * free B, and refusing to reuse it would be arbitrary.
+   * A house numbers its rows or letters them; both are ordinary and this
+   * database holds each. Suggesting 'A' to a section whose rows are 1..4 would
+   * push the organiser to mix the two in one block, so the suggestion follows
+   * what is already there.
+   *
+   * Not simply "one past the last row" - a section with rows A and C has a free
+   * B, and refusing to reuse it would be arbitrary.
    */
   const nextFreeRow = useMemo(() => {
     const taken = existing?.rowLabels ?? new Set()
+    const numeric = taken.size > 0 && [...taken].every((l) => /^\d+$/.test(l))
+    if (numeric) {
+      for (let n = 1; n <= 999; n += 1) if (!taken.has(String(n))) return String(n)
+      return '1'
+    }
     for (let i = 0; i < MAX_ROWS; i += 1) {
       const letter = String.fromCharCode(65 + i)
       if (!taken.has(letter)) return letter
@@ -215,24 +244,31 @@ export default function SeatMapEditor({ venueId, showVenueWarning = false, onCha
     return 'A'
   }, [existing])
 
-  const effectiveStartRow = (startRow.trim().toUpperCase() || nextFreeRow).slice(0, 1)
+  const effectiveStartRow = startRow.trim() || nextFreeRow
+  // null for anything that is neither a letter A-Z nor a number. The old code
+  // did charCode arithmetic on the raw input, so '9' walked off the end of the
+  // numerals and wrote rows called ':', ';', '<' into the venue.
+  const parsedStart = parseStartRow(effectiveStartRow)
   const counts = parseSeatCounts(cols)
   // One count per row means the count list IS the row count; the Rows field
   // would be a second, contradicting answer to the same question.
   const perRow = counts && counts.length > 1
   const rowCount = perRow ? counts.length : Number(rows) || 0
-  const plannedRows = counts
-    ? Array.from({ length: rowCount }, (_, i) => ({
-        label: String.fromCharCode(effectiveStartRow.charCodeAt(0) + i),
-        count: perRow ? counts[i] : counts[0],
-      }))
-    : []
+  const plannedRows =
+    counts && parsedStart
+      ? Array.from({ length: rowCount }, (_, i) => ({
+          label: rowLabelAt(parsedStart, i),
+          count: perRow ? counts[i] : counts[0],
+        }))
+      : []
+  // A letter block that runs past Z has nothing to call its last rows.
+  const runsPastZ = plannedRows.some((r) => r.label == null)
   const plannedTotal = plannedRows.reduce((n, r) => n + r.count, 0)
 
   async function generate(e) {
     e.preventDefault()
     const label = section.trim()
-    if (!label || busy) return
+    if (!label || submitting.current || busy) return
     if (!counts) {
       toast(
         locale === 'km'
@@ -242,11 +278,29 @@ export default function SeatMapEditor({ venueId, showVenueWarning = false, onCha
       )
       return
     }
-    if (rowCount < 1 || effectiveStartRow.charCodeAt(0) - 65 + rowCount > MAX_ROWS) {
+    if (!parsedStart) {
       toast(
         locale === 'km'
-          ? `\u1787\u17bd\u179a\u1798\u17b7\u1793\u17a2\u17b6\u1785\u17a0\u17bc\u179f Z \u1791\u17c1`
-          : `Rows run past Z \u2014 start row ${effectiveStartRow} leaves room for ${MAX_ROWS - (effectiveStartRow.charCodeAt(0) - 65)}`,
+          ? 'ជួរចាប់ផ្ដើមត្រូវជាអក្សរ A–Z ឬជាលេខ'
+          : 'Start row must be a single letter A\u2013Z, or a number',
+        'error',
+      )
+      return
+    }
+    if (rowCount < 1) {
+      toast(
+        locale === 'km'
+          ? 'តើប៉ុន្មានជួរ? បំពេញ “ជួរ”'
+          : 'How many rows? Fill in “Rows”.',
+        'error',
+      )
+      return
+    }
+    if (runsPastZ) {
+      toast(
+        locale === 'km'
+          ? 'ជួរមិនអាចហួស Z ទេ — ប្រើលេខជំនួស'
+          : `Rows run past Z \u2014 start row ${effectiveStartRow} leaves room for ${MAX_ROWS - parsedStart.from}. Number the rows instead if you need more.`,
         'error',
       )
       return
@@ -267,6 +321,10 @@ export default function SeatMapEditor({ venueId, showVenueWarning = false, onCha
       return
     }
 
+    // Set BEFORE the first await, so a second submit raised while this one is in
+    // flight finds it already true. Every validation refusal above returns
+    // without touching it, so nothing has to be unwound on those paths.
+    submitting.current = true
     setBusy(true)
     try {
       // Directly under the rows this section already has when extending one, so
@@ -292,16 +350,42 @@ export default function SeatMapEditor({ venueId, showVenueWarning = false, onCha
         `${grid.length} ${locale === 'km' ? '\u1780\u17c5\u17a2\u17b8\u178f\u17d2\u179a\u17bc\u179c\u1794\u17b6\u1793\u1794\u1784\u17d2\u1780\u17be\u178f' : 'seats generated'}`,
         'success',
       )
-      // The section label STAYS. Adding row B right after row A is the common
-      // next action, and the refetch below advances the suggested start row to
-      // the next free letter on its own.
+      /*
+       * The section label STAYS - adding row B right after row A is the common
+       * next action - but the SHAPE is cleared, which disables the button until
+       * the next block is described.
+       *
+       * Leaving it filled made a second press destructive in a way nothing on
+       * screen suggested: the start row auto-advances to the next free label, so
+       * pressing Generate again after making rows 6-9 of sixteen silently made
+       * rows 10-13 of sixteen. A plausible-looking block nobody asked for, in a
+       * map shared by every event at the venue, with no undo beyond deleting the
+       * whole section. A double click was enough.
+       *
+       * This used to be caught by a "that section already exists" refusal, which
+       * had to go so that a section could be extended at all. The row-level check
+       * that replaced it cannot catch a repeat press, because by then the start
+       * row has moved past every row that exists.
+       */
+      /*
+       * Clear the WHOLE shape, not just the seat counts. Rows kept its value
+       * across generates, and after a multi-count block (which ignores Rows)
+       * left it at the default 8, a following single-count entry silently made
+       * eight rows: asking for rows 6-9 produced 6-13. A field the last action
+       * did not touch must not decide the next one - so nothing is carried but
+       * the section label, and the button stays disabled until the next block
+       * is fully described.
+       */
       setStartRow('')
+      setCols('')
+      setRows('')
       setVersion((v) => v + 1)
       onChange?.()
     } catch (err) {
       const detail = err?.response?.data?.detail || err?.response?.data?.message || err.message
       toast(`${locale === 'km' ? '\u1794\u1784\u17d2\u1780\u17be\u178f\u1798\u17b7\u1793\u1794\u17b6\u1793' : 'Could not add seats'}: ${detail}`, 'error')
     } finally {
+      submitting.current = false
       setBusy(false)
     }
   }
@@ -411,16 +495,25 @@ export default function SeatMapEditor({ venueId, showVenueWarning = false, onCha
                 label={locale === 'km' ? 'ជួរចាប់ផ្ដើម' : 'Start row'}
                 className="flex-auto min-w-0"
               >
+                {/* 3, not 1: a letter is one character but a numbered row can be
+                    "12". Capping this at one was what made a numbered block
+                    impossible to type in the first place. */}
                 <input
                   className="input"
-                  maxLength="1"
+                  maxLength="3"
                   placeholder={nextFreeRow}
                   value={startRow}
                   onChange={(e) => setStartRow(e.target.value)}
                 />
               </Field>
+              {/* "How many rows", not "Rows".
+                  Beside a "Start row" field, a bare "Rows: 9" reads as "rows up
+                  to 9" at least as naturally as "nine rows" - and with start row
+                  7 those mean rows 7-9 or rows 7-15. Both readings are sensible;
+                  only one is what the field does, so it has to say which. */}
               <Field
-                label={locale === 'km' ? 'ជួរ' : 'Rows'}
+                label={locale === 'km' ? 'ចំនួនជួរ' : 'How many rows'}
+                hint={locale === 'km' ? 'ចំនួន មិនមែនលេខជួរចុងក្រោយ' : 'a count, not the last row number'}
                 className="flex-auto min-w-0"
               >
                 <input
@@ -453,18 +546,30 @@ export default function SeatMapEditor({ venueId, showVenueWarning = false, onCha
               </Field>
             </div>
             <p className="hint">
-              {counts
+              {counts && parsedStart && !runsPastZ && plannedRows.length
                 ? locale === 'km'
-                  ? `នឹងបង្កើត ${plannedTotal} កៅអី — ${plannedRows.map((r) => `${r.label}×${r.count}`).join(', ')}`
-                  : `Creates ${plannedTotal} seats \u2014 ${plannedRows.map((r) => `${r.label}\u00d7${r.count}`).join(', ')}.`
-                : locale === 'km'
-                  ? 'ចំនួនកៅអី៖ 12 ឬ 12, 14'
-                  : 'Seats per row: a number, or one count per row \u2014 12, 14'}
+                  ? `នឹងបង្កើតជួរ ${plannedRows[0].label}–${plannedRows[plannedRows.length - 1].label} (${plannedRows.length} ជួរ, ${plannedTotal} កៅអី)${perRow ? ` — ${plannedRows.map((r) => r.count).join(', ')}` : ''}`
+                  : `Creates rows ${plannedRows[0].label}\u2013${plannedRows[plannedRows.length - 1].label} \u2014 ${plannedRows.length} row${plannedRows.length > 1 ? 's' : ''}, ${plannedTotal} seats${perRow ? ` (${plannedRows.map((r) => r.count).join(', ')} per row)` : ''}.`
+                : !parsedStart
+                  ? locale === 'km'
+                    ? 'ជួរចាប់ផ្ដើមត្រូវជាអក្សរ A–Z ឬជាលេខ'
+                    : 'Start row must be a single letter A\u2013Z, or a number.'
+                  : runsPastZ
+                    ? locale === 'km'
+                      ? 'ជួរហួស Z — ប្រើលេខជំនួស'
+                      : 'That many rows runs past Z. Number the rows instead.'
+                    : !plannedRows.length
+                      ? locale === 'km'
+                        ? 'តើប៉ុន្មានជួរ?'
+                        : 'How many rows?'
+                    : locale === 'km'
+                      ? 'ចំនួនកៅអី៖ 12 ឬ 12, 14'
+                      : 'Seats per row: a number, or one count per row \u2014 12, 14'}
             </p>
             <button
               className="btn btn-primary btn-block"
               type="submit"
-              disabled={busy || !section.trim()}
+              disabled={busy || !section.trim() || !parsedStart || !counts || rowCount < 1 || runsPastZ}
             >
               <Icon name="grid" size={15} />
               {busy
