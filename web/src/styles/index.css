@@ -3921,7 +3921,17 @@
    No white ground, no padding, no shadow — just the image on the backdrop, at
    whatever size the viewport allows. */
 .qr-lightbox-panel.is-media {
-  width: min(96vw, 76rem);
+  /*
+   * Sized by the picture, not by a fixed width.
+   *
+   * 76rem capped a landscape chart at 1216px and left a third of a 900px-tall
+   * screen empty below it - the image was bound by a number rather than by the
+   * room available. Letting the panel shrink-wrap its content and capping the
+   * IMAGE against both viewport axes instead means the picture grows until it
+   * runs out of screen, whichever edge it reaches first.
+   */
+  width: auto;
+  max-width: 96vw;
   padding: 0;
   gap: 0;
   background: transparent;
@@ -3929,7 +3939,17 @@
 }
 
 .qr-lightbox-code.is-media {
-  width: 100%;
+  /*
+   * The wrapper claims the screen and the image fits itself inside it.
+   *
+   * Sizing the <img> alone could not do this: width/height auto stops at the
+   * file's natural pixels, so a 1024px chart opened at 1024px on a 1440px
+   * screen - smaller than before. Giving the BOX both dimensions and letting
+   * object-fit scale the picture into it means it grows until it meets an
+   * edge, whichever comes first, and never crops.
+   */
+  width: 96vw;
+  height: 94vh;
   padding: 0;
   background: transparent;
   border-radius: 0;
@@ -5011,11 +5031,21 @@
 .venue-layout-tap { margin-top: 0.2rem; }
 
 .venue-layout-full {
+  /*
+   * Fills its box without cropping: `contain` scales the picture up until one
+   * axis meets an edge and leaves the other short. A seating plan with its back
+   * rows cut off is a section somebody cannot find themselves in, so `cover` is
+   * not an option.
+   *
+   * No white ground. The leftover space on the short axis would show as bars
+   * beside the picture, and the dark backdrop reads as "nothing here" where a
+   * white slab reads as part of the image.
+   */
   width: 100%;
-  height: auto;
+  height: 100%;
+  object-fit: contain;
   display: block;
-  background: #fff;
-  border-radius: 0.5rem;
+  background: transparent;
 }
 
 /* ==========================================================================
