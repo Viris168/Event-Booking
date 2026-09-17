@@ -287,7 +287,16 @@ export default function SeatMapEditor({ venueId, showVenueWarning = false, onCha
       )
       return
     }
-    if (rowCount < 1 || runsPastZ) {
+    if (rowCount < 1) {
+      toast(
+        locale === 'km'
+          ? 'តើប៉ុន្មានជួរ? បំពេញ “ជួរ”'
+          : 'How many rows? Fill in “Rows”.',
+        'error',
+      )
+      return
+    }
+    if (runsPastZ) {
       toast(
         locale === 'km'
           ? 'ជួរមិនអាចហួស Z ទេ — ប្រើលេខជំនួស'
@@ -358,8 +367,18 @@ export default function SeatMapEditor({ venueId, showVenueWarning = false, onCha
        * that replaced it cannot catch a repeat press, because by then the start
        * row has moved past every row that exists.
        */
+      /*
+       * Clear the WHOLE shape, not just the seat counts. Rows kept its value
+       * across generates, and after a multi-count block (which ignores Rows)
+       * left it at the default 8, a following single-count entry silently made
+       * eight rows: asking for rows 6-9 produced 6-13. A field the last action
+       * did not touch must not decide the next one - so nothing is carried but
+       * the section label, and the button stays disabled until the next block
+       * is fully described.
+       */
       setStartRow('')
       setCols('')
+      setRows('')
       setVersion((v) => v + 1)
       onChange?.()
     } catch (err) {
@@ -540,7 +559,7 @@ export default function SeatMapEditor({ venueId, showVenueWarning = false, onCha
             <button
               className="btn btn-primary btn-block"
               type="submit"
-              disabled={busy || !section.trim() || !parsedStart || !counts || runsPastZ}
+              disabled={busy || !section.trim() || !parsedStart || !counts || rowCount < 1 || runsPastZ}
             >
               <Icon name="grid" size={15} />
               {busy
