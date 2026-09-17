@@ -37,7 +37,18 @@ import org.springframework.stereotype.Component;
 @Component
 public class OrganizerContactLookup {
 
-    /** Both fields are free text the organiser typed; neither is required. */
+    /**
+     * Both fields are free text the organiser typed; neither is required.
+     *
+     * <p>{@code telegramHandle} may arrive in any of the spellings a person
+     * writes a handle in. V32 stores the account field bare, but the
+     * application field is unnormalised - and since the account now wins, the
+     * value here is usually the bare one, which is exactly what makes assuming
+     * it tempting. It is not a guarantee: callers keep handing this to
+     * {@code web/src/lib/contactLinks.js}, which reduces "@sokha",
+     * "https://t.me/sokha" and "sokha" to the same thing before building a
+     * link.
+     */
     public record Contact(String telegramHandle, String facebookUrl) {
         public static final Contact NONE = new Contact(null, null);
     }
