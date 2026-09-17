@@ -10,11 +10,13 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -69,5 +71,31 @@ public class VenueSeatController {
     @Operation(summary = "This venue's seat map")
     public VenueSeatMapResponse get(@PathVariable Long venueId) {
         return venueSeatService.getVenueSeatMap(venueId);
+    }
+
+    @DeleteMapping
+    @Operation(
+            summary = "Remove one section from this venue's map",
+            description = """
+                    Only while no event has been laid out over it. `event_seat` rows point at
+                    these seats with a plain foreign key and tickets reach back through those,
+                    so a section any event uses is refused with **409** naming the events -
+                    not silently removed, and never cascaded into somebody's sold ticket.
+
+                    The narrow case this exists for is the common one: a section generated with
+                    the wrong row or seat count, deleted before anything is built on it. Without
+                    it the seat map is append-only and a typo is permanent.
+
+                    Deleting a section that is not there succeeds. The caller wanted it gone and
+                    it is gone, and a retried request should not become a 404.
+
+                    Returns the remaining map, so the editor redraws from the server.""")
+    public VenueSeatMapResponse deleteSection(
+            @CurrentUserId Long actorUserId,
+            @PathVariable Long venueId,
+            @RequestParam("section") String sectionLabel) {
+
+        Long organizerId = organizerResolver.requireOrganizerId(actorUserId);
+        return venueSeatService.deleteSection(organizerId, venueId, sectionLabel);
     }
 }
