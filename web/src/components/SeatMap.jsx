@@ -22,8 +22,19 @@ export default function SeatMap({ seats, seatClasses, selected, onToggle, disabl
       if (!byRow.has(seat.row_label)) byRow.set(seat.row_label, [])
       byRow.get(seat.row_label).push(seat)
     }
-    // Sort rows alphabetically, then seats numerically
-    const sortedRows = [...byRow.keys()].sort()
+    /*
+     * Numeric collation on the ROWS too, not just on the seats below.
+     *
+     * A bare .sort() compares row labels as text, which is right for the
+     * lettered houses this was written against and wrong the moment a house
+     * numbers its rows: "10" sorts before "2", so a thirteen-row section came
+     * out 1, 10, 11, 12, 13, 2, 3 ... and read as though rows were duplicated
+     * and scattered. The seats inside each row already collated numerically -
+     * this is the same comparator, applied one level up.
+     */
+    const sortedRows = [...byRow.keys()].sort((a, b) =>
+      String(a).localeCompare(String(b), undefined, { numeric: true }),
+    )
     for (const row of sortedRows) {
       byRow.get(row).sort((a, b) => {
         return a.seat_number.localeCompare(b.seat_number, undefined, { numeric: true })
