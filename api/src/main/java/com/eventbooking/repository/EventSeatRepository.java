@@ -48,4 +48,23 @@ public interface EventSeatRepository extends JpaRepository<EventSeat, Long> {
      * write.
      */
     long countByEvent_IdAndStatus(Long eventId, com.eventbooking.Enumeration.SeatStatus status);
+
+    /**
+     * Which events have laid inventory over these venue seats.
+     *
+     * <p>Asked before a venue seat section is deleted. Deliberately NOT filtered
+     * by status: an AVAILABLE event_seat is still a row with a foreign key into
+     * venue_seat, so deleting under it fails at the constraint whether or not
+     * anyone has bought it. The status distinction matters when removing seats
+     * from an EVENT; here the reference itself is the blocker.
+     *
+     * <p>Returns event ids rather than a count so the refusal can name them -
+     * "in use by 2 events" is not something an organiser can act on.
+     */
+    @org.springframework.data.jpa.repository.Query("""
+            select distinct s.event.id
+            from EventSeat s
+            where s.venueSeat.id in :venueSeatIds
+            """)
+    List<Long> findEventIdsUsingVenueSeats(@Param("venueSeatIds") java.util.Collection<Long> venueSeatIds);
 }

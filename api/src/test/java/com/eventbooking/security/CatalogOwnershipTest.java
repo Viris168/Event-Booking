@@ -2,6 +2,7 @@ package com.eventbooking.security;
 
 import com.eventbooking.exception.catalog.SeatClassNotFoundException;
 import com.eventbooking.exception.catalog.VenueSeatNotFoundException;
+import com.eventbooking.exception.catalog.VenueSeatsInUseException;
 import com.eventbooking.dto.VenueSeat.CreateVenueSeatsRequest;
 import com.eventbooking.dto.eventseat.GenerateEventSeatsRequest;
 import com.eventbooking.dto.eventzone.CreateEventZoneRequest;
@@ -170,7 +171,8 @@ class CatalogOwnershipTest {
     void createVenueSeatsRefusesANonOwner() {
         when(venueRepository.findById(3L)).thenReturn(Optional.of(venue()));
         VenueSeatServiceimpl service =
-                new VenueSeatServiceimpl(venueSeatRepository, venueRepository, organizerResolver);
+                new VenueSeatServiceimpl(venueSeatRepository, venueRepository, eventSeatRepository,
+                        organizerResolver);
 
         assertThatThrownBy(() -> service.createVenueSeats(INTRUDER, 3L, seatRequest()))
                 .isInstanceOf(NotResourceOwnerException.class);
@@ -197,7 +199,8 @@ class CatalogOwnershipTest {
         Venue orphan = Venue.builder().id(3L).organizerId(null).build();
         when(venueRepository.findById(3L)).thenReturn(Optional.of(orphan));
         VenueSeatServiceimpl service =
-                new VenueSeatServiceimpl(venueSeatRepository, venueRepository, organizerResolver);
+                new VenueSeatServiceimpl(venueSeatRepository, venueRepository, eventSeatRepository,
+                        organizerResolver);
 
         // Not just the intruder - the organiser who would have been let in while
         // sharing existed is refused too. That IS the behaviour change.
@@ -214,11 +217,96 @@ class CatalogOwnershipTest {
     void theVenuesOwnerIsStillAdmitted() {
         when(venueRepository.findById(3L)).thenReturn(Optional.of(venue()));
         VenueSeatServiceimpl service =
-                new VenueSeatServiceimpl(venueSeatRepository, venueRepository, organizerResolver);
+                new VenueSeatServiceimpl(venueSeatRepository, venueRepository, eventSeatRepository,
+                        organizerResolver);
 
         service.createVenueSeats(OWNER, 3L, seatRequest());
 
         verify(venueSeatRepository).saveAll(any());
+    }
+
+    // --- deleting a venue seat section -------------------------------------
+
+    @Test
+    void deleteSectionRefusesANonOwner() {
+        when(venueRepository.findById(3L)).thenReturn(Optional.of(venue()));
+        VenueSeatServiceimpl service =
+                new VenueSeatServiceimpl(venueSeatRepository, venueRepository, eventSeatRepository,
+                        organizerResolver);
+
+        assertThatThrownBy(() -> service.deleteSection(INTRUDER, 3L, "VIP"))
+                .isInstanceOf(NotResourceOwnerException.class);
+
+        verify(venueSeatRepository, never()).deleteAll(any());
+    }
+
+    /**
+     * The guard that matters: an event is built on these seats, so they stay.
+     *
+     * <p>{@code event_seat.venue_seat_id} is a plain foreign key with no cascade,
+     * and tickets reach back through those rows. Deleting underneath one is
+     * either a constraint violation surfacing as a 500 or, if the constraint
+     * were ever relaxed, a paying customer losing their seat. Neither is a
+     * delete anyone asked for.
+     *
+     * <p>Deliberately NOT status-dependent: an AVAILABLE event_seat still holds
+     * the reference, so it blocks too.
+     */
+    @Test
+    void deleteSectionRefusesWhenAnEventUsesTheSeats() {
+        when(venueRepository.findById(3L)).thenReturn(Optional.of(venue()));
+        when(venueSeatRepository.findByVenueIdAndSectionLabel(3L, "VIP"))
+                .thenReturn(List.of(VenueSeat.builder().id(11L).venue(venue()).build()));
+        when(eventSeatRepository.findEventIdsUsingVenueSeats(List.of(11L)))
+                .thenReturn(List.of(7L, 8L));
+        VenueSeatServiceimpl service =
+                new VenueSeatServiceimpl(venueSeatRepository, venueRepository, eventSeatRepository,
+                        organizerResolver);
+
+        assertThatThrownBy(() -> service.deleteSection(OWNER, 3L, "VIP"))
+                .isInstanceOf(VenueSeatsInUseException.class)
+                // The events are the actionable part - the organiser cannot deal
+                // with them without being told which they are.
+                .hasMessageContaining("7")
+                .hasMessageContaining("8");
+
+        verify(venueSeatRepository, never()).deleteAll(any());
+    }
+
+    /** Nothing built on it: the section goes, which is the whole point. */
+    @Test
+    void deleteSectionRemovesAnUnusedSection() {
+        VenueSeat seat = VenueSeat.builder().id(11L).venue(venue()).build();
+        when(venueRepository.findById(3L)).thenReturn(Optional.of(venue()));
+        when(venueSeatRepository.findByVenueIdAndSectionLabel(3L, "VIP")).thenReturn(List.of(seat));
+        when(eventSeatRepository.findEventIdsUsingVenueSeats(List.of(11L))).thenReturn(List.of());
+        VenueSeatServiceimpl service =
+                new VenueSeatServiceimpl(venueSeatRepository, venueRepository, eventSeatRepository,
+                        organizerResolver);
+
+        service.deleteSection(OWNER, 3L, "VIP");
+
+        verify(venueSeatRepository).deleteAll(List.of(seat));
+    }
+
+    /**
+     * Deleting a section that is not there succeeds and asks nothing further.
+     *
+     * <p>Two clicks on the button, or a retried request, land here. A 404 would
+     * turn "it is already gone" into an error the organiser has to interpret.
+     */
+    @Test
+    void deleteSectionIsQuietWhenTheSectionIsAlreadyGone() {
+        when(venueRepository.findById(3L)).thenReturn(Optional.of(venue()));
+        when(venueSeatRepository.findByVenueIdAndSectionLabel(3L, "GONE")).thenReturn(List.of());
+        VenueSeatServiceimpl service =
+                new VenueSeatServiceimpl(venueSeatRepository, venueRepository, eventSeatRepository,
+                        organizerResolver);
+
+        service.deleteSection(OWNER, 3L, "GONE");
+
+        verify(venueSeatRepository, never()).deleteAll(any());
+        verify(eventSeatRepository, never()).findEventIdsUsingVenueSeats(any());
     }
 
     // --- event seats ------------------------------------------------------
