@@ -321,10 +321,25 @@ export default function SeatMapEditor({ venueId, showVenueWarning = false, onCha
         `${grid.length} ${locale === 'km' ? '\u1780\u17c5\u17a2\u17b8\u178f\u17d2\u179a\u17bc\u179c\u1794\u17b6\u1793\u1794\u1784\u17d2\u1780\u17be\u178f' : 'seats generated'}`,
         'success',
       )
-      // The section label STAYS. Adding row B right after row A is the common
-      // next action, and the refetch below advances the suggested start row to
-      // the next free letter on its own.
+      /*
+       * The section label STAYS - adding row B right after row A is the common
+       * next action - but the SHAPE is cleared, which disables the button until
+       * the next block is described.
+       *
+       * Leaving it filled made a second press destructive in a way nothing on
+       * screen suggested: the start row auto-advances to the next free label, so
+       * pressing Generate again after making rows 6-9 of sixteen silently made
+       * rows 10-13 of sixteen. A plausible-looking block nobody asked for, in a
+       * map shared by every event at the venue, with no undo beyond deleting the
+       * whole section. A double click was enough.
+       *
+       * This used to be caught by a "that section already exists" refusal, which
+       * had to go so that a section could be extended at all. The row-level check
+       * that replaced it cannot catch a repeat press, because by then the start
+       * row has moved past every row that exists.
+       */
       setStartRow('')
+      setCols('')
       setVersion((v) => v + 1)
       onChange?.()
     } catch (err) {
