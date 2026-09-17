@@ -506,8 +506,14 @@ export default function SeatMapEditor({ venueId, showVenueWarning = false, onCha
                   onChange={(e) => setStartRow(e.target.value)}
                 />
               </Field>
+              {/* "How many rows", not "Rows".
+                  Beside a "Start row" field, a bare "Rows: 9" reads as "rows up
+                  to 9" at least as naturally as "nine rows" - and with start row
+                  7 those mean rows 7-9 or rows 7-15. Both readings are sensible;
+                  only one is what the field does, so it has to say which. */}
               <Field
-                label={locale === 'km' ? 'ជួរ' : 'Rows'}
+                label={locale === 'km' ? 'ចំនួនជួរ' : 'How many rows'}
+                hint={locale === 'km' ? 'ចំនួន មិនមែនលេខជួរចុងក្រោយ' : 'a count, not the last row number'}
                 className="flex-auto min-w-0"
               >
                 <input
@@ -540,10 +546,10 @@ export default function SeatMapEditor({ venueId, showVenueWarning = false, onCha
               </Field>
             </div>
             <p className="hint">
-              {counts && parsedStart && !runsPastZ
+              {counts && parsedStart && !runsPastZ && plannedRows.length
                 ? locale === 'km'
-                  ? `នឹងបង្កើត ${plannedTotal} កៅអី — ${plannedRows.map((r) => `${r.label}×${r.count}`).join(', ')}`
-                  : `Creates ${plannedTotal} seats \u2014 ${plannedRows.map((r) => `${r.label}\u00d7${r.count}`).join(', ')}.`
+                  ? `នឹងបង្កើតជួរ ${plannedRows[0].label}–${plannedRows[plannedRows.length - 1].label} (${plannedRows.length} ជួរ, ${plannedTotal} កៅអី)${perRow ? ` — ${plannedRows.map((r) => r.count).join(', ')}` : ''}`
+                  : `Creates rows ${plannedRows[0].label}\u2013${plannedRows[plannedRows.length - 1].label} \u2014 ${plannedRows.length} row${plannedRows.length > 1 ? 's' : ''}, ${plannedTotal} seats${perRow ? ` (${plannedRows.map((r) => r.count).join(', ')} per row)` : ''}.`
                 : !parsedStart
                   ? locale === 'km'
                     ? 'ជួរចាប់ផ្ដើមត្រូវជាអក្សរ A–Z ឬជាលេខ'
@@ -552,6 +558,10 @@ export default function SeatMapEditor({ venueId, showVenueWarning = false, onCha
                     ? locale === 'km'
                       ? 'ជួរហួស Z — ប្រើលេខជំនួស'
                       : 'That many rows runs past Z. Number the rows instead.'
+                    : !plannedRows.length
+                      ? locale === 'km'
+                        ? 'តើប៉ុន្មានជួរ?'
+                        : 'How many rows?'
                     : locale === 'km'
                       ? 'ចំនួនកៅអី៖ 12 ឬ 12, 14'
                       : 'Seats per row: a number, or one count per row \u2014 12, 14'}
