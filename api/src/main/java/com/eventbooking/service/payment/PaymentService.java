@@ -29,6 +29,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -54,7 +55,11 @@ public class PaymentService {
             BookingStatus.AWAITING_CONFIRMATION,
             BookingStatus.PAYMENT_FAILED);
 
-    private static final Duration MIN_QR_LIFE = Duration.ofSeconds(30);
+    /**
+     * Below this, an attempt is not worth opening: the customer cannot realistically
+     * scan, switch app and confirm inside it, and the booking is about to be swept.
+     */
+    private static final Duration MIN_ATTEMPT_LIFE = Duration.ofSeconds(30);
 
     private final PaymentTransactionRepository paymentRepository;
     private final BookingRepository bookingRepository;
@@ -66,6 +71,13 @@ public class PaymentService {
     private final BookingProperties bookingProperties;
     private final AbaPaywayGateway abaPaywayGateway;
 
+    /**
+     * PayWay's equivalent of {@code app.payment.bakong.qr-ttl}. It lives under the
+     * root {@code payway} block with the rest of the gateway's settings rather than
+     * in {@link PaymentProperties}, which is Bakong's.
+     */
+    private final Duration paywayCheckoutTtl;
+
     public PaymentService(PaymentTransactionRepository paymentRepository,
                           BookingRepository bookingRepository,
                           BookingStateMachine stateMachine,
@@ -74,7 +86,8 @@ public class PaymentService {
                           TicketService ticketService,
                           PaymentProperties paymentProperties,
                           BookingProperties bookingProperties,
-                          AbaPaywayGateway abaPaywayGateway) {
+                          AbaPaywayGateway abaPaywayGateway,
+                          @Value("${payway.checkout-ttl:5m}") Duration paywayCheckoutTtl) {
         this.paymentRepository = paymentRepository;
         this.bookingRepository = bookingRepository;
         this.stateMachine = stateMachine;
@@ -84,6 +97,7 @@ public class PaymentService {
         this.paymentProperties = paymentProperties;
         this.bookingProperties = bookingProperties;
         this.abaPaywayGateway = abaPaywayGateway;
+        this.paywayCheckoutTtl = paywayCheckoutTtl;
     }
 
     @Transactional
@@ -135,6 +149,10 @@ public class PaymentService {
     }
 
     private PaymentTransaction openAbaAttempt(Booking booking, Instant now) {
+        // Computed before the gateway call: an attempt with no time left throws
+        // here rather than after ABA has opened a transaction nobody can pay.
+        Instant expiresAt = attemptExpiry(booking, now, paywayCheckoutTtl);
+
         String tranId = String.valueOf(System.currentTimeMillis());
 
         String qrPayload = abaPaywayGateway.createQrPayload(booking, tranId);
@@ -150,7 +168,7 @@ public class PaymentService {
                 .amountUsdCents(booking.getTotalUsdCents())
                 .amountKhr(booking.getTotalKhr())
                 .status(PaymentStatus.PENDING)
-                .expiresAt(now.plus(Duration.ofMinutes(30)))
+                .expiresAt(expiresAt)
                 .createdAt(now)
                 .qrPayload(qrPayload)
                 .build());
@@ -168,7 +186,7 @@ public class PaymentService {
         PaymentProperties.Bakong config = paymentProperties.bakong();
         PaymentCurrency currency = config.currency();
 
-        Instant expiresAt = qrExpiry(booking, now);
+        Instant expiresAt = attemptExpiry(booking, now, paymentProperties.bakong().qrTtl());
         long minorUnits = currency == PaymentCurrency.KHR
                 ? booking.getTotalKhr()
                 : booking.getTotalUsdCents();
@@ -199,17 +217,23 @@ public class PaymentService {
     }
 
     /**
-     * A QR lives for its configured TTL, but never past the booking's own
-     * payment window: once that lapses the seats go back on sale, and a QR
-     * outliving them is an invitation to pay for something already resold.
+     * An attempt lives for its provider's configured TTL, but never past the
+     * booking's own payment window: once that lapses the seats go back on sale,
+     * and an attempt outliving them is an invitation to pay for something
+     * already resold.
+     *
+     * <p>Both providers come through here. PayWay used to carry a hardcoded 30
+     * minutes instead, which outlived the 15-minute window twice over - for the
+     * back half of it the screen counted down against seats the sweeper had
+     * already returned to sale.
      */
-    private Instant qrExpiry(Booking booking, Instant now) {
+    private Instant attemptExpiry(Booking booking, Instant now, Duration ttl) {
         Instant bookingDeadline = booking.getCreatedAt()
                 .plus(Duration.ofMinutes(bookingProperties.paymentWindowMinutes()));
-        Instant ttlExpiry = now.plus(paymentProperties.bakong().qrTtl());
+        Instant ttlExpiry = now.plus(ttl);
         Instant expiresAt = ttlExpiry.isBefore(bookingDeadline) ? ttlExpiry : bookingDeadline;
 
-        if (expiresAt.isBefore(now.plus(MIN_QR_LIFE))) {
+        if (expiresAt.isBefore(now.plus(MIN_ATTEMPT_LIFE))) {
             // The booking is out of time; the sweeper is about to expire it and
             // hand the inventory back. Issuing a QR here would take money for
             // seats that are on their way to somebody else.
