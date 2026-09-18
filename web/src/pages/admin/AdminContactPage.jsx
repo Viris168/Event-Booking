@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import FormDialog from '../../components/FormDialog.jsx'
 import Icon from '../../components/Icon.jsx'
 import { Alert, Empty, ResponsiveTable, TablePager } from '../../components/ui.jsx'
+import { Skeleton } from '../../components/Skeleton.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
 import { telegramUrl } from '../../lib/contactLinks.js'
@@ -198,13 +199,25 @@ export default function AdminContactPage() {
                 </tr>
               </thead>
               <tbody>
-                {loading && (
-                  <tr>
-                    <td colSpan={6} className="muted small">
-                      {km ? 'កំពុងទាញយក…' : 'Loading…'}
-                    </td>
-                  </tr>
-                )}
+                {/* Ten placeholder rows rather than one line of "Loading…".
+                    A single row leaves the page shorter than the window, which
+                    parks the footer in the middle of the screen until the
+                    messages arrive and then throws it a screenful down. These
+                    rows live inside the existing <tbody>, so they cannot use
+                    TableRowsSkeleton - it brings a <tbody> of its own. */}
+                {loading &&
+                  Array.from({ length: 10 }, (_, r) => (
+                    <tr key={`skel-${r}`} aria-hidden="true">
+                      {Array.from({ length: 6 }, (_, c) => (
+                        <td key={c}>
+                          <Skeleton
+                            className="skel-line"
+                            style={{ width: ['70%', '45%', '60%', '40%', '55%', '35%'][(r + c) % 6] }}
+                          />
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
 
                 {!loading && rows.length === 0 && (
                   <tr>

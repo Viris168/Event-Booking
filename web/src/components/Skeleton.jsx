@@ -398,3 +398,34 @@ export function BookingDetailSkeleton() {
     </SkeletonRegion>
   )
 }
+
+/**
+ * A whole table's worth of placeholder, panel and all.
+ *
+ * <p>For the screens that render nothing at all while they wait - a one-line
+ * "Loading…", or a table gated behind `rows.length > 0`. Those collapse the
+ * document to a couple of hundred pixels, which parks the footer halfway up the
+ * window; when the rows arrive the page grows by a screenful and the footer
+ * leaps out from under the reader. That is not the footer misbehaving, it is
+ * the page having had no height to begin with.
+ *
+ * <p>Ten rows is the number on purpose: it is taller than a viewport on any
+ * laptop, so the footer is below the fold both before and after the data lands
+ * and nothing the reader can see moves at all.
+ */
+export function TableSkeleton({ rows = 10, cols = 6, label }) {
+  const { t } = useLocale()
+  return (
+    <div className="panel" role="status" aria-busy="true" aria-live="polite">
+      <span className="sr-only">{label || t('loading')}</span>
+      <table className="table">
+        <TableRowsSkeleton
+          rows={rows}
+          cols={cols}
+          cellClassName="px-[0.9rem] py-[0.7rem]"
+          rowClassName="border-b border-line-2"
+        />
+      </table>
+    </div>
+  )
+}

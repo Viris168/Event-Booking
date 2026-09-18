@@ -14,6 +14,13 @@ const dict = {
   organizer: { en: "Organizer", km: "អ្នករៀបចំកម្មវិធី" },
   admin: { en: "Admin", km: "អ្នកគ្រប់គ្រង" },
   becomeOrganizer: { en: "Become an organizer", km: "ក្លាយជាអ្នករៀបចំ" },
+
+  // Role enum values, keyed by the name the API sends. Without these the
+  // account panel printed the constant itself - PLATFORM_ADMIN, shouted in
+  // screaming snake case at the one person who already knows what they are.
+  CUSTOMER: { en: "Customer", km: "អតិថិជន" },
+  ORGANIZER: { en: "Organizer", km: "អ្នករៀបចំកម្មវិធី" },
+  PLATFORM_ADMIN: { en: "Platform admin", km: "អ្នកគ្រប់គ្រងប្រព័ន្ធ" },
   login: { en: "Log in", km: "ចូលគណនី" },
   register: { en: "Sign up", km: "បង្កើតគណនី" },
   logout: { en: "Log out", km: "ចាកចេញ" },
@@ -307,6 +314,12 @@ const dict = {
   // page is called - an admin opening this is reading what was sent, not
   // looking for a way to send something.
   supportInbox: { en: "Messages", km: "សារ" },
+
+  // Spoken forms of the subnav badges. The number is rendered as a glyph and
+  // hidden from assistive tech; these are what it is read as, so they have to
+  // be words rather than the badge's own "4".
+  waiting: { en: "waiting", km: "កំពុងរង់ចាំ" },
+  needsAttention: { en: "needs attention", km: "ត្រូវការការពិនិត្យ" },
   disable: { en: "Disable", km: "បិទដំណើរការ" },
   enable: { en: "Enable", km: "បើកដំណើរការ" },
   takeDown: { en: "Take down", km: "ដកចេញពីប្រព័ន្ធ" },

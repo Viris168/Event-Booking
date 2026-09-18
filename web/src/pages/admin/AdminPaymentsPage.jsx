@@ -12,6 +12,7 @@ import {
   ResponsiveTable,
   TablePager,
 } from '../../components/ui.jsx'
+import { TableSkeleton } from '../../components/Skeleton.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
 import { timeAgo, usd } from '../../lib/format.js'
@@ -558,7 +559,7 @@ export default function AdminPaymentsPage() {
       )}
 
       {browsingEvents ? null : loadingPayments ? (
-        <p className="muted small">{km ? 'កំពុងផ្ទុក…' : 'Loading…'}</p>
+        <TableSkeleton rows={10} cols={8} />
       ) : payments.length === 0 && !paymentsError ? (
         <Empty
           icon={stuckOnly ? 'checkCircle' : 'search'}

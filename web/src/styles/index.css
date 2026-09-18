@@ -166,6 +166,20 @@
 
 /* ------------------------------------------------------------------ base */
 @layer base {
+  /*
+   * The scrollbar's space is always reserved, whether or not there is one.
+   *
+   * Without it, moving between a route that overflows and one that does not
+   * takes the scrollbar away and hands its width back to the page, so the
+   * whole centred shell - navbar, table, footer - slides sideways by however
+   * wide the scrollbar is. It reads as the layout twitching on every
+   * navigation. No effect where the platform draws overlay scrollbars, which
+   * already take no space.
+   */
+  html {
+    scrollbar-gutter: stable;
+  }
+
   body {
     @apply bg-page text-ink font-sans antialiased;
     font-size: 15px;
@@ -175,6 +189,35 @@
        tint down the screen as you scroll and read as a smudge. */
     background-image: radial-gradient(1100px 460px at 50% 0%, rgba(18, 97, 60, 0.055), transparent 72%);
     background-repeat: no-repeat;
+  }
+
+  /*
+   * The footer sits on the bottom of the window, not on the bottom of the
+   * content.
+   *
+   * On any page short enough not to fill the screen - an empty booking list, a
+   * filtered event search with no results, a 404 - the footer rode up to wherever
+   * the content happened to stop and left a band of bare paper under it, which
+   * reads as the page having been cut off. The shell is a column instead and
+   * <main> takes the slack, so the footer is either at the bottom of a long
+   * document or at the bottom of the window, and never floating between them.
+   *
+   * `flex: 1 0 auto` rather than `flex: 1`: the shorthand's `1` basis is 0%,
+   * which makes main's height come entirely from the free space and lets a tall
+   * page collapse; `auto` keeps content height as the floor and only ever grows.
+   *
+   * 100dvh is the mobile-correct one - 100vh on iOS Safari measures the window
+   * with the address bar collapsed, which is taller than what is on screen, so
+   * the footer sat a toolbar's height below the fold. vh stays first as the
+   * fallback for anything that does not know dvh.
+   */
+  #root {
+    @apply flex flex-col;
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+  #root > main {
+    flex: 1 0 auto;
   }
 
   /* Khmer needs more vertical room and a script-aware family. */
@@ -1093,13 +1136,45 @@
     @apply mx-auto flex max-w-shell gap-1 px-page;
   }
   .subnav a {
-    @apply whitespace-nowrap border-b-2 border-transparent px-[0.7rem] py-3 text-[0.88rem] font-semibold text-muted;
+    @apply inline-flex items-center whitespace-nowrap border-b-2 border-transparent px-[0.7rem]
+      py-3 text-[0.88rem] font-semibold text-muted;
   }
   .subnav a:hover {
     @apply text-ink no-underline;
   }
   .subnav a.active {
     @apply border-b-brand-500 text-link;
+  }
+
+  /*
+   * How deep the queue behind a tab is.
+   *
+   * Quiet on purpose: the same weight as the label, in the surface the strip
+   * already uses, carrying no colour of its own. This is a workload, not an
+   * alarm - four tabs wear one, and if each shouted in red then none of them
+   * would be the one to look at. The only red on this strip is .subnav-dot.
+   *
+   * tabular-nums so the badge does not change width as the count ticks between
+   * 1 and 7, which in a strip that scrolls would nudge every tab after it.
+   */
+  .subnav-count {
+    @apply ml-[0.35rem] inline-flex min-w-5 items-center justify-center rounded-full bg-surface-2
+      px-[0.3rem] py-[0.05rem] text-[0.7rem] font-bold text-ink-2 tabular-nums;
+  }
+  /* On the tab you are already on, the count belongs to the active colour
+     rather than sitting on it as a grey chip. */
+  .subnav a.active .subnav-count {
+    @apply bg-tint-2 text-on-tint;
+  }
+
+  /*
+   * Something is wrong behind this tab, and the number would not change what
+   * you do about it - one stuck payment or five, you open the screen and read
+   * all of them. So: a mark, not a count. Red, because it is the one thing on
+   * this strip that is not ordinary work.
+   */
+  .subnav-dot {
+    @apply ml-[0.4rem] inline-block size-[7px] flex-none rounded-full bg-danger;
   }
 
   /* --------------------------------------------------------------- buttons */
@@ -3516,168 +3591,293 @@
   }
 
   /* ----------------------------------------------------------------- footer */
-  /* Dark, to bookend the navbar; same shell width so its edges stay flush. */
   /*
-   * A deliberate edge rather than a colour change.
+   * A flat, precise edge - and the exact mirror of the navbar's.
    *
-   * The page's warm paper meets the brand ground with nothing between them, so
-   * the footer read as the point where the page ran out. Gold at a third
-   * strength is the product's one accent - the same one the hero headline is
-   * set in - and a hairline of it is enough to make the boundary look chosen.
+   * This was briefly a perforated one, half-circles punched out of the top so
+   * the paper showed through, the line a ticket tears along. It said what the
+   * product is, and it read as craft rather than as software: a scalloped edge
+   * belongs on a coupon, and everything above it here is a table of money and
+   * a queue of decisions.
+   *
+   * It was then a gold hairline, on the reasoning that the seam needed an
+   * accent to look chosen. The navbar settles that: its bottom edge is the same
+   * transition upside down - the same jade meeting the same paper - and it is
+   * white/9 over a 4% white line. Two edges doing one job in two colours is
+   * what makes a pair of bookends look like two unrelated bars. The footer
+   * carries plenty of the accent already, in the column headings and the
+   * invitation; the edge does not have to carry it too.
    */
   .footer {
-    @apply bg-brand-900 pb-[1.1rem] pt-[2.4rem] text-[0.85rem] text-white/[0.62];
-    border-top: 1px solid color-mix(in oklab, var(--color-gold-500) 32%, transparent);
+    @apply bg-brand-900 pb-[1.6rem] pt-[3.6rem] text-[0.85rem] text-white/[0.68];
+    @apply border-t border-white/[0.09];
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+  /*
+   * Dark mode: both bookends need a real edge.
+   *
+   * --color-brand-900 is not overridden for dark, so the navbar and the footer
+   * stay #062718 while the page turns #14120e. Those two measure 1.15:1 against
+   * each other. In light mode the jade meets warm paper and the boundary needs
+   * no help at all; in dark mode the bars and the page are two near-blacks and
+   * the hairline is doing the entire job on its own, which white at 9% cannot.
+   *
+   * Both selectors together rather than one in each section, because the value
+   * is only correct as long as it is the same value: the moment the footer's
+   * edge is darker or lighter than the navbar's they stop reading as one piece
+   * of chrome, which is the thing these two were just matched to fix.
+   */
+  [data-theme='dark'] .nav,
+  [data-theme='dark'] .footer {
+    border-color: rgba(255, 255, 255, 0.16);
   }
   .footer-inner {
     @apply mx-auto max-w-shell px-page;
   }
-  /* The brand column is sized to the measure its paragraph is capped at, not
-     the other way round. At 2.2fr against a 46ch cap the column was ~230px
-     wider than anything ever drawn in it, which read as a hole punched between
-     the wordmark and the nav rather than as breathing room. */
-  /* Three columns, not four. The fourth held two unclickable payment marks
-     between two navs, so a third of the row was a list of links that were not
-     links; those moved to the bottom bar, where a trust mark belongs. */
-  .footer-grid {
-    @apply grid gap-x-10 gap-y-[1.6rem];
-    /* Four columns since the Company links joined: the brand blurb, then
-       Explore, the organiser/admin column and the two static pages. The brand
-       keeps a wider track because it carries a paragraph and the others carry
-       a list of four words. */
-    grid-template-columns: minmax(0, 1.6fr) repeat(3, minmax(0, 1fr));
+
+  /*
+   * Brand on the left, the three navs held together on the right.
+   *
+   * Four equal-ish tracks (1.6fr + 1fr + 1fr + 1fr) spread the three link
+   * columns across the whole width, so each one floated in a track two or three
+   * times wider than the four words in it and the row read as gaps with text in
+   * them. The navs are one block now, sized to their own content and ending
+   * flush with the page edge - the same edge the navbar's controls end on.
+   */
+  /*
+   * The split is proportional, not content-sized.
+   *
+   * Sizing the nav block to `max-content` pinned it to the right edge as a
+   * tight cluster while the brand paragraph stopped at its 48ch measure, and
+   * the 350px of nothing between them read as a hole rather than as space. The
+   * navs take a share of the width instead and spread across it, so the row
+   * ends flush at both edges with no void in the middle.
+   */
+  .footer-top {
+    @apply grid gap-x-12 gap-y-[2.4rem];
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
   }
+  .footer-nav {
+    @apply grid gap-x-8 gap-y-[1.9rem];
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  /* Below 900 the brand paragraph and the nav block cannot share a line, so the
+     navs drop underneath and take the full width on their own. */
   @media (max-width: 900px) {
-    .footer-grid {
-      @apply grid-cols-2;
-    }
-    .footer-brand {
-      @apply col-span-full;
-    }
-  }
-  @media (max-width: 560px) {
-    .footer-grid {
+    .footer-top {
       @apply grid-cols-1;
     }
   }
-
-  .footer-brand {
-    @apply flex max-w-[52ch] flex-col items-start gap-[0.8rem];
+  @media (max-width: 560px) {
+    .footer-nav {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
   }
-  /* Mark and wordmark as one lockup on a single line. The mark is optically
-     larger than the cap height beside it, which is why it is set by height
-     rather than matched to the text. */
+
+  /* The measure is capped on the paragraph, not on the column. Capping the
+     column made the row of plates below it wrap at a width that had nothing to
+     do with the plates - the paragraph's comfortable line length is a rule
+     about the paragraph. */
+  .footer-brand {
+    @apply flex flex-col items-start gap-[0.9rem];
+  }
+  /*
+   * The same lockup the navbar uses, to the pixel.
+   *
+   * It was a 40px mark beside 1.05rem type while the navbar runs 30px beside
+   * 1.02rem - close enough that neither reads as a deliberate second size, far
+   * enough that the brand is not quite the same brand at the two ends of the
+   * page. A wordmark either has one size in the product's chrome or it has a
+   * scale; two values three hundredths of a rem apart are neither. Matched to
+   * .nav-brand / .nav-mark, including the gap.
+   */
   .footer-lockup {
-    @apply flex items-center gap-[0.6rem];
+    @apply flex items-center gap-[0.5rem];
   }
   .footer-mark {
-    @apply h-[38px] w-auto;
+    @apply h-[30px] w-auto;
   }
   .footer-brand strong {
-    @apply block text-[1rem] tracking-[-0.01em] text-white;
+    @apply block text-[1.02rem] font-extrabold tracking-[-0.015em] text-white;
     font-family: var(--font-sans);
   }
-  /* No top margin any more: the paragraph used to sit directly under the
-     wordmark and needed clearing from it. The wordmark is in the lockup above
-     now, and .footer-brand's own gap is what separates them. */
   .footer-brand p {
-    @apply leading-[1.7];
+    @apply m-0 max-w-[48ch] leading-[1.75];
   }
+  /*
+   * The reach figure, read as a figure.
+   *
+   * It was a 13px line behind a map pin - the one piece of evidence in the
+   * column, set smaller than the sentence above it and prefixed by an icon that
+   * carried none of the meaning. The number does the work, so the number is
+   * what is sized.
+   */
   .footer-reach {
-    @apply mt-[0.6rem] inline-flex items-center gap-[0.35rem] text-[0.78rem] text-white/50;
+    @apply m-0 flex items-baseline gap-[0.45rem] text-[0.8rem] text-white/60;
+  }
+  .footer-reach b {
+    @apply text-[1.3rem] font-extrabold leading-none text-white;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Invitation and accounts on one row: both are 40px plates, and a visitor at
+     the bottom of a page is either leaving or looking for the next event. */
+  .footer-actions {
+    @apply mt-[0.25rem] flex flex-wrap items-center gap-[0.75rem];
+  }
+
+  /*
+   * The one thing the footer asks for.
+   *
+   * Outlined in the accent rather than filled with it: a solid gold button at
+   * the bottom of every page competes with whatever the page itself is asking
+   * for. Hover inverts it to the solid - a real state change, not a fade - and
+   * the arrow moves the way the link does.
+   */
+  .footer-cta {
+    @apply inline-flex min-h-10 items-center gap-[0.45rem] rounded-full border
+      border-gold-500/45 px-[1.05rem] text-[0.85rem] font-bold text-gold-500 no-underline;
+    transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+  }
+  .footer-cta:hover {
+    @apply border-gold-500 bg-gold-500 text-brand-900 no-underline;
+  }
+  /* Tailwind 4's translate-* utilities compile to the `translate` property,
+     not `transform`, so that is what has to be transitioned. */
+  .footer-cta svg {
+    transition: translate 0.16s ease;
+  }
+  .footer-cta:hover svg {
+    @apply translate-x-[3px];
   }
 
   .footer-col {
-    @apply flex min-w-0 flex-col items-start gap-[0.6rem];
+    @apply flex min-w-0 flex-col items-start gap-[0.55rem];
   }
-  /* 0.72rem uppercase is small text, so it needs the full 4.5:1 — at white/45
-     it measured 4.27:1 on the brand ground. */
+  /*
+   * Gold headings, not a fourth shade of grey.
+   *
+   * Every line in the footer was white at some opacity between 45% and 74%,
+   * which is one flat tone at three weights - nothing told the eye where a
+   * column started. The accent is the product's own, and #e07b39 measures
+   * 5.4:1 on the brand ground, so it clears AA at this size.
+   */
   .footer-col h4 {
-    @apply mb-[0.15rem] text-[0.72rem] font-bold uppercase tracking-[0.07em] text-white/[0.56];
+    @apply mb-[0.35rem] text-[0.72rem] font-bold uppercase tracking-[0.09em] text-gold-500;
   }
+  /*
+   * A white rule that draws itself in from the left, not a gold one.
+   *
+   * The navbar splits these two apart deliberately: a white rule under a link
+   * is hover, a gesture that follows the pointer, and a gold rule is `.active`,
+   * the page you are on. Drawing the footer's hover in gold put the navbar's
+   * "you are here" marker under whatever the pointer happened to be over -
+   * the same two signals meaning opposite things at opposite ends of the page.
+   * Same white/80 the nav's hover rule uses, at the same 2px.
+   *
+   * Painted as a background so it can animate: text-decoration cannot be
+   * transitioned, and a bottom border would move the text.
+   */
   .footer-col a {
-    @apply text-white/[0.74];
+    @apply pb-[2px] text-white/[0.78] no-underline;
+    background-image: linear-gradient(rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.8));
+    background-repeat: no-repeat;
+    background-position: 0 100%;
+    background-size: 0 2px;
+    transition: background-size 0.18s ease, color 0.18s ease;
   }
-  .footer-col a:hover {
-    @apply border-b border-white/40 text-white no-underline;
-  }
-  .footer-pay {
-    @apply inline-flex items-center gap-[0.4rem] text-white/[0.74];
-  }
-  /* The two marks travel together and wrap together, so they never end up on
-     opposite sides of the bottom bar with the copyright between them. */
-  .footer-pay-row {
-    @apply flex flex-wrap items-center gap-x-[1.1rem] gap-y-[0.4rem];
+  .footer-col a:hover,
+  .footer-col a:focus-visible {
+    @apply text-white no-underline;
+    background-size: 100% 2px;
   }
 
-  /* Same plate as .nav-icon-btn, at 40px so it clears the touch-target floor -
-     these are the only footer links small enough to miss with a thumb.
-
-     Sits in the middle of the closing bar, between the copyright on the left
-     and the payment marks on the right. */
-  /* m-0 matters here: a <ul> carries a 1em block margin by default, which the
-     old mt-[0.9rem] happened to cover on top and never did on the bottom. In a
-     centred grid row that leftover margin sits the plates above their own
-     cell's centre line, out of step with the copyright beside them. */
+  /*
+   * Social accounts as plates, 40px so they clear the touch-target floor.
+   *
+   * Two selectors, because a "#" placeholder is rendered as a <span> and only a
+   * real URL gets an <a> - see SOCIAL in Footer.jsx. They have to be
+   * indistinguishable, so they share every declaration; the hover is the one
+   * thing the span does not get, since there is nothing for it to do.
+   */
   .footer-social {
-    @apply m-0 flex list-none flex-wrap justify-start gap-[0.45rem] p-0;
+    @apply m-0 flex list-none flex-wrap items-center gap-[0.4rem] p-0;
   }
-  .footer-social a {
-    @apply grid size-10 place-items-center rounded-full border border-white/[0.14]
-      bg-white/[0.06] text-white/[0.74];
+  /*
+   * The same plate as .nav-icon-btn: same border, same ground, same hover.
+   *
+   * Only the size differs, and on purpose - 32px up in the bar is a mouse
+   * target beside seven other controls, 40px down here is a thumb target at
+   * the end of a scroll. The radius is scaled with it (9px at 32 is 11px at
+   * 40), so the corner looks the same rather than measuring the same. It was a
+   * circle with a gold wash and a 1px lift, which matched nothing else in the
+   * product: the bar's controls are rounded squares that simply brighten.
+   */
+  .footer-social a,
+  .footer-social span {
+    @apply grid size-10 place-items-center rounded-[11px] border border-white/[0.14]
+      bg-white/[0.06] text-white/[0.74] no-underline;
+    transition: background 0.15s ease, color 0.15s ease;
   }
   .footer-social a:hover {
-    @apply border-white/[0.28] bg-white/[0.14] text-white no-underline;
+    @apply bg-white/15 text-white no-underline;
   }
 
-  /* Was white/45, which measures 4.27:1 on the brand ground — the identical
-     shortfall the column headings above were already corrected for, and this
-     line is smaller than they are. white/56 takes it to 5.87:1. */
   /*
-   * The closing bar runs on the same grid as the columns above it.
+   * The closing bar: copyright at one edge, the payment marks at the other.
    *
-   * It was a justify-between flex, which spreads three items across the full
-   * width and lands them wherever the middle one happens to be wide - so the
-   * social plates floated between Explore and nothing, and the payment marks
-   * pinned themselves to the right edge while the Admin column above started
-   * 300px short of it. Nothing in the bar lined up with anything above it.
-   *
-   * Sharing the template instead means the copyright sits under the brand, the
-   * social plates under the second column and the payment marks under the
-   * third, at every width - and the breakpoints below keep it in step with
-   * .footer-grid's own.
+   * It used to run on .footer-grid's four-track template so its three items
+   * would line up with the columns above, which put the social plates in the
+   * dead centre of the bar with nothing above or below them. The accounts live
+   * with the brand now, which leaves two items and no reason for a grid.
    */
   .footer-bottom {
-    @apply mt-8 grid items-center gap-x-10 gap-y-[0.9rem]
-      border-t border-white/10 pt-4 text-[0.78rem] text-white/[0.56];
-    grid-template-columns: minmax(0, 1.6fr) repeat(2, minmax(0, 1fr));
+    @apply mt-[2.6rem] flex flex-wrap items-center justify-between gap-x-8 gap-y-[1rem]
+      border-t border-white/[0.11] pt-[1.15rem] text-[0.78rem] text-white/[0.56];
   }
   /*
-   * These two sit AFTER the rule above, not beside .footer-grid's breakpoints
-   * where they started - and that is load-bearing.
+   * Payment marks as plates rather than a line of small type.
    *
-   * A media query adds no specificity. Both it and the base rule match
-   * .footer-bottom with the same weight, so whichever comes later in the file
-   * wins, and .footer-bottom is declared a hundred lines below where
-   * .footer-grid's breakpoints live. The bar therefore kept its three desktop
-   * columns at every width: a copyright, four 40px plates and two payment
-   * marks squeezed into 1.6fr/1fr/1fr on a 375px phone.
+   * They answer "can I actually pay on this site", and a visitor settles that
+   * by spotting a mark they already know - so they are given an edge and a
+   * ground of their own instead of reading as two more footer links that have
+   * stopped working. They travel and wrap together.
    */
-  @media (max-width: 900px) {
-    .footer-bottom {
-      @apply grid-cols-2;
-    }
-    /* The copyright takes the full row once there are only two columns, or it
-       sits alone beside the social plates with the payment marks wrapped
-       underneath - three items in a two-column bar. */
-    .footer-bottom > :first-child {
-      @apply col-span-full;
-    }
+  .footer-pay-row {
+    @apply flex flex-wrap items-center gap-[0.45rem];
   }
-  @media (max-width: 560px) {
-    .footer-bottom {
-      @apply grid-cols-1;
-    }
+  /*
+   * min-h rather than symmetric padding: one plate holds a line of type and the
+   * other holds the drawn KHQR mark, which is taller than the type it sits
+   * beside. Padding alone gave them two different heights, and two trust marks
+   * of different heights look like one of them is a mistake. The mark is set at
+   * 18px because the Q in it is a miniature QR symbol - below that the modules
+   * merge and it reads as a filled square, which is the one thing it must not
+   * look like.
+   */
+  .footer-pay {
+    @apply inline-flex min-h-[32px] items-center gap-[0.4rem] rounded-tiny border
+      border-white/[0.14] bg-white/[0.06] px-[0.65rem] py-[0.25rem] text-[0.76rem]
+      font-bold text-white/[0.82];
+  }
+
+  /*
+   * A focus ring that can be seen on this ground.
+   *
+   * The global :focus-visible paints --shadow-focus, which is jade at 26% -
+   * chosen to sit on warm paper. The footer's ground is --color-brand-900, the
+   * same near-black jade the navbar runs on, where that ring is jade on jade
+   * and effectively invisible. The navbar hit this and fixed it with a gold
+   * outline; the footer sits on the identical colour and never got the same
+   * treatment, so every link, every social plate and the invitation down here
+   * were reachable by keyboard with nothing to show where you were.
+   *
+   * The box-shadow has to be cleared explicitly - it is what the global rule
+   * set, and an outline does not replace it.
+   */
+  .footer a:focus-visible {
+    @apply outline-2 outline-offset-2 outline-gold-500;
+    box-shadow: none;
   }
 
   /* ------------------------------------------------------------ event hero */

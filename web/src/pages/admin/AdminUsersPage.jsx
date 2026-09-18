@@ -17,6 +17,7 @@ import {
   TablePager,
 } from '../../components/ui.jsx'
 import { useAuth } from '../../context/AuthContext.jsx'
+import { TableRowsSkeleton } from '../../components/Skeleton.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
 import { usePaging } from '../../lib/usePaging.js'
@@ -281,6 +282,24 @@ export default function AdminUsersPage() {
                 <th />
               </tr>
             </thead>
+            {/*
+              The table holds its height while it loads.
+
+              An empty <tbody> collapses the page to nothing, which parks the
+              footer halfway up the window; when the rows land the document
+              suddenly grows by a screenful and the footer leaps out from under
+              the reader. Ten placeholder rows are taller than a viewport, so
+              the footer is below the fold before and after and nothing visibly
+              moves. Same call the payouts table already makes.
+            */}
+            {loading ? (
+              <TableRowsSkeleton
+                rows={10}
+                cols={7}
+                cellClassName="px-[0.9rem] py-[0.7rem]"
+                rowClassName="border-b border-line-2"
+              />
+            ) : (
             <tbody>
               {paged.visible.map((u) => {
                 const bookings = u.bookings ?? []
@@ -406,6 +425,7 @@ export default function AdminUsersPage() {
                 )
               })}
             </tbody>
+            )}
           </table>
         </ResponsiveTable>
         <TablePager
