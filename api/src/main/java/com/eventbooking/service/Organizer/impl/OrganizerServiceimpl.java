@@ -62,7 +62,14 @@ public class OrganizerServiceimpl implements OrganizerService {
     @Override
     @Transactional
     public OrganizerApplicationResponse apply(Long actorUserId, OrganizerApplicationRequest request) {
-        if (organizerProfileRepository.findByUserId(actorUserId).isPresent()) {
+        /*
+         * findActiveByUserId, so that somebody who was demoted may apply again.
+         * Their profile row is still there - demotion leaves it dormant for the
+         * events hanging off it - and reading mere existence here would tell a
+         * CUSTOMER they are already an organiser and leave them with no way back
+         * in at all.
+         */
+        if (organizerProfileRepository.findActiveByUserId(actorUserId).isPresent()) {
             throw new AlreadyAnOrganizerException(actorUserId);
         }
 
@@ -103,9 +110,14 @@ public class OrganizerServiceimpl implements OrganizerService {
      * short of a manual INSERT gets them out of it.
      *
      * <p>The profile is created here, not carried over from the application.
-     * That is the whole reason the two tables are separate: a row in
-     * organizer_profile MEANS you are an organiser (V13), so it cannot exist
-     * while the request is still undecided.
+     * That is the whole reason the two tables are separate: the profile is the
+     * live organisation record, so it cannot exist while the request is still
+     * undecided.
+     *
+     * <p>It may, however, already exist for a different reason - a previously
+     * demoted organiser applying again keeps the profile their old events point
+     * at. That row is reused rather than refused; it is the role that decides
+     * whether they may publish today.
      */
     @Override
     @Transactional
@@ -114,10 +126,9 @@ public class OrganizerServiceimpl implements OrganizerService {
         AppUser applicant = requireUser(application.getUserId());
 
         // Between submission and this click the applicant may have been made an
-        // organiser another way - a second application, or a hand-written
-        // UPDATE. organizer_profile.user_id is UNIQUE, so inserting a second
-        // profile would fail as a raw 23505 at commit.
-        if (organizerProfileRepository.findByUserId(applicant.getId()).isPresent()) {
+        // organiser another way - a second application, or an admin promoting
+        // them from the users screen.
+        if (organizerProfileRepository.findActiveByUserId(applicant.getId()).isPresent()) {
             throw new AlreadyAnOrganizerException(applicant.getId());
         }
 
@@ -129,23 +140,34 @@ public class OrganizerServiceimpl implements OrganizerService {
         application.setReviewedAt(Instant.now());
 
         // 2. The role. Read on every /me and every login, so this is what the
-        //    frontend eventually notices.
+        //    frontend eventually notices - and, since demotion now leaves the
+        //    profile behind and takes only the role, it is also what actually
+        //    grants the ability to publish again.
         applicant.setRole(Role.ORGANIZER);
 
-        // 3. The profile - the row that actually grants the ability to own
-        //    venues and events.
+        // 3. The profile - the organisation's record.
         //
-        //    telegramChatId is left null on purpose. The application carries a
-        //    handle ("@sokha"); this column is the numeric id the bot sends to,
-        //    and is only learnable once the organiser messages the bot. Copying
-        //    one into the other would produce a profile that looks configured
-        //    for notifications and silently never delivers any.
-        OrganizerProfile profile = OrganizerProfile.builder()
-                .userId(applicant.getId())
-                .orgNameEn(application.getOrgNameEn())
-                .orgNameKm(application.getOrgNameKm())
-                .telegramChatId(null)
-                .build();
+        //    A returning organiser already has one. It has to be reused rather
+        //    than replaced: organizer_profile.user_id is UNIQUE, so a second
+        //    insert is a raw 23505 at commit, and the row they had is the one
+        //    their old events and venues point at. The names come from this
+        //    application, which is the more recent statement of who they are.
+        //
+        //    telegramChatId is left null on a fresh profile on purpose. The
+        //    application carries a handle ("@sokha"); this column is the numeric
+        //    id the bot sends to, and is only learnable once the organiser
+        //    messages the bot. Copying one into the other would produce a
+        //    profile that looks configured for notifications and silently never
+        //    delivers any. A returning organiser keeps whatever they had
+        //    connected - that chat is still theirs.
+        OrganizerProfile profile = organizerProfileRepository
+                .findByUserId(applicant.getId())
+                .orElseGet(() -> OrganizerProfile.builder()
+                        .userId(applicant.getId())
+                        .telegramChatId(null)
+                        .build());
+        profile.setOrgNameEn(application.getOrgNameEn());
+        profile.setOrgNameKm(application.getOrgNameKm());
 
         organizerApplicationRepository.save(application);
         appUserRepository.save(applicant);

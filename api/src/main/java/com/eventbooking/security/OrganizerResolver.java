@@ -18,6 +18,9 @@ import org.springframework.stereotype.Component;
  * <p>Keeping it here also means the JWT swap is a one-line change: the header
  * stops being the source of {@code actorUserId} and the principal starts, and
  * nothing below the controllers notices.
+ *
+ * <p>It is also the place the organiser check lives, and that check now reads
+ * the role as well as the profile. See {@link #requireOrganizerId}.
  */
 @Component
 public class OrganizerResolver {
@@ -30,15 +33,28 @@ public class OrganizerResolver {
 
     /**
      * Translate and authorize in one call. The {@code orElseThrow} is the
-     * organiser check: a CUSTOMER has no profile row, so there is no id to
+     * organiser check: a CUSTOMER has no active profile, so there is no id to
      * return and no way to proceed.
      *
-     * <p>One extra indexed SELECT per organiser write. Not cached: caching an
-     * identity before real authentication exists is how a revoked organiser
-     * keeps writing for the life of a cache entry.
+     * <p>{@code findActiveByUserId} and not {@code findByUserId}, and this is
+     * the load-bearing detail of the whole demotion story. Demoting an organiser
+     * keeps their profile row - the events and venues pointing at it have to
+     * keep an owner - so "a profile exists" stopped being the same question as
+     * "may this person publish". The role is now half the answer.
+     *
+     * <p>It matters most here because of where this is reached from. Only
+     * {@code /api/v1/organizer/**} is role-gated in SecurityConfig;
+     * {@code /api/v1/events/**} and {@code /api/v1/venue/**} fall through to
+     * {@code anyRequest().authenticated()} and have no gate but this one. Read
+     * the old way, a demoted organiser would keep full write access to both and
+     * the demotion would be decorative.
+     *
+     * <p>One indexed SELECT per organiser write, same as before - the role is a
+     * join, not a second round trip. Not cached: caching an identity is how a
+     * revoked organiser keeps writing for the life of a cache entry.
      */
     public Long requireOrganizerId(Long actorUserId) {
-        return organizerProfileRepository.findByUserId(actorUserId)
+        return organizerProfileRepository.findActiveByUserId(actorUserId)
                 .orElseThrow(() -> new NotAnOrganizerException(actorUserId))
                 .getId();
     }

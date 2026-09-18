@@ -34,14 +34,10 @@ public interface VenueRepository extends JpaRepository<Venue,Long> {
      */
     List<Venue> findAllByOrganizerIdAndIsDisabledFalse(Long organizerId);
 
-    /**
-     * Venues belonging to one organiser - the other half of the demotion guard
-     * in AdminUserService.
-     *
-     * <p>{@code venue.organizer_id} is nullable, and a null means the venue
-     * belongs to the platform rather than to anyone (V21's shared halls). Those
-     * rows are not counted here, which is right: they survive their creator
-     * losing the role, because nobody owns them.
+    /*
+     * countByOrganizerId used to live here as the other half of the demotion
+     * guard in AdminUserService. Demotion no longer deletes the
+     * organizer_profile row, so a venue's owner outlives its owner's role and
+     * there is nothing to count.
      */
-    long countByOrganizerId(Long organizerId);
 }

@@ -157,6 +157,21 @@ export default function Footer() {
             ))}
           </nav>
 
+          {/* ------------------------------------------------------------ help */}
+          {/* "Help", not "Company". Nobody scans a footer looking for a
+              company - they scan it when something has gone wrong and they
+              want a person. The heading should name the reason they are
+              reading it, and both links under it answer that reason.
+
+              No `show` filtering, unlike the two columns above: both routes
+              are public, so there is no state in which offering them sends
+              somebody to a login screen or a 403. */}
+          <nav className="footer-col" aria-label={km ? "ជំនួយ" : "Help"}>
+            <h4>{km ? "ជំនួយ" : "Help"}</h4>
+            <Link to="/about">{t("aboutUs")}</Link>
+            <Link to="/contact">{t("contactUs")}</Link>
+          </nav>
+
         </div>
 
         {/* -------------------------------------------------------- bottom */}

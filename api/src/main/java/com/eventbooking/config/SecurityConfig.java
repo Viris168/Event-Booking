@@ -136,6 +136,35 @@ public class SecurityConfig {
                     // which is what actually stands in for auth on this one path.
                     auth.requestMatchers(HttpMethod.POST, "/api/v1/telegram/webhook").permitAll();
 
+                    /*
+                     * The public contact form - the only WRITE in this
+                     * application open to an anonymous caller.
+                     *
+                     * Everything else permitted above is either a catalogue
+                     * read, a sign-in, or a webhook carrying its own shared
+                     * secret. This is none of those, so it deserves the
+                     * paragraph.
+                     *
+                     * It is open because the people most likely to need it
+                     * cannot sign in: somebody whose ticket never arrived,
+                     * somebody locked out of the account their booking is
+                     * under. Requiring a token would close the door precisely
+                     * to the people knocking on it.
+                     *
+                     * What stands in for the token is ContactRateLimiter -
+                     * per network address and per reply-to - plus the @Size
+                     * caps on ContactMessageRequest. Neither is as good as
+                     * authentication; together they bound what one anonymous
+                     * caller can cost.
+                     *
+                     * POST only, and only this exact path. Reading messages
+                     * back lives under /api/v1/admin/contact-messages, which
+                     * the PLATFORM_ADMIN rule below closes - the ids are
+                     * sequential, so a public read would be an open mailbox
+                     * rather than a contact form.
+                     */
+                    auth.requestMatchers(HttpMethod.POST, "/api/v1/contact").permitAll();
+
                     auth.requestMatchers(HttpMethod.GET, PUBLIC_GETS).permitAll();
 
                     // The ABA PayWay return page. The gateway redirects the

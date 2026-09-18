@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link, NavLink, useLocation } from 'react-router-dom'
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import Icon from './Icon.jsx'
+import Flag from './Flag.jsx'
 import NotificationBell from './NotificationBell.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useTheme } from '../context/ThemeContext.jsx'
@@ -23,6 +24,16 @@ import { countdown } from '../lib/format.js'
  */
 const HOLD_POLL_MS = 30_000
 
+/*
+ * Still here for the drawer, and only for the drawer.
+ *
+ * The wide bar used to print the role under the display name. It no longer
+ * does: the bar's account control is the avatar and nothing else. The drawer
+ * keeps both, because a drawer row is a full-width list item with room to
+ * spare, and on a phone the account panel is one more tap away than it is on a
+ * desktop - so the one place the role is still worth stating is the one place
+ * it costs nothing to state.
+ */
 const ROLE_LABEL = {
   CUSTOMER: 'Customer',
   ORGANIZER: 'Organizer',
@@ -34,21 +45,46 @@ export default function Navbar({ onOpenAccount }) {
   const { t, locale, setLocale } = useLocale()
   const { isDark, toggle: toggleTheme } = useTheme()
   const location = useLocation()
+  const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
   const navRef = useRef(null)
+
+  /*
+   * Nav search: a shortcut into /events, not a second search.
+   *
+   * /events already owns searching - query, province, sort, price, date and
+   * removable chips - and it drives all of it from the URL, which is why
+   * HomePage's hero can search by doing nothing more than navigating to
+   * `/events?q=`. This does exactly the same thing, so there is one search
+   * implementation in the product and two doors into it.
+   *
+   * `q` is deliberately NOT seeded from the current URL. The box is a fresh
+   * question every time it opens; pre-filling it with whatever is already
+   * being searched for would make the commonest gesture - open, type, enter -
+   * append to a query the person had forgotten was there.
+   */
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [q, setQ] = useState('')
+  const searchInputRef = useRef(null)
 
   // Close both panels on navigation, on Escape, and on an outside click.
   useEffect(() => {
     setMenuOpen(false)
+    // Including after a search submits, since that is itself a navigation.
+    setSearchOpen(false)
   }, [location.pathname])
 
   useEffect(() => {
-    if (!menuOpen) return
+    if (!menuOpen && !searchOpen) return
     const onKey = (e) => {
-      if (e.key === 'Escape') setMenuOpen(false)
+      if (e.key !== 'Escape') return
+      setMenuOpen(false)
+      setSearchOpen(false)
     }
     const onClick = (e) => {
-      if (!navRef.current?.contains(e.target)) setMenuOpen(false)
+      if (navRef.current?.contains(e.target)) return
+      setMenuOpen(false)
+      setSearchOpen(false)
     }
     document.addEventListener('keydown', onKey)
     document.addEventListener('mousedown', onClick)
@@ -56,7 +92,19 @@ export default function Navbar({ onOpenAccount }) {
       document.removeEventListener('keydown', onKey)
       document.removeEventListener('mousedown', onClick)
     }
-  }, [menuOpen])
+  }, [menuOpen, searchOpen])
+
+  /*
+   * Focus the box when it opens.
+   *
+   * The whole point of expanding in place rather than navigating somewhere is
+   * that you can type immediately; an input that appears without the caret in
+   * it costs the click it just saved. Not autoFocus, which fires on mount and
+   * would steal focus on first paint if this ever rendered open.
+   */
+  useEffect(() => {
+    if (searchOpen) searchInputRef.current?.focus()
+  }, [searchOpen])
 
   /*
    * Publish the navbar's height as --nav-h, for whatever has to sit under it.
@@ -166,6 +214,21 @@ export default function Navbar({ onOpenAccount }) {
     // different consoles side by side with nothing to say which was theirs.
     { to: '/organizer', label: t('organizer'), icon: 'building', show: isOrganizer && !isAdmin },
     { to: '/admin', label: t('admin'), icon: 'shield', show: isAdmin },
+    /*
+     * The two static pages, last in the row on purpose.
+     *
+     * Everything above them is somewhere you go to DO something - browse,
+     * collect a ticket, run your events. These two are somewhere you go when
+     * the doing has stopped working, so they sit after the work and before
+     * the account controls.
+     *
+     * They are also the only rows here with no `show`: both routes are
+     * public, and Contact in particular has to stay reachable signed out,
+     * because not being able to sign in is one of the commonest reasons to
+     * need it.
+     */
+    { to: '/about', label: t('aboutUs'), icon: 'info', show: true },
+    { to: '/contact', label: t('contactUs'), icon: 'mail', show: true },
   ].filter((l) => l.show)
 
   const drawerLinks = [
@@ -181,25 +244,173 @@ export default function Navbar({ onOpenAccount }) {
     },
   ].filter((l) => l.show)
 
+  /**
+   * Hand the query to /events and let it do the searching.
+   *
+   * <p>Only `q` is sent. The province, sort, price and date filters live on
+   * that page and are not represented here, so carrying the current URL's
+   * copies of them across would apply filters the person cannot see from this
+   * box - a search for "rock" silently restricted to Battambang under $5
+   * because of a filter set ten minutes ago.
+   *
+   * <p>An empty box still navigates: pressing enter on nothing means "show me
+   * what is on", which is what /events with no query is.
+   */
+  const submitSearch = (e) => {
+    e.preventDefault()
+    const query = q.trim()
+    navigate(query ? `/events?q=${encodeURIComponent(query)}` : '/events')
+    setSearchOpen(false)
+    // Explicitly, rather than leaving it to the route effect: searching from
+    // /events to /events changes only the query string, so pathname does not
+    // change and that effect would not fire.
+    setMenuOpen(false)
+    setQ('')
+  }
+
+  /*
+   * On every page, /events included.
+   *
+   * It was hidden there at first, on the reasoning that the page already
+   * carries a sticky search panel and a second control pointing at it is
+   * redundant. That reasoning was about the page and ignored the bar: a
+   * control that is in the chrome everywhere except one route does not read as
+   * "not needed here", it reads as missing. Chrome earns its place by being in
+   * the same spot every time you look for it.
+   *
+   * Nothing breaks by searching from up here while already on /events.
+   * EventsPage drives its box and its chips from the URL and explicitly
+   * handles `q` changing from somewhere other than itself - the same path the
+   * home hero and the back button take - so the panel below simply updates to
+   * match.
+   *
+   * Only drawn while the box is shut, which is why it has no open state.
+   *
+   * It used to stay put and flip to a ✕, which put two close buttons a few
+   * pixels apart - one on the pill, one where the magnifier had been - with
+   * nothing to say whether they did the same thing. The pill's own ✕ is the
+   * one that survives: it sits beside the text it is dismissing, rather than
+   * out in a cluster of unrelated controls.
+   *
+   * So this is a button that opens, and the pill is what closes. Escape and a
+   * click outside close it too.
+   */
+  const searchToggle = (
+    <button
+      type="button"
+      className="nav-icon-btn"
+      onClick={() => setSearchOpen(true)}
+      title={t('search')}
+      aria-label={t('search')}
+      aria-expanded={searchOpen}
+    >
+      <Icon name="search" size={17} />
+    </button>
+  )
+
+  /*
+   * One renderer, two placements - and they are genuinely different controls,
+   * not the same one moved.
+   *
+   * In the wide bar the box is a thing you open: it takes the centre track
+   * from the links, autofocuses, and carries its own close. In the drawer
+   * there is nothing to open - the drawer IS the open state - so it simply
+   * sits at the top, full width, with no toggle and no close of its own.
+   *
+   * And no autofocus down there. Focusing an input on a phone raises the
+   * keyboard, which would cover the links the person actually opened the
+   * drawer to reach.
+   */
+  const renderSearch = ({ inDrawer = false } = {}) => (
+    <form
+      className={`nav-search${inDrawer ? ' in-drawer' : ''}`}
+      onSubmit={submitSearch}
+      role="search"
+    >
+      {/* type="submit", so it searches on click and is reachable by keyboard
+          as the button it looks like. */}
+      <button type="submit" className="nav-search-go" title={t('search')} aria-label={t('search')}>
+        <Icon name="search" size={16} />
+      </button>
+      <input
+        /* Only the bar's copy takes the ref. The two are never mounted at
+           once, but tying the focus effect to the one that can be opened
+           keeps that a fact about the code rather than about the viewport. */
+        ref={inDrawer ? undefined : searchInputRef}
+        type="search"
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        placeholder={t('search')}
+        aria-label={t('search')}
+      />
+      {!inDrawer && (
+        <button
+          type="button"
+          className="nav-search-close"
+          onClick={() => setSearchOpen(false)}
+          title={t('close')}
+          aria-label={t('close')}
+        >
+          <Icon name="close" size={15} />
+        </button>
+      )}
+    </form>
+  )
+
+  /*
+   * The language switch: one flag, the one you are reading in.
+   *
+   * <p>Not a pair with the inactive one dimmed. A two-flag control spends
+   * double the width to show a choice that has already been made, and it has
+   * to solve "which of these is selected" with opacity or a ring - a question
+   * a single button never raises, because whatever it shows IS the current
+   * state.
+   *
+   * <p>So the flag is the state and the click is the action, which are not the
+   * same thing and must not be labelled as if they were. The button shows the
+   * current language and says, in words, what pressing it will do: hovering
+   * the Union Flag reads "ប្តូរទៅភាសាខ្មែរ". Labelling it "English" would
+   * describe the picture and leave the behaviour to be guessed at.
+   *
+   * <p>No `aria-pressed`. This is an action, not a toggle sitting in an on or
+   * off state - there is no sense in which "English" is pressed and "Khmer" is
+   * released.
+   *
+   * <p>The flip below is written for exactly two locales, which is what
+   * LOCALES holds. A third would need this to become a menu; there is no
+   * sensible one-button gesture for cycling three languages, and dropping one
+   * in would silently make the third unreachable.
+   */
+  const other = locale === 'en' ? 'km' : 'en'
+  const switchTo = other === 'km' ? 'ភាសាខ្មែរ' : 'English'
+  const langToggle = (
+    <button
+      type="button"
+      className="nav-icon-btn lang-btn"
+      onClick={() => setLocale(other)}
+      title={locale === 'km' ? `ប្តូរទៅ${switchTo}` : `Switch to ${switchTo}`}
+      aria-label={locale === 'km' ? `ប្តូរទៅ${switchTo}` : `Switch to ${switchTo}`}
+    >
+      <Flag code={locale} size={20} />
+    </button>
+  )
+
+  const themeToggle = (
+    <button
+      className="nav-icon-btn theme-toggle"
+      onClick={toggleTheme}
+      title={isDark ? t('lightMode') : t('darkMode')}
+      aria-label={isDark ? t('lightMode') : t('darkMode')}
+      aria-pressed={isDark}
+    >
+      <Icon name={isDark ? 'sun' : 'moon'} size={17} />
+    </button>
+  )
+
   const displayPrefs = (
     <div className="pref-group">
-      <div className="lang-toggle" role="group" aria-label="Language">
-        <button aria-pressed={locale === 'en'} onClick={() => setLocale('en')}>
-          EN
-        </button>
-        <button aria-pressed={locale === 'km'} onClick={() => setLocale('km')} className="km">
-          ខ្មែរ
-        </button>
-      </div>
-      <button
-        className="nav-icon-btn theme-toggle"
-        onClick={toggleTheme}
-        title={isDark ? t('lightMode') : t('darkMode')}
-        aria-label={isDark ? t('lightMode') : t('darkMode')}
-        aria-pressed={isDark}
-      >
-        <Icon name={isDark ? 'sun' : 'moon'} size={17} />
-      </button>
+      {langToggle}
+      {themeToggle}
     </div>
   )
 
@@ -211,14 +422,36 @@ export default function Navbar({ onOpenAccount }) {
           <span className="nav-brand-text">{t('brand')}</span>
         </Link>
 
-        {/* ------------------------------------------------ wide-screen bar */}
-        <div className="nav-links">
-          {links.map((l) => (
-            <NavLink key={l.to} to={l.to} end={l.end} className="nav-link">
-              {l.label}
-            </NavLink>
-          ))}
+        {/* -------------------------------------------- wide bar: the middle */}
+        {/*
+          Destinations only, and centred by the grid rather than by a margin.
+          Everything that is not somewhere to go - the countdown, the
+          preferences, the bell, the account - moved out to .nav-right, which
+          is what lets this row sit in the optical centre of the bar instead of
+          being shoved leftward by however wide the right-hand cluster happens
+          to be for this particular signed-in user.
+        */}
+        {/* The links stand down while the box is open - that is where its
+            width comes from, so nothing has to overflow or shrink to make
+            room. Unmounted rather than hidden: a hidden row of links is still
+            a row of tab stops in the middle of a search you are typing. */}
+        {searchOpen ? (
+          renderSearch()
+        ) : (
+          <div className="nav-links">
+            {links.map((l) => (
+              <NavLink key={l.to} to={l.to} end={l.end} className="nav-link">
+                {l.label}
+              </NavLink>
+            ))}
+          </div>
+        )}
 
+        {/* --------------------------------------------- wide bar: the right */}
+        <div className="nav-right">
+          {/* First in the cluster because it is the only thing here that is
+              running out. A live hold is the most time-critical thing on the
+              screen and it reads left-to-right before the controls do. */}
           {showHold && (
             <Link to={`/events/${hold.eventId || hold.event_id}`} className="nav-link nav-hold">
               <Icon name="clock" size={14} />
@@ -226,35 +459,56 @@ export default function Navbar({ onOpenAccount }) {
             </Link>
           )}
 
-          <span className="nav-sep" aria-hidden="true" />
+          {/* First of the controls, and closest to the links, because it is
+              the only one of them that is also a way of getting somewhere. */}
+          {!searchOpen && searchToggle}
 
-          {/* Only for visitors with no account to keep them in. Signed in, both
-              of these live in the account panel: they are set once and then
-              never touched, and two permanent controls in the bar for that is
-              most of what made it feel crowded. */}
+          {/*
+            Signed out only. Once you have an account, language and theme live
+            in the account panel and nowhere else.
+
+            The reasoning is the one the bar has always used: both are set once
+            and then never touched again, so a permanent slot in the chrome is
+            a poor trade for something you use on your first visit and never
+            again. A signed-out visitor is the case where that does not hold -
+            they have no panel to keep the setting in, and no account for it to
+            persist against, so the control has to be in front of them.
+          */}
           {!isAuthenticated && displayPrefs}
+
+          {/*
+            The rule divides preferences from identity, so it is only drawn
+            when there is something on both sides of it. Signed in, the prefs
+            are gone and a leading hairline before the bell would be a divider
+            dividing nothing from the edge of the bar.
+          */}
+          {(!isAuthenticated || showHold) && <span className="nav-sep" aria-hidden="true" />}
 
           {isAuthenticated ? (
             <>
               <NotificationBell />
 
-              {/* Your own name and face are the way into your account -
-                  clicking them is what people try first, and a chip that
-                  looks like a person but does nothing reads as broken.
+              {/* The account, as the avatar and nothing else - the same
+                  control the narrow bar has always used, promoted to every
+                  width.
+
+                  The name and role went with the redesign. They were the
+                  widest thing in the bar and the least load-bearing: your own
+                  name tells you nothing you did not know, and both are
+                  restated at the top of the panel this button opens, next to
+                  the settings they actually belong beside.
+
                   A button, not a link: it opens a panel over the page you are
-                  already on rather than navigating anywhere. */}
+                  on rather than navigating anywhere. */}
               <button
                 type="button"
-                className="nav-user"
+                className="nav-avatar-btn"
                 onClick={onOpenAccount}
                 title={t('myAccount')}
+                aria-label={t('myAccount')}
               >
                 <span className="avatar" aria-hidden="true">
                   {user.display_name.slice(0, 1).toUpperCase()}
-                </span>
-                <span className="nav-who">
-                  {user.display_name}
-                  <span>{ROLE_LABEL[role]}</span>
                 </span>
               </button>
             </>
@@ -268,11 +522,15 @@ export default function Navbar({ onOpenAccount }) {
               </Link>
             </>
           )}
-
         </div>
 
         {/* --------------------------------------------------- narrow screens */}
         <div className="nav-compact">
+          {/* No search icon out here - it is a field at the top of the drawer
+              instead. The compact bar is four controls wide already with a
+              live hold in it, and search is the one of them that needs
+              somewhere to type rather than just somewhere to tap. */}
+
           {/* Outside the drawer, like the hold countdown: a badge folded behind
               a burger cannot tell you there is anything to open it for. */}
           {isAuthenticated && <NotificationBell />}
@@ -349,6 +607,10 @@ export default function Navbar({ onOpenAccount }) {
                 </Link>
               </div>
             )}
+
+            {/* Above the links, because it is the broadest way to get
+                somewhere and the links below it are the narrow ones. */}
+            {renderSearch({ inDrawer: true })}
 
             <div className="drawer-links">
               {drawerLinks.map((l) => (

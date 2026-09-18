@@ -4,12 +4,14 @@ import com.eventbooking.exception.ApiException;
 import com.eventbooking.exception.ErrorCode;
 
 /**
- * The caller has no {@code organizer_profile} row, so there is no id to own
- * anything with.
+ * The caller is not an organiser, so there is no id to own anything with.
  *
- * <p>This is the organiser check. Having a profile is what being an organiser
- * consists of - {@code AppUser.role} never has to be read, which means the
- * check cannot drift out of sync with the table that actually holds ownership.
+ * <p>Two different accounts land here and the answer is deliberately the same
+ * for both: someone who never had an {@code organizer_profile} row, and someone
+ * who has one but has since been demoted. The second used to be impossible -
+ * demotion deleted the row - and it is now the ordinary case, because the row
+ * has to survive for the events and venues that point at it. Both are told they
+ * are not an organiser, which is true of both.
  *
  * <p>403 and not 401: the caller is identified fine, they are just not the kind
  * of account this endpoint is for.

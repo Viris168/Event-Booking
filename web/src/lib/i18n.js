@@ -20,6 +20,18 @@ const dict = {
   darkMode: { en: "Dark mode", km: "ទម្រង់ងងឹត" },
   lightMode: { en: "Light mode", km: "ទម្រង់ភ្លឺ" },
   checkIn: { en: "Check-in", km: "ពិនិត្យសំបុត្រចូល" },
+  // The two static pages. In the dictionary rather than inline in the pages
+  // themselves because the footer and the nav drawer both render these labels;
+  // the prose ON those pages stays in the pages, the way Footer.jsx keeps its
+  // own strapline. A dictionary of UI chrome is not a content management
+  // system, and two pages of copy is where that line sits.
+  // aboutUs, not `about` - that key is already taken further down by "About
+  // this event", which the event detail page renders. Two keys one word apart
+  // is worth the awkwardness: a duplicate literal key in this object would not
+  // be an error, the later one would simply win, and the page that lost would
+  // start quietly rendering the wrong heading.
+  aboutUs: { en: "About", km: "អំពីយើង" },
+  contactUs: { en: "Contact", km: "ទំនាក់ទំនង" },
 
   // browse
   heroTitle: {
@@ -291,6 +303,10 @@ const dict = {
     en: "Organiser applications",
     km: "ពាក្យសុំធ្វើជាអ្នករៀបចំ",
   },
+  // The support inbox. "Messages" and not "Contact", which is what the PUBLIC
+  // page is called - an admin opening this is reading what was sent, not
+  // looking for a way to send something.
+  supportInbox: { en: "Messages", km: "សារ" },
   disable: { en: "Disable", km: "បិទដំណើរការ" },
   enable: { en: "Enable", km: "បើកដំណើរការ" },
   takeDown: { en: "Take down", km: "ដកចេញពីប្រព័ន្ធ" },
