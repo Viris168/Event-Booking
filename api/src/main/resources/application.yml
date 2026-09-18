@@ -304,6 +304,15 @@ payway:
   # caller can declare a real booking paid. Set PAYWAY_MODE=LIVE in any
   # environment reachable by someone who should not be able to.
   mode: ${PAYWAY_MODE:MOCK}
+  # How long a checkout attempt stays payable. The Bakong equivalent is
+  # app.payment.bakong.qr-ttl and the two are kept the same on purpose: a buyer
+  # who picks card over QR should not be given a different deadline for the
+  # same seats.
+  #
+  # Clamped by app.booking.payment-window-minutes either way - whichever runs
+  # out first wins, because past that the sweeper has already put the seats
+  # back on sale.
+  checkout-ttl: ${PAYWAY_CHECKOUT_TTL:5m}
   close-stale:
     fixed-delay-ms: 60000
     after-minutes: 1

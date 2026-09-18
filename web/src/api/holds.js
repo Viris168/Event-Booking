@@ -1,5 +1,24 @@
 import client from './client.js'
 
+/**
+ * Says that this tab's hold has changed hands - created, released, extended or
+ * spent on a booking.
+ *
+ * The navbar's countdown is the one thing outside this module that has to know,
+ * and it has no other way to find out: it stops polling while a hold is on
+ * screen, so without this a released hold would sit there ticking down against
+ * seats already back on sale. Same shape as `auth:signed-out` in client.js.
+ *
+ * Only ever about this tab. A hold released in another one still waits for the
+ * discovery poll, which is the trade the navbar makes on purpose.
+ */
+export const announceHoldChange = () => window.dispatchEvent(new Event('hold:changed'))
+
+const announcing = (data) => {
+  announceHoldChange()
+  return data
+}
+
 /*
  * The userId these functions used to forward as an X-User-Id header is gone.
  * It stopped doing anything when CurrentUserIdArgumentResolver started reading
@@ -10,7 +29,7 @@ import client from './client.js'
  */
 
 export const createHold = (eventId, { seat_ids, zone_qty }) =>
-  client.post(`/events/${eventId}/holds`, { seat_ids, zone_qty }).then((r) => r.data)
+  client.post(`/events/${eventId}/holds`, { seat_ids, zone_qty }).then((r) => announcing(r.data))
 
 export const getHold = (eventId, holdId) =>
   client.get(`/events/${eventId}/holds/${holdId}`).then((r) => r.data)
@@ -27,7 +46,7 @@ export const getMyActiveHold = () => client.get(`/holds/my-active-hold`).then((r
  * first answers 410 HOLD_EXPIRED and its seats are already back on sale.
  */
 export const extendHold = (eventId, holdId) =>
-  client.post(`/events/${eventId}/holds/${holdId}/extend`).then((r) => r.data)
+  client.post(`/events/${eventId}/holds/${holdId}/extend`).then((r) => announcing(r.data))
 
 export const releaseHold = (eventId, holdId) =>
-  client.delete(`/events/${eventId}/holds/${holdId}`).then((r) => r.data)
+  client.delete(`/events/${eventId}/holds/${holdId}`).then((r) => announcing(r.data))

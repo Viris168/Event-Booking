@@ -11,7 +11,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
 import { useToast } from '../context/ToastContext.jsx'
 import { seatLabel, toLocalPhone, usd } from '../lib/format.js'
-import { getHold } from '../api/holds.js'
+import { getHold, announceHoldChange } from '../api/holds.js'
 import { getEvent } from '../api/events.js'
 import { createBooking } from '../api/bookings.js'
 import { mapHoldResponse, mapEvent } from '../api/adapters.js'
@@ -182,6 +182,9 @@ export default function CheckoutPage() {
     })
       .then((res) => {
         sessionStorage.removeItem(`activeHoldId_${event.id}`) // Clear hold now that it's booked
+        // The hold is spent. Tell the navbar, whose countdown would otherwise
+        // keep running against seats that are now a booking.
+        announceHoldChange()
         setPendingPayment({ bookingId: res.id, option })
       })
       .catch((err) => {

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import Icon from './Icon.jsx'
 import NotificationBell from './NotificationBell.jsx'
@@ -94,6 +94,33 @@ export default function Navbar({ onOpenAccount }) {
   const holdMsLeft = hold ? new Date(hold.expires_at || hold.expiresAt).getTime() - now : 0
   const showHold = Boolean(hold && holdMsLeft > 0)
 
+  /*
+   * Split out so the two things that ask for a hold - the discovery poll and
+   * the hold:changed listener below - are asking the same question the same
+   * way. The import is dynamic because holds.js is only needed by people who
+   * are signed in.
+   */
+  const refreshHold = useCallback(() => {
+    if (!isAuthenticated || !user?.id) return
+    import('../api/holds.js').then(({ getMyActiveHold }) =>
+      getMyActiveHold()
+        .then((holds) => setHold(holds && holds.length > 0 ? holds[0] : null))
+        .catch(() => setHold(null)),
+    )
+  }, [isAuthenticated, user?.id])
+
+  /*
+   * This tab acting on its own hold - releasing it, creating one, spending it
+   * on a booking - has to reach the bar immediately. The poll below cannot do
+   * it: it is stopped for exactly as long as a hold is on screen, so a released
+   * hold would keep counting down against seats already back on sale until its
+   * own clock ran out.
+   */
+  useEffect(() => {
+    window.addEventListener('hold:changed', refreshHold)
+    return () => window.removeEventListener('hold:changed', refreshHold)
+  }, [refreshHold])
+
   useEffect(() => {
     if (!isAuthenticated || !user?.id) {
       setHold(null)
@@ -112,37 +139,10 @@ export default function Navbar({ onOpenAccount }) {
      */
     if (showHold) return undefined
 
-    /*
-     * The timer is created inside a dynamic import, so its handle has to live
-     * out here: a cleanup returned from inside the .then() is just the
-     * promise's resolution value, which nobody reads, and the interval then
-     * outlives the effect. Every sign-out left one running, and every re-run
-     * added another on top - the poll rate climbed with each and never came
-     * back down.
-     *
-     * The cancelled flag covers the narrower case of the effect tearing down
-     * while the import is still in flight, which would otherwise start a timer
-     * nothing holds a reference to.
-     */
-    let poll
-    let cancelled = false
-
-    import('../api/holds.js').then(({ getMyActiveHold }) => {
-      if (cancelled) return
-      const fetchHold = () => {
-        getMyActiveHold()
-          .then((holds) => setHold(holds && holds.length > 0 ? holds[0] : null))
-          .catch(() => setHold(null))
-      }
-      fetchHold()
-      poll = setInterval(fetchHold, HOLD_POLL_MS)
-    })
-
-    return () => {
-      cancelled = true
-      clearInterval(poll)
-    }
-  }, [isAuthenticated, user?.id, showHold])
+    refreshHold()
+    const poll = setInterval(refreshHold, HOLD_POLL_MS)
+    return () => clearInterval(poll)
+  }, [isAuthenticated, user?.id, showHold, refreshHold])
 
   /*
    * Two lists, because the bar and the drawer are answering different

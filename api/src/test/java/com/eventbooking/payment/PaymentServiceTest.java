@@ -89,7 +89,9 @@ class PaymentServiceTest {
                 ticketService,
                 properties,
                 new BookingProperties(new BigDecimal("4100.0000"), 15),
-                mock(AbaPaywayGateway.class));
+                mock(AbaPaywayGateway.class),
+                // payway.checkout-ttl, matching the Bakong QR TTL.
+                Duration.ofMinutes(5));
 
         when(paymentRepository.save(any(PaymentTransaction.class))).thenAnswer(invocation -> {
             PaymentTransaction attempt = invocation.getArgument(0);
