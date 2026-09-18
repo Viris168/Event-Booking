@@ -189,16 +189,15 @@ public interface EventRepository extends JpaRepository<Event, Long> {
                                @Param("status") EventStatus status,
                                @Param("provinceCode") String provinceCode);
 
-    /**
-     * How much this organiser still owns - the guard on demoting them.
+    /*
+     * countByOrganizerId used to live here: it backed the guard that refused to
+     * demote an organiser who still owned events, because demotion deleted the
+     * organizer_profile row that event.organizer_id points at.
      *
-     * <p>Losing the ORGANIZER role means losing the {@code organizer_profile}
-     * row, and {@code event.organizer_id} points straight at it. Demoting
-     * somebody who still owns events would leave rows referring to a profile
-     * that no longer exists, which is a moderation click turning into a
-     * constraint violation.
+     * Demotion no longer deletes that row - it leaves the profile dormant and
+     * takes the role away instead, so the events keep their owner and there is
+     * nothing left to count. See AdminUserService.applyRole.
      */
-    long countByOrganizerId(Long organizerId);
 
     /**
      * How many events sit in each status, in one pass.

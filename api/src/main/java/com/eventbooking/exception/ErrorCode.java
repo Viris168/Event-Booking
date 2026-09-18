@@ -150,9 +150,9 @@ public enum ErrorCode {
        only thing that changed, and it would be wrong. */
     EVENT_ALREADY_FINISHED(HttpStatus.CONFLICT),
     /* The admin users screen asked for a role change the platform cannot make:
-       demoting an organiser who still owns events or venues, or an admin
-       editing their own role. Not 403 - the caller has every permission, it is
-       the change itself that is impossible. */
+       an admin editing their own role, or a promotion to organiser with no
+       organisation name to put on the events. Not 403 - the caller has every
+       permission, it is the change itself that is impossible. */
     ROLE_CHANGE_BLOCKED(HttpStatus.CONFLICT),
     /* An action that would leave the platform with no working administrator:
        disabling or demoting the last enabled PLATFORM_ADMIN, or an admin

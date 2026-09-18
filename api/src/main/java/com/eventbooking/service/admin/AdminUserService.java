@@ -17,9 +17,7 @@ import com.eventbooking.model.Booking;
 import com.eventbooking.model.OrganizerProfile;
 import com.eventbooking.repository.AppUserRepository;
 import com.eventbooking.repository.BookingRepository;
-import com.eventbooking.repository.EventRepository;
 import com.eventbooking.repository.OrganizerProfileRepository;
-import com.eventbooking.repository.VenueRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -65,19 +63,13 @@ public class AdminUserService {
     private final AppUserRepository userRepository;
     private final BookingRepository bookingRepository;
     private final OrganizerProfileRepository organizerProfileRepository;
-    private final EventRepository eventRepository;
-    private final VenueRepository venueRepository;
 
     public AdminUserService(AppUserRepository userRepository,
                             BookingRepository bookingRepository,
-                            OrganizerProfileRepository organizerProfileRepository,
-                            EventRepository eventRepository,
-                            VenueRepository venueRepository) {
+                            OrganizerProfileRepository organizerProfileRepository) {
         this.userRepository = userRepository;
         this.bookingRepository = bookingRepository;
         this.organizerProfileRepository = organizerProfileRepository;
-        this.eventRepository = eventRepository;
-        this.venueRepository = venueRepository;
     }
 
     /**
@@ -190,12 +182,14 @@ public class AdminUserService {
      *
      * <p>Wider than the self-service profile endpoint by two fields, for the
      * reasons on {@link AdminUserUpdateRequest}. What that record cannot express
-     * is the part that needs a transaction around it: an ORGANIZER role is not
-     * a column value but a column value <em>and</em> an {@code organizer_profile}
-     * row, and the two have to move together or the platform ends up with an
-     * organiser who cannot write (role, no profile) or a customer who can (no
-     * role, profile) - OrganizerResolver reads the profile, everything else
-     * reads the role.
+     * is the part that needs a transaction around it: becoming an organiser is
+     * not a column value but a column value <em>and</em> an
+     * {@code organizer_profile} row to own things with, so a promotion has to
+     * write both or leave an organiser who cannot publish.
+     *
+     * <p>Demotion is not symmetric with that, and deliberately so. It takes the
+     * role and leaves the row - see the note further down for why the obvious
+     * symmetry is what made organisers with any history undemotable.
      *
      * @param actorAdminUserId the admin making the change, for the self-edit guard.
      */
@@ -289,21 +283,20 @@ public class AdminUserService {
         Optional<OrganizerProfile> existing = organizerProfileRepository.findByUserId(user.getId());
 
         if (next == Role.ORGANIZER) {
+            String nameEn = emptyToNull(request.orgNameEn());
+            String nameKm = emptyToNull(request.orgNameKm());
+
             if (existing.isEmpty()) {
-                String nameEn = emptyToNull(request.orgNameEn());
-                String nameKm = emptyToNull(request.orgNameKm());
                 if (nameEn == null && nameKm == null) {
                     throw new RoleChangeBlockedException(
                             "Making someone an organiser needs an organisation name - it is printed on "
                                     + "every event they publish.");
                 }
                 /*
-                 * The same row OrganizerServiceimpl.approve creates, and for
-                 * the same reason: since V13 a row here IS what being an
-                 * organiser means. One name given and the other blank mirrors
-                 * the rest of the product's _en/_km handling - both columns are
-                 * NOT NULL, so the given one stands in rather than a guess
-                 * being invented for the other.
+                 * The same row OrganizerServiceimpl.approve creates. One name
+                 * given and the other blank mirrors the rest of the product's
+                 * _en/_km handling - both columns are NOT NULL, so the given one
+                 * stands in rather than a guess being invented for the other.
                  *
                  * telegramChatId stays null deliberately: it is the numeric id
                  * the bot learns when the organiser first messages it, not
@@ -316,31 +309,42 @@ public class AdminUserService {
                         .telegramChatId(null)
                         .build());
                 log.info("Admin {} created an organizer profile for user {}", actorAdminUserId, user.getId());
+            } else if (nameEn != null || nameKm != null) {
+                /*
+                 * Re-promoting someone who was demoted: the dormant profile is
+                 * waiting, with its events and venues still attached, so this
+                 * reuses it rather than starting a second organisation.
+                 *
+                 * The names are applied rather than ignored. The admin dialog
+                 * asks for them whenever the role is changing TO organiser - it
+                 * cannot see whether a dormant profile exists - so dropping them
+                 * here would silently discard something an admin typed and
+                 * watched save. A blank field still leaves the old name alone.
+                 */
+                OrganizerProfile profile = existing.get();
+                if (nameEn != null) profile.setOrgNameEn(nameEn);
+                if (nameKm != null) profile.setOrgNameKm(nameKm);
+                log.info("Admin {} reused the dormant organizer profile of user {}",
+                        actorAdminUserId, user.getId());
             }
-        } else if (existing.isPresent()) {
-            /*
-             * Leaving the role means the profile goes, or OrganizerResolver
-             * keeps granting organiser writes to a demoted account - the flag
-             * would be decorative in exactly the way AdminResolver's own note
-             * refuses to let is_disabled be.
-             *
-             * But event.organizer_id and venue.organizer_id point at that row,
-             * so it can only go if nothing is hanging off it. Refusing is the
-             * honest answer: the alternative is deciding on an admin's behalf
-             * what happens to somebody's published events.
-             */
-            OrganizerProfile profile = existing.get();
-            long events = eventRepository.countByOrganizerId(profile.getId());
-            long venues = venueRepository.countByOrganizerId(profile.getId());
-            if (events > 0 || venues > 0) {
-                throw new RoleChangeBlockedException(
-                        user.getDisplayName() + " still owns " + events + " event(s) and " + venues
-                                + " venue(s). Remove or reassign those before changing the role.");
-            }
-            organizerProfileRepository.delete(profile);
-            log.info("Admin {} removed the organizer profile of user {}", actorAdminUserId, user.getId());
         }
 
+        /*
+         * Demotion deliberately does NOT touch the profile.
+         *
+         * It used to delete it, because a row in organizer_profile was itself
+         * what being an organiser meant - so the row had to go or the demoted
+         * account would keep writing. That made demotion and "delete this
+         * organisation" the same action, and since event.organizer_id,
+         * venue.organizer_id and payout_request.organizer_id all point at that
+         * row, anyone who had ever done anything could not be demoted at all.
+         *
+         * The role is now the thing that grants access, and the profile is the
+         * organisation's record. Demoting revokes the first and keeps the
+         * second: the events keep an owner, the payout history stays readable,
+         * and re-promoting restores the lot. OrganizerProfileRepository
+         * .findActiveByUserId is what makes the revocation real.
+         */
         user.setRole(next);
     }
 
