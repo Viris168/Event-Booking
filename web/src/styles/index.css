@@ -471,7 +471,9 @@
    */
   .nav-link {
     @apply relative whitespace-nowrap rounded-full px-[0.75rem] py-[0.42rem] text-[0.9rem] font-medium text-white/[0.78];
-    transition: color 0.15s ease, background-color 0.15s ease;
+    /* Only colour. Nothing here paints a background any more - the rounding
+       survives for the focus ring, which follows the border radius. */
+    transition: color 0.15s ease;
   }
   /* The rule itself. Inset to the text rather than the padding box, so it
      underlines the word and not the hit area. */
@@ -481,17 +483,21 @@
     transform: scaleX(0);
     transition: transform 0.18s cubic-bezier(0.4, 0, 0.2, 1);
   }
+  /* No fill. The rule wiping in and the label going to full white are the two
+     signals, and they are enough - a wash as well put a pale pill under the
+     pointer that looked like a weaker copy of the current-page marker, which
+     is the exact confusion this pair was split up to end. The bar now paints
+     one background in total: none. */
   .nav-link:hover {
-    @apply bg-white/[0.07] text-white no-underline;
+    @apply text-white no-underline;
   }
   .nav-link:hover::after {
     transform: scaleX(1);
   }
-  /* No pill. The gold rule is the whole marker - a fill as well would make the
-     current page the loudest thing in the bar, and it is the one destination
-     nobody needs persuading to visit. */
+  /* The gold rule is the whole marker. Weight and full-white text carry the
+     rest; nothing in this bar needs a pill to be found. */
   .nav-link.active {
-    @apply bg-transparent font-semibold text-white;
+    @apply font-semibold text-white;
   }
   .nav-link.active::after {
     @apply bg-gold-500;
@@ -527,6 +533,136 @@
       transition: none;
     }
   }
+  /*
+   * The nav search box.
+   *
+   * One element, placed two ways. On a wide bar it sits in the centre track
+   * where the links were, which is exactly where its width comes from - the
+   * links unmount, the box takes their column, and the brand and the controls
+   * either side never move. In the drawer it is simply a full-width field at
+   * the top.
+   *
+   * A light surface on the dark bar rather than another translucent white
+   * plate: this is a field you type into, and every other field in the product
+   * is a light surface. Making it look like the nav's icon buttons would make
+   * it look like something you press once.
+   */
+  .nav-search {
+    @apply flex items-center gap-[0.15rem] rounded-full bg-surface py-[0.25rem] pl-[0.3rem] pr-[0.3rem] text-ink shadow-float;
+    grid-column: 2;
+    width: min(460px, 100%);
+    animation: rise 0.16s ease-out;
+    transition: box-shadow 0.15s ease;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .nav-search {
+      animation: none;
+    }
+  }
+
+  /*
+   * Dark theme only: a hairline so the field has an edge.
+   *
+   * --color-surface is a light paper in the light theme, so the box reads as a
+   * white pill on the dark bar with no help needed. In the dark theme it is a
+   * dark warm grey sitting on near-black jade - still legible, but softer than
+   * everything around it, and this is a control that should look like it has a
+   * boundary you type inside.
+   *
+   * An inset ring rather than a border: a border would add 2px to the height
+   * and knock the box out of line with the icon buttons beside it. The float
+   * shadow is repeated because box-shadow does not merge across rules.
+   */
+  [data-theme='dark'] .nav-search {
+    box-shadow: var(--shadow-float), inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+  }
+
+  /*
+   * The focus ring belongs to the pill, not to the input inside it.
+   *
+   * The global :focus-visible paints shadow-focus and rounded-md on whatever
+   * has focus. On a bare input inside a rounded pill that drew a second,
+   * differently-rounded jade rectangle INSIDE the box - a green outline around
+   * the placeholder text, floating in the middle of the control. Killing it
+   * here and lifting the state to :focus-within is what makes the whole
+   * control light up as one object, which is what it looks like.
+   */
+  .nav-search input:focus,
+  .nav-search input:focus-visible {
+    @apply outline-none;
+    box-shadow: none;
+  }
+  .nav-search:focus-within {
+    box-shadow: var(--shadow-float), 0 0 0 2px var(--color-gold-500);
+  }
+  [data-theme='dark'] .nav-search:focus-within {
+    box-shadow:
+      var(--shadow-float),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.14),
+      0 0 0 2px var(--color-gold-500);
+  }
+
+  /*
+   * The magnifier is the submit button, not an ornament.
+   *
+   * Enter submits, but a box whose only way to search is a key you have to
+   * know about is one a fair number of people will type into and then look
+   * around for the button. It is already the universally understood glyph for
+   * "search"; making it the button costs nothing and removes the guess.
+   */
+  .nav-search-go {
+    @apply grid size-[30px] flex-none cursor-pointer place-items-center rounded-full border-0 bg-transparent p-0 text-muted;
+    transition: background-color 0.15s ease, color 0.15s ease;
+  }
+  .nav-search-go:hover {
+    @apply bg-tint text-on-tint;
+  }
+  .nav-search-go:focus-visible {
+    @apply outline-none shadow-focus;
+  }
+
+  .nav-search input {
+    @apply min-w-0 flex-auto border-0 bg-transparent px-[0.15rem] text-[0.92rem] text-ink;
+    appearance: none;
+  }
+  .nav-search input::placeholder {
+    @apply text-placeholder;
+  }
+  /* The UA clear button duplicates ours and cannot be styled to match. */
+  .nav-search input::-webkit-search-cancel-button,
+  .nav-search input::-webkit-search-decoration {
+    @apply hidden;
+    -webkit-appearance: none;
+  }
+
+  .nav-search-close {
+    @apply grid size-[30px] flex-none cursor-pointer place-items-center rounded-full border-0 bg-transparent p-0 text-muted;
+    transition: background-color 0.15s ease, color 0.15s ease;
+  }
+  .nav-search-close:hover {
+    @apply bg-surface-2 text-ink;
+  }
+  .nav-search-close:focus-visible {
+    @apply outline-none shadow-focus;
+  }
+
+  /*
+   * In the drawer it is a field in a list, not a pill in a bar: full width, no
+   * float shadow to lift it off a surface it is flush with, and a little more
+   * height because it is a touch target rather than a pointer one.
+   */
+  .nav-search.in-drawer {
+    @apply w-full rounded-ui py-[0.35rem] shadow-none;
+    grid-column: auto;
+    animation: none;
+  }
+  [data-theme='dark'] .nav-search.in-drawer {
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+  }
+  .nav-search.in-drawer:focus-within {
+    box-shadow: 0 0 0 2px var(--color-gold-500);
+  }
+
   .nav-sep {
     @apply mx-[0.4rem] h-[22px] w-px bg-white/15;
   }
