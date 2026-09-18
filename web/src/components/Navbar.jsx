@@ -7,6 +7,22 @@ import { useTheme } from '../context/ThemeContext.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
 import { countdown } from '../lib/format.js'
 
+/*
+ * How often the navbar looks for a hold it does not already know about.
+ *
+ * Only ever used for discovery. Once a hold is on screen the countdown is drawn
+ * from its own expires_at against a local clock, and asking the server again
+ * every few seconds tells us nothing the browser cannot already work out - so
+ * the poll stops for exactly as long as a hold is live, which is when this
+ * endpoint is at its most expensive to serve (it fans out over the held seats
+ * and zone lines).
+ *
+ * 30s rather than the 10s it was: nothing on screen is driven by the answer,
+ * so the only thing the interval decides is how quickly a hold created in
+ * another tab shows up here.
+ */
+const HOLD_POLL_MS = 30_000
+
 const ROLE_LABEL = {
   CUSTOMER: 'Customer',
   ORGANIZER: 'Organizer',
@@ -73,27 +89,60 @@ export default function Navbar({ onOpenAccount }) {
     return () => clearInterval(tick)
   }, [])
 
+  // A live hold is the most time-critical thing on screen: surface it globally,
+  // at every width — it stays outside the drawer so it is never hidden.
+  const holdMsLeft = hold ? new Date(hold.expires_at || hold.expiresAt).getTime() - now : 0
+  const showHold = Boolean(hold && holdMsLeft > 0)
+
   useEffect(() => {
     if (!isAuthenticated || !user?.id) {
       setHold(null)
-      return
+      return undefined
     }
+
+    /*
+     * Nothing to discover while a hold is already counting down, so the timer
+     * simply does not exist in that state - showHold is a dependency, and the
+     * cleanup below is what stops the poll when it turns true.
+     *
+     * The clock running out flips it back to false, which re-runs this effect
+     * and fetches once: that single request is what confirms the server agrees
+     * the hold is gone, rather than leaving the bar to guess from its own
+     * clock. Discovery then resumes on the interval.
+     */
+    if (showHold) return undefined
+
+    /*
+     * The timer is created inside a dynamic import, so its handle has to live
+     * out here: a cleanup returned from inside the .then() is just the
+     * promise's resolution value, which nobody reads, and the interval then
+     * outlives the effect. Every sign-out left one running, and every re-run
+     * added another on top - the poll rate climbed with each and never came
+     * back down.
+     *
+     * The cancelled flag covers the narrower case of the effect tearing down
+     * while the import is still in flight, which would otherwise start a timer
+     * nothing holds a reference to.
+     */
+    let poll
+    let cancelled = false
+
     import('../api/holds.js').then(({ getMyActiveHold }) => {
+      if (cancelled) return
       const fetchHold = () => {
         getMyActiveHold()
           .then((holds) => setHold(holds && holds.length > 0 ? holds[0] : null))
           .catch(() => setHold(null))
       }
       fetchHold()
-      const poll = setInterval(fetchHold, 10000)
-      return () => clearInterval(poll)
+      poll = setInterval(fetchHold, HOLD_POLL_MS)
     })
-  }, [isAuthenticated, user?.id])
 
-  // A live hold is the most time-critical thing on screen: surface it globally,
-  // at every width — it stays outside the drawer so it is never hidden.
-  const holdMsLeft = hold ? new Date(hold.expires_at || hold.expiresAt).getTime() - now : 0
-  const showHold = hold && holdMsLeft > 0
+    return () => {
+      cancelled = true
+      clearInterval(poll)
+    }
+  }, [isAuthenticated, user?.id, showHold])
 
   /*
    * Two lists, because the bar and the drawer are answering different
