@@ -17,6 +17,10 @@ public enum ErrorCode {
     PAYMENT_NOT_FOUND(HttpStatus.NOT_FOUND),
     TICKET_NOT_FOUND(HttpStatus.NOT_FOUND),
     ORGANIZER_APPLICATION_NOT_FOUND(HttpStatus.NOT_FOUND),
+    /* An admin acted on a contact_message id that is not there. No disclosure
+       question of the kind PAYOUT_REQUEST_NOT_FOUND has to weigh: every caller
+       who can reach this endpoint may already list every row. */
+    CONTACT_MESSAGE_NOT_FOUND(HttpStatus.NOT_FOUND),
     /* No payout with this id - or none the caller may see. The organiser-facing
        lookups scope by organizerId and report a miss as this rather than as
        403, because confirming that an id exists turns a sequential invoice
@@ -47,6 +51,14 @@ public enum ErrorCode {
        failing the whole form - the display name and email in the same request
        are usually fine. */
     INVALID_TELEGRAM_USERNAME(HttpStatus.BAD_REQUEST),
+
+    /* An admin asked to put a contact message back to NEW. NEW means "nobody
+       has looked at this", and contact_message_handled_consistent enforces
+       that by requiring handled_by to be null there - so the move would erase
+       the record of the admin who just looked at it. Not 409: the row's state
+       is not what makes it impossible, the destination is. OPEN is the status
+       that means what they meant. */
+    INVALID_CONTACT_STATUS(HttpStatus.BAD_REQUEST),
 
     // 401 Unauthorized
     /* One code for every way a login can fail. Splitting it into "no such user"
@@ -175,6 +187,13 @@ public enum ErrorCode {
     // Login attempts refused before the password is checked at all - see
     // LoginRateLimiter. Carries retry_after_seconds in `details`.
     TOO_MANY_LOGIN_ATTEMPTS(HttpStatus.TOO_MANY_REQUESTS),
+
+    // The public contact form, used too often from one address or by one
+    // sender. Unlike the login limiter above, which counts only FAILURES,
+    // there is no failure signal here - every submission succeeds - so this
+    // counts submissions outright and the limits are set generously to suit.
+    // Carries retry_after_seconds in `details`.
+    TOO_MANY_CONTACT_MESSAGES(HttpStatus.TOO_MANY_REQUESTS),
 
     // Google sign-in: a token we could not verify, for any reason. 401 rather
     // than 400 - the caller presented a credential and it was not accepted.

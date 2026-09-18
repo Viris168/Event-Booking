@@ -405,8 +405,25 @@
     @apply border-b border-white/[0.09];
     box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04);
   }
+  /*
+   * Three zones: brand, links, controls.
+   *
+   * Grid rather than flex, and `auto` in the middle rather than `ml-auto` on
+   * the links, because the links have to sit in the OPTICAL centre of the bar
+   * - the centre of the window, not the centre of whatever space the other two
+   * happen to leave. With flex, the row was pushed leftward by however wide
+   * the right-hand cluster was, so the links moved every time a hold countdown
+   * appeared or a user signed in with a longer name.
+   *
+   * The side tracks are equal `1fr`, so the middle column lands dead centre
+   * whatever they contain. minmax(0, …) rather than a bare 1fr: a bare one has
+   * an `auto` minimum, which refuses to shrink below its content and lets a
+   * long brand or a wide cluster push the bar wider than the viewport instead
+   * of letting the gap close.
+   */
   .nav-inner {
-    @apply mx-auto flex max-w-shell items-center gap-4 px-page py-[0.7rem];
+    @apply mx-auto grid max-w-shell items-center gap-4 px-page py-[0.7rem];
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   }
   .nav-brand {
     @apply flex flex-none items-center gap-[0.5rem] text-[1.02rem] font-extrabold text-white tracking-[-0.015em];
@@ -419,33 +436,107 @@
   .nav-mark {
     @apply h-[30px] w-auto;
   }
+  /* Centre track. Destinations only - everything else lives in .nav-right,
+     which is what keeps this row the same width for every visitor and so
+     genuinely centred rather than merely somewhere in the middle. */
   .nav-links {
-    @apply ml-auto flex flex-wrap items-center gap-[0.15rem];
+    @apply flex flex-nowrap items-center justify-center gap-[0.15rem];
+    grid-column: 2;
   }
+  /* Right track, pinned to the end of it. */
+  .nav-right {
+    @apply flex items-center justify-end gap-[0.4rem];
+    grid-column: 3;
+  }
+  /*
+   * Hover and active are different KINDS of signal, not two strengths of one.
+   *
+   * They used to be white/10 and white/15 - the same pale pill, five percent
+   * apart. Hovering the link next to the current page produced two pills that
+   * had to be compared to tell which was which, which is the one question the
+   * current-page marker exists to answer without being asked.
+   *
+   * So they are split by what they mean:
+   *
+   *   active  a gold rule under the label. A state - it is simply true, and it
+   *           is drawn in the accent no other nav state uses, so it is
+   *           identifiable without reference to anything beside it.
+   *   hover   a faint wash and a white rule wiping in. A gesture - it follows
+   *           the pointer, so it should look like something happening rather
+   *           than something being the case.
+   *
+   * Same underline in both, in two colours, because the shape is what says
+   * "this is a nav state" and the colour is what says which one. Gold beside
+   * white at 2px is unmistakable at a glance; white/10 beside white/15 is not.
+   */
   .nav-link {
-    @apply whitespace-nowrap rounded-full px-[0.7rem] py-[0.42rem] text-[0.9rem] font-medium text-white/[0.82];
+    @apply relative whitespace-nowrap rounded-full px-[0.75rem] py-[0.42rem] text-[0.9rem] font-medium text-white/[0.78];
+    transition: color 0.15s ease, background-color 0.15s ease;
+  }
+  /* The rule itself. Inset to the text rather than the padding box, so it
+     underlines the word and not the hit area. */
+  .nav-link::after {
+    content: '';
+    @apply pointer-events-none absolute inset-x-[0.75rem] bottom-[0.1rem] h-[2px] rounded-full bg-white/80;
+    transform: scaleX(0);
+    transition: transform 0.18s cubic-bezier(0.4, 0, 0.2, 1);
   }
   .nav-link:hover {
-    @apply bg-white/10 text-white no-underline;
+    @apply bg-white/[0.07] text-white no-underline;
   }
+  .nav-link:hover::after {
+    transform: scaleX(1);
+  }
+  /* No pill. The gold rule is the whole marker - a fill as well would make the
+     current page the loudest thing in the bar, and it is the one destination
+     nobody needs persuading to visit. */
   .nav-link.active {
-    @apply bg-white/15 text-white;
+    @apply bg-transparent font-semibold text-white;
+  }
+  .nav-link.active::after {
+    @apply bg-gold-500;
+    transform: scaleX(1);
+  }
+
+  /*
+   * A focus ring that can actually be seen on this bar.
+   *
+   * The global :focus-visible paints --shadow-focus, which is jade at 26%
+   * opacity - chosen to sit on warm paper. The navbar's ground is
+   * --color-brand-900, near-black jade, so on every control up here that ring
+   * was jade on jade and effectively invisible: the bar was keyboard-navigable
+   * with no way to see where you were. Gold is the one accent that carries on
+   * this ground, which is why .nav-avatar-btn already reached for it.
+   *
+   * The box-shadow has to be cleared explicitly - it is what the global rule
+   * set, and an outline does not replace it.
+   */
+  .nav-link:focus-visible,
+  .nav-icon-btn:focus-visible,
+  .nav-brand:focus-visible {
+    @apply outline-2 outline-offset-2 outline-gold-500;
+    box-shadow: none;
+  }
+
+  /* The wipe is decoration; the colour change is the information. Honour a
+     stated preference for less motion by dropping the first and keeping the
+     second. */
+  @media (prefers-reduced-motion: reduce) {
+    .nav-link,
+    .nav-link::after {
+      transition: none;
+    }
   }
   .nav-sep {
     @apply mx-[0.4rem] h-[22px] w-px bg-white/15;
   }
-  /* A button now - it opens the account panel rather than navigating - so it
-     needs the affordances a bare <button> does not inherit here. */
-  .nav-user {
-    @apply flex cursor-pointer items-center gap-2 rounded-full border-0 bg-transparent py-[0.15rem] pr-2 pl-[0.2rem] text-start transition-colors;
-  }
-  /* It is a link now, so it has to look like one is there. A quiet fill on
-     hover and a real focus ring - the chip carries the only route to the
-     account page. */
-  .nav-user:hover {
-    @apply bg-white/10;
-  }
-  .nav-user:focus-visible,
+  /* .nav-user is gone: the wide bar's account control is .nav-avatar-btn now,
+     the same one the narrow bar always used. The name and role it carried were
+     the widest thing in the bar and are both restated at the top of the panel
+     it opens, beside the settings they belong with.
+
+     .drawer-who keeps its focus ring - the drawer still shows the pair, where
+     a full-width list row has the space for them. */
   .drawer-who:focus-visible {
     @apply outline-2 outline-offset-2 outline-gold-500;
   }
@@ -462,17 +553,25 @@
     @apply block text-[0.68rem] uppercase tracking-[0.05em] text-white/55;
   }
 
-  .lang-toggle {
-    @apply inline-flex flex-none rounded-full border border-white/[0.14] bg-white/[0.06] p-[2px];
+  /*
+   * The language switch. One button, carrying the flag of the language you are
+   * currently reading in; pressing it switches to the other.
+   *
+   * Shares .nav-icon-btn with the theme toggle beside it, so the two read as
+   * one pair of controls rather than as a flag that wandered in next to a
+   * button. Only the padding differs: a 20px flag needs a little less room
+   * inside the 32px plate than a 17px stroked glyph does.
+   */
+  .lang-btn {
+    @apply p-[5px];
   }
-  .lang-toggle button {
-    @apply rounded-full border-0 bg-transparent px-[0.58rem] py-[0.24rem] text-[0.78rem] font-bold text-white/60;
-  }
-  .lang-toggle button:hover {
-    @apply text-white/90;
-  }
-  .lang-toggle button[aria-pressed='true'] {
-    @apply bg-white/[0.18] text-white;
+  /* The flag is a picture, not a glyph, so it does not inherit the button's
+     colour - and a flag with white in it (both of these) needs an edge or it
+     bleeds into the near-black bar. Drawn as a ring rather than a border so it
+     costs no layout. */
+  .flag {
+    @apply block rounded-[2px];
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.28);
   }
 
   .nav-hold {
@@ -493,7 +592,7 @@
     @apply bg-white/15 text-white;
   }
 
-  /* The account button in the narrow bar: the avatar and nothing else.
+  /* The account button, at every width now: the avatar and nothing else.
      Sized to match .nav-icon-btn beside it so the cluster reads as one row of
      controls rather than an avatar that wandered in - but round, and without
      the bordered plate, because the initial is already a filled shape. */
@@ -506,9 +605,11 @@
   .nav-avatar-btn:focus-visible {
     @apply outline-2 outline-offset-2 outline-gold-500;
   }
-  /* The avatar drives this button's size, so it must not also carry the 30px
-     it uses in the wide bar - that would push the button a pixel proud of the
-     burger next to it. */
+  /* The avatar drives this button's size, so it must not carry the 30px the
+     drawer's copy uses - that would push the button a pixel proud of the
+     controls beside it. (It used to be the wide bar that set 30px, via the
+     .nav-user chip; that chip is gone and the drawer is the only place the
+     larger avatar is still drawn.) */
   .nav-avatar-btn .avatar {
     @apply size-[26px] text-[0.72rem];
   }
@@ -521,12 +622,26 @@
     font-family: var(--font-sans);
   }
   /* Narrow-screen cluster: the hold countdown stays visible at every width
-     (it is time-critical) and everything else folds into the drawer. */
+     (it is time-critical) and everything else folds into the drawer.
+     No ml-auto - the grid places it in a track and justify-self pins it. */
   .nav-compact {
-    @apply ml-auto hidden items-center gap-[0.4rem];
+    @apply hidden items-center gap-[0.4rem];
+    justify-self: end;
   }
   @media (max-width: 960px) {
-    .nav-links {
+    /*
+     * Two tracks: brand, then the compact cluster.
+     *
+     * The hidden children are not merely invisible - `display: none` takes
+     * them out of grid placement entirely, so .nav-compact is auto-placed into
+     * the second column rather than needing a column of its own. Which is why
+     * the count here is 2 and not 4.
+     */
+    .nav-inner {
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
+    .nav-links,
+    .nav-right {
       @apply hidden;
     }
     .nav-compact {
@@ -582,14 +697,36 @@
   .drawer-links {
     @apply flex flex-col gap-1;
   }
+  /*
+   * The same split the bar's links use, turned on its side.
+   *
+   * These had the identical white/10 vs white/15 problem, and a drawer is
+   * where it bites hardest: the rows are stacked and touching, so two
+   * near-identical fills sit directly against each other.
+   *
+   * A vertical list's equivalent of an underline is an edge marker, so active
+   * takes a gold bar down its leading edge. Hover keeps the wash - on a touch
+   * target the size of a drawer row, a fill is the right feedback, and it is
+   * now the ONLY thing using a fill, so it no longer competes.
+   */
   .drawer-link {
-    @apply flex items-center gap-[0.6rem] rounded-[10px] px-[0.7rem] py-[0.6rem] font-semibold text-white/85;
+    @apply relative flex items-center gap-[0.6rem] rounded-[10px] px-[0.7rem] py-[0.6rem] font-semibold text-white/85;
   }
   .drawer-link:hover {
-    @apply bg-white/10 text-white no-underline;
+    @apply bg-white/[0.09] text-white no-underline;
   }
   .drawer-link.active {
-    @apply bg-white/15 text-white;
+    @apply bg-transparent text-white;
+  }
+  /* Logical property, not `left`: the marker belongs on the side the language
+     starts from, and this is the one rule here that would be wrong in RTL. */
+  .drawer-link.active::before {
+    content: '';
+    @apply pointer-events-none absolute inset-y-[0.35rem] start-0 w-[3px] rounded-full bg-gold-500;
+  }
+  .drawer-link:focus-visible {
+    @apply outline-2 outline-offset-2 outline-gold-500;
+    box-shadow: none;
   }
   .drawer-foot {
     @apply flex items-center justify-between gap-[0.6rem] border-t border-white/10 pt-[0.6rem];
@@ -2136,6 +2273,26 @@
     @apply bg-quiet-soft text-quiet;
   }
 
+  /* Support inbox (V33). The same logic the review and payout families use:
+     warning = waiting on us, nobody has looked
+     info    = somebody is on it, but it is not finished
+     success = dealt with
+     quiet   = junk, and deliberately NOT danger - danger is for a refusal that
+               somebody is owed an explanation of, and spam is owed nothing. It
+               should also be the least eye-catching row in the table. */
+  .s-NEW {
+    @apply bg-warning-soft text-warning;
+  }
+  .s-OPEN {
+    @apply bg-info-soft text-info;
+  }
+  .s-CLOSED {
+    @apply bg-success-soft text-success;
+  }
+  .s-SPAM {
+    @apply bg-quiet-soft text-quiet;
+  }
+
   .badge-hot {
     @apply bg-danger-soft text-danger;
   }
@@ -3248,7 +3405,11 @@
      links; those moved to the bottom bar, where a trust mark belongs. */
   .footer-grid {
     @apply grid gap-x-10 gap-y-[1.6rem];
-    grid-template-columns: minmax(0, 1.6fr) repeat(2, minmax(0, 1fr));
+    /* Four columns since the Company links joined: the brand blurb, then
+       Explore, the organiser/admin column and the two static pages. The brand
+       keeps a wider track because it carries a paragraph and the others carry
+       a list of four words. */
+    grid-template-columns: minmax(0, 1.6fr) repeat(3, minmax(0, 1fr));
   }
   @media (max-width: 900px) {
     .footer-grid {
@@ -5611,4 +5772,568 @@
  */
 :root[data-theme='dark'] .gsi-host [role='button'] div:has(svg) {
   background-color: transparent;
+}
+
+/* ==========================================================================
+   About + Contact
+
+   The two static pages, and the admin inbox that /contact fills.
+
+   Plain CSS below the components layer, the way .org-apply is written: these
+   are page-scoped rules that need to override tokens rather than compose
+   utilities, and keeping them here means the components layer stays the
+   vocabulary the whole product shares.
+
+   Both pages are prose-led rather than card-led, which is the one place they
+   depart from the storefront. A page of explanation broken into bordered tiles
+   reads as a feature list nobody asked for; the measure and the rhythm do the
+   work instead, and a card appears only where something is genuinely a
+   separate object (the form, the aside panels).
+   ========================================================================== */
+
+/* ------------------------------------------------------------------ about */
+/*
+ * Both pages take the full shell width, so their edges line up with the navbar,
+ * the footer and every other page in the product - and, more to the point, with
+ * each other. A visitor moving About -> Contact should not watch the page jump
+ * inwards and then out again.
+ *
+ * Full width is a container decision, not a typographic one. Running text at
+ * 1360px is unreadable whatever the page is called, so the measure is held
+ * further in: every prose block below caps itself in `ch`, and the multi-column
+ * grids are what actually spend the width. The page is wide; the sentences are
+ * not.
+ */
+.about {
+  padding-bottom: 3.5rem;
+}
+
+.about-head {
+  margin-bottom: 2.4rem;
+}
+.about-head h1 {
+  margin: 0 0 0.6rem;
+}
+.about-lead {
+  font-size: 1.05rem;
+  line-height: 1.7;
+  color: var(--color-ink-2);
+  margin: 0;
+  max-width: 62ch;
+}
+html[lang='km'] .about-lead {
+  line-height: 1.95;
+}
+
+.about-section {
+  margin-bottom: 2.6rem;
+}
+.about-section > h2 {
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+  margin: 0 0 1.1rem;
+  /* A rule under the heading rather than a card around the section. It
+     separates without boxing, which is what keeps the page reading as one
+     document instead of a stack of panels. */
+  padding-bottom: 0.55rem;
+  border-bottom: 1px solid var(--color-line);
+}
+.about-body {
+  margin: 0;
+  max-width: 68ch;
+  color: var(--color-ink-2);
+}
+
+/* ------------------------------------------------------------------ steps */
+/* Numbered, because the steps are sequential - you cannot show a QR for a
+   ticket you have not paid for. The alternative a page like this usually
+   reaches for, three icon tiles in a row, says the opposite: that these are
+   independent features you may take in any order. */
+.about-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 1.5rem 2.5rem;
+}
+/* Two abreast on a wide screen. The order still reads left-to-right then down,
+   which is how a numbered list is scanned - and the numerals are there to
+   settle it if the eye takes the columns the other way. Below this it is one
+   column, where a five-step list is simply five rows. */
+@media (min-width: 980px) {
+  .about-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.about-step {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0 1rem;
+  align-items: start;
+}
+/* The numeral is the ornament this page gets, and the only one. Set in the
+   display face, large and in the warm accent - it is decorative, which is why
+   it is aria-hidden and why <ol> is still what carries the order. */
+.about-step-n {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  line-height: 1;
+  color: var(--color-gold-600);
+  min-width: 1.4rem;
+  /* Optical: the numeral's cap height sits above the heading's, so it needs
+     nudging down to share a baseline with the first line of text. */
+  padding-top: 0.1rem;
+}
+html[lang='km'] .about-step-n {
+  /* Moul has no lining numerals worth setting at this size, and the Latin
+     digits are what the numeral is - so it keeps the Latin face in both
+     locales, the way .nav-brand-text does for the wordmark. */
+  font-family: var(--font-display);
+}
+.about-step-body h3 {
+  font-size: 0.98rem;
+  margin: 0 0 0.25rem;
+}
+.about-step-body p {
+  margin: 0;
+  color: var(--color-ink-2);
+  max-width: 62ch;
+}
+
+/* ------------------------------------------------------------------ facts */
+.about-facts {
+  display: grid;
+  /* Four across at full width, stepping down rather than stretching. Each cell
+     is a label and two short lines, so four of them read as a row of facts;
+     two of them stretched across 1360px read as a page with a hole in it. */
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1.3rem 2rem;
+  margin: 0;
+}
+@media (max-width: 1080px) {
+  .about-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 620px) {
+  .about-facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.about-fact dt {
+  font-size: var(--text-tiny);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-muted);
+  margin-bottom: 0.3rem;
+}
+.about-fact dd {
+  margin: 0;
+}
+.about-fact dd b {
+  display: block;
+  font-size: 1.1rem;
+  line-height: 1.35;
+  color: var(--color-ink);
+  font-variant-numeric: tabular-nums;
+}
+.about-fact dd span {
+  display: block;
+  font-size: var(--text-small);
+  line-height: 1.55;
+  color: var(--color-muted);
+  margin-top: 0.15rem;
+}
+
+.about-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 1.2rem;
+}
+
+/* --------------------------------------------------------- about: contact */
+/* The one filled panel on the page, and it is the last thing on it. Jade
+   rather than a neutral card: it is an invitation, and it should read as a
+   different kind of thing from the sections above it. */
+.about-contact {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.2rem;
+  padding: 1.4rem 1.5rem;
+  border-radius: var(--radius-card);
+  background: var(--color-tint);
+  border: 1px solid var(--color-tint-2);
+}
+.about-contact h2 {
+  font-size: 1.02rem;
+  margin: 0 0 0.25rem;
+  color: var(--color-on-tint);
+}
+.about-contact p {
+  margin: 0;
+  font-size: var(--text-small);
+  color: var(--color-ink-2);
+  max-width: 54ch;
+}
+/* The panel spans the shell now, so the text and the button would otherwise
+   sit at opposite ends of 1360px with a gulf between them. Capping the text
+   block keeps the pair reading as one invitation. */
+.about-contact > div {
+  min-width: 0;
+  max-width: 70ch;
+}
+
+/* ---------------------------------------------------------------- contact */
+.contact {
+  padding-bottom: 3.5rem;
+}
+.contact-head {
+  margin-bottom: 1.8rem;
+}
+.contact-head h1 {
+  margin: 0 0 0.5rem;
+}
+.contact-head p {
+  margin: 0;
+  max-width: 64ch;
+  color: var(--color-ink-2);
+}
+
+/* The form is the page; the aside is context for it. Not .split, which is
+   sized for a 340px booking rail - this one wants a wider second column
+   because the routing list in it is full sentences, not figures. */
+.contact-split {
+  display: grid;
+  /* The aside is given a fixed track rather than a fraction now that the page
+     is full width: as a fraction it grew with the viewport, and a column of
+     three short lists does not get better at 500px wide - it just gets airier
+     while the form, which is the page, gets proportionally less. */
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 1.4rem;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .contact-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* .card supplies the surface; sections divide it, as on .org-apply-form. */
+.contact-section {
+  padding: 1.4rem 1.5rem;
+}
+/*
+ * The page is full width; a text input is not improved by being 900px of it.
+ *
+ * The form column grew when the page stopped capping itself, and a single
+ * column of controls stretched to match would put the label at one end of the
+ * screen and the caret at the other. The section fills its column - so the
+ * card, its rules and its background still reach the page edge - and the
+ * controls inside stop at a width somebody can actually aim at.
+ */
+.contact-section > * {
+  max-width: 720px;
+}
+.contact-section + .contact-section,
+.contact-foot {
+  border-top: 1px solid var(--color-line);
+}
+.contact-section h2 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+.contact-section-note {
+  font-size: 0.8125rem;
+  color: var(--color-muted);
+  margin: 0.1rem 0 1.1rem;
+}
+/* Direct children only - the same trap .org-apply-section documents: a
+   descendant selector also matches the fields inside .contact-pair and pushes
+   the second one a row below the first, which the grid has already spaced. */
+.contact-section > .field + .field,
+.contact-section > .contact-pair + .field,
+.contact-section > .field + .contact-pair {
+  margin-top: 1rem;
+}
+
+.contact-pair {
+  display: grid;
+  gap: 1rem;
+}
+@media (min-width: 640px) {
+  .contact-pair {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* The required marker. Its own colour token so it is not read as an error
+   that has already happened. */
+.contact-req {
+  color: var(--color-danger);
+}
+.contact-field-error {
+  display: block;
+  font-size: 0.76rem;
+  color: var(--color-danger);
+  margin-top: 0.3rem;
+}
+
+/* Character counter parked inside the textarea's bottom-right corner. */
+.contact-counted {
+  position: relative;
+  display: block;
+}
+.contact-count {
+  position: absolute;
+  right: 0.6rem;
+  bottom: 0.55rem;
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-muted);
+  background: var(--color-surface);
+  padding: 0 0.25rem;
+  border-radius: var(--radius-tiny);
+  pointer-events: none;
+}
+
+/* The @ in front of the Telegram field, drawn as part of the control. */
+.contact-prefixed {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.contact-prefix {
+  position: absolute;
+  left: 0.85rem;
+  color: var(--color-placeholder);
+  pointer-events: none;
+}
+.contact-prefixed .input {
+  padding-left: 1.85rem;
+}
+
+.contact-foot {
+  padding: 1.2rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  align-items: flex-start;
+}
+.contact-note,
+.contact-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  margin: 0;
+  font-size: var(--text-small);
+  line-height: 1.5;
+}
+.contact-note {
+  color: var(--color-muted);
+}
+.contact-error {
+  color: var(--color-danger);
+  font-weight: 600;
+}
+.contact-foot .btn {
+  align-self: stretch;
+}
+@media (min-width: 560px) {
+  .contact-foot .btn {
+    align-self: flex-end;
+  }
+}
+
+/* ----------------------------------------------------------- contact aside */
+.contact-aside {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+.contact-card {
+  padding: 1.1rem 1.2rem;
+}
+.contact-card h2 {
+  font-size: 0.88rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-muted);
+  margin: 0 0 0.8rem;
+}
+html[lang='km'] .contact-card h2 {
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* "Faster than writing": a label and the place to go, per row. */
+.contact-routes,
+.contact-channels {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.contact-routes li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid var(--color-line-2);
+}
+.contact-routes li:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.contact-routes li:first-child {
+  padding-top: 0;
+}
+.contact-routes span {
+  font-size: var(--text-small);
+  color: var(--color-ink-2);
+}
+.contact-routes a {
+  font-size: var(--text-small);
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.contact-channels li + li {
+  margin-top: 0.3rem;
+}
+.contact-channels a {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: var(--radius-ui);
+  color: var(--color-ink);
+}
+.contact-channels a:hover {
+  background: var(--color-surface-2);
+  text-decoration: none;
+}
+.contact-channels a > .icon {
+  color: var(--color-muted);
+  flex: none;
+}
+.contact-channels span {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-size: var(--text-small);
+  color: var(--color-muted);
+}
+.contact-channels b {
+  font-size: 0.86rem;
+  color: var(--color-ink);
+}
+
+.contact-hours {
+  margin: 0;
+  font-size: var(--text-small);
+  line-height: 1.6;
+  color: var(--color-ink-2);
+}
+.contact-hours-note {
+  margin: 0.7rem 0 0;
+  padding-top: 0.7rem;
+  border-top: 1px solid var(--color-line-2);
+  font-size: var(--text-small);
+  line-height: 1.6;
+  color: var(--color-muted);
+}
+
+/* ------------------------------------------------------------ contact sent */
+/* The receipt. Centred and short: it exists to say the message landed and to
+   hand over the one number worth keeping, and anything else on it would be
+   the page asking for more attention after the job is done. */
+.contact-sent {
+  max-width: 560px;
+  margin: 1.5rem auto 0;
+  padding: 2.2rem 1.8rem;
+  text-align: center;
+}
+.contact-sent-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  background: var(--color-success-soft);
+  color: var(--color-success);
+  margin-bottom: 1rem;
+}
+.contact-sent h1 {
+  font-size: 1.3rem;
+  margin: 0 0 0.5rem;
+}
+.contact-sent > p {
+  margin: 0 auto;
+  max-width: 44ch;
+  color: var(--color-ink-2);
+}
+
+.contact-receipt {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.8rem 2.2rem;
+  margin: 1.5rem 0 0;
+  padding: 1rem 1.2rem;
+  border-radius: var(--radius-ui);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-line-2);
+}
+.contact-receipt dt {
+  font-size: var(--text-tiny);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-muted);
+  margin-bottom: 0.2rem;
+}
+.contact-receipt dd {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 650;
+  color: var(--color-ink);
+}
+
+.contact-sent-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.6rem;
+  margin-top: 1.5rem;
+}
+
+/* ------------------------------------------------------- admin: the inbox */
+.contact-admin-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+/* What the sender actually wrote, set apart from the controls under it. The
+   left rule and the surface say "this is quoted, not edited" - which is the
+   whole contract of this dialog: nothing here may rewrite it. */
+.contact-admin-body {
+  margin: 0;
+  padding: 0.9rem 1rem;
+  border-left: 3px solid var(--color-line);
+  background: var(--color-surface-2);
+  border-radius: 0 var(--radius-ui) var(--radius-ui) 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.65;
+  color: var(--color-ink);
 }

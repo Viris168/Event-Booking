@@ -15,6 +15,7 @@ export default function AdminLayout() {
           { to: '/admin/events', label: t('moderation') },
           { to: '/admin/payments', label: t('payments') },
           { to: '/admin/payouts', label: t('payouts') },
+          { to: '/admin/contact-messages', label: t('supportInbox') },
         ]}
       />
       <Outlet />

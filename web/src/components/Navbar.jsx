@@ -1,12 +1,23 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import Icon from './Icon.jsx'
+import Flag from './Flag.jsx'
 import NotificationBell from './NotificationBell.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useTheme } from '../context/ThemeContext.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
 import { countdown } from '../lib/format.js'
 
+/*
+ * Still here for the drawer, and only for the drawer.
+ *
+ * The wide bar used to print the role under the display name. It no longer
+ * does: the bar's account control is the avatar and nothing else. The drawer
+ * keeps both, because a drawer row is a full-width list item with room to
+ * spare, and on a phone the account panel is one more tap away than it is on a
+ * desktop - so the one place the role is still worth stating is the one place
+ * it costs nothing to state.
+ */
 const ROLE_LABEL = {
   CUSTOMER: 'Customer',
   ORGANIZER: 'Organizer',
@@ -117,6 +128,21 @@ export default function Navbar({ onOpenAccount }) {
     // different consoles side by side with nothing to say which was theirs.
     { to: '/organizer', label: t('organizer'), icon: 'building', show: isOrganizer && !isAdmin },
     { to: '/admin', label: t('admin'), icon: 'shield', show: isAdmin },
+    /*
+     * The two static pages, last in the row on purpose.
+     *
+     * Everything above them is somewhere you go to DO something - browse,
+     * collect a ticket, run your events. These two are somewhere you go when
+     * the doing has stopped working, so they sit after the work and before
+     * the account controls.
+     *
+     * They are also the only rows here with no `show`: both routes are
+     * public, and Contact in particular has to stay reachable signed out,
+     * because not being able to sign in is one of the commonest reasons to
+     * need it.
+     */
+    { to: '/about', label: t('aboutUs'), icon: 'info', show: true },
+    { to: '/contact', label: t('contactUs'), icon: 'mail', show: true },
   ].filter((l) => l.show)
 
   const drawerLinks = [
@@ -132,25 +158,60 @@ export default function Navbar({ onOpenAccount }) {
     },
   ].filter((l) => l.show)
 
+  /*
+   * The language switch: one flag, the one you are reading in.
+   *
+   * <p>Not a pair with the inactive one dimmed. A two-flag control spends
+   * double the width to show a choice that has already been made, and it has
+   * to solve "which of these is selected" with opacity or a ring - a question
+   * a single button never raises, because whatever it shows IS the current
+   * state.
+   *
+   * <p>So the flag is the state and the click is the action, which are not the
+   * same thing and must not be labelled as if they were. The button shows the
+   * current language and says, in words, what pressing it will do: hovering
+   * the Union Flag reads "ប្តូរទៅភាសាខ្មែរ". Labelling it "English" would
+   * describe the picture and leave the behaviour to be guessed at.
+   *
+   * <p>No `aria-pressed`. This is an action, not a toggle sitting in an on or
+   * off state - there is no sense in which "English" is pressed and "Khmer" is
+   * released.
+   *
+   * <p>The flip below is written for exactly two locales, which is what
+   * LOCALES holds. A third would need this to become a menu; there is no
+   * sensible one-button gesture for cycling three languages, and dropping one
+   * in would silently make the third unreachable.
+   */
+  const other = locale === 'en' ? 'km' : 'en'
+  const switchTo = other === 'km' ? 'ភាសាខ្មែរ' : 'English'
+  const langToggle = (
+    <button
+      type="button"
+      className="nav-icon-btn lang-btn"
+      onClick={() => setLocale(other)}
+      title={locale === 'km' ? `ប្តូរទៅ${switchTo}` : `Switch to ${switchTo}`}
+      aria-label={locale === 'km' ? `ប្តូរទៅ${switchTo}` : `Switch to ${switchTo}`}
+    >
+      <Flag code={locale} size={20} />
+    </button>
+  )
+
+  const themeToggle = (
+    <button
+      className="nav-icon-btn theme-toggle"
+      onClick={toggleTheme}
+      title={isDark ? t('lightMode') : t('darkMode')}
+      aria-label={isDark ? t('lightMode') : t('darkMode')}
+      aria-pressed={isDark}
+    >
+      <Icon name={isDark ? 'sun' : 'moon'} size={17} />
+    </button>
+  )
+
   const displayPrefs = (
     <div className="pref-group">
-      <div className="lang-toggle" role="group" aria-label="Language">
-        <button aria-pressed={locale === 'en'} onClick={() => setLocale('en')}>
-          EN
-        </button>
-        <button aria-pressed={locale === 'km'} onClick={() => setLocale('km')} className="km">
-          ខ្មែរ
-        </button>
-      </div>
-      <button
-        className="nav-icon-btn theme-toggle"
-        onClick={toggleTheme}
-        title={isDark ? t('lightMode') : t('darkMode')}
-        aria-label={isDark ? t('lightMode') : t('darkMode')}
-        aria-pressed={isDark}
-      >
-        <Icon name={isDark ? 'sun' : 'moon'} size={17} />
-      </button>
+      {langToggle}
+      {themeToggle}
     </div>
   )
 
@@ -162,14 +223,28 @@ export default function Navbar({ onOpenAccount }) {
           <span className="nav-brand-text">{t('brand')}</span>
         </Link>
 
-        {/* ------------------------------------------------ wide-screen bar */}
+        {/* -------------------------------------------- wide bar: the middle */}
+        {/*
+          Destinations only, and centred by the grid rather than by a margin.
+          Everything that is not somewhere to go - the countdown, the
+          preferences, the bell, the account - moved out to .nav-right, which
+          is what lets this row sit in the optical centre of the bar instead of
+          being shoved leftward by however wide the right-hand cluster happens
+          to be for this particular signed-in user.
+        */}
         <div className="nav-links">
           {links.map((l) => (
             <NavLink key={l.to} to={l.to} end={l.end} className="nav-link">
               {l.label}
             </NavLink>
           ))}
+        </div>
 
+        {/* --------------------------------------------- wide bar: the right */}
+        <div className="nav-right">
+          {/* First in the cluster because it is the only thing here that is
+              running out. A live hold is the most time-critical thing on the
+              screen and it reads left-to-right before the controls do. */}
           {showHold && (
             <Link to={`/events/${hold.eventId || hold.event_id}`} className="nav-link nav-hold">
               <Icon name="clock" size={14} />
@@ -177,35 +252,52 @@ export default function Navbar({ onOpenAccount }) {
             </Link>
           )}
 
-          <span className="nav-sep" aria-hidden="true" />
+          {/*
+            Signed out only. Once you have an account, language and theme live
+            in the account panel and nowhere else.
 
-          {/* Only for visitors with no account to keep them in. Signed in, both
-              of these live in the account panel: they are set once and then
-              never touched, and two permanent controls in the bar for that is
-              most of what made it feel crowded. */}
+            The reasoning is the one the bar has always used: both are set once
+            and then never touched again, so a permanent slot in the chrome is
+            a poor trade for something you use on your first visit and never
+            again. A signed-out visitor is the case where that does not hold -
+            they have no panel to keep the setting in, and no account for it to
+            persist against, so the control has to be in front of them.
+          */}
           {!isAuthenticated && displayPrefs}
+
+          {/*
+            The rule divides preferences from identity, so it is only drawn
+            when there is something on both sides of it. Signed in, the prefs
+            are gone and a leading hairline before the bell would be a divider
+            dividing nothing from the edge of the bar.
+          */}
+          {(!isAuthenticated || showHold) && <span className="nav-sep" aria-hidden="true" />}
 
           {isAuthenticated ? (
             <>
               <NotificationBell />
 
-              {/* Your own name and face are the way into your account -
-                  clicking them is what people try first, and a chip that
-                  looks like a person but does nothing reads as broken.
+              {/* The account, as the avatar and nothing else - the same
+                  control the narrow bar has always used, promoted to every
+                  width.
+
+                  The name and role went with the redesign. They were the
+                  widest thing in the bar and the least load-bearing: your own
+                  name tells you nothing you did not know, and both are
+                  restated at the top of the panel this button opens, next to
+                  the settings they actually belong beside.
+
                   A button, not a link: it opens a panel over the page you are
-                  already on rather than navigating anywhere. */}
+                  on rather than navigating anywhere. */}
               <button
                 type="button"
-                className="nav-user"
+                className="nav-avatar-btn"
                 onClick={onOpenAccount}
                 title={t('myAccount')}
+                aria-label={t('myAccount')}
               >
                 <span className="avatar" aria-hidden="true">
                   {user.display_name.slice(0, 1).toUpperCase()}
-                </span>
-                <span className="nav-who">
-                  {user.display_name}
-                  <span>{ROLE_LABEL[role]}</span>
                 </span>
               </button>
             </>
@@ -219,7 +311,6 @@ export default function Navbar({ onOpenAccount }) {
               </Link>
             </>
           )}
-
         </div>
 
         {/* --------------------------------------------------- narrow screens */}
