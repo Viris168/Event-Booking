@@ -78,16 +78,36 @@ export default function Navbar({ onOpenAccount }) {
       setHold(null)
       return
     }
+    /*
+     * The timer is created inside a dynamic import, so its handle has to live
+     * out here: a cleanup returned from inside the .then() is just the
+     * promise's resolution value, which nobody reads, and the interval then
+     * outlives the effect. Every sign-out left one running, and every re-run
+     * added another on top - the poll rate climbed with each and never came
+     * back down.
+     *
+     * The cancelled flag covers the narrower case of the effect tearing down
+     * while the import is still in flight, which would otherwise start a timer
+     * nothing holds a reference to.
+     */
+    let poll
+    let cancelled = false
+
     import('../api/holds.js').then(({ getMyActiveHold }) => {
+      if (cancelled) return
       const fetchHold = () => {
         getMyActiveHold()
           .then((holds) => setHold(holds && holds.length > 0 ? holds[0] : null))
           .catch(() => setHold(null))
       }
       fetchHold()
-      const poll = setInterval(fetchHold, 10000)
-      return () => clearInterval(poll)
+      poll = setInterval(fetchHold, 10000)
     })
+
+    return () => {
+      cancelled = true
+      clearInterval(poll)
+    }
   }, [isAuthenticated, user?.id])
 
   // A live hold is the most time-critical thing on screen: surface it globally,
