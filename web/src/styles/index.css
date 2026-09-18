@@ -1981,9 +1981,27 @@
     content: '';
     @apply flex-1 border-t border-line;
   }
-  /* Height reserved so the card does not jump when the widget arrives. */
+  /*
+   * Height reserved so the card does not jump when the widget arrives.
+   *
+   * Clipped, because Google has two render paths and only one of them is ours
+   * to style. Signed out, GIS draws the generic "Continue with Google" as real
+   * DOM in here and the rules further down reach it. Signed in on an origin
+   * Google deems eligible - a real HTTPS domain carrying a Google session - it
+   * draws a personalised "Continue as <name>" instead, with the account's
+   * photo and address, inside a cross-origin iframe. That path ignores `theme`
+   * and `width` both: it comes back white, square-cornered and a fixed 420px,
+   * 20px wider than the card, and no stylesheet of ours reaches into it.
+   *
+   * Clipping is the one thing that still applies from outside the frame. It
+   * takes off the overhang and the square corners, so the button at least
+   * lands on the same footprint as the submit button above it. It stays white
+   * - that part is Google's. localhost is never an eligible origin, so none of
+   * this is visible in dev; it only appears on the deployed site.
+   */
   .gsi-host {
-    @apply flex min-h-[44px] w-full justify-center;
+    @apply flex min-h-[44px] w-full justify-center overflow-hidden;
+    border-radius: var(--radius-ui);
   }
 
   /* Password input with a reveal toggle. */
