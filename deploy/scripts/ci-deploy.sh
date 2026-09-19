@@ -62,4 +62,27 @@ log "Starting deploy.sh --no-build (IMAGE_TAG=${IMAGE_TAG})"
 IMAGE_TAG="$IMAGE_TAG" \
   COMPOSE_FILE="docker-compose.prod.yml:docker-compose.registry.yml" \
   bash scripts/deploy.sh --no-build
+
+# ── Record what is now running ────────────────────────────────────────────────
+# Only reached when deploy.sh returned 0 - `set -e` means a failed deploy, or
+# one that rolled itself back, never gets here and leaves the previous value in
+# place.
+#
+# This line is what stops the stack rolling backwards. Compose resolves
+# ${IMAGE_TAG} from the shell environment first and .env.prod second, and the
+# environment only has it because the deploy above put it there. Anyone who
+# later runs `docker compose up -d` on this box by hand gets the file's value
+# instead - and shipped as-is that value is the literal string "latest", which
+# resolves to whatever local image last carried that tag. Old bytes, no error,
+# no warning, and a site that has quietly reverted.
+#
+# Writing the tag back means the file agrees with reality, so a hand-run
+# compose recreates on THIS release and is a no-op rather than a rollback.
+if grep -q '^IMAGE_TAG=' .env.prod; then
+  sed -i "s|^IMAGE_TAG=.*|IMAGE_TAG=${IMAGE_TAG}|" .env.prod
+else
+  printf 'IMAGE_TAG=%s\n' "${IMAGE_TAG}" >> .env.prod
+fi
+log "Recorded IMAGE_TAG=${IMAGE_TAG} in .env.prod"
+
 log "Deploy complete: IMAGE_TAG=$IMAGE_TAG"
