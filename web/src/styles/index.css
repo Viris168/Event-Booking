@@ -166,6 +166,20 @@
 
 /* ------------------------------------------------------------------ base */
 @layer base {
+  /*
+   * The scrollbar's space is always reserved, whether or not there is one.
+   *
+   * Without it, moving between a route that overflows and one that does not
+   * takes the scrollbar away and hands its width back to the page, so the
+   * whole centred shell - navbar, table, footer - slides sideways by however
+   * wide the scrollbar is. It reads as the layout twitching on every
+   * navigation. No effect where the platform draws overlay scrollbars, which
+   * already take no space.
+   */
+  html {
+    scrollbar-gutter: stable;
+  }
+
   body {
     @apply bg-page text-ink font-sans antialiased;
     font-size: 15px;
@@ -175,6 +189,35 @@
        tint down the screen as you scroll and read as a smudge. */
     background-image: radial-gradient(1100px 460px at 50% 0%, rgba(18, 97, 60, 0.055), transparent 72%);
     background-repeat: no-repeat;
+  }
+
+  /*
+   * The footer sits on the bottom of the window, not on the bottom of the
+   * content.
+   *
+   * On any page short enough not to fill the screen - an empty booking list, a
+   * filtered event search with no results, a 404 - the footer rode up to wherever
+   * the content happened to stop and left a band of bare paper under it, which
+   * reads as the page having been cut off. The shell is a column instead and
+   * <main> takes the slack, so the footer is either at the bottom of a long
+   * document or at the bottom of the window, and never floating between them.
+   *
+   * `flex: 1 0 auto` rather than `flex: 1`: the shorthand's `1` basis is 0%,
+   * which makes main's height come entirely from the free space and lets a tall
+   * page collapse; `auto` keeps content height as the floor and only ever grows.
+   *
+   * 100dvh is the mobile-correct one - 100vh on iOS Safari measures the window
+   * with the address bar collapsed, which is taller than what is on screen, so
+   * the footer sat a toolbar's height below the fold. vh stays first as the
+   * fallback for anything that does not know dvh.
+   */
+  #root {
+    @apply flex flex-col;
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+  #root > main {
+    flex: 1 0 auto;
   }
 
   /* Khmer needs more vertical room and a script-aware family. */
@@ -352,10 +395,14 @@
   }
 
   .page-head {
-    @apply mb-5 flex flex-wrap items-end justify-between gap-4;
+    @apply mb-3 flex flex-wrap items-end justify-between gap-4;
+  }
+  .page-head h1 {
+    @apply text-[3rem] font-extrabold leading-tight tracking-tighter;
+    color: var(--color-ink);
   }
   .page-head p {
-    @apply text-muted max-w-[60ch];
+    @apply mt-2 text-[1.1rem] font-medium text-muted max-w-[60ch];
   }
 
   /*
@@ -405,8 +452,25 @@
     @apply border-b border-white/[0.09];
     box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04);
   }
+  /*
+   * Three zones: brand, links, controls.
+   *
+   * Grid rather than flex, and `auto` in the middle rather than `ml-auto` on
+   * the links, because the links have to sit in the OPTICAL centre of the bar
+   * - the centre of the window, not the centre of whatever space the other two
+   * happen to leave. With flex, the row was pushed leftward by however wide
+   * the right-hand cluster was, so the links moved every time a hold countdown
+   * appeared or a user signed in with a longer name.
+   *
+   * The side tracks are equal `1fr`, so the middle column lands dead centre
+   * whatever they contain. minmax(0, …) rather than a bare 1fr: a bare one has
+   * an `auto` minimum, which refuses to shrink below its content and lets a
+   * long brand or a wide cluster push the bar wider than the viewport instead
+   * of letting the gap close.
+   */
   .nav-inner {
-    @apply mx-auto flex max-w-shell items-center gap-4 px-page py-[0.7rem];
+    @apply mx-auto grid max-w-shell items-center gap-4 px-page py-[0.7rem];
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   }
   .nav-brand {
     @apply flex flex-none items-center gap-[0.5rem] text-[1.02rem] font-extrabold text-white tracking-[-0.015em];
@@ -419,33 +483,243 @@
   .nav-mark {
     @apply h-[30px] w-auto;
   }
+  /* Centre track. Destinations only - everything else lives in .nav-right,
+     which is what keeps this row the same width for every visitor and so
+     genuinely centred rather than merely somewhere in the middle. */
   .nav-links {
-    @apply ml-auto flex flex-wrap items-center gap-[0.15rem];
+    @apply flex flex-nowrap items-center justify-center gap-[0.15rem];
+    grid-column: 2;
   }
+  /* Right track, pinned to the end of it. */
+  .nav-right {
+    @apply flex items-center justify-end gap-[0.4rem];
+    grid-column: 3;
+  }
+  /*
+   * Hover and active are different KINDS of signal, not two strengths of one.
+   *
+   * They used to be white/10 and white/15 - the same pale pill, five percent
+   * apart. Hovering the link next to the current page produced two pills that
+   * had to be compared to tell which was which, which is the one question the
+   * current-page marker exists to answer without being asked.
+   *
+   * So they are split by what they mean:
+   *
+   *   active  a gold rule under the label. A state - it is simply true, and it
+   *           is drawn in the accent no other nav state uses, so it is
+   *           identifiable without reference to anything beside it.
+   *   hover   a faint wash and a white rule wiping in. A gesture - it follows
+   *           the pointer, so it should look like something happening rather
+   *           than something being the case.
+   *
+   * Same underline in both, in two colours, because the shape is what says
+   * "this is a nav state" and the colour is what says which one. Gold beside
+   * white at 2px is unmistakable at a glance; white/10 beside white/15 is not.
+   */
   .nav-link {
-    @apply whitespace-nowrap rounded-full px-[0.7rem] py-[0.42rem] text-[0.9rem] font-medium text-white/[0.82];
+    @apply relative whitespace-nowrap rounded-full px-[0.75rem] py-[0.42rem] text-[0.9rem] font-medium text-white/[0.78];
+    /* Only colour. Nothing here paints a background any more - the rounding
+       survives for the focus ring, which follows the border radius. */
+    transition: color 0.15s ease;
   }
+  /* The rule itself. Inset to the text rather than the padding box, so it
+     underlines the word and not the hit area. */
+  .nav-link::after {
+    content: '';
+    @apply pointer-events-none absolute inset-x-[0.75rem] bottom-[0.1rem] h-[2px] rounded-full bg-white/80;
+    transform: scaleX(0);
+    transition: transform 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  /* No fill. The rule wiping in and the label going to full white are the two
+     signals, and they are enough - a wash as well put a pale pill under the
+     pointer that looked like a weaker copy of the current-page marker, which
+     is the exact confusion this pair was split up to end. The bar now paints
+     one background in total: none. */
   .nav-link:hover {
-    @apply bg-white/10 text-white no-underline;
+    @apply text-white no-underline;
   }
+  .nav-link:hover::after {
+    transform: scaleX(1);
+  }
+  /* The gold rule is the whole marker. Weight and full-white text carry the
+     rest; nothing in this bar needs a pill to be found. */
   .nav-link.active {
-    @apply bg-white/15 text-white;
+    @apply font-semibold text-white;
   }
+  .nav-link.active::after {
+    @apply bg-gold-500;
+    transform: scaleX(1);
+  }
+
+  /*
+   * A focus ring that can actually be seen on this bar.
+   *
+   * The global :focus-visible paints --shadow-focus, which is jade at 26%
+   * opacity - chosen to sit on warm paper. The navbar's ground is
+   * --color-brand-900, near-black jade, so on every control up here that ring
+   * was jade on jade and effectively invisible: the bar was keyboard-navigable
+   * with no way to see where you were. Gold is the one accent that carries on
+   * this ground, which is why .nav-avatar-btn already reached for it.
+   *
+   * The box-shadow has to be cleared explicitly - it is what the global rule
+   * set, and an outline does not replace it.
+   */
+  .nav-link:focus-visible,
+  .nav-icon-btn:focus-visible,
+  .nav-brand:focus-visible {
+    @apply outline-2 outline-offset-2 outline-gold-500;
+    box-shadow: none;
+  }
+
+  /* The wipe is decoration; the colour change is the information. Honour a
+     stated preference for less motion by dropping the first and keeping the
+     second. */
+  @media (prefers-reduced-motion: reduce) {
+    .nav-link,
+    .nav-link::after {
+      transition: none;
+    }
+  }
+  /*
+   * The nav search box.
+   *
+   * One element, placed two ways. On a wide bar it sits in the centre track
+   * where the links were, which is exactly where its width comes from - the
+   * links unmount, the box takes their column, and the brand and the controls
+   * either side never move. In the drawer it is simply a full-width field at
+   * the top.
+   *
+   * A light surface on the dark bar rather than another translucent white
+   * plate: this is a field you type into, and every other field in the product
+   * is a light surface. Making it look like the nav's icon buttons would make
+   * it look like something you press once.
+   */
+  .nav-search {
+    @apply flex items-center gap-[0.15rem] rounded-full bg-surface py-[0.25rem] pl-[0.3rem] pr-[0.3rem] text-ink shadow-float;
+    grid-column: 2;
+    width: min(460px, 100%);
+    animation: rise 0.16s ease-out;
+    transition: box-shadow 0.15s ease;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .nav-search {
+      animation: none;
+    }
+  }
+
+  /*
+   * Dark theme only: a hairline so the field has an edge.
+   *
+   * --color-surface is a light paper in the light theme, so the box reads as a
+   * white pill on the dark bar with no help needed. In the dark theme it is a
+   * dark warm grey sitting on near-black jade - still legible, but softer than
+   * everything around it, and this is a control that should look like it has a
+   * boundary you type inside.
+   *
+   * An inset ring rather than a border: a border would add 2px to the height
+   * and knock the box out of line with the icon buttons beside it. The float
+   * shadow is repeated because box-shadow does not merge across rules.
+   */
+  [data-theme='dark'] .nav-search {
+    box-shadow: var(--shadow-float), inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+  }
+
+  /*
+   * The focus ring belongs to the pill, not to the input inside it.
+   *
+   * The global :focus-visible paints shadow-focus and rounded-md on whatever
+   * has focus. On a bare input inside a rounded pill that drew a second,
+   * differently-rounded jade rectangle INSIDE the box - a green outline around
+   * the placeholder text, floating in the middle of the control. Killing it
+   * here and lifting the state to :focus-within is what makes the whole
+   * control light up as one object, which is what it looks like.
+   */
+  .nav-search input:focus,
+  .nav-search input:focus-visible {
+    @apply outline-none;
+    box-shadow: none;
+  }
+  .nav-search:focus-within {
+    box-shadow: var(--shadow-float), 0 0 0 2px var(--color-gold-500);
+  }
+  [data-theme='dark'] .nav-search:focus-within {
+    box-shadow:
+      var(--shadow-float),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.14),
+      0 0 0 2px var(--color-gold-500);
+  }
+
+  /*
+   * The magnifier is the submit button, not an ornament.
+   *
+   * Enter submits, but a box whose only way to search is a key you have to
+   * know about is one a fair number of people will type into and then look
+   * around for the button. It is already the universally understood glyph for
+   * "search"; making it the button costs nothing and removes the guess.
+   */
+  .nav-search-go {
+    @apply grid size-[30px] flex-none cursor-pointer place-items-center rounded-full border-0 bg-transparent p-0 text-muted;
+    transition: background-color 0.15s ease, color 0.15s ease;
+  }
+  .nav-search-go:hover {
+    @apply bg-tint text-on-tint;
+  }
+  .nav-search-go:focus-visible {
+    @apply outline-none shadow-focus;
+  }
+
+  .nav-search input {
+    @apply min-w-0 flex-auto border-0 bg-transparent px-[0.15rem] text-[0.92rem] text-ink;
+    appearance: none;
+  }
+  .nav-search input::placeholder {
+    @apply text-placeholder;
+  }
+  /* The UA clear button duplicates ours and cannot be styled to match. */
+  .nav-search input::-webkit-search-cancel-button,
+  .nav-search input::-webkit-search-decoration {
+    @apply hidden;
+    -webkit-appearance: none;
+  }
+
+  .nav-search-close {
+    @apply grid size-[30px] flex-none cursor-pointer place-items-center rounded-full border-0 bg-transparent p-0 text-muted;
+    transition: background-color 0.15s ease, color 0.15s ease;
+  }
+  .nav-search-close:hover {
+    @apply bg-surface-2 text-ink;
+  }
+  .nav-search-close:focus-visible {
+    @apply outline-none shadow-focus;
+  }
+
+  /*
+   * In the drawer it is a field in a list, not a pill in a bar: full width, no
+   * float shadow to lift it off a surface it is flush with, and a little more
+   * height because it is a touch target rather than a pointer one.
+   */
+  .nav-search.in-drawer {
+    @apply w-full rounded-ui py-[0.35rem] shadow-none;
+    grid-column: auto;
+    animation: none;
+  }
+  [data-theme='dark'] .nav-search.in-drawer {
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+  }
+  .nav-search.in-drawer:focus-within {
+    box-shadow: 0 0 0 2px var(--color-gold-500);
+  }
+
   .nav-sep {
     @apply mx-[0.4rem] h-[22px] w-px bg-white/15;
   }
-  /* A button now - it opens the account panel rather than navigating - so it
-     needs the affordances a bare <button> does not inherit here. */
-  .nav-user {
-    @apply flex cursor-pointer items-center gap-2 rounded-full border-0 bg-transparent py-[0.15rem] pr-2 pl-[0.2rem] text-start transition-colors;
-  }
-  /* It is a link now, so it has to look like one is there. A quiet fill on
-     hover and a real focus ring - the chip carries the only route to the
-     account page. */
-  .nav-user:hover {
-    @apply bg-white/10;
-  }
-  .nav-user:focus-visible,
+  /* .nav-user is gone: the wide bar's account control is .nav-avatar-btn now,
+     the same one the narrow bar always used. The name and role it carried were
+     the widest thing in the bar and are both restated at the top of the panel
+     it opens, beside the settings they belong with.
+
+     .drawer-who keeps its focus ring - the drawer still shows the pair, where
+     a full-width list row has the space for them. */
   .drawer-who:focus-visible {
     @apply outline-2 outline-offset-2 outline-gold-500;
   }
@@ -462,17 +736,25 @@
     @apply block text-[0.68rem] uppercase tracking-[0.05em] text-white/55;
   }
 
-  .lang-toggle {
-    @apply inline-flex flex-none rounded-full border border-white/[0.14] bg-white/[0.06] p-[2px];
+  /*
+   * The language switch. One button, carrying the flag of the language you are
+   * currently reading in; pressing it switches to the other.
+   *
+   * Shares .nav-icon-btn with the theme toggle beside it, so the two read as
+   * one pair of controls rather than as a flag that wandered in next to a
+   * button. Only the padding differs: a 20px flag needs a little less room
+   * inside the 32px plate than a 17px stroked glyph does.
+   */
+  .lang-btn {
+    @apply p-[5px];
   }
-  .lang-toggle button {
-    @apply rounded-full border-0 bg-transparent px-[0.58rem] py-[0.24rem] text-[0.78rem] font-bold text-white/60;
-  }
-  .lang-toggle button:hover {
-    @apply text-white/90;
-  }
-  .lang-toggle button[aria-pressed='true'] {
-    @apply bg-white/[0.18] text-white;
+  /* The flag is a picture, not a glyph, so it does not inherit the button's
+     colour - and a flag with white in it (both of these) needs an edge or it
+     bleeds into the near-black bar. Drawn as a ring rather than a border so it
+     costs no layout. */
+  .flag {
+    @apply block rounded-[2px];
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.28);
   }
 
   .nav-hold {
@@ -493,7 +775,7 @@
     @apply bg-white/15 text-white;
   }
 
-  /* The account button in the narrow bar: the avatar and nothing else.
+  /* The account button, at every width now: the avatar and nothing else.
      Sized to match .nav-icon-btn beside it so the cluster reads as one row of
      controls rather than an avatar that wandered in - but round, and without
      the bordered plate, because the initial is already a filled shape. */
@@ -506,9 +788,11 @@
   .nav-avatar-btn:focus-visible {
     @apply outline-2 outline-offset-2 outline-gold-500;
   }
-  /* The avatar drives this button's size, so it must not also carry the 30px
-     it uses in the wide bar - that would push the button a pixel proud of the
-     burger next to it. */
+  /* The avatar drives this button's size, so it must not carry the 30px the
+     drawer's copy uses - that would push the button a pixel proud of the
+     controls beside it. (It used to be the wide bar that set 30px, via the
+     .nav-user chip; that chip is gone and the drawer is the only place the
+     larger avatar is still drawn.) */
   .nav-avatar-btn .avatar {
     @apply size-[26px] text-[0.72rem];
   }
@@ -521,12 +805,26 @@
     font-family: var(--font-sans);
   }
   /* Narrow-screen cluster: the hold countdown stays visible at every width
-     (it is time-critical) and everything else folds into the drawer. */
+     (it is time-critical) and everything else folds into the drawer.
+     No ml-auto - the grid places it in a track and justify-self pins it. */
   .nav-compact {
-    @apply ml-auto hidden items-center gap-[0.4rem];
+    @apply hidden items-center gap-[0.4rem];
+    justify-self: end;
   }
   @media (max-width: 960px) {
-    .nav-links {
+    /*
+     * Two tracks: brand, then the compact cluster.
+     *
+     * The hidden children are not merely invisible - `display: none` takes
+     * them out of grid placement entirely, so .nav-compact is auto-placed into
+     * the second column rather than needing a column of its own. Which is why
+     * the count here is 2 and not 4.
+     */
+    .nav-inner {
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
+    .nav-links,
+    .nav-right {
       @apply hidden;
     }
     .nav-compact {
@@ -582,14 +880,36 @@
   .drawer-links {
     @apply flex flex-col gap-1;
   }
+  /*
+   * The same split the bar's links use, turned on its side.
+   *
+   * These had the identical white/10 vs white/15 problem, and a drawer is
+   * where it bites hardest: the rows are stacked and touching, so two
+   * near-identical fills sit directly against each other.
+   *
+   * A vertical list's equivalent of an underline is an edge marker, so active
+   * takes a gold bar down its leading edge. Hover keeps the wash - on a touch
+   * target the size of a drawer row, a fill is the right feedback, and it is
+   * now the ONLY thing using a fill, so it no longer competes.
+   */
   .drawer-link {
-    @apply flex items-center gap-[0.6rem] rounded-[10px] px-[0.7rem] py-[0.6rem] font-semibold text-white/85;
+    @apply relative flex items-center gap-[0.6rem] rounded-[10px] px-[0.7rem] py-[0.6rem] font-semibold text-white/85;
   }
   .drawer-link:hover {
-    @apply bg-white/10 text-white no-underline;
+    @apply bg-white/[0.09] text-white no-underline;
   }
   .drawer-link.active {
-    @apply bg-white/15 text-white;
+    @apply bg-transparent text-white;
+  }
+  /* Logical property, not `left`: the marker belongs on the side the language
+     starts from, and this is the one rule here that would be wrong in RTL. */
+  .drawer-link.active::before {
+    content: '';
+    @apply pointer-events-none absolute inset-y-[0.35rem] start-0 w-[3px] rounded-full bg-gold-500;
+  }
+  .drawer-link:focus-visible {
+    @apply outline-2 outline-offset-2 outline-gold-500;
+    box-shadow: none;
   }
   .drawer-foot {
     @apply flex items-center justify-between gap-[0.6rem] border-t border-white/10 pt-[0.6rem];
@@ -820,13 +1140,45 @@
     @apply mx-auto flex max-w-shell gap-1 px-page;
   }
   .subnav a {
-    @apply whitespace-nowrap border-b-2 border-transparent px-[0.7rem] py-3 text-[0.88rem] font-semibold text-muted;
+    @apply inline-flex items-center whitespace-nowrap border-b-2 border-transparent px-[0.7rem]
+      py-3 text-[0.88rem] font-semibold text-muted;
   }
   .subnav a:hover {
     @apply text-ink no-underline;
   }
   .subnav a.active {
     @apply border-b-brand-500 text-link;
+  }
+
+  /*
+   * How deep the queue behind a tab is.
+   *
+   * Quiet on purpose: the same weight as the label, in the surface the strip
+   * already uses, carrying no colour of its own. This is a workload, not an
+   * alarm - four tabs wear one, and if each shouted in red then none of them
+   * would be the one to look at. The only red on this strip is .subnav-dot.
+   *
+   * tabular-nums so the badge does not change width as the count ticks between
+   * 1 and 7, which in a strip that scrolls would nudge every tab after it.
+   */
+  .subnav-count {
+    @apply ml-[0.35rem] inline-flex min-w-5 items-center justify-center rounded-full bg-surface-2
+      px-[0.3rem] py-[0.05rem] text-[0.7rem] font-bold text-ink-2 tabular-nums;
+  }
+  /* On the tab you are already on, the count belongs to the active colour
+     rather than sitting on it as a grey chip. */
+  .subnav a.active .subnav-count {
+    @apply bg-tint-2 text-on-tint;
+  }
+
+  /*
+   * Something is wrong behind this tab, and the number would not change what
+   * you do about it - one stuck payment or five, you open the screen and read
+   * all of them. So: a mark, not a count. Red, because it is the one thing on
+   * this strip that is not ordinary work.
+   */
+  .subnav-dot {
+    @apply ml-[0.4rem] inline-block size-[7px] flex-none rounded-full bg-danger;
   }
 
   /* --------------------------------------------------------------- buttons */
@@ -1431,9 +1783,41 @@
   .searchpanel {
     @apply sticky top-[54px] z-20;
   }
+  .province-pills-row {
+    display: flex;
+    gap: 0.8rem;
+    margin-bottom: 0.5rem;
+    overflow-x: auto;
+    padding-bottom: 0.2rem;
+  }
+  .province-pills-row::-webkit-scrollbar {
+    display: none;
+  }
+  .pill-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 1.2rem;
+    border-radius: 9999px;
+    border: 1px solid transparent;
+    white-space: nowrap;
+    transition: all 0.2s;
+    background: transparent;
+    color: var(--color-ink-2);
+    font-weight: 500;
+  }
+  .pill-btn:hover {
+    background: var(--color-surface-hover);
+  }
+  .pill-btn.is-active {
+    border-color: var(--color-brand-500);
+    background: var(--color-surface-2);
+    color: var(--color-ink);
+  }
+
   .search-row {
     @apply grid items-center gap-[0.6rem];
-    grid-template-columns: minmax(0, 1fr) 190px 190px auto;
+    grid-template-columns: minmax(0, 1fr) 190px auto;
   }
   .search-row .btn {
     @apply relative min-h-[42px];
@@ -1633,9 +2017,27 @@
     content: '';
     @apply flex-1 border-t border-line;
   }
-  /* Height reserved so the card does not jump when the widget arrives. */
+  /*
+   * Height reserved so the card does not jump when the widget arrives.
+   *
+   * Clipped, because Google has two render paths and only one of them is ours
+   * to style. Signed out, GIS draws the generic "Continue with Google" as real
+   * DOM in here and the rules further down reach it. Signed in on an origin
+   * Google deems eligible - a real HTTPS domain carrying a Google session - it
+   * draws a personalised "Continue as <name>" instead, with the account's
+   * photo and address, inside a cross-origin iframe. That path ignores `theme`
+   * and `width` both: it comes back white, square-cornered and a fixed 420px,
+   * 20px wider than the card, and no stylesheet of ours reaches into it.
+   *
+   * Clipping is the one thing that still applies from outside the frame. It
+   * takes off the overhang and the square corners, so the button at least
+   * lands on the same footprint as the submit button above it. It stays white
+   * - that part is Google's. localhost is never an eligible origin, so none of
+   * this is visible in dev; it only appears on the deployed site.
+   */
   .gsi-host {
-    @apply flex min-h-[44px] w-full justify-center;
+    @apply flex min-h-[44px] w-full justify-center overflow-hidden;
+    border-radius: var(--radius-ui);
   }
 
   /* Password input with a reveal toggle. */
@@ -2133,6 +2535,26 @@
     @apply bg-success-soft text-success;
   }
   .s-RELEASED {
+    @apply bg-quiet-soft text-quiet;
+  }
+
+  /* Support inbox (V33). The same logic the review and payout families use:
+     warning = waiting on us, nobody has looked
+     info    = somebody is on it, but it is not finished
+     success = dealt with
+     quiet   = junk, and deliberately NOT danger - danger is for a refusal that
+               somebody is owed an explanation of, and spam is owed nothing. It
+               should also be the least eye-catching row in the table. */
+  .s-NEW {
+    @apply bg-warning-soft text-warning;
+  }
+  .s-OPEN {
+    @apply bg-info-soft text-info;
+  }
+  .s-CLOSED {
+    @apply bg-success-soft text-success;
+  }
+  .s-SPAM {
     @apply bg-quiet-soft text-quiet;
   }
 
@@ -3223,164 +3645,293 @@
   }
 
   /* ----------------------------------------------------------------- footer */
-  /* Dark, to bookend the navbar; same shell width so its edges stay flush. */
   /*
-   * A deliberate edge rather than a colour change.
+   * A flat, precise edge - and the exact mirror of the navbar's.
    *
-   * The page's warm paper meets the brand ground with nothing between them, so
-   * the footer read as the point where the page ran out. Gold at a third
-   * strength is the product's one accent - the same one the hero headline is
-   * set in - and a hairline of it is enough to make the boundary look chosen.
+   * This was briefly a perforated one, half-circles punched out of the top so
+   * the paper showed through, the line a ticket tears along. It said what the
+   * product is, and it read as craft rather than as software: a scalloped edge
+   * belongs on a coupon, and everything above it here is a table of money and
+   * a queue of decisions.
+   *
+   * It was then a gold hairline, on the reasoning that the seam needed an
+   * accent to look chosen. The navbar settles that: its bottom edge is the same
+   * transition upside down - the same jade meeting the same paper - and it is
+   * white/9 over a 4% white line. Two edges doing one job in two colours is
+   * what makes a pair of bookends look like two unrelated bars. The footer
+   * carries plenty of the accent already, in the column headings and the
+   * invitation; the edge does not have to carry it too.
    */
   .footer {
-    @apply bg-brand-900 pb-[1.1rem] pt-[2.4rem] text-[0.85rem] text-white/[0.62];
-    border-top: 1px solid color-mix(in oklab, var(--color-gold-500) 32%, transparent);
+    @apply bg-brand-900 pb-[1.6rem] pt-[3.6rem] text-[0.85rem] text-white/[0.68];
+    @apply border-t border-white/[0.09];
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+  /*
+   * Dark mode: both bookends need a real edge.
+   *
+   * --color-brand-900 is not overridden for dark, so the navbar and the footer
+   * stay #062718 while the page turns #14120e. Those two measure 1.15:1 against
+   * each other. In light mode the jade meets warm paper and the boundary needs
+   * no help at all; in dark mode the bars and the page are two near-blacks and
+   * the hairline is doing the entire job on its own, which white at 9% cannot.
+   *
+   * Both selectors together rather than one in each section, because the value
+   * is only correct as long as it is the same value: the moment the footer's
+   * edge is darker or lighter than the navbar's they stop reading as one piece
+   * of chrome, which is the thing these two were just matched to fix.
+   */
+  [data-theme='dark'] .nav,
+  [data-theme='dark'] .footer {
+    border-color: rgba(255, 255, 255, 0.16);
   }
   .footer-inner {
     @apply mx-auto max-w-shell px-page;
   }
-  /* The brand column is sized to the measure its paragraph is capped at, not
-     the other way round. At 2.2fr against a 46ch cap the column was ~230px
-     wider than anything ever drawn in it, which read as a hole punched between
-     the wordmark and the nav rather than as breathing room. */
-  /* Three columns, not four. The fourth held two unclickable payment marks
-     between two navs, so a third of the row was a list of links that were not
-     links; those moved to the bottom bar, where a trust mark belongs. */
-  .footer-grid {
-    @apply grid gap-x-10 gap-y-[1.6rem];
-    grid-template-columns: minmax(0, 1.6fr) repeat(2, minmax(0, 1fr));
+
+  /*
+   * Brand on the left, the three navs held together on the right.
+   *
+   * Four equal-ish tracks (1.6fr + 1fr + 1fr + 1fr) spread the three link
+   * columns across the whole width, so each one floated in a track two or three
+   * times wider than the four words in it and the row read as gaps with text in
+   * them. The navs are one block now, sized to their own content and ending
+   * flush with the page edge - the same edge the navbar's controls end on.
+   */
+  /*
+   * The split is proportional, not content-sized.
+   *
+   * Sizing the nav block to `max-content` pinned it to the right edge as a
+   * tight cluster while the brand paragraph stopped at its 48ch measure, and
+   * the 350px of nothing between them read as a hole rather than as space. The
+   * navs take a share of the width instead and spread across it, so the row
+   * ends flush at both edges with no void in the middle.
+   */
+  .footer-top {
+    @apply grid gap-x-12 gap-y-[2.4rem];
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
   }
+  .footer-nav {
+    @apply grid gap-x-8 gap-y-[1.9rem];
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  /* Below 900 the brand paragraph and the nav block cannot share a line, so the
+     navs drop underneath and take the full width on their own. */
   @media (max-width: 900px) {
-    .footer-grid {
-      @apply grid-cols-2;
-    }
-    .footer-brand {
-      @apply col-span-full;
-    }
-  }
-  @media (max-width: 560px) {
-    .footer-grid {
+    .footer-top {
       @apply grid-cols-1;
     }
   }
-
-  .footer-brand {
-    @apply flex max-w-[52ch] flex-col items-start gap-[0.8rem];
+  @media (max-width: 560px) {
+    .footer-nav {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
   }
-  /* Mark and wordmark as one lockup on a single line. The mark is optically
-     larger than the cap height beside it, which is why it is set by height
-     rather than matched to the text. */
+
+  /* The measure is capped on the paragraph, not on the column. Capping the
+     column made the row of plates below it wrap at a width that had nothing to
+     do with the plates - the paragraph's comfortable line length is a rule
+     about the paragraph. */
+  .footer-brand {
+    @apply flex flex-col items-start gap-[0.9rem];
+  }
+  /*
+   * The same lockup the navbar uses, to the pixel.
+   *
+   * It was a 40px mark beside 1.05rem type while the navbar runs 30px beside
+   * 1.02rem - close enough that neither reads as a deliberate second size, far
+   * enough that the brand is not quite the same brand at the two ends of the
+   * page. A wordmark either has one size in the product's chrome or it has a
+   * scale; two values three hundredths of a rem apart are neither. Matched to
+   * .nav-brand / .nav-mark, including the gap.
+   */
   .footer-lockup {
-    @apply flex items-center gap-[0.6rem];
+    @apply flex items-center gap-[0.5rem];
   }
   .footer-mark {
-    @apply h-[38px] w-auto;
+    @apply h-[30px] w-auto;
   }
   .footer-brand strong {
-    @apply block text-[1rem] tracking-[-0.01em] text-white;
+    @apply block text-[1.02rem] font-extrabold tracking-[-0.015em] text-white;
     font-family: var(--font-sans);
   }
-  /* No top margin any more: the paragraph used to sit directly under the
-     wordmark and needed clearing from it. The wordmark is in the lockup above
-     now, and .footer-brand's own gap is what separates them. */
   .footer-brand p {
-    @apply leading-[1.7];
+    @apply m-0 max-w-[48ch] leading-[1.75];
   }
+  /*
+   * The reach figure, read as a figure.
+   *
+   * It was a 13px line behind a map pin - the one piece of evidence in the
+   * column, set smaller than the sentence above it and prefixed by an icon that
+   * carried none of the meaning. The number does the work, so the number is
+   * what is sized.
+   */
   .footer-reach {
-    @apply mt-[0.6rem] inline-flex items-center gap-[0.35rem] text-[0.78rem] text-white/50;
+    @apply m-0 flex items-baseline gap-[0.45rem] text-[0.8rem] text-white/60;
+  }
+  .footer-reach b {
+    @apply text-[1.3rem] font-extrabold leading-none text-white;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Invitation and accounts on one row: both are 40px plates, and a visitor at
+     the bottom of a page is either leaving or looking for the next event. */
+  .footer-actions {
+    @apply mt-[0.25rem] flex flex-wrap items-center gap-[0.75rem];
+  }
+
+  /*
+   * The one thing the footer asks for.
+   *
+   * Outlined in the accent rather than filled with it: a solid gold button at
+   * the bottom of every page competes with whatever the page itself is asking
+   * for. Hover inverts it to the solid - a real state change, not a fade - and
+   * the arrow moves the way the link does.
+   */
+  .footer-cta {
+    @apply inline-flex min-h-10 items-center gap-[0.45rem] rounded-full border
+      border-gold-500/45 px-[1.05rem] text-[0.85rem] font-bold text-gold-500 no-underline;
+    transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+  }
+  .footer-cta:hover {
+    @apply border-gold-500 bg-gold-500 text-brand-900 no-underline;
+  }
+  /* Tailwind 4's translate-* utilities compile to the `translate` property,
+     not `transform`, so that is what has to be transitioned. */
+  .footer-cta svg {
+    transition: translate 0.16s ease;
+  }
+  .footer-cta:hover svg {
+    @apply translate-x-[3px];
   }
 
   .footer-col {
-    @apply flex min-w-0 flex-col items-start gap-[0.6rem];
+    @apply flex min-w-0 flex-col items-start gap-[0.55rem];
   }
-  /* 0.72rem uppercase is small text, so it needs the full 4.5:1 — at white/45
-     it measured 4.27:1 on the brand ground. */
+  /*
+   * Gold headings, not a fourth shade of grey.
+   *
+   * Every line in the footer was white at some opacity between 45% and 74%,
+   * which is one flat tone at three weights - nothing told the eye where a
+   * column started. The accent is the product's own, and #e07b39 measures
+   * 5.4:1 on the brand ground, so it clears AA at this size.
+   */
   .footer-col h4 {
-    @apply mb-[0.15rem] text-[0.72rem] font-bold uppercase tracking-[0.07em] text-white/[0.56];
+    @apply mb-[0.35rem] text-[0.72rem] font-bold uppercase tracking-[0.09em] text-gold-500;
   }
+  /*
+   * A white rule that draws itself in from the left, not a gold one.
+   *
+   * The navbar splits these two apart deliberately: a white rule under a link
+   * is hover, a gesture that follows the pointer, and a gold rule is `.active`,
+   * the page you are on. Drawing the footer's hover in gold put the navbar's
+   * "you are here" marker under whatever the pointer happened to be over -
+   * the same two signals meaning opposite things at opposite ends of the page.
+   * Same white/80 the nav's hover rule uses, at the same 2px.
+   *
+   * Painted as a background so it can animate: text-decoration cannot be
+   * transitioned, and a bottom border would move the text.
+   */
   .footer-col a {
-    @apply text-white/[0.74];
+    @apply pb-[2px] text-white/[0.78] no-underline;
+    background-image: linear-gradient(rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.8));
+    background-repeat: no-repeat;
+    background-position: 0 100%;
+    background-size: 0 2px;
+    transition: background-size 0.18s ease, color 0.18s ease;
   }
-  .footer-col a:hover {
-    @apply border-b border-white/40 text-white no-underline;
-  }
-  .footer-pay {
-    @apply inline-flex items-center gap-[0.4rem] text-white/[0.74];
-  }
-  /* The two marks travel together and wrap together, so they never end up on
-     opposite sides of the bottom bar with the copyright between them. */
-  .footer-pay-row {
-    @apply flex flex-wrap items-center gap-x-[1.1rem] gap-y-[0.4rem];
+  .footer-col a:hover,
+  .footer-col a:focus-visible {
+    @apply text-white no-underline;
+    background-size: 100% 2px;
   }
 
-  /* Same plate as .nav-icon-btn, at 40px so it clears the touch-target floor -
-     these are the only footer links small enough to miss with a thumb.
-
-     Sits in the middle of the closing bar, between the copyright on the left
-     and the payment marks on the right. */
-  /* m-0 matters here: a <ul> carries a 1em block margin by default, which the
-     old mt-[0.9rem] happened to cover on top and never did on the bottom. In a
-     centred grid row that leftover margin sits the plates above their own
-     cell's centre line, out of step with the copyright beside them. */
+  /*
+   * Social accounts as plates, 40px so they clear the touch-target floor.
+   *
+   * Two selectors, because a "#" placeholder is rendered as a <span> and only a
+   * real URL gets an <a> - see SOCIAL in Footer.jsx. They have to be
+   * indistinguishable, so they share every declaration; the hover is the one
+   * thing the span does not get, since there is nothing for it to do.
+   */
   .footer-social {
-    @apply m-0 flex list-none flex-wrap justify-start gap-[0.45rem] p-0;
+    @apply m-0 flex list-none flex-wrap items-center gap-[0.4rem] p-0;
   }
-  .footer-social a {
-    @apply grid size-10 place-items-center rounded-full border border-white/[0.14]
-      bg-white/[0.06] text-white/[0.74];
+  /*
+   * The same plate as .nav-icon-btn: same border, same ground, same hover.
+   *
+   * Only the size differs, and on purpose - 32px up in the bar is a mouse
+   * target beside seven other controls, 40px down here is a thumb target at
+   * the end of a scroll. The radius is scaled with it (9px at 32 is 11px at
+   * 40), so the corner looks the same rather than measuring the same. It was a
+   * circle with a gold wash and a 1px lift, which matched nothing else in the
+   * product: the bar's controls are rounded squares that simply brighten.
+   */
+  .footer-social a,
+  .footer-social span {
+    @apply grid size-10 place-items-center rounded-[11px] border border-white/[0.14]
+      bg-white/[0.06] text-white/[0.74] no-underline;
+    transition: background 0.15s ease, color 0.15s ease;
   }
   .footer-social a:hover {
-    @apply border-white/[0.28] bg-white/[0.14] text-white no-underline;
+    @apply bg-white/15 text-white no-underline;
   }
 
-  /* Was white/45, which measures 4.27:1 on the brand ground — the identical
-     shortfall the column headings above were already corrected for, and this
-     line is smaller than they are. white/56 takes it to 5.87:1. */
   /*
-   * The closing bar runs on the same grid as the columns above it.
+   * The closing bar: copyright at one edge, the payment marks at the other.
    *
-   * It was a justify-between flex, which spreads three items across the full
-   * width and lands them wherever the middle one happens to be wide - so the
-   * social plates floated between Explore and nothing, and the payment marks
-   * pinned themselves to the right edge while the Admin column above started
-   * 300px short of it. Nothing in the bar lined up with anything above it.
-   *
-   * Sharing the template instead means the copyright sits under the brand, the
-   * social plates under the second column and the payment marks under the
-   * third, at every width - and the breakpoints below keep it in step with
-   * .footer-grid's own.
+   * It used to run on .footer-grid's four-track template so its three items
+   * would line up with the columns above, which put the social plates in the
+   * dead centre of the bar with nothing above or below them. The accounts live
+   * with the brand now, which leaves two items and no reason for a grid.
    */
   .footer-bottom {
-    @apply mt-8 grid items-center gap-x-10 gap-y-[0.9rem]
-      border-t border-white/10 pt-4 text-[0.78rem] text-white/[0.56];
-    grid-template-columns: minmax(0, 1.6fr) repeat(2, minmax(0, 1fr));
+    @apply mt-[2.6rem] flex flex-wrap items-center justify-between gap-x-8 gap-y-[1rem]
+      border-t border-white/[0.11] pt-[1.15rem] text-[0.78rem] text-white/[0.56];
   }
   /*
-   * These two sit AFTER the rule above, not beside .footer-grid's breakpoints
-   * where they started - and that is load-bearing.
+   * Payment marks as plates rather than a line of small type.
    *
-   * A media query adds no specificity. Both it and the base rule match
-   * .footer-bottom with the same weight, so whichever comes later in the file
-   * wins, and .footer-bottom is declared a hundred lines below where
-   * .footer-grid's breakpoints live. The bar therefore kept its three desktop
-   * columns at every width: a copyright, four 40px plates and two payment
-   * marks squeezed into 1.6fr/1fr/1fr on a 375px phone.
+   * They answer "can I actually pay on this site", and a visitor settles that
+   * by spotting a mark they already know - so they are given an edge and a
+   * ground of their own instead of reading as two more footer links that have
+   * stopped working. They travel and wrap together.
    */
-  @media (max-width: 900px) {
-    .footer-bottom {
-      @apply grid-cols-2;
-    }
-    /* The copyright takes the full row once there are only two columns, or it
-       sits alone beside the social plates with the payment marks wrapped
-       underneath - three items in a two-column bar. */
-    .footer-bottom > :first-child {
-      @apply col-span-full;
-    }
+  .footer-pay-row {
+    @apply flex flex-wrap items-center gap-[0.45rem];
   }
-  @media (max-width: 560px) {
-    .footer-bottom {
-      @apply grid-cols-1;
-    }
+  /*
+   * min-h rather than symmetric padding: one plate holds a line of type and the
+   * other holds the drawn KHQR mark, which is taller than the type it sits
+   * beside. Padding alone gave them two different heights, and two trust marks
+   * of different heights look like one of them is a mistake. The mark is set at
+   * 18px because the Q in it is a miniature QR symbol - below that the modules
+   * merge and it reads as a filled square, which is the one thing it must not
+   * look like.
+   */
+  .footer-pay {
+    @apply inline-flex min-h-[32px] items-center gap-[0.4rem] rounded-tiny border
+      border-white/[0.14] bg-white/[0.06] px-[0.65rem] py-[0.25rem] text-[0.76rem]
+      font-bold text-white/[0.82];
+  }
+
+  /*
+   * A focus ring that can be seen on this ground.
+   *
+   * The global :focus-visible paints --shadow-focus, which is jade at 26% -
+   * chosen to sit on warm paper. The footer's ground is --color-brand-900, the
+   * same near-black jade the navbar runs on, where that ring is jade on jade
+   * and effectively invisible. The navbar hit this and fixed it with a gold
+   * outline; the footer sits on the identical colour and never got the same
+   * treatment, so every link, every social plate and the invitation down here
+   * were reachable by keyboard with nothing to show where you were.
+   *
+   * The box-shadow has to be cleared explicitly - it is what the global rule
+   * set, and an outline does not replace it.
+   */
+  .footer a:focus-visible {
+    @apply outline-2 outline-offset-2 outline-gold-500;
+    box-shadow: none;
   }
 
   /* ------------------------------------------------------------ event hero */
@@ -5611,4 +6162,867 @@
  */
 :root[data-theme='dark'] .gsi-host [role='button'] div:has(svg) {
   background-color: transparent;
+}
+
+/* ==========================================================================
+   About + Contact
+
+   The two static pages, and the admin inbox that /contact fills.
+
+   Plain CSS below the components layer, the way .org-apply is written: these
+   are page-scoped rules that need to override tokens rather than compose
+   utilities, and keeping them here means the components layer stays the
+   vocabulary the whole product shares.
+
+   Both pages are prose-led rather than card-led, which is the one place they
+   depart from the storefront. A page of explanation broken into bordered tiles
+   reads as a feature list nobody asked for; the measure and the rhythm do the
+   work instead, and a card appears only where something is genuinely a
+   separate object (the form, the aside panels).
+   ========================================================================== */
+
+/* ------------------------------------------------------------------ about */
+/*
+ * Both pages take the full shell width, so their edges line up with the navbar,
+ * the footer and every other page in the product - and, more to the point, with
+ * each other. A visitor moving About -> Contact should not watch the page jump
+ * inwards and then out again.
+ *
+ * Full width is a container decision, not a typographic one. Running text at
+ * 1360px is unreadable whatever the page is called, so the measure is held
+ * further in: every prose block below caps itself in `ch`, and the multi-column
+ * grids are what actually spend the width. The page is wide; the sentences are
+ * not.
+ */
+.about {
+  padding-bottom: 3.5rem;
+}
+
+.about-head {
+  margin-bottom: 2.4rem;
+}
+.about-head h1 {
+  margin: 0 0 0.6rem;
+}
+.about-lead {
+  font-size: 1.05rem;
+  line-height: 1.7;
+  color: var(--color-ink-2);
+  margin: 0;
+  max-width: 62ch;
+}
+html[lang='km'] .about-lead {
+  line-height: 1.95;
+}
+
+.about-section {
+  margin-bottom: 2.6rem;
+}
+.about-section > h2 {
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+  margin: 0 0 1.1rem;
+  /* A rule under the heading rather than a card around the section. It
+     separates without boxing, which is what keeps the page reading as one
+     document instead of a stack of panels. */
+  padding-bottom: 0.55rem;
+  border-bottom: 1px solid var(--color-line);
+}
+.about-body {
+  margin: 0;
+  max-width: 68ch;
+  color: var(--color-ink-2);
+}
+
+/* ------------------------------------------------------------------ steps */
+/* Numbered, because the steps are sequential - you cannot show a QR for a
+   ticket you have not paid for. The alternative a page like this usually
+   reaches for, three icon tiles in a row, says the opposite: that these are
+   independent features you may take in any order. */
+.about-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 1.5rem 2.5rem;
+}
+/* Two abreast on a wide screen. The order still reads left-to-right then down,
+   which is how a numbered list is scanned - and the numerals are there to
+   settle it if the eye takes the columns the other way. Below this it is one
+   column, where a five-step list is simply five rows. */
+@media (min-width: 980px) {
+  .about-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.about-step {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0 1rem;
+  align-items: start;
+}
+/* The numeral is the ornament this page gets, and the only one. Set in the
+   display face, large and in the warm accent - it is decorative, which is why
+   it is aria-hidden and why <ol> is still what carries the order. */
+.about-step-n {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  line-height: 1;
+  color: var(--color-gold-600);
+  min-width: 1.4rem;
+  /* Optical: the numeral's cap height sits above the heading's, so it needs
+     nudging down to share a baseline with the first line of text. */
+  padding-top: 0.1rem;
+}
+html[lang='km'] .about-step-n {
+  /* Moul has no lining numerals worth setting at this size, and the Latin
+     digits are what the numeral is - so it keeps the Latin face in both
+     locales, the way .nav-brand-text does for the wordmark. */
+  font-family: var(--font-display);
+}
+.about-step-body h3 {
+  font-size: 0.98rem;
+  margin: 0 0 0.25rem;
+}
+.about-step-body p {
+  margin: 0;
+  color: var(--color-ink-2);
+  max-width: 62ch;
+}
+
+/* ------------------------------------------------------------------ facts */
+.about-facts {
+  display: grid;
+  /* Four across at full width, stepping down rather than stretching. Each cell
+     is a label and two short lines, so four of them read as a row of facts;
+     two of them stretched across 1360px read as a page with a hole in it. */
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1.3rem 2rem;
+  margin: 0;
+}
+@media (max-width: 1080px) {
+  .about-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 620px) {
+  .about-facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.about-fact dt {
+  font-size: var(--text-tiny);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-muted);
+  margin-bottom: 0.3rem;
+}
+.about-fact dd {
+  margin: 0;
+}
+.about-fact dd b {
+  display: block;
+  font-size: 1.1rem;
+  line-height: 1.35;
+  color: var(--color-ink);
+  font-variant-numeric: tabular-nums;
+}
+.about-fact dd span {
+  display: block;
+  font-size: var(--text-small);
+  line-height: 1.55;
+  color: var(--color-muted);
+  margin-top: 0.15rem;
+}
+
+.about-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 1.2rem;
+}
+
+/* --------------------------------------------------------- about: contact */
+/* The one filled panel on the page, and it is the last thing on it. Jade
+   rather than a neutral card: it is an invitation, and it should read as a
+   different kind of thing from the sections above it. */
+.about-contact {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.2rem;
+  padding: 1.4rem 1.5rem;
+  border-radius: var(--radius-card);
+  background: var(--color-tint);
+  border: 1px solid var(--color-tint-2);
+}
+.about-contact h2 {
+  font-size: 1.02rem;
+  margin: 0 0 0.25rem;
+  color: var(--color-on-tint);
+}
+.about-contact p {
+  margin: 0;
+  font-size: var(--text-small);
+  color: var(--color-ink-2);
+  max-width: 54ch;
+}
+/* The panel spans the shell now, so the text and the button would otherwise
+   sit at opposite ends of 1360px with a gulf between them. Capping the text
+   block keeps the pair reading as one invitation. */
+.about-contact > div {
+  min-width: 0;
+  max-width: 70ch;
+}
+
+/* ---------------------------------------------------------------- contact */
+.contact {
+  padding-bottom: 3.5rem;
+}
+.contact-head {
+  margin-bottom: 1.8rem;
+}
+.contact-head h1 {
+  margin: 0 0 0.5rem;
+}
+.contact-head p {
+  margin: 0;
+  max-width: 64ch;
+  color: var(--color-ink-2);
+}
+
+/* The form is the page; the aside is context for it. Not .split, which is
+   sized for a 340px booking rail - this one wants a wider second column
+   because the routing list in it is full sentences, not figures. */
+.contact-split {
+  display: grid;
+  /* The aside is given a fixed track rather than a fraction now that the page
+     is full width: as a fraction it grew with the viewport, and a column of
+     three short lists does not get better at 500px wide - it just gets airier
+     while the form, which is the page, gets proportionally less. */
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 1.4rem;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .contact-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* .card supplies the surface; sections divide it, as on .org-apply-form. */
+.contact-section {
+  padding: 1.4rem 1.5rem;
+}
+/*
+ * The page is full width; a text input is not improved by being 900px of it.
+ *
+ * The form column grew when the page stopped capping itself, and a single
+ * column of controls stretched to match would put the label at one end of the
+ * screen and the caret at the other. The section fills its column - so the
+ * card, its rules and its background still reach the page edge - and the
+ * controls inside stop at a width somebody can actually aim at.
+ */
+.contact-section > * {
+  max-width: 720px;
+}
+.contact-section + .contact-section,
+.contact-foot {
+  border-top: 1px solid var(--color-line);
+}
+.contact-section h2 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+.contact-section-note {
+  font-size: 0.8125rem;
+  color: var(--color-muted);
+  margin: 0.1rem 0 1.1rem;
+}
+/* Direct children only - the same trap .org-apply-section documents: a
+   descendant selector also matches the fields inside .contact-pair and pushes
+   the second one a row below the first, which the grid has already spaced. */
+.contact-section > .field + .field,
+.contact-section > .contact-pair + .field,
+.contact-section > .field + .contact-pair {
+  margin-top: 1rem;
+}
+
+.contact-pair {
+  display: grid;
+  gap: 1rem;
+}
+@media (min-width: 640px) {
+  .contact-pair {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* The required marker. Its own colour token so it is not read as an error
+   that has already happened. */
+.contact-req {
+  color: var(--color-danger);
+}
+.contact-field-error {
+  display: block;
+  font-size: 0.76rem;
+  color: var(--color-danger);
+  margin-top: 0.3rem;
+}
+
+/* Character counter parked inside the textarea's bottom-right corner. */
+.contact-counted {
+  position: relative;
+  display: block;
+}
+.contact-count {
+  position: absolute;
+  right: 0.6rem;
+  bottom: 0.55rem;
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-muted);
+  background: var(--color-surface);
+  padding: 0 0.25rem;
+  border-radius: var(--radius-tiny);
+  pointer-events: none;
+}
+
+/* The @ in front of the Telegram field, drawn as part of the control. */
+.contact-prefixed {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.contact-prefix {
+  position: absolute;
+  left: 0.85rem;
+  color: var(--color-placeholder);
+  pointer-events: none;
+}
+.contact-prefixed .input {
+  padding-left: 1.85rem;
+}
+
+.contact-foot {
+  padding: 1.2rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  align-items: flex-start;
+}
+.contact-note,
+.contact-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  margin: 0;
+  font-size: var(--text-small);
+  line-height: 1.5;
+}
+.contact-note {
+  color: var(--color-muted);
+}
+.contact-error {
+  color: var(--color-danger);
+  font-weight: 600;
+}
+.contact-foot .btn {
+  align-self: stretch;
+}
+@media (min-width: 560px) {
+  .contact-foot .btn {
+    align-self: flex-end;
+  }
+}
+
+/* ----------------------------------------------------------- contact aside */
+.contact-aside {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+.contact-card {
+  padding: 1.1rem 1.2rem;
+}
+.contact-card h2 {
+  font-size: 0.88rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-muted);
+  margin: 0 0 0.8rem;
+}
+html[lang='km'] .contact-card h2 {
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* "Faster than writing": a label and the place to go, per row. */
+.contact-routes,
+.contact-channels {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.contact-routes li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid var(--color-line-2);
+}
+.contact-routes li:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.contact-routes li:first-child {
+  padding-top: 0;
+}
+.contact-routes span {
+  font-size: var(--text-small);
+  color: var(--color-ink-2);
+}
+.contact-routes a {
+  font-size: var(--text-small);
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.contact-channels li + li {
+  margin-top: 0.3rem;
+}
+.contact-channels a {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: var(--radius-ui);
+  color: var(--color-ink);
+}
+.contact-channels a:hover {
+  background: var(--color-surface-2);
+  text-decoration: none;
+}
+.contact-channels a > .icon {
+  color: var(--color-muted);
+  flex: none;
+}
+.contact-channels span {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-size: var(--text-small);
+  color: var(--color-muted);
+}
+.contact-channels b {
+  font-size: 0.86rem;
+  color: var(--color-ink);
+}
+
+.contact-hours {
+  margin: 0;
+  font-size: var(--text-small);
+  line-height: 1.6;
+  color: var(--color-ink-2);
+}
+.contact-hours-note {
+  margin: 0.7rem 0 0;
+  padding-top: 0.7rem;
+  border-top: 1px solid var(--color-line-2);
+  font-size: var(--text-small);
+  line-height: 1.6;
+  color: var(--color-muted);
+}
+
+/* ------------------------------------------------------------ contact sent */
+/* The receipt. Centred and short: it exists to say the message landed and to
+   hand over the one number worth keeping, and anything else on it would be
+   the page asking for more attention after the job is done. */
+.contact-sent {
+  max-width: 560px;
+  margin: 1.5rem auto 0;
+  padding: 2.2rem 1.8rem;
+  text-align: center;
+}
+.contact-sent-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  background: var(--color-success-soft);
+  color: var(--color-success);
+  margin-bottom: 1rem;
+}
+.contact-sent h1 {
+  font-size: 1.3rem;
+  margin: 0 0 0.5rem;
+}
+.contact-sent > p {
+  margin: 0 auto;
+  max-width: 44ch;
+  color: var(--color-ink-2);
+}
+
+.contact-receipt {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.8rem 2.2rem;
+  margin: 1.5rem 0 0;
+  padding: 1rem 1.2rem;
+  border-radius: var(--radius-ui);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-line-2);
+}
+.contact-receipt dt {
+  font-size: var(--text-tiny);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-muted);
+  margin-bottom: 0.2rem;
+}
+.contact-receipt dd {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 650;
+  color: var(--color-ink);
+}
+
+.contact-sent-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.6rem;
+  margin-top: 1.5rem;
+}
+
+/* ------------------------------------------------------- admin: the inbox */
+.contact-admin-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+/* What the sender actually wrote, set apart from the controls under it. The
+   left rule and the surface say "this is quoted, not edited" - which is the
+   whole contract of this dialog: nothing here may rewrite it. */
+.contact-admin-body {
+  margin: 0;
+  padding: 0.9rem 1rem;
+  border-left: 3px solid var(--color-line);
+  background: var(--color-surface-2);
+  border-radius: 0 var(--radius-ui) var(--radius-ui) 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.65;
+  color: var(--color-ink);
+}
+
+/* --------------------------------------------------------- catalogue split */
+/*
+ * Results left, map right - laid out the way the big travel sites do it,
+ * because the shape is doing real work: the map is a fixed frame of reference
+ * that the list scrolls against, so a pin stays put while you read past the
+ * card it belongs to.
+ *
+ * The split breaks out of the page shell to reach the right edge. Anything
+ * short of that leaves a strip of page beside the map, which reads as a panel
+ * that failed to fill rather than a map.
+ */
+
+/*
+ * The catalogue runs wider than the rest of the site.
+ *
+ * Every other page is capped at the 1360px shell, which is a reading width -
+ * right for a form or an event's details. Here it was leaving a 273px void
+ * down the left of a 1905px screen while the map sat against the right edge,
+ * because a list and a map side by side want the window, not a column.
+ *
+ * Wide, but not unbounded: past ~2100px the cards stop gaining anything and
+ * the eye has too far to travel between a card and its pin. Even gutters
+ * rather than bleeding to the edge - which is what the big travel sites
+ * actually do, and it drops the negative-margin and overflow-clip workarounds
+ * that reaching the edge needed.
+ */
+.events-page {
+  max-width: min(2100px, 100%);
+  padding-inline: clamp(var(--spacing-page), 3vw, 2.75rem);
+}
+/* Two across. The list is sharing the shell with a map now, and the
+   four-across grid of the full-width page loses its titles to ellipsis. */
+.grid-cards-split {
+  @apply grid-cols-2;
+}
+
+.events-split {
+  @apply mt-[1.4rem] grid items-start;
+  grid-template-columns: minmax(0, 1fr) clamp(360px, 42vw, 820px);
+  gap: 1.5rem;
+}
+.events-list {
+  @apply min-w-0 pb-4;
+}
+
+.events-map-col {
+  /* sticky, not relative: a second .events-map-col rule further down once set
+     `relative` and won on order, which both killed the stickiness and pushed
+     the map down the page by its own `top` value. Sticky is itself a
+     positioned element, so the note below still anchors to it. */
+  @apply sticky self-start;
+  /* Clears the sticky navbar so the map's top edge is not tucked under it. */
+  top: 4.6rem;
+}
+.events-map {
+  @apply w-full overflow-hidden rounded-[14px] border border-line;
+  height: calc(100vh - 4.6rem);
+  z-index: 0;
+}
+.events-map-loading,
+.events-map-empty {
+  @apply bg-surface-2;
+}
+.events-map-empty {
+  @apply flex h-full flex-col items-center justify-center gap-2 px-6 text-center text-muted;
+}
+.events-map-note {
+  /* Over the map's bottom-left, clear of Leaflet's attribution on the right. */
+  @apply absolute bottom-3 left-3 z-[400] rounded-full border border-line px-3 py-1;
+  background: color-mix(in oklab, var(--color-surface) 92%, transparent);
+}
+/*
+ * The price pill.
+ *
+ * Leaflet anchors an icon by a fixed pixel offset, and this one is as wide as
+ * its own text - so the centring is done here with a translate instead, which
+ * does not need the width to be known in advance.
+ */
+.evmap-pin-wrap {
+  @apply !h-auto !w-auto;
+}
+.evmap-pin {
+  @apply inline-block -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full px-[0.55rem] py-[0.22rem] text-[0.76rem] font-bold;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  border: 1px solid var(--color-line);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.22);
+  transition: transform 0.15s, background 0.15s, color 0.15s;
+}
+.evmap-pin:hover {
+  transform: translate(-50%, -50%) scale(1.06);
+}
+/* Selected gets a brand highlight ring and accent color on a white surface
+   so it stands out cleanly without dark color bleeding into popups. */
+.evmap-pin.is-active {
+  background: var(--color-surface);
+  color: var(--color-brand-600);
+  border-color: var(--color-brand-500);
+  box-shadow: 0 0 0 2px var(--color-brand-500), 0 2px 6px rgba(0, 0, 0, 0.18);
+  transform: translate(-50%, -50%) scale(1.08);
+}
+
+/* The card whose pin is lit. A ring rather than a transform: the cards sit in
+   a grid and scaling one nudges its neighbours. */
+.ev-slot {
+  @apply min-w-0 rounded-[14px] transition-shadow;
+}
+.ev-slot.is-active {
+  box-shadow: 0 0 0 2px var(--color-brand-500);
+}
+
+/* Leaflet's chrome on this project's surfaces. Compound selector, not
+   descendant: Leaflet puts .leaflet-container on the host element itself. */
+.events-map.leaflet-container {
+  @apply bg-surface-2 font-sans;
+}
+.events-map.leaflet-container .leaflet-bar a,
+.events-map.leaflet-container .leaflet-control-attribution {
+  @apply border-line bg-surface text-ink-2;
+}
+.events-map.leaflet-container .leaflet-control-attribution a {
+  @apply text-muted;
+}
+.events-map.leaflet-container .leaflet-popup-content-wrapper,
+.events-map.leaflet-container .leaflet-popup-tip {
+  @apply border border-line bg-surface text-ink;
+}
+.evmap-pop-title {
+  @apply font-bold;
+}
+.evmap-pop-venue {
+  @apply text-muted text-[0.78rem];
+}
+.evmap-pop-price {
+  @apply mt-1 font-bold;
+}
+
+/*
+ * Above the phone breakpoint this page stops being a document and becomes a
+ * workspace: the chrome holds the top of the window, the list scrolls inside
+ * its own column, and the map gets every pixel that is left.
+ *
+ * It used to be one long scrolling page with a sticky map column, which meant
+ * the map only ever reached full height AFTER scrolling past the title and the
+ * filters - on a laptop you landed on the top third of it and had to go
+ * looking for the rest. Pinning the chrome instead puts the whole map on
+/*
+ * Airbnb-style split layout:
+ * The whole document scrolls naturally using the main right-hand scrollbar.
+ * The event cards list on the left flows with the page, while the map column
+ * stays sticky on the right for continuous visual reference.
+ */
+@media (min-width: 901px) {
+  .events-page {
+    padding-top: 1.1rem;
+  }
+  .events-chrome {
+    @apply mb-4;
+  }
+  .events-page .page-head {
+    @apply mb-2 items-baseline;
+  }
+  .events-page .page-head h1 {
+    @apply text-[2rem];
+  }
+  .events-split {
+    @apply mt-0 items-start;
+  }
+  .events-list {
+    @apply min-w-0 pb-6;
+  }
+  .events-map-col {
+    @apply sticky self-start;
+    top: calc(var(--nav-h, 61px) + 1.2rem);
+    height: calc(100vh - var(--nav-h, 61px) - 2.4rem);
+  }
+  .events-map {
+    @apply h-full;
+  }
+}
+
+/* The toggle is mobile-only; on desktop both columns are on screen at once. */
+.events-map-toggle {
+  @apply hidden;
+}
+
+@media (max-width: 1240px) {
+  .grid-cards-split {
+    @apply grid-cols-1;
+  }
+}
+
+/*
+ * Below this the map stops being a column and becomes a second view of the
+ * same results. Two panes do not fit on a phone, and a map stacked under eight
+ * cards is one nobody scrolls far enough to find.
+ */
+@media (max-width: 900px) {
+  .events-split {
+    @apply grid-cols-1;
+  }
+  .grid-cards-split {
+    @apply grid-cols-2;
+  }
+  .events-map-col {
+    @apply static hidden;
+  }
+  .events-map-col.is-open {
+    @apply block;
+  }
+  .events-list.is-map-open {
+    @apply hidden;
+  }
+  .events-map {
+    @apply rounded-[12px] border border-line;
+    height: calc(100vh - 12rem);
+  }
+  .events-map-toggle {
+    @apply fixed bottom-5 left-1/2 z-30 flex -translate-x-1/2 shadow-lg;
+  }
+}
+@media (max-width: 560px) {
+  .grid-cards-split {
+    @apply grid-cols-1;
+  }
+}
+
+/* ----------------------------------------------------------- price range */
+/*
+ * The price filter: the catalogue's own distribution, the two handles that cut
+ * into it, and the ends written out underneath.
+ *
+ * The chart and the slider are separate rows that read as one control - the
+ * bars sit directly on the track with no gap, so a handle visibly lands
+ * between two bars rather than floating above a picture of them.
+ */
+.pricerange {
+  @apply w-full;
+}
+.pricerange-chart {
+  @apply flex h-[54px] w-full items-end gap-[2px];
+  /* Sits on the track below. The handles overhang it by design: they are the
+     thing doing the cutting, so they belong over the bars, not beside them. */
+  margin-bottom: -2px;
+}
+.pricerange-bar {
+  @apply min-h-px flex-1 rounded-t-[2px];
+  background: var(--color-line-2, var(--color-line));
+  transition: background 0.12s;
+}
+/* In range. The same brand green as the fill below it, so the selection is one
+   shape rather than a coloured bar chart next to a coloured track. */
+.pricerange-bar.is-in {
+  background: color-mix(in oklab, var(--color-brand-600) 62%, transparent);
+}
+.pricerange-slider {
+  @apply h-[26px];
+}
+/* Bigger than the stock 16px thumb: this one has to be grabbable over a chart
+   and is the only affordance in the control. */
+.pricerange-slider input[type='range']::-webkit-slider-thumb {
+  height: 24px;
+  width: 24px;
+  border: 1px solid var(--color-line);
+  background: var(--color-surface);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.26);
+}
+.pricerange-slider input[type='range']::-moz-range-thumb {
+  height: 24px;
+  width: 24px;
+  border: 1px solid var(--color-line);
+  background: var(--color-surface);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.26);
+}
+
+.pricerange-ends {
+  @apply mt-[0.7rem] flex items-end gap-2;
+}
+/* items-start / items-end, not stretch: a flex column stretches its children
+   by default, which blew the "$0" pill across the whole left half while the
+   right one stayed compact. */
+.pricerange-end {
+  @apply flex flex-1 flex-col items-start gap-[0.25rem];
+}
+.pricerange-end:last-of-type {
+  @apply items-end;
+}
+/* A read-only pill, not an input: these mirror the handles rather than taking
+   typed values, and a box that looks editable but is not is worse than one
+   that plainly reports. */
+.pricerange-value {
+  @apply inline-block rounded-full border border-line px-[0.85rem] py-[0.35rem] text-[0.86rem] font-bold;
+  background: var(--color-surface);
+}
+.pricerange-dash {
+  @apply mb-[1.1rem] h-px w-3 shrink-0;
+  background: var(--color-line);
 }

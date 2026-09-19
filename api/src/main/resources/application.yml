@@ -120,6 +120,31 @@ app:
       secure: ${REFRESH_COOKIE_SECURE:true}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+
+  # The public contact form. See ContactRateLimiter for why these limits look
+  # so much looser than the login ones above: that limiter counts only FAILED
+  # sign-ins, so a legitimate user practically never trips it. There is no
+  # failure signal here - every submission succeeds - so this one counts
+  # submissions outright and CAN refuse somebody honest. The numbers are picked
+  # to make that rare rather than impossible.
+  contact:
+    rate-limit:
+      per-address:
+        # Enough for a household or a small office behind one NAT to all write
+        # in on the same afternoon, and far too few to be worth scripting.
+        max-messages: ${CONTACT_RATE_LIMIT_ADDRESS_MAX:5}
+        window: ${CONTACT_RATE_LIMIT_ADDRESS_WINDOW:1h}
+      per-sender:
+        # Keyed on the reply-to address. Looser still: this one exists to stop
+        # the same person filing the same thing four times because they are not
+        # sure the first went through, not to punish them for worrying.
+        #
+        # This is also the only half of the limit backed by the database
+        # (ContactMessageRepository.countRecentByReplyTo), so it is the half
+        # that survives a restart. Widening the window here widens that query's
+        # reach too.
+        max-messages: ${CONTACT_RATE_LIMIT_SENDER_MAX:3}
+        window: ${CONTACT_RATE_LIMIT_SENDER_WINDOW:30m}
   # Outbound nudges to a Telegram group, so a decision waiting in the admin
   # queue reaches a phone instead of sitting until somebody opens the console.
   #

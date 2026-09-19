@@ -5,6 +5,7 @@ import SharedContactButtons from '../../components/ContactButtons.jsx'
 import QueueDialog from './QueueDialog.jsx'
 import Icon from '../../components/Icon.jsx'
 import { Alert, Badge, Empty, Field, Pager, ResponsiveTable } from '../../components/ui.jsx'
+import { TableSkeleton } from '../../components/Skeleton.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
 import { RQ_CSS } from './queueStyles.js'
 import { useToast } from '../../context/ToastContext.jsx'
@@ -344,6 +345,13 @@ export default function AdminReviewPage() {
             : 'The queue is empty. Submitted events appear here.'}
         </Empty>
       )}
+
+      {/* The queue's table is gated on rows.length, so until the fetch comes
+          back this screen is a heading and nothing else - a few hundred pixels
+          of document, which leaves the footer sitting in the middle of the
+          window and then jumping a screenful when the rows arrive. The
+          placeholder holds that height. */}
+      {loading && <TableSkeleton rows={10} cols={6} />}
 
       {rows.length > 0 && (
         <div className="rq-split">

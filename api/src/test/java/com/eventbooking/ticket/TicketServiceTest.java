@@ -539,7 +539,7 @@ class TicketServiceTest {
     void refusesAScanFromSomebodyWhoIsNotAnOrganizer() {
         // A customer holding a valid ticket is a real, registered user. That was
         // once enough to consume somebody else's.
-        givenNoOrganizerProfile(USER_ID);
+        givenNotAnOrganizer(USER_ID);
         when(appUserRepository.existsById(USER_ID)).thenReturn(true);
         Ticket ticket = issuedTicket();
         givenTicketUnderLock(ticket);
@@ -687,13 +687,20 @@ class TicketServiceTest {
                 .thenAnswer(i -> party.stream().filter(Ticket::isCheckedIn).count());
     }
 
+    /*
+     * findActiveByUserId, which is what OrganizerResolver asks: it joins the
+     * ORGANIZER role in rather than trusting that a profile row exists. A
+     * demoted organiser keeps their row, so the plain findByUserId these used to
+     * stub no longer answers "may this person act as an organiser".
+     */
     private void givenOrganizer(Long userId, Long organizerId) {
-        when(organizerProfileRepository.findByUserId(userId)).thenReturn(
+        when(organizerProfileRepository.findActiveByUserId(userId)).thenReturn(
                 Optional.of(OrganizerProfile.builder().id(organizerId).userId(userId).build()));
     }
 
-    private void givenNoOrganizerProfile(Long userId) {
-        when(organizerProfileRepository.findByUserId(userId)).thenReturn(Optional.empty());
+    /** Either no profile at all, or one whose owner is no longer an organiser. */
+    private void givenNotAnOrganizer(Long userId) {
+        when(organizerProfileRepository.findActiveByUserId(userId)).thenReturn(Optional.empty());
     }
 
     private static Event eventOwnedBy(Long organizerId) {

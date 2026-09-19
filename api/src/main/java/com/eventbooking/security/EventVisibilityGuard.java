@@ -127,8 +127,15 @@ public class EventVisibilityGuard {
         }
     }
 
+    /**
+     * Active, not merely existing. A demoted organiser keeps the profile their
+     * events point at, so reading the profile alone would leave them able to
+     * open their old drafts and moderation history after the role was taken
+     * away - the reading half of exactly what OrganizerResolver stops on the
+     * writing half.
+     */
     private boolean isOwner(Event event, Long actorUserId) {
-        return organizerProfileRepository.findByUserId(actorUserId)
+        return organizerProfileRepository.findActiveByUserId(actorUserId)
                 .map(profile -> profile.getId().equals(event.getOrganizerId()))
                 .orElse(false);
     }

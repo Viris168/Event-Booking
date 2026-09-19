@@ -14,12 +14,31 @@ const dict = {
   organizer: { en: "Organizer", km: "អ្នករៀបចំកម្មវិធី" },
   admin: { en: "Admin", km: "អ្នកគ្រប់គ្រង" },
   becomeOrganizer: { en: "Become an organizer", km: "ក្លាយជាអ្នករៀបចំ" },
+
+  // Role enum values, keyed by the name the API sends. Without these the
+  // account panel printed the constant itself - PLATFORM_ADMIN, shouted in
+  // screaming snake case at the one person who already knows what they are.
+  CUSTOMER: { en: "Customer", km: "អតិថិជន" },
+  ORGANIZER: { en: "Organizer", km: "អ្នករៀបចំកម្មវិធី" },
+  PLATFORM_ADMIN: { en: "Platform admin", km: "អ្នកគ្រប់គ្រងប្រព័ន្ធ" },
   login: { en: "Log in", km: "ចូលគណនី" },
   register: { en: "Sign up", km: "បង្កើតគណនី" },
   logout: { en: "Log out", km: "ចាកចេញ" },
   darkMode: { en: "Dark mode", km: "ទម្រង់ងងឹត" },
   lightMode: { en: "Light mode", km: "ទម្រង់ភ្លឺ" },
   checkIn: { en: "Check-in", km: "ពិនិត្យសំបុត្រចូល" },
+  // The two static pages. In the dictionary rather than inline in the pages
+  // themselves because the footer and the nav drawer both render these labels;
+  // the prose ON those pages stays in the pages, the way Footer.jsx keeps its
+  // own strapline. A dictionary of UI chrome is not a content management
+  // system, and two pages of copy is where that line sits.
+  // aboutUs, not `about` - that key is already taken further down by "About
+  // this event", which the event detail page renders. Two keys one word apart
+  // is worth the awkwardness: a duplicate literal key in this object would not
+  // be an error, the later one would simply win, and the page that lost would
+  // start quietly rendering the wrong heading.
+  aboutUs: { en: "About", km: "អំពីយើង" },
+  contactUs: { en: "Contact", km: "ទំនាក់ទំនង" },
 
   // browse
   heroTitle: {
@@ -291,6 +310,16 @@ const dict = {
     en: "Organiser applications",
     km: "ពាក្យសុំធ្វើជាអ្នករៀបចំ",
   },
+  // The support inbox. "Messages" and not "Contact", which is what the PUBLIC
+  // page is called - an admin opening this is reading what was sent, not
+  // looking for a way to send something.
+  supportInbox: { en: "Messages", km: "សារ" },
+
+  // Spoken forms of the subnav badges. The number is rendered as a glyph and
+  // hidden from assistive tech; these are what it is read as, so they have to
+  // be words rather than the badge's own "4".
+  waiting: { en: "waiting", km: "កំពុងរង់ចាំ" },
+  needsAttention: { en: "needs attention", km: "ត្រូវការការពិនិត្យ" },
   disable: { en: "Disable", km: "បិទដំណើរការ" },
   enable: { en: "Enable", km: "បើកដំណើរការ" },
   takeDown: { en: "Take down", km: "ដកចេញពីប្រព័ន្ធ" },

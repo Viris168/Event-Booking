@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import Icon from './Icon.jsx'
+import Flag from './Flag.jsx'
 import ConfirmDialog from './ConfirmDialog.jsx'
 import { Alert, Field } from './ui.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
@@ -256,13 +257,20 @@ const TITLES = {
  */
 const titleFor = (view, km) => (TITLES[view] ?? TITLES.menu)(km)
 
-/** One row of the settings list. Static rows show a value instead of a chevron. */
-function Row({ icon, tone, title, sub, value, onClick }) {
+/**
+ * One row of the settings list. Static rows show a value instead of a chevron.
+ *
+ * <p>The icon is drawn bare, not in a tinted square. A settings list is read
+ * down the titles; six coloured chips down the left edge compete with them for
+ * first attention and turn a list of five plain choices into something that
+ * looks like five different kinds of thing. Bare marks at one weight and one
+ * colour stay what they are - a hint at what the row is about - and let the
+ * row's own hover state be the only thing that changes when you point at it.
+ */
+function Row({ icon, title, sub, value, onClick }) {
   const body = (
     <>
-      <span className={`acct-row-icon${tone ? ` tone-${tone}` : ''}`} aria-hidden="true">
-        <Icon name={icon} size={16} />
-      </span>
+      <Icon name={icon} size={18} className="acct-row-icon" />
       <span className="acct-row-text">
         <span className="acct-row-title">{title}</span>
         {sub && <span className="acct-row-sub">{sub}</span>}
@@ -407,14 +415,12 @@ function AccountMenu({ user, km, t, onGo, onSignOut, onLeave }) {
         <div className="acct-rows">
           <Row
             icon="user"
-            tone="brand"
             title={km ? 'ព័ត៌មានផ្ទាល់ខ្លួន' : 'Personal details'}
             sub={km ? 'ឈ្មោះ អ៊ីមែល និង Telegram' : 'Name, email and Telegram'}
             onClick={() => onGo('details')}
           />
           <Row
             icon="lock"
-            tone="warning"
             title={
               user.has_password
                 ? km
@@ -446,32 +452,70 @@ function AccountMenu({ user, km, t, onGo, onSignOut, onLeave }) {
       <section className="acct-section">
         <h2>{km ? 'ការបង្ហាញ' : 'Display'}</h2>
         <div className="acct-rows">
+          {/* The flags live in the toggle, where they label the choice you are
+              about to make. The row's own mark stays a plain globe, in the same
+              stroke and colour as every other mark down the column - a second
+              flag here would be the loudest thing on the screen and would only
+              repeat what the pressed side of the toggle already says. */}
           <Row
             icon="globe"
-            tone="brand"
             title={km ? 'ភាសា' : 'Language'}
             value={
               <SegToggle
                 ariaLabel={km ? 'ភាសា' : 'Language'}
                 options={[
-                  { value: 'en', label: 'EN' },
-                  { value: 'km', label: 'ខ្មែរ', className: 'km' },
+                  {
+                    value: 'en',
+                    label: (
+                      <>
+                        <Flag code="en" size={16} />
+                        EN
+                      </>
+                    ),
+                  },
+                  {
+                    value: 'km',
+                    className: 'km',
+                    label: (
+                      <>
+                        <Flag code="km" size={16} />
+                        ខ្មែរ
+                      </>
+                    ),
+                  },
                 ]}
                 value={locale}
                 onChange={setLocale}
               />
             }
           />
+          {/* Sun or moon, following the theme in force - the same reason the
+              language row carries the script you are reading. */}
           <Row
-            icon="sun"
-            tone="quiet"
+            icon={theme === 'dark' ? 'moon' : 'sun'}
             title={km ? 'រូបរាង' : 'Appearance'}
             value={
               <SegToggle
                 ariaLabel={km ? 'រូបរាង' : 'Appearance'}
                 options={[
-                  { value: 'light', label: km ? 'ភ្លឺ' : 'Light' },
-                  { value: 'dark', label: km ? 'ងងឹត' : 'Dark' },
+                  {
+                    value: 'light',
+                    label: (
+                      <>
+                        <Icon name="sun" size={13} />
+                        {km ? 'ភ្លឺ' : 'Light'}
+                      </>
+                    ),
+                  },
+                  {
+                    value: 'dark',
+                    label: (
+                      <>
+                        <Icon name="moon" size={13} />
+                        {km ? 'ងងឹត' : 'Dark'}
+                      </>
+                    ),
+                  },
                 ]}
                 value={theme}
                 onChange={setTheme}
@@ -487,7 +531,6 @@ function AccountMenu({ user, km, t, onGo, onSignOut, onLeave }) {
           <div className="acct-rows">
             <Row
               icon="building"
-              tone="brand"
               title={t('becomeOrganizer')}
               sub={km ? 'រៀបចំ និងលក់សំបុត្រព្រឹត្តិការណ៍ផ្ទាល់ខ្លួន' : 'Run your own events and sell tickets'}
               onClick={() => onLeave('/become-an-organizer')}
@@ -501,7 +544,6 @@ function AccountMenu({ user, km, t, onGo, onSignOut, onLeave }) {
         <div className="acct-rows">
           <Row
             icon="phone"
-            tone="quiet"
             title={km ? 'លេខទូរស័ព្ទ' : 'Phone number'}
             sub={km ? 'លេខសម្រាប់ចូលប្រើ មិនអាចប្តូរបានទេ' : 'How you sign in. Cannot be changed here.'}
             value={<span className="mono">{user.phone_e164}</span>}
@@ -511,7 +553,6 @@ function AccountMenu({ user, km, t, onGo, onSignOut, onLeave }) {
               the ways in. */}
           <Row
             icon="login"
-            tone="quiet"
             title="Google"
             sub={
               user.google_linked
@@ -1197,9 +1238,14 @@ const ACCT_CSS = `
 
 /* ----------------------------------------------------------- identity */
 .acct-hero { display: flex; align-items: center; gap: var(--acct-4); }
+/* The ring is drawn inside rather than as a border so the circle keeps its
+   56px and the initials stay centred in it. Mixed from the ink already in the
+   tint, so it reads as an edge on the tint in both themes rather than as a
+   grey hoop drawn around it. */
 .acct-avatar { flex: none; width: 56px; height: 56px; border-radius: 50%;
                display: grid; place-items: center;
                background: var(--color-tint-2); color: var(--color-on-tint);
+               box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-on-tint) 18%, transparent);
                font-size: 1.15rem; font-weight: 600; letter-spacing: -.02em; }
 .acct-hero-text { min-width: 0; display: flex; flex-direction: column;
                   align-items: flex-start; gap: 2px; }
@@ -1237,8 +1283,7 @@ const ACCT_CSS = `
             border-radius: var(--radius-card, 16px);
             background: var(--color-surface); padding: var(--acct-3) var(--acct-4); }
 .acct-org-mark { flex: none; display: grid; place-items: center;
-                 width: 38px; height: 38px; border-radius: var(--radius-ui, 12px);
-                 background: var(--color-surface-2); color: var(--color-ink-2); }
+                 color: var(--color-ink-2); }
 .acct-org-text { min-width: 0; display: flex; flex-direction: column; }
 .acct-org-name { font-size: .95rem; font-weight: 600; letter-spacing: -.01em; }
 .acct-org-alt { font-size: .82rem; color: var(--color-muted); }
@@ -1252,44 +1297,87 @@ const ACCT_CSS = `
 .acct-rows { border: 1px solid var(--color-line);
              border-radius: var(--radius-card, 16px);
              background: var(--color-surface); overflow: hidden; }
-.acct-row { width: 100%; display: flex; align-items: center; gap: var(--acct-3);
-            padding: var(--acct-3) var(--acct-4); text-align: start;
-            font: inherit; color: inherit; background: none; border: 0;
-            border-top: 1px solid var(--color-line-2); }
-.acct-row:first-child { border-top: 0; }
+
+/* The separator stops short of the panel edge and starts where the titles do.
+   A rule that runs the full width cuts the card into slices; one that lines up
+   with the text reads as a break between two entries of the same list. It is
+   drawn on the row rather than as a border so it can be inset. */
+.acct-row { position: relative;
+            width: 100%; display: flex; align-items: center; gap: var(--acct-3);
+            padding: .8rem var(--acct-4); text-align: start;
+            font: inherit; color: inherit; background: none; border: 0; }
+.acct-row + .acct-row::before { content: ''; position: absolute;
+                                inset-inline: calc(var(--acct-4) + 20px + var(--acct-3)) 0;
+                                top: 0; height: 1px; background: var(--color-line-2); }
 button.acct-row { cursor: pointer; transition: background .12s; }
 button.acct-row:hover { background: var(--color-surface-2); }
+/* A pressed row should read as pressed on a touch screen too, where there is
+   no hover to have told you the row was live in the first place. */
+button.acct-row:active { background: var(--color-tint); }
 button.acct-row:focus-visible { outline: 2px solid var(--color-brand-500);
-                                outline-offset: -2px; }
+                                outline-offset: -2px; border-radius: 2px; }
 
-.acct-row-icon { flex: none; display: grid; place-items: center;
-                 width: 34px; height: 34px; border-radius: var(--radius-ui, 12px);
-                 background: var(--color-surface-2); color: var(--color-ink-2); }
-.acct-row-icon.tone-brand { background: var(--color-tint-2); color: var(--color-on-tint); }
-.acct-row-icon.tone-warning { background: var(--color-warning-soft); color: var(--color-warning); }
-.acct-row-icon.tone-danger { background: var(--color-danger-soft); color: var(--color-danger); }
-.acct-row-icon.tone-quiet { background: var(--color-quiet-soft); color: var(--color-quiet); }
+/* Bare, one weight, one colour - see the note on Row. Aligned on a 20px slot
+   so a wide glyph and a narrow one still start their titles at the same x. */
+.acct-row-icon { flex: none; width: 20px; color: var(--color-ink-2);
+                 transition: color .12s; }
+/* --color-link, not --color-brand-600: the brand greens are fixed across both
+   themes, so brand-600 on hover would turn the mark a shade darker than the
+   dark surface it sits on. The link token is the one that already flips to the
+   pale jade in the dark theme. */
+button.acct-row:hover .acct-row-icon,
+button.acct-row:focus-visible .acct-row-icon { color: var(--color-link); }
 
 .acct-row-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .acct-row-title { font-size: .92rem; font-weight: 600; letter-spacing: -.01em; }
-.acct-row-sub { font-size: .78rem; color: var(--color-muted); line-height: 1.5; }
-.acct-row-value { flex: none; font-size: .82rem; color: var(--color-muted); }
-.acct-row-chev { flex: none; color: var(--color-muted); }
+.acct-row-sub { font-size: .78rem; color: var(--color-muted); line-height: 1.45; }
+.acct-row-value { flex: none; font-size: .82rem; color: var(--color-ink-2); }
+
+/* The chevron travels on hover instead of merely darkening: a mark that moves
+   towards where it will take you says "this opens" before you have read it. */
+.acct-row-chev { flex: none; color: var(--color-placeholder);
+                 transition: color .12s, transform .12s ease-out; }
+button.acct-row:hover .acct-row-chev,
+button.acct-row:focus-visible .acct-row-chev { color: var(--color-ink-2);
+                                               transform: translateX(2px); }
+@media (prefers-reduced-motion: reduce) {
+  button.acct-row:hover .acct-row-chev { transform: none; }
+}
 
 /* Both choices visible, one pressed - see the note on SegToggle. Sized to sit
    in a row's value slot without making the row taller than its neighbours. */
-.acct-seg { display: inline-flex; flex: none; padding: 2px; gap: 2px;
+.acct-seg { display: inline-flex; flex: none; padding: 3px; gap: 2px;
             border: 1px solid var(--color-line);
             border-radius: 999px; background: var(--color-surface-2); }
-.acct-seg button { border: 0; background: none; cursor: pointer;
-                   padding: .22rem .6rem; border-radius: 999px;
+.acct-seg button { display: inline-flex; align-items: center; gap: var(--acct-1);
+                   border: 0; background: none; cursor: pointer;
+                   padding: .25rem .65rem; border-radius: 999px;
                    font: inherit; font-size: .78rem; font-weight: 600;
-                   color: var(--color-muted); transition: background .12s, color .12s; }
-.acct-seg button:hover { color: var(--color-ink-2); }
-.acct-seg button[aria-pressed='true'] { background: var(--color-tint-2);
-                                        color: var(--color-on-tint); }
+                   color: var(--color-muted);
+                   transition: background .12s, color .12s; }
+.acct-seg button:hover { color: var(--color-ink); }
+/* The chosen side is filled, not tinted. Pale green on cream told you which
+   half was selected only if you looked for it; against the plain half, solid
+   brand answers it at a glance - and it is the same green as the panel's
+   primary buttons, so "on" means one thing throughout. */
+.acct-seg button[aria-pressed='true'] { background: var(--color-brand-600);
+                                        color: #fff; }
+.acct-seg button[aria-pressed='true']:hover { background: var(--color-brand-700);
+                                              color: #fff; }
+/* One step lighter in the dark theme. brand-600 is a deep jade chosen to hold
+   white text on a pale page; on the dark track it is close enough to the
+   surface that the filled half stops announcing itself, which is the one job
+   it has. */
+:root[data-theme='dark'] .acct-seg button[aria-pressed='true'] { background: var(--color-brand-500); }
+:root[data-theme='dark'] .acct-seg button[aria-pressed='true']:hover { background: var(--color-brand-600); }
 .acct-seg button:focus-visible { outline: 2px solid var(--color-brand-500);
-                                 outline-offset: 1px; }
+                                 outline-offset: 2px; }
+.acct-seg :is(.icon, .flag) { flex: none; }
+/* The shared .flag carries a white ring, which it needs against the navbar's
+   near-black bar and which here would draw a pale box around each flag on a
+   cream track - and a second box inside the pressed pill. On these surfaces the
+   flags have enough edge contrast of their own. */
+.acct-seg .flag { box-shadow: none; border-radius: 2px; }
 
 /* Signing out ends the session rather than configuring anything, so it is a
    button, not one more row in a settings list. The auto margin drops it to the
@@ -1305,10 +1393,8 @@ button.acct-row:focus-visible { outline: 2px solid var(--color-brand-500);
 .acct-signin { display: flex; align-items: center; gap: var(--acct-3);
                padding: var(--acct-3); border-radius: var(--radius-ui, 12px);
                background: var(--color-surface-2); }
-.acct-signin-icon { flex: none; width: 36px; height: 36px; border-radius: 50%;
-                    display: grid; place-items: center;
-                    background: var(--color-surface); color: var(--color-ink-2);
-                    border: 1px solid var(--color-line); }
+.acct-signin-icon { flex: none; display: grid; place-items: center;
+                    color: var(--color-ink-2); }
 .acct-signin-name { font-size: .95rem; font-weight: 600; letter-spacing: -.01em; }
 
 /* --------------------------------------------------------------- forms */
@@ -1343,4 +1429,20 @@ button.acct-row:focus-visible { outline: 2px solid var(--color-brand-500);
 .acct-btn-primary { background: var(--color-brand-600); color: #fff; }
 .acct-btn-primary:not(:disabled):hover { background: var(--color-brand-700); }
 
+/* ---------------------------------------------------------------- Khmer */
+/*
+ * Khmer has no case, and its clusters stack above and below the base line.
+ * Uppercasing a section heading therefore does nothing at all, and the tracking
+ * that gives a Latin micro-caps label its air pushes the marks off the
+ * consonants they belong to. The treatment is Latin's, so it stays Latin's.
+ */
+html[lang='km'] .acct-section h2 { text-transform: none; letter-spacing: 0;
+                                   font-size: .82rem; }
+
+/* Room for the stacked marks, which a line-height tuned to Latin clips. */
+html[lang='km'] .acct-row-title { line-height: 1.55; }
+html[lang='km'] .acct-row-sub { line-height: 1.7; }
+html[lang='km'] .acct-hero-name { line-height: 1.45; }
+html[lang='km'] .acct-role { padding-block: 3px; }
+html[lang='km'] .acct-seg button { padding-block: .3rem; }
 `

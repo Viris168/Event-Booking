@@ -66,8 +66,13 @@ public record AdminUserUpdateRequest(
          *
          * <p>Promotion creates the {@code organizer_profile} row that ownership
          * columns point at - the same row OrganizerServiceimpl.approve creates -
-         * and that row has to carry a name. Ignored for an account that already
-         * has a profile, and for every other role.
+         * and that row has to carry a name. Ignored for every other role.
+         *
+         * <p>Someone demoted earlier still has their profile, so re-promoting
+         * them needs no name. Supplying one renames the organisation rather than
+         * being dropped: the dialog cannot see the dormant row, so it asks for a
+         * name on every promotion, and silently discarding what an admin typed
+         * and watched save would be worse than applying it.
          */
         @JsonProperty("org_name_en") String orgNameEn,
 

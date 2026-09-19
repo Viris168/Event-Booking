@@ -18,6 +18,8 @@ import BookingDetailPage from './pages/BookingDetailPage.jsx'
 import MyBookingsPage from './pages/MyBookingsPage.jsx'
 import BecomeOrganizerPage from './pages/BecomeOrganizerPage.jsx'
 import NotificationsPage from './pages/NotificationsPage.jsx'
+import AboutPage from './pages/AboutPage.jsx'
+import ContactPage from './pages/ContactPage.jsx'
 import NotFoundPage from './pages/NotFoundPage.jsx'
 
 import OrganizerLayout from './pages/organizer/OrganizerLayout.jsx'
@@ -39,6 +41,7 @@ import AdminReviewPage from './pages/admin/AdminReviewPage.jsx'
 import AdminApplicationsPage from './pages/admin/AdminApplicationsPage.jsx'
 import AdminPaymentsPage from './pages/admin/AdminPaymentsPage.jsx'
 import AdminPayoutsPage from './pages/admin/AdminPayoutsPage.jsx'
+import AdminContactPage from './pages/admin/AdminContactPage.jsx'
 
 export default function App() {
   /*
@@ -64,6 +67,14 @@ export default function App() {
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/events" element={<EventsPage />} />
           <Route path="/events/:id" element={<EventDetailPage />} />
+          <Route path="/about" element={<AboutPage />} />
+          {/* Public on purpose, and it is the one page where that matters
+              most: the reason somebody writes in is often that they cannot
+              sign in, so putting the contact form behind a login would close
+              the door to exactly the people knocking on it. POST /contact is
+              permitted without a token for the same reason - see
+              SecurityConfig. */}
+          <Route path="/contact" element={<ContactPage />} />
 
           {/* ---------------------------------- any logged-in customer */}
           <Route element={<ProtectedRoute />}>
@@ -132,6 +143,11 @@ export default function App() {
                   making the transfer and had no way to print the document it
                   is made against. */}
               <Route path="payouts/:id" element={<PayoutInvoicePage />} />
+              {/* The other end of /contact. Under the admin prefix, which
+                  SecurityConfig closes to PLATFORM_ADMIN - the public half
+                  takes anonymous writes, and the two sides of one table sit
+                  on opposite sides of the strongest rule in the chain. */}
+              <Route path="contact-messages" element={<AdminContactPage />} />
             </Route>
           </Route>
 

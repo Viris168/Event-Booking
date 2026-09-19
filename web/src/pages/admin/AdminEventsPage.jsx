@@ -15,6 +15,7 @@ import {
   SearchInput,
   TablePager,
 } from '../../components/ui.jsx'
+import { TableSkeleton } from '../../components/Skeleton.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
 import { usd } from '../../lib/format.js'
@@ -365,7 +366,10 @@ export default function AdminEventsPage() {
       )}
 
       {loading ? (
-        <p className="muted small">{km ? 'កំពុងផ្ទុក…' : 'Loading…'}</p>
+        /* A skeleton of the table rather than the words "Loading…": the one
+           line collapsed the page to nothing and the footer rode up the window,
+           then jumped a screenful when the rows landed. */
+        <TableSkeleton rows={10} cols={7} />
       ) : rows.length === 0 && !loadError ? (
         <Empty icon="search" title={km ? 'រកមិនឃើញព្រឹត្តិការណ៍ទេ' : 'No events match'}>
           {km

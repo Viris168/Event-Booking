@@ -194,10 +194,14 @@ public class AuthService {
      * want would put that cost on every authenticated request instead of on the
      * one call that asks.
      *
-     * <p>The organiser profile is looked up unconditionally rather than only for
-     * {@code Role.ORGANIZER}. Role and profile are separate facts in this schema
-     * and have drifted before; asking the table is cheaper than trusting they
-     * agree.
+     * <p>The organiser profile is looked up with {@code findActiveByUserId},
+     * which joins the role in rather than testing the two facts separately.
+     * They are separate facts in this schema and now disagree by design: a
+     * demoted organiser keeps the profile row, because their events still point
+     * at it. Reading the row alone would hand a CUSTOMER an
+     * {@code organizer_profile_id} and an organisation name, which is precisely
+     * what {@link com.eventbooking.dto.auth.MeResponse} promises is null for
+     * them - and what AccountPanel renders an "Organisation" row from.
      */
     @Transactional(readOnly = true)
     public MeResponse me(Long actorUserId) {
@@ -208,7 +212,7 @@ public class AuthService {
                 .orElseThrow(NotAuthenticatedException::new);
 
         return MeResponse.of(user,
-                organizerProfileRepository.findByUserId(user.getId()).orElse(null));
+                organizerProfileRepository.findActiveByUserId(user.getId()).orElse(null));
     }
 
     /**
@@ -252,7 +256,7 @@ public class AuthService {
 
         log.info("User {} updated their profile", user.getId());
         return MeResponse.of(user,
-                organizerProfileRepository.findByUserId(user.getId()).orElse(null));
+                organizerProfileRepository.findActiveByUserId(user.getId()).orElse(null));
     }
 
     /**
@@ -384,7 +388,7 @@ public class AuthService {
         log.info("User {} added a phone number", user.getId());
 
         return MeResponse.of(user,
-                organizerProfileRepository.findByUserId(user.getId()).orElse(null));
+                organizerProfileRepository.findActiveByUserId(user.getId()).orElse(null));
     }
 
     /**
@@ -459,7 +463,7 @@ public class AuthService {
         log.info("User {} linked a Google identity", user.getId());
 
         return MeResponse.of(user,
-                organizerProfileRepository.findByUserId(user.getId()).orElse(null));
+                organizerProfileRepository.findActiveByUserId(user.getId()).orElse(null));
     }
 
     /**
@@ -494,7 +498,7 @@ public class AuthService {
         log.info("User {} unlinked their Google identity", user.getId());
 
         return MeResponse.of(user,
-                organizerProfileRepository.findByUserId(user.getId()).orElse(null));
+                organizerProfileRepository.findActiveByUserId(user.getId()).orElse(null));
     }
 
     /**
@@ -537,7 +541,7 @@ public class AuthService {
         log.info("User {} set a first password", user.getId());
 
         return MeResponse.of(user,
-                organizerProfileRepository.findByUserId(user.getId()).orElse(null));
+                organizerProfileRepository.findActiveByUserId(user.getId()).orElse(null));
     }
 
     // ------------------------------------------------------------------

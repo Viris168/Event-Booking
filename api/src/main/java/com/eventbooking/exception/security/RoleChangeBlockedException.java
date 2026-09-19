@@ -10,10 +10,6 @@ import com.eventbooking.exception.ErrorCode;
  * caller is a platform admin with every right to ask:
  *
  * <ul>
- *   <li><b>Demoting an organiser who still owns things.</b> Ownership columns
- *       point at {@code organizer_profile.id}, and dropping the role means
- *       dropping that row - which would orphan every event and venue hanging
- *       off it. The events have to be moved or removed first.</li>
  *   <li><b>An admin editing their own role.</b> One mis-click would revoke the
  *       only account that can undo it, and nothing short of a hand-written
  *       UPDATE gets the platform back.</li>
