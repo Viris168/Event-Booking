@@ -152,7 +152,12 @@ export default function AdminContactPage() {
     <div className="container container-wide">
       <div className="page-head">
         <div>
-          <h1>{km ? "សារពីទំព័រទំនាក់ទំនង" : "Support messages"}</h1>
+          <div className="page-title-lockup">
+            <span className="icon-chip green lg">
+              <Icon name="mail" size={22} />
+            </span>
+            <h1>{km ? "សារពីទំព័រទំនាក់ទំនង" : "Support messages"}</h1>
+          </div>
           <p>
             {km
               ? "សារដែលផ្ញើមកតាមទំព័រទំនាក់ទំនងជាសាធារណៈ។ ការឆ្លើយតបធ្វើឡើងតាមអ៊ីមែល។"

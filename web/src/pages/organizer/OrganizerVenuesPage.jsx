@@ -269,7 +269,12 @@ export default function OrganizerVenuesPage() {
     <div className="container container-wide">
       <div className="page-head">
         <div>
-          <h1>{t("venues")}</h1>
+          <div className="page-title-lockup">
+            <span className="icon-chip green lg">
+              <Icon name="building" size={22} />
+            </span>
+            <h1>{t("venues")}</h1>
+          </div>
           {/* Says whose these are, which the old wording left open.
               "Reused across events" was true and incomplete: it read as though
               the catalogue were shared, and until V27 it partly was. Venues are

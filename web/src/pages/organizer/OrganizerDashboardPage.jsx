@@ -261,7 +261,12 @@ export default function OrganizerDashboardPage() {
     <div className="container container-wide">
       <div className="page-head">
         <div>
-          <h1>{t("organizerDashboard")}</h1>
+          <div className="page-title-lockup">
+            <span className="icon-chip green lg">
+              <Icon name="calendar" size={22} />
+            </span>
+            <h1>{t("organizerDashboard")}</h1>
+          </div>
           <p>
             {organizerProfile
               ? km
