@@ -536,12 +536,7 @@ export default function MyBookingsPage() {
     <div className="container container-wide">
       <div className="page-head">
         <div>
-          <div className="page-title-lockup">
-            <span className="icon-chip green lg">
-              <Icon name="ticket" size={22} />
-            </span>
-            <h1>{t("myBookings")}</h1>
-          </div>
+          <h1>{t("myBookings")}</h1>
           {loading ? (
             <Skeleton className="skel-line mt-2 w-48" />
           ) : (
