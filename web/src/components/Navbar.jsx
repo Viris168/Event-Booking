@@ -1,12 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
-import Icon from './Icon.jsx'
-import Flag from './Flag.jsx'
-import NotificationBell from './NotificationBell.jsx'
-import { useAuth } from '../context/AuthContext.jsx'
-import { useTheme } from '../context/ThemeContext.jsx'
-import { useLocale } from '../context/LocaleContext.jsx'
-import { countdown } from '../lib/format.js'
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
+import Icon from "./Icon.jsx";
+import Flag from "./Flag.jsx";
+import NotificationBell from "./NotificationBell.jsx";
+import { useAuth } from "../context/AuthContext.jsx";
+import { useTheme } from "../context/ThemeContext.jsx";
+import { useLocale } from "../context/LocaleContext.jsx";
+import { countdown } from "../lib/format.js";
 
 /*
  * How often the navbar looks for a hold it does not already know about.
@@ -22,7 +22,7 @@ import { countdown } from '../lib/format.js'
  * so the only thing the interval decides is how quickly a hold created in
  * another tab shows up here.
  */
-const HOLD_POLL_MS = 30_000
+const HOLD_POLL_MS = 30_000;
 
 /*
  * Still here for the drawer, and only for the drawer.
@@ -35,19 +35,19 @@ const HOLD_POLL_MS = 30_000
  * it costs nothing to state.
  */
 const ROLE_LABEL = {
-  CUSTOMER: 'Customer',
-  ORGANIZER: 'Organizer',
-  PLATFORM_ADMIN: 'Platform admin',
-}
+  CUSTOMER: "Customer",
+  ORGANIZER: "Organizer",
+  PLATFORM_ADMIN: "Platform admin",
+};
 
 export default function Navbar({ onOpenAccount }) {
-  const { isAuthenticated, user, role, isOrganizer, isAdmin } = useAuth()
-  const { t, locale, setLocale } = useLocale()
-  const { isDark, toggle: toggleTheme } = useTheme()
-  const location = useLocation()
-  const navigate = useNavigate()
-  const [menuOpen, setMenuOpen] = useState(false)
-  const navRef = useRef(null)
+  const { isAuthenticated, user, role, isOrganizer, isAdmin } = useAuth();
+  const { t, locale, setLocale } = useLocale();
+  const { isDark, toggle: toggleTheme } = useTheme();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const navRef = useRef(null);
 
   /*
    * Nav search: a shortcut into /events, not a second search.
@@ -63,36 +63,72 @@ export default function Navbar({ onOpenAccount }) {
    * being searched for would make the commonest gesture - open, type, enter -
    * append to a query the person had forgotten was there.
    */
-  const [searchOpen, setSearchOpen] = useState(false)
-  const [q, setQ] = useState('')
-  const searchInputRef = useRef(null)
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const searchInputRef = useRef(null);
 
   // Close both panels on navigation, on Escape, and on an outside click.
   useEffect(() => {
-    setMenuOpen(false)
+    setMenuOpen(false);
     // Including after a search submits, since that is itself a navigation.
-    setSearchOpen(false)
-  }, [location.pathname])
+    setSearchOpen(false);
+  }, [location.pathname]);
 
   useEffect(() => {
-    if (!menuOpen && !searchOpen) return
+    if (!menuOpen && !searchOpen) return;
     const onKey = (e) => {
-      if (e.key !== 'Escape') return
-      setMenuOpen(false)
-      setSearchOpen(false)
-    }
+      if (e.key !== "Escape") return;
+      setMenuOpen(false);
+      setSearchOpen(false);
+    };
     const onClick = (e) => {
-      if (navRef.current?.contains(e.target)) return
-      setMenuOpen(false)
-      setSearchOpen(false)
-    }
-    document.addEventListener('keydown', onKey)
-    document.addEventListener('mousedown', onClick)
+      if (navRef.current?.contains(e.target)) return;
+      setMenuOpen(false);
+      setSearchOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("mousedown", onClick);
     return () => {
-      document.removeEventListener('keydown', onKey)
-      document.removeEventListener('mousedown', onClick)
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("mousedown", onClick);
+    };
+  }, [menuOpen, searchOpen]);
+
+  /*
+   * When opening search while already on /events, seed the box with the active query.
+   */
+  useEffect(() => {
+    if (searchOpen && location.pathname === "/events") {
+      const urlQ = new URLSearchParams(location.search).get("q") || "";
+      setQ(urlQ);
     }
-  }, [menuOpen, searchOpen])
+  }, [searchOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /*
+   * Live search like in EventsPage: debounced after 250ms so there is no need
+   * to press Enter to search.
+   */
+  useEffect(() => {
+    if (!searchOpen) return undefined;
+    const timer = setTimeout(() => {
+      const query = q.trim();
+      const currentQ = new URLSearchParams(location.search).get("q") || "";
+      if (query === currentQ) return;
+
+      if (location.pathname === "/events") {
+        const next = new URLSearchParams(location.search);
+        if (query) next.set("q", query);
+        else next.delete("q");
+        next.delete("page");
+        navigate(`/events${next.toString() ? `?${next.toString()}` : ""}`, {
+          replace: true,
+        });
+      } else if (query) {
+        navigate(`/events?q=${encodeURIComponent(query)}`);
+      }
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [q, searchOpen, location.pathname, location.search, navigate]);
 
   /*
    * Focus the box when it opens.
@@ -103,8 +139,8 @@ export default function Navbar({ onOpenAccount }) {
    * would steal focus on first paint if this ever rendered open.
    */
   useEffect(() => {
-    if (searchOpen) searchInputRef.current?.focus()
-  }, [searchOpen])
+    if (searchOpen) searchInputRef.current?.focus();
+  }, [searchOpen]);
 
   /*
    * Publish the navbar's height as --nav-h, for whatever has to sit under it.
@@ -119,28 +155,33 @@ export default function Navbar({ onOpenAccount }) {
    * thing that reliably knows the height of a wrapping flex row is the browser.
    */
   useEffect(() => {
-    const el = navRef.current
-    if (!el || typeof ResizeObserver === 'undefined') return undefined
+    const el = navRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return undefined;
     const publish = () =>
-      document.documentElement.style.setProperty('--nav-h', `${el.offsetHeight}px`)
-    publish()
-    const observer = new ResizeObserver(publish)
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [])
+      document.documentElement.style.setProperty(
+        "--nav-h",
+        `${el.offsetHeight}px`,
+      );
+    publish();
+    const observer = new ResizeObserver(publish);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
-  const [hold, setHold] = useState(null)
-  const [now, setNow] = useState(Date.now())
+  const [hold, setHold] = useState(null);
+  const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
-    const tick = setInterval(() => setNow(Date.now()), 1000)
-    return () => clearInterval(tick)
-  }, [])
+    const tick = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(tick);
+  }, []);
 
   // A live hold is the most time-critical thing on screen: surface it globally,
   // at every width — it stays outside the drawer so it is never hidden.
-  const holdMsLeft = hold ? new Date(hold.expires_at || hold.expiresAt).getTime() - now : 0
-  const showHold = Boolean(hold && holdMsLeft > 0)
+  const holdMsLeft = hold
+    ? new Date(hold.expires_at || hold.expiresAt).getTime() - now
+    : 0;
+  const showHold = Boolean(hold && holdMsLeft > 0);
 
   /*
    * Split out so the two things that ask for a hold - the discovery poll and
@@ -149,13 +190,13 @@ export default function Navbar({ onOpenAccount }) {
    * are signed in.
    */
   const refreshHold = useCallback(() => {
-    if (!isAuthenticated || !user?.id) return
-    import('../api/holds.js').then(({ getMyActiveHold }) =>
+    if (!isAuthenticated || !user?.id) return;
+    import("../api/holds.js").then(({ getMyActiveHold }) =>
       getMyActiveHold()
         .then((holds) => setHold(holds && holds.length > 0 ? holds[0] : null))
         .catch(() => setHold(null)),
-    )
-  }, [isAuthenticated, user?.id])
+    );
+  }, [isAuthenticated, user?.id]);
 
   /*
    * This tab acting on its own hold - releasing it, creating one, spending it
@@ -165,14 +206,14 @@ export default function Navbar({ onOpenAccount }) {
    * own clock ran out.
    */
   useEffect(() => {
-    window.addEventListener('hold:changed', refreshHold)
-    return () => window.removeEventListener('hold:changed', refreshHold)
-  }, [refreshHold])
+    window.addEventListener("hold:changed", refreshHold);
+    return () => window.removeEventListener("hold:changed", refreshHold);
+  }, [refreshHold]);
 
   useEffect(() => {
     if (!isAuthenticated || !user?.id) {
-      setHold(null)
-      return undefined
+      setHold(null);
+      return undefined;
     }
 
     /*
@@ -185,12 +226,12 @@ export default function Navbar({ onOpenAccount }) {
      * the hold is gone, rather than leaving the bar to guess from its own
      * clock. Discovery then resumes on the interval.
      */
-    if (showHold) return undefined
+    if (showHold) return undefined;
 
-    refreshHold()
-    const poll = setInterval(refreshHold, HOLD_POLL_MS)
-    return () => clearInterval(poll)
-  }, [isAuthenticated, user?.id, showHold, refreshHold])
+    refreshHold();
+    const poll = setInterval(refreshHold, HOLD_POLL_MS);
+    return () => clearInterval(poll);
+  }, [isAuthenticated, user?.id, showHold, refreshHold]);
 
   /*
    * Two lists, because the bar and the drawer are answering different
@@ -206,14 +247,24 @@ export default function Navbar({ onOpenAccount }) {
    * organiser application.
    */
   const links = [
-    { to: '/', label: t('home'), icon: 'home', end: true, show: true },
-    { to: '/events', label: t('events'), icon: 'calendar', show: true },
-    { to: '/my-bookings', label: t('myBookings'), icon: 'ticket', show: isAuthenticated },
+    { to: "/", label: t("home"), icon: "home", end: true, show: true },
+    { to: "/events", label: t("events"), icon: "calendar", show: true },
+    {
+      to: "/my-bookings",
+      label: t("myBookings"),
+      icon: "ticket",
+      show: isAuthenticated,
+    },
     // isOrganizer is true for PLATFORM_ADMIN too, so this needs the explicit
     // !isAdmin: an admin's work lives under /admin, and carrying both put two
     // different consoles side by side with nothing to say which was theirs.
-    { to: '/organizer', label: t('organizer'), icon: 'building', show: isOrganizer && !isAdmin },
-    { to: '/admin', label: t('admin'), icon: 'shield', show: isAdmin },
+    {
+      to: "/organizer",
+      label: t("organizer"),
+      icon: "building",
+      show: isOrganizer && !isAdmin,
+    },
+    { to: "/admin", label: t("admin"), icon: "shield", show: isAdmin },
     /*
      * The two static pages, last in the row on purpose.
      *
@@ -227,9 +278,9 @@ export default function Navbar({ onOpenAccount }) {
      * because not being able to sign in is one of the commonest reasons to
      * need it.
      */
-    { to: '/about', label: t('aboutUs'), icon: 'info', show: true },
-    { to: '/contact', label: t('contactUs'), icon: 'mail', show: true },
-  ].filter((l) => l.show)
+    { to: "/about", label: t("aboutUs"), icon: "info", show: true },
+    { to: "/contact", label: t("contactUs"), icon: "mail", show: true },
+  ].filter((l) => l.show);
 
   const drawerLinks = [
     ...links,
@@ -237,12 +288,12 @@ export default function Navbar({ onOpenAccount }) {
     // PLATFORM_ADMIN, so exactly one of these two rows is ever visible and they
     // can share the building icon without ambiguity.
     {
-      to: '/become-an-organizer',
-      label: t('becomeOrganizer'),
-      icon: 'building',
+      to: "/become-an-organizer",
+      label: t("becomeOrganizer"),
+      icon: "building",
       show: isAuthenticated && !isOrganizer,
     },
-  ].filter((l) => l.show)
+  ].filter((l) => l.show);
 
   /**
    * Hand the query to /events and let it do the searching.
@@ -257,16 +308,22 @@ export default function Navbar({ onOpenAccount }) {
    * what is on", which is what /events with no query is.
    */
   const submitSearch = (e) => {
-    e.preventDefault()
-    const query = q.trim()
-    navigate(query ? `/events?q=${encodeURIComponent(query)}` : '/events')
-    setSearchOpen(false)
-    // Explicitly, rather than leaving it to the route effect: searching from
-    // /events to /events changes only the query string, so pathname does not
-    // change and that effect would not fire.
-    setMenuOpen(false)
-    setQ('')
-  }
+    e.preventDefault();
+    const query = q.trim();
+    if (location.pathname === "/events") {
+      const next = new URLSearchParams(location.search);
+      if (query) next.set("q", query);
+      else next.delete("q");
+      next.delete("page");
+      navigate(`/events${next.toString() ? `?${next.toString()}` : ""}`, {
+        replace: true,
+      });
+    } else {
+      navigate(query ? `/events?q=${encodeURIComponent(query)}` : "/events");
+      setSearchOpen(false);
+    }
+    setMenuOpen(false);
+  };
 
   /*
    * On every page, /events included.
@@ -300,13 +357,13 @@ export default function Navbar({ onOpenAccount }) {
       type="button"
       className="nav-icon-btn"
       onClick={() => setSearchOpen(true)}
-      title={t('search')}
-      aria-label={t('search')}
+      title={t("search")}
+      aria-label={t("search")}
       aria-expanded={searchOpen}
     >
       <Icon name="search" size={17} />
     </button>
-  )
+  );
 
   /*
    * One renderer, two placements - and they are genuinely different controls,
@@ -323,13 +380,18 @@ export default function Navbar({ onOpenAccount }) {
    */
   const renderSearch = ({ inDrawer = false } = {}) => (
     <form
-      className={`nav-search${inDrawer ? ' in-drawer' : ''}`}
+      className={`nav-search${inDrawer ? " in-drawer" : ""}`}
       onSubmit={submitSearch}
       role="search"
     >
       {/* type="submit", so it searches on click and is reachable by keyboard
           as the button it looks like. */}
-      <button type="submit" className="nav-search-go" title={t('search')} aria-label={t('search')}>
+      <button
+        type="submit"
+        className="nav-search-go"
+        title={t("search")}
+        aria-label={t("search")}
+      >
         <Icon name="search" size={16} />
       </button>
       <input
@@ -340,22 +402,38 @@ export default function Navbar({ onOpenAccount }) {
         type="search"
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        placeholder={t('search')}
-        aria-label={t('search')}
+        placeholder={t("search")}
+        aria-label={t("search")}
       />
       {!inDrawer && (
         <button
           type="button"
           className="nav-search-close"
-          onClick={() => setSearchOpen(false)}
-          title={t('close')}
-          aria-label={t('close')}
+          onClick={() => {
+            if (q) {
+              setQ("");
+              if (location.pathname === "/events") {
+                const next = new URLSearchParams(location.search);
+                next.delete("q");
+                next.delete("page");
+                navigate(
+                  `/events${next.toString() ? `?${next.toString()}` : ""}`,
+                  { replace: true },
+                );
+              }
+              searchInputRef.current?.focus();
+            } else {
+              setSearchOpen(false);
+            }
+          }}
+          title={q ? (locale === "km" ? "សម្អាត" : "Clear") : t("close")}
+          aria-label={q ? (locale === "km" ? "សម្អាត" : "Clear") : t("close")}
         >
           <Icon name="close" size={15} />
         </button>
       )}
     </form>
-  )
+  );
 
   /*
    * The language switch: one flag, the one you are reading in.
@@ -381,45 +459,54 @@ export default function Navbar({ onOpenAccount }) {
    * sensible one-button gesture for cycling three languages, and dropping one
    * in would silently make the third unreachable.
    */
-  const other = locale === 'en' ? 'km' : 'en'
-  const switchTo = other === 'km' ? 'ភាសាខ្មែរ' : 'English'
+  const other = locale === "en" ? "km" : "en";
+  const switchTo = other === "km" ? "ភាសាខ្មែរ" : "English";
   const langToggle = (
     <button
       type="button"
       className="nav-icon-btn lang-btn"
       onClick={() => setLocale(other)}
-      title={locale === 'km' ? `ប្តូរទៅ${switchTo}` : `Switch to ${switchTo}`}
-      aria-label={locale === 'km' ? `ប្តូរទៅ${switchTo}` : `Switch to ${switchTo}`}
+      title={locale === "km" ? `ប្តូរទៅ${switchTo}` : `Switch to ${switchTo}`}
+      aria-label={
+        locale === "km" ? `ប្តូរទៅ${switchTo}` : `Switch to ${switchTo}`
+      }
     >
       <Flag code={locale} size={20} />
     </button>
-  )
+  );
 
   const themeToggle = (
     <button
       className="nav-icon-btn theme-toggle"
       onClick={toggleTheme}
-      title={isDark ? t('lightMode') : t('darkMode')}
-      aria-label={isDark ? t('lightMode') : t('darkMode')}
+      title={isDark ? t("lightMode") : t("darkMode")}
+      aria-label={isDark ? t("lightMode") : t("darkMode")}
       aria-pressed={isDark}
     >
-      <Icon name={isDark ? 'sun' : 'moon'} size={17} />
+      <Icon name={isDark ? "sun" : "moon"} size={17} />
     </button>
-  )
+  );
 
   const displayPrefs = (
     <div className="pref-group">
       {langToggle}
       {themeToggle}
     </div>
-  )
+  );
 
   return (
     <nav className="nav" ref={navRef}>
       <div className="nav-inner">
-        <Link to="/" className="nav-brand" aria-label={t('brand')}>
-          <img className="nav-mark" src="/logo/CB-mark.png" alt="" width="280" height="320" aria-hidden="true" />
-          <span className="nav-brand-text">{t('brand')}</span>
+        <Link to="/" className="nav-brand" aria-label={t("brand")}>
+          <img
+            className="nav-mark"
+            src="/logo/CB-mark.png"
+            alt=""
+            width="280"
+            height="320"
+            aria-hidden="true"
+          />
+          <span className="nav-brand-text">{t("brand")}</span>
         </Link>
 
         {/* -------------------------------------------- wide bar: the middle */}
@@ -453,7 +540,10 @@ export default function Navbar({ onOpenAccount }) {
               running out. A live hold is the most time-critical thing on the
               screen and it reads left-to-right before the controls do. */}
           {showHold && (
-            <Link to={`/events/${hold.eventId || hold.event_id}`} className="nav-link nav-hold">
+            <Link
+              to={`/events/${hold.eventId || hold.event_id}`}
+              className="nav-link nav-hold"
+            >
               <Icon name="clock" size={14} />
               {countdown(holdMsLeft)}
             </Link>
@@ -482,7 +572,9 @@ export default function Navbar({ onOpenAccount }) {
             are gone and a leading hairline before the bell would be a divider
             dividing nothing from the edge of the bar.
           */}
-          {(!isAuthenticated || showHold) && <span className="nav-sep" aria-hidden="true" />}
+          {(!isAuthenticated || showHold) && (
+            <span className="nav-sep" aria-hidden="true" />
+          )}
 
           {isAuthenticated ? (
             <>
@@ -504,8 +596,8 @@ export default function Navbar({ onOpenAccount }) {
                 type="button"
                 className="nav-avatar-btn"
                 onClick={onOpenAccount}
-                title={t('myAccount')}
-                aria-label={t('myAccount')}
+                title={t("myAccount")}
+                aria-label={t("myAccount")}
               >
                 <span className="avatar" aria-hidden="true">
                   {user.display_name.slice(0, 1).toUpperCase()}
@@ -515,10 +607,10 @@ export default function Navbar({ onOpenAccount }) {
           ) : (
             <>
               <NavLink to="/login" className="nav-link">
-                {t('login')}
+                {t("login")}
               </NavLink>
               <Link to="/register" className="btn btn-sm btn-accent">
-                {t('register')}
+                {t("register")}
               </Link>
             </>
           )}
@@ -535,7 +627,11 @@ export default function Navbar({ onOpenAccount }) {
               a burger cannot tell you there is anything to open it for. */}
           {isAuthenticated && <NotificationBell />}
           {showHold && (
-            <Link to={`/events/${hold.eventId || hold.event_id}`} className="nav-link nav-hold" aria-label={t('holdActive')}>
+            <Link
+              to={`/events/${hold.eventId || hold.event_id}`}
+              className="nav-link nav-hold"
+              aria-label={t("holdActive")}
+            >
               <Icon name="clock" size={14} />
               {countdown(holdMsLeft)}
             </Link>
@@ -554,8 +650,8 @@ export default function Navbar({ onOpenAccount }) {
               type="button"
               className="nav-avatar-btn"
               onClick={onOpenAccount}
-              title={t('myAccount')}
-              aria-label={t('myAccount')}
+              title={t("myAccount")}
+              aria-label={t("myAccount")}
             >
               <span className="avatar" aria-hidden="true">
                 {user.display_name.slice(0, 1).toUpperCase()}
@@ -564,13 +660,13 @@ export default function Navbar({ onOpenAccount }) {
           )}
 
           <button
-            className={`nav-icon-btn nav-burger ${menuOpen ? 'on' : ''}`}
+            className={`nav-icon-btn nav-burger ${menuOpen ? "on" : ""}`}
             onClick={() => setMenuOpen((v) => !v)}
-            aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
             aria-expanded={menuOpen}
             aria-controls="nav-drawer"
           >
-            <Icon name={menuOpen ? 'close' : 'menu'} size={18} />
+            <Icon name={menuOpen ? "close" : "menu"} size={18} />
           </button>
         </div>
       </div>
@@ -585,7 +681,7 @@ export default function Navbar({ onOpenAccount }) {
                   type="button"
                   className="drawer-who"
                   onClick={onOpenAccount}
-                  title={t('myAccount')}
+                  title={t("myAccount")}
                 >
                   <span className="avatar" aria-hidden="true">
                     {user.display_name.slice(0, 1).toUpperCase()}
@@ -600,10 +696,10 @@ export default function Navbar({ onOpenAccount }) {
               <div className="drawer-auth">
                 <Link className="btn btn-outline btn-block" to="/login">
                   <Icon name="login" size={16} />
-                  {t('login')}
+                  {t("login")}
                 </Link>
                 <Link className="btn btn-accent btn-block" to="/register">
-                  {t('register')}
+                  {t("register")}
                 </Link>
               </div>
             )}
@@ -614,7 +710,12 @@ export default function Navbar({ onOpenAccount }) {
 
             <div className="drawer-links">
               {drawerLinks.map((l) => (
-                <NavLink key={l.to} to={l.to} end={l.end} className="drawer-link">
+                <NavLink
+                  key={l.to}
+                  to={l.to}
+                  end={l.end}
+                  className="drawer-link"
+                >
                   <Icon name={l.icon} size={17} />
                   {l.label}
                   <Icon name="chevronRight" size={15} className="ml-auto" />
@@ -622,13 +723,10 @@ export default function Navbar({ onOpenAccount }) {
               ))}
             </div>
 
-            <div className="drawer-foot">
-              {displayPrefs}
-            </div>
+            <div className="drawer-foot">{displayPrefs}</div>
           </div>
         </div>
       )}
-
     </nav>
-  )
+  );
 }
