@@ -149,6 +149,12 @@ public enum ErrorCode {
        take-down instead - which is the reversible action that exists for
        exactly this case. */
     EVENT_NOT_DELETABLE(HttpStatus.CONFLICT),
+    /* Force delete met the one thing it will not go through: an event whose
+       payout has already been PAID. The bookings it would destroy are the point
+       of force delete and no obstacle to it; a completed transfer to the
+       organiser is money that left the building, and the invoice describing it
+       has to keep having a subject. */
+    EVENT_PAID_OUT(HttpStatus.CONFLICT),
     /* An organiser tried to pull their own event after it had sold something.
        Taking a show off sale once people hold tickets to it is a money-back
        decision, which is the platform's to make - so past the first sale the
@@ -171,6 +177,11 @@ public enum ErrorCode {
        disabling themselves. There is no way back from zero through the API -
        enabling an account requires an admin - so the only remedy is SQL against
        the database, which is exactly what this refusal exists to avoid. */
+    /* A delete was asked for on an account with history behind it. Not a
+       refusal to act on the person - anonymise does that and the message says
+       so - but a refusal to take their bookings, gate scans and review
+       decisions down with the row. */
+    USER_NOT_DELETABLE(HttpStatus.CONFLICT),
     LAST_ADMIN(HttpStatus.CONFLICT),
     /* A fourth administrator. The cap is small on purpose: every admin sees all
        platform data and can act on any of it, so the list should stay short

@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -150,4 +151,110 @@ public interface AppUserRepository extends JpaRepository<AppUser, Long> {
      * AdminUserService are about who can act, so they count who can act.
      */
     long countByRoleAndIsDisabledFalse(Role role);
+
+    /**
+     * Everything in the database that points at this account, counted at once.
+     *
+     * <p>The delete guard. {@code app_user} is referenced by fourteen columns
+     * and only four of them carry an ON DELETE clause, so a plain
+     * {@code deleteById} on anyone who has ever used the platform fails as a
+     * raw 23503 and reaches the caller as a 500. Asking first is what turns
+     * that into a refusal naming the reason.
+     *
+     * <p>One native query rather than a count per table, for two reasons. It is
+     * eleven round trips otherwise, on a screen where an admin is just trying
+     * to tidy up a spam signup. And more to the point, the list of blockers has
+     * to be complete to be worth anything - a guard that checks bookings and
+     * forgets scan_log is a 500 that arrives later and looks like a bug rather
+     * than a rule. Keeping them in one place, in the order the schema declares
+     * them, makes the omission visible.
+     *
+     * <p>Native because several of these tables have no JPA entity relation
+     * back to AppUser: {@code scan_log.operator_user_id},
+     * {@code ticket.checked_in_by} and the rest are raw Long columns, exactly
+     * as the models declare them.
+     */
+    @Query(value = """
+            select
+              (select count(*) from booking where user_id = :userId) as bookings,
+              (select count(*) from hold where user_id = :userId) as holds,
+              (select count(*) from scan_log where operator_user_id = :userId) as scans,
+              (select count(*) from event_review where actor_id = :userId) as reviews,
+              (select count(*) from ticket where checked_in_by = :userId) as checkIns,
+              (select count(*) from contact_message where handled_by = :userId) as handledMessages,
+              (select count(*) from payout_request where reviewed_by = :userId) as reviewedPayouts,
+              (select count(*) from organizer_application where reviewed_by = :userId)
+                  as reviewedApplications,
+              (select count(*) from event e
+                 join organizer_profile op on op.id = e.organizer_id
+                where op.user_id = :userId) as ownedEvents,
+              (select count(*) from venue v
+                 join organizer_profile op on op.id = v.organizer_id
+                where op.user_id = :userId) as ownedVenues,
+              (select count(*) from payout_request p
+                 join organizer_profile op on op.id = p.organizer_id
+                where op.user_id = :userId) as ownedPayouts
+            """, nativeQuery = true)
+    UserReferences countReferences(@Param("userId") Long userId);
+
+    /**
+     * What {@link #countReferences} returns.
+     *
+     * <p>An interface projection rather than an {@code Object[]}: eleven
+     * numbers positionally is how the wrong one ends up in an error message,
+     * and the message is the whole value of asking.
+     */
+    interface UserReferences {
+        long getBookings();
+        long getHolds();
+        long getScans();
+        long getReviews();
+        long getCheckIns();
+        long getHandledMessages();
+        long getReviewedPayouts();
+        long getReviewedApplications();
+        long getOwnedEvents();
+        long getOwnedVenues();
+        long getOwnedPayouts();
+    }
+
+    /**
+     * Which of these accounts have history behind them, in one query.
+     *
+     * <p>The list screen's version of {@link #countReferences}. That one answers
+     * "why not" for a single account and costs eleven sub-queries to do it;
+     * this answers the cheaper "can it be deleted at all" for a whole page at
+     * once, so the Remove button can be hidden on the rows the server would
+     * refuse rather than offered and then refused.
+     *
+     * <p>{@code exists} rather than {@code count}, and short-circuiting on the
+     * first true: the answer is a boolean, and the common row - an ordinary
+     * customer with a booking - is decided by the first clause.
+     *
+     * <p>Returns the ids that are NOT deletable, which is the smaller set on
+     * any real platform and lets the caller default to deletable for anything
+     * absent.
+     */
+    @Query(value = """
+            select u.id from app_user u
+             where u.id in (:userIds)
+               and (exists (select 1 from booking where user_id = u.id)
+                 or exists (select 1 from hold where user_id = u.id)
+                 or exists (select 1 from scan_log where operator_user_id = u.id)
+                 or exists (select 1 from event_review where actor_id = u.id)
+                 or exists (select 1 from ticket where checked_in_by = u.id)
+                 or exists (select 1 from contact_message where handled_by = u.id)
+                 or exists (select 1 from payout_request where reviewed_by = u.id)
+                 or exists (select 1 from organizer_application where reviewed_by = u.id)
+                 or exists (select 1 from event e
+                              join organizer_profile op on op.id = e.organizer_id
+                             where op.user_id = u.id)
+                 or exists (select 1 from venue v
+                              join organizer_profile op on op.id = v.organizer_id
+                             where op.user_id = u.id)
+                 or exists (select 1 from payout_request p
+                              join organizer_profile op on op.id = p.organizer_id
+                             where op.user_id = u.id))
+            """, nativeQuery = true)
+    List<Long> findIdsWithHistory(@Param("userIds") Collection<Long> userIds);
 }

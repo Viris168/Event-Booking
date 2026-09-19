@@ -5,6 +5,7 @@ import com.eventbooking.model.Ticket;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -134,4 +135,33 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
      * nullity is the question, not a separate status column.
      */
     long countByCheckedInAtIsNotNull();
+
+    // --- force delete ---------------------------------------------------------
+
+    /**
+     * Every ticket issued for this event, for the export.
+     *
+     * <p>Counted per admission unit, not per booking, which is why the export's
+     * ticket column can read 3 against a single booking row: a zone line of
+     * three is three independently scannable tickets.
+     */
+    @Query("""
+            select t from Ticket t
+            where t.bookingItem.booking.event.id = :eventId
+            """)
+    List<Ticket> findByEventId(@Param("eventId") Long eventId);
+
+    /**
+     * Void every ticket for this event.
+     *
+     * <p>First of the force delete's erasures, because ticket is the one table
+     * that blocks the cascade the schema does declare:
+     * {@code booking_item} cascades from {@code booking}, but
+     * {@code ticket.booking_item_id} has no ON DELETE, so the cascade fails
+     * against any booking that reached issuance. Which is all of the confirmed
+     * ones.
+     */
+    @Modifying
+    @Query("delete from Ticket t where t.bookingItem.booking.event.id = :eventId")
+    int deleteByEventId(@Param("eventId") Long eventId);
 }

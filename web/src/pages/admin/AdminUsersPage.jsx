@@ -21,7 +21,13 @@ import { TableRowsSkeleton } from '../../components/Skeleton.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
 import { usePaging } from '../../lib/usePaging.js'
-import { getUsers, setUserDisabled, updateUser } from '../../api/admin.js'
+import {
+  anonymizeUser,
+  deleteUser,
+  getUsers,
+  setUserDisabled,
+  updateUser,
+} from '../../api/admin.js'
 
 const ROLES = ['CUSTOMER', 'ORGANIZER', 'PLATFORM_ADMIN']
 
@@ -51,6 +57,13 @@ export default function AdminUsersPage() {
   // of an account they may be mid-booking on, so it asks first; re-enabling is
   // harmless and stays one click.
   const [confirming, setConfirming] = useState(null)
+  /*
+   * Which question the shared dialog is asking: 'disable', 'delete' or
+   * 'anonymize'. One dialog rather than three, because they are never asked at
+   * once and only the copy differs - but the copy is the whole job here, since
+   * the three are not equally grave and two of them cannot be undone.
+   */
+  const [intent, setIntent] = useState('disable')
 
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
@@ -146,6 +159,48 @@ export default function AdminUsersPage() {
       setSaveError(errorText(e, km ? 'មិនអាចរក្សាទុកបានទេ' : 'Could not save that change'))
     } finally {
       setSaving(false)
+    }
+  }
+
+  function ask(user, which) {
+    setIntent(which)
+    setConfirming(user)
+  }
+
+  /*
+   * Erase the account.
+   *
+   * Only ever succeeds on an account that has never done anything. The menu
+   * hides it once a booking exists, but a booking is not the only thing that
+   * holds a row down - a gate scan, a review decision, an event they organise
+   * all do too - so the server's refusal is what actually decides, and it
+   * arrives naming every reason and pointing at anonymise. That is why the
+   * error is not flattened into a generic failure message.
+   */
+  async function removeUser(user) {
+    setBusyId(user.id)
+    try {
+      await deleteUser(user.id)
+      toast(km ? 'បានលុបគណនី' : 'Account deleted', 'info')
+      refresh()
+    } catch (e) {
+      toast(errorText(e, km ? 'មិនអាចលុបគណនីបានទេ' : 'Could not delete this account'), 'error')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  /** Clear the person out and leave the records. Irreversible. */
+  async function anonymize(user) {
+    setBusyId(user.id)
+    try {
+      await anonymizeUser(user.id)
+      toast(km ? 'បានលុបព័ត៌មានផ្ទាល់ខ្លួន' : 'Personal details cleared', 'info')
+      refresh()
+    } catch (e) {
+      toast(errorText(e, km ? 'មិនបានសម្រេច' : 'Could not anonymize this account'), 'error')
+    } finally {
+      setBusyId(null)
     }
   }
 
@@ -384,7 +439,60 @@ export default function AdminUsersPage() {
                                  * says why.
                                  */
                                 hidden: u.disabled || (currentUser && u.id === currentUser.id),
-                                onSelect: () => setConfirming(u),
+                                onSelect: () => ask(u, 'disable'),
+                              },
+                              {
+                                /*
+                                 * Clears the name, phone, email and credentials
+                                 * and locks the account, keeping the bookings.
+                                 * The answer for a real customer who wants to
+                                 * be removed from the platform - their details
+                                 * are theirs, their purchase history is also
+                                 * the organiser's sales figures.
+                                 *
+                                 * Not on your own row, for the same reason
+                                 * disable is not: it ends the account's ability
+                                 * to sign in, and the server refuses it.
+                                 */
+                                key: 'anonymize',
+                                icon: 'eyeOff',
+                                label: km ? 'លុបព័ត៌មានផ្ទាល់ខ្លួន' : 'Anonymize',
+                                tone: 'danger',
+                                hidden: currentUser && u.id === currentUser.id,
+                                onSelect: () => ask(u, 'anonymize'),
+                              },
+                              {
+                                /*
+                                 * Erasing the row outright, and only offered
+                                 * where it stands a chance: an account with a
+                                 * booking against it cannot be deleted at all,
+                                 * so the item is hidden rather than shown to
+                                 * fail. Other history - a gate scan, a review
+                                 * decision - is not visible from this row, so
+                                 * the server still gets the final word and its
+                                 * refusal names what it found.
+                                 *
+                                 * In practice this reaches the spam signup and
+                                 * the duplicate registration, which is what it
+                                 * is for.
+                                 */
+                                key: 'delete',
+                                icon: 'trash',
+                                label: t('removeForever'),
+                                tone: 'danger',
+                                /*
+                                 * `deletable` and not `booking_count === 0`.
+                                 * The two disagree on exactly the row where it
+                                 * matters: an organiser with five events and no
+                                 * bookings of their own is undeletable, because
+                                 * event.organizer_id points through their
+                                 * profile at them, and the booking count says
+                                 * nothing about it. The server computes this
+                                 * from every column that references the
+                                 * account.
+                                 */
+                                hidden: !u.deletable || (currentUser && u.id === currentUser.id),
+                                onSelect: () => ask(u, 'delete'),
                               },
                             ]}
                           />
@@ -451,21 +559,66 @@ export default function AdminUsersPage() {
         }}
       />
 
+      {/*
+        * One dialog, three questions, and the copy is what separates them.
+        * Disabling is reversible and says so; the other two are not, and each
+        * spells out exactly what survives - because the difference between them
+        * is precisely which records are kept, and an admin choosing between
+        * them needs that on screen rather than in a doc.
+        */}
       <ConfirmDialog
         open={Boolean(confirming)}
         tone="danger"
-        title={km ? 'បិទគណនីនេះ?' : 'Disable this account?'}
-        confirmLabel={t('disable')}
+        title={
+          intent === 'delete'
+            ? km
+              ? 'លុបគណនីនេះជាអចិន្ត្រៃយ៍?'
+              : 'Delete this account permanently?'
+            : intent === 'anonymize'
+              ? km
+                ? 'លុបព័ត៌មានផ្ទាល់ខ្លួនរបស់អ្នកប្រើនេះ?'
+                : 'Clear this person’s details?'
+              : km
+                ? 'បិទគណនីនេះ?'
+                : 'Disable this account?'
+        }
+        confirmLabel={
+          intent === 'delete'
+            ? t('removeForever')
+            : intent === 'anonymize'
+              ? km
+                ? 'លុបព័ត៌មាន'
+                : 'Anonymize'
+              : t('disable')
+        }
         onConfirm={() => {
-          applyDisabled(confirming, true)
+          if (intent === 'delete') removeUser(confirming)
+          else if (intent === 'anonymize') anonymize(confirming)
+          else applyDisabled(confirming, true)
           setConfirming(null)
         }}
         onClose={() => setConfirming(null)}
       >
         <p className="small muted">
-          {km
-            ? `${confirming?.display_name} នឹងមិនអាចចូលគណនីបានទេ។ ការកក់ដែលមានស្រាប់មិនត្រូវបានលុបចោលទេ ហើយអ្នកអាចបើកវិញនៅពេលណាក៏បាន។`
-            : `${confirming?.display_name} will not be able to log in. Existing bookings are left untouched, and you can re-enable the account at any time.`}
+          {intent === 'delete'
+            ? km
+              ? `គណនីរបស់ ${confirming?.display_name} នឹងត្រូវលុបចេញទាំងស្រុង។ សកម្មភាពនេះមិនអាចត្រឡប់វិញបានទេ។ បើគណនីនេះធ្លាប់មានប្រតិបត្តិការណាមួយ ម៉ាស៊ីនមេនឹងបដិសេធ ហើយប្រាប់មូលហេតុ។`
+              : `${confirming?.display_name}’s account row is removed entirely. This cannot be undone. If the account turns out to have any history behind it, the server will refuse and tell you what it found.`
+            : intent === 'anonymize'
+              ? km
+                ? `ឈ្មោះ លេខទូរស័ព្ទ អ៊ីមែល និងពាក្យសម្ងាត់របស់ ${confirming?.display_name} នឹងត្រូវលុប ហើយគណនីនឹងត្រូវបិទ។ ការកក់ សំបុត្រ និងការទូទាត់នៅដដែល ហើយសំបុត្រដែលបានលក់រួចនៅតែស្កេនបាន។ មិនអាចត្រឡប់វិញបានទេ។${
+                    confirming?.role === 'ORGANIZER'
+                      ? ' ឈ្មោះអង្គភាពនៅដដែល ព្រោះវាបង្ហាញលើព្រឹត្តិការណ៍ទាំងអស់។'
+                      : ''
+                  }`
+                : `${confirming?.display_name}’s name, phone number, email and credentials are cleared and the account is locked. Their bookings, tickets and payments stay, and tickets already sold still scan at the gate. This cannot be undone.${
+                    confirming?.role === 'ORGANIZER'
+                      ? ' Their organisation name is left alone, because it is printed on every event they published — edit the organisation separately if that name also has to go.'
+                      : ''
+                  }`
+              : km
+                ? `${confirming?.display_name} នឹងមិនអាចចូលគណនីបានទេ។ ការកក់ដែលមានស្រាប់មិនត្រូវបានលុបចោលទេ ហើយអ្នកអាចបើកវិញនៅពេលណាក៏បាន។`
+                : `${confirming?.display_name} will not be able to log in. Existing bookings are left untouched, and you can re-enable the account at any time.`}
         </p>
       </ConfirmDialog>
     </div>

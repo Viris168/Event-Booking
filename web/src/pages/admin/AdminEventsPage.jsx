@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import ActionMenu from '../../components/ActionMenu.jsx'
 import AdminEventEditDialog from '../../components/admin/AdminEventEditDialog.jsx'
+import AdminForceDeleteDialog from '../../components/admin/AdminForceDeleteDialog.jsx'
 import ConfirmDialog from '../../components/ConfirmDialog.jsx'
 import {
   ActiveFilters,
@@ -22,6 +23,7 @@ import { usd } from '../../lib/format.js'
 import { Alert } from '../../components/ui.jsx'
 import {
   deleteEvent,
+  forceDeleteEvent,
   getEventForAdmin,
   getEventsOverview,
   restoreEvent,
@@ -82,6 +84,15 @@ export default function AdminEventsPage() {
    */
   const [confirming, setConfirming] = useState(null)
   const [intent, setIntent] = useState('takedown')
+
+  /*
+   * Force delete gets its own state and its own dialog rather than a third
+   * `intent`. The other two are a yes/no question; this one asks for a
+   * download, a typed title and a written reason, and folding a form into the
+   * dialog that currently renders one paragraph would make the ordinary
+   * take-down carry the machinery of the worst case.
+   */
+  const [forceDeleting, setForceDeleting] = useState(null)
 
   /*
    * The edit dialog. `editing` is the full event from the admin endpoint, not
@@ -228,6 +239,35 @@ export default function AdminEventsPage() {
       refresh()
     } catch (e) {
       toast(errorText(e, km ? 'មិនអាចលុបបានទេ' : 'Could not remove this event'), 'error')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  /*
+   * The only action in the product that voids tickets somebody paid for.
+   *
+   * Offered where `removeForever` is refused - an event with bookings - and
+   * reached only through AdminForceDeleteDialog, which will not let it fire
+   * until the sales record has been downloaded. The reason it passes up is
+   * required by the server and written to the log beside that record.
+   *
+   * The one refusal left is an event already paid out to its organiser, and it
+   * arrives as a toast naming the invoice, which is why the error is not
+   * flattened into a generic failure.
+   */
+  async function forceRemove(event, reason) {
+    setBusyId(event.id)
+    try {
+      await forceDeleteEvent(event.id, reason)
+      toast(km ? 'បានលុបព្រឹត្តិការណ៍ និងការកក់' : 'Event and its bookings erased', 'info')
+      setForceDeleting(null)
+      refresh()
+    } catch (e) {
+      // The dialog stays open. The admin typed a title and a reason to get
+      // here, and closing it on a refusal they may be able to act on would
+      // make them do all of it again.
+      toast(errorText(e, km ? 'មិនអាចលុបបានទេ' : 'Could not erase this event'), 'error')
     } finally {
       setBusyId(null)
     }
@@ -532,6 +572,32 @@ export default function AdminEventsPage() {
                           hidden: e.status === 'PUBLISHED' && !isPast(e),
                           onSelect: () => confirm(e, 'delete'),
                         },
+                        {
+                          /*
+                           * The last resort, and shown only where the ordinary
+                           * remove is refused: `deletable` false means the
+                           * event has sold something, which is exactly the case
+                           * this exists for and the case that one will not
+                           * touch. Offering both at once would present them as
+                           * a choice, and they are not - one is for a listing
+                           * nobody bought, this is for a listing that should
+                           * never have been on the platform.
+                           *
+                           * Unlike remove, it stays available on a live
+                           * PUBLISHED event. An illegal listing selling tickets
+                           * right now is the most urgent version of this, not
+                           * the one to hide the action on.
+                           */
+                          key: 'force-delete',
+                          icon: 'trash',
+                          label: km ? 'លុបទាំងការកក់' : 'Erase with bookings',
+                          hint: km
+                            ? `កក់ ${Math.max(e.booking_count ?? 0, e.sold ?? 0)} — មិនអាចត្រឡប់វិញ`
+                            : `${Math.max(e.booking_count ?? 0, e.sold ?? 0)} booked, no undo`,
+                          tone: 'danger',
+                          hidden: e.deletable,
+                          onSelect: () => setForceDeleting(e),
+                        },
                       ]}
                     />
                   </td>
@@ -549,6 +615,14 @@ export default function AdminEventsPage() {
         />
       </div>
       )}
+
+      <AdminForceDeleteDialog
+        open={Boolean(forceDeleting)}
+        event={forceDeleting}
+        busy={busyId === forceDeleting?.id}
+        onConfirm={(reason) => forceRemove(forceDeleting, reason)}
+        onClose={() => setForceDeleting(null)}
+      />
 
       <AdminEventEditDialog
         open={Boolean(editingId)}

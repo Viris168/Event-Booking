@@ -7,6 +7,7 @@ import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -198,4 +199,71 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
 
     /** Open attempts older than the cutoff - the dashboard's stuck counter. */
     long countByStatusInAndCreatedAtLessThanEqual(Collection<PaymentStatus> statuses, Instant cutoff);
+
+    // --- force delete ---------------------------------------------------------
+
+    /**
+     * Every payment attempt against this event, oldest first.
+     *
+     * <p>The part of the export that actually matters for paying people back:
+     * a booking row says what was owed, this says what was taken and by which
+     * provider reference. An admin chasing a refund through ABA has nothing to
+     * quote them without it.
+     */
+    @Query("""
+            select p from PaymentTransaction p
+            where p.booking.event.id = :eventId
+            order by p.createdAt asc
+            """)
+    List<PaymentTransaction> findByEventId(@Param("eventId") Long eventId);
+
+    /**
+     * Drop the webhook receipts for this event's payments.
+     *
+     * <p>Native because {@code payment_webhook_event} has no entity - nothing
+     * in the application reads it, it exists so a replayed provider callback
+     * can be recognised as one. Runs before the transactions it references,
+     * which have no ON DELETE clause to do it for us.
+     */
+    @Modifying
+    @Query(value = """
+            delete from payment_webhook_event w
+             where w.payment_transaction_id in (
+                   select p.id from payment_transaction p
+                     join booking b on b.id = p.booking_id
+                    where b.event_id = :eventId)
+            """, nativeQuery = true)
+    int deleteWebhookEventsByEventId(@Param("eventId") Long eventId);
+
+    /**
+     * Erase this event's payment transactions.
+     *
+     * <p>Worth knowing what goes with them:
+     * {@code uq_payment_txn_one_success_per_booking} is what stops one booking
+     * being paid twice, and it is an index over these rows. Once they are gone
+     * a late provider callback has nothing to collide with - which is harmless
+     * only because the booking it would look for is gone in the same
+     * transaction, so PaymentService rejects it as unknown rather than applying
+     * it to nothing. That is the reason bookings and payments must never be
+     * erased in separate transactions.
+     */
+    @Modifying
+    @Query("delete from PaymentTransaction p where p.booking.event.id = :eventId")
+    int deleteByEventId(@Param("eventId") Long eventId);
+
+    /**
+     * The ABA lane's own record of the same payments.
+     *
+     * <p>Native for the same reason as the webhook table: {@code payments} is
+     * the PayWay integration's legacy row and has no entity. V10 gave it a
+     * {@code booking_id} with no ON DELETE, so it holds the booking down just
+     * as firmly as payment_transaction does, and it is easy to miss precisely
+     * because no Java code maps it.
+     */
+    @Modifying
+    @Query(value = """
+            delete from payments p
+             where p.booking_id in (select b.id from booking b where b.event_id = :eventId)
+            """, nativeQuery = true)
+    int deleteAbaPaymentsByEventId(@Param("eventId") Long eventId);
 }

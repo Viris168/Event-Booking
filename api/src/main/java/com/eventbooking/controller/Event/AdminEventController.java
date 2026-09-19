@@ -4,16 +4,20 @@ import com.eventbooking.Enumeration.EventStatus;
 import com.eventbooking.security.CurrentUserId;
 import com.eventbooking.dto.admin.AdminEventOverviewResponse;
 import com.eventbooking.dto.event.EventResponse;
+import com.eventbooking.dto.event.ForceDeleteEventRequest;
 import com.eventbooking.dto.event.ReviewDecisionRequest;
 import com.eventbooking.dto.event.UpdateEventRequest;
 import com.eventbooking.security.AdminResolver;
 import com.eventbooking.service.event.EventDeletionService;
+import com.eventbooking.service.event.EventForceDeletionService;
 import com.eventbooking.service.admin.AdminEventOverviewService;
 import com.eventbooking.service.event.EventService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -39,15 +43,18 @@ public class AdminEventController {
     private final EventService eventService;
     private final AdminEventOverviewService overviewService;
     private final EventDeletionService deletionService;
+    private final EventForceDeletionService forceDeletionService;
     private final AdminResolver adminResolver;
 
     public AdminEventController(EventService eventService,
                                 AdminEventOverviewService overviewService,
                                 EventDeletionService deletionService,
+                                EventForceDeletionService forceDeletionService,
                                 AdminResolver adminResolver) {
         this.eventService = eventService;
         this.overviewService = overviewService;
         this.deletionService = deletionService;
+        this.forceDeletionService = forceDeletionService;
         this.adminResolver = adminResolver;
     }
 
@@ -207,6 +214,69 @@ public class AdminEventController {
             @PathVariable Long id) {
         Long adminUserId = adminResolver.requireAdminUserId(actorUserId);
         deletionService.delete(adminUserId, id);
+        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+    }
+
+    /**
+     * The event's sales as a CSV download.
+     *
+     * <p>Exists to be taken before {@link #forceDelete}, and is the reason that
+     * endpoint is survivable at all. There is no refund path anywhere in this
+     * product - V30 removed it and explained why - so once an event's bookings
+     * are erased, the list of people owed their money back exists only in
+     * whatever was exported first.
+     *
+     * <p>GET, and safe: it reads and returns, changes nothing, and an admin
+     * deciding whether a listing is bad enough to erase should be able to see
+     * who it would affect without committing to anything.
+     */
+    @GetMapping("/{id}/export")
+    public ResponseEntity<String> export(
+            @CurrentUserId Long actorUserId,
+            @PathVariable Long id) {
+        adminResolver.requireAdminUserId(actorUserId);
+        EventForceDeletionService.Export export = forceDeletionService.export(id);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + export.filename() + "\"")
+                // text/csv with an explicit charset: buyer_name holds Khmer,
+                // and a browser left to guess the encoding renders it as
+                // mojibake in the one column an admin needs to read aloud.
+                .contentType(new MediaType("text", "csv", java.nio.charset.StandardCharsets.UTF_8))
+                .body(export.csv());
+    }
+
+    /**
+     * Erase an event and the bookings on it.
+     *
+     * <p>The most destructive action in the product, and the only one that
+     * voids tickets people paid for. It is not an escalation of {@link #delete}
+     * so much as a different decision: that one is for listings nobody bought,
+     * this is for listings that are illegal and have to leave the platform
+     * completely, where take-down leaves the evidence sitting in the moderation
+     * table and the ordinary delete refuses.
+     *
+     * <p>POST rather than DELETE, and that is not pedantry about verbs. This
+     * takes a required body - the reason - and DELETE with a body is poorly
+     * specified and dropped by some proxies. Losing the reason silently, on the
+     * one endpoint whose justification is the reason, is not a risk worth the
+     * tidier verb.
+     *
+     * <p>A separate path from DELETE /{id} rather than a {@code ?force=true}
+     * flag on it, so that nothing can arrive here by a client appending a query
+     * parameter it read in a doc. Reaching this is a deliberate act.
+     *
+     * <p>204: same as the ordinary delete, and for the same reason. There is
+     * nothing left to describe.
+     */
+    @PostMapping("/{id}/force-delete")
+    public ResponseEntity<Void> forceDelete(
+            @CurrentUserId Long actorUserId,
+            @PathVariable Long id,
+            @Valid @RequestBody ForceDeleteEventRequest request) {
+        Long adminUserId = adminResolver.requireAdminUserId(actorUserId);
+        forceDeletionService.forceDelete(adminUserId, id, request.reason());
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 

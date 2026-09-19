@@ -530,4 +530,50 @@ public class NotificationListener {
                             TelegramMessages.payoutPaid(payout, event == null ? null : event.getTitleEn())));
         }
     }
+
+    /**
+     * Tell the buyers their event was erased.
+     *
+     * <p>Reads nothing from the database, which every other handler in this
+     * file does and this one cannot: the bookings it is announcing were deleted
+     * by the transaction that just committed. Everything it prints travelled in
+     * the event. See NotificationEvents.EventForceDeleted for why that is the
+     * one place the ids-only rule does not hold.
+     *
+     * <p>No link. The other booking notifications point at /bookings/{id} and
+     * that route would 404 here - the booking is gone, which is the entire
+     * subject of the message. A notification whose only affordance is a dead
+     * link is worse than one with none.
+     *
+     * <p>BOOKING_CANCELLED rather than a type of its own, because that is what
+     * happened from where the buyer is standing: their booking is not valid any
+     * more. The distinction between "cancelled" and "the listing was illegal
+     * and removed" is the admin's business, and it lives in the reason recorded
+     * at the delete - not in the bell of somebody who just needs to know their
+     * ticket is void and their money is coming back.
+     */
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void onEventForceDeleted(NotificationEvents.EventForceDeleted e) {
+        for (NotificationEvents.EventForceDeleted.Buyer buyer : e.buyers()) {
+            Map<String, Object> params = new HashMap<>();
+            params.put("bookingRef", buyer.bookingRef());
+            params.put("titleEn", e.titleEn());
+            params.put("titleKm", e.titleKm());
+            params.put("totalUsdCents", buyer.totalUsdCents());
+
+            notificationService.notifyUser(
+                    buyer.userId(),
+                    NotificationType.BOOKING_CANCELLED,
+                    // The booking ref, matching what a real cancellation would
+                    // have keyed on. It cannot collide with one: this booking
+                    // no longer exists, so nothing can cancel it again.
+                    buyer.bookingRef(),
+                    null,
+                    params);
+        }
+
+        log.info("Notified {} buyer(s) that event {} was removed", e.buyers().size(), e.eventId());
+    }
+
 }

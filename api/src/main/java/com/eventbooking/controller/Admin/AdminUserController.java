@@ -95,4 +95,54 @@ public class AdminUserController {
         Long adminUserId = adminResolver.requireAdminUserId(actorUserId);
         return new ResponseEntity<>(adminUserService.setDisabled(adminUserId, id, false), HttpStatus.OK);
     }
+
+    /**
+     * Erase the account.
+     *
+     * <p>Only reaches accounts with no history - see AdminUserService.delete
+     * for the whole list of what counts as history, and why the rule is that
+     * strict. In practice this is the spam signup and the duplicate
+     * registration; everything else answers 409 and points at
+     * {@link #anonymize}.
+     *
+     * <p>204 rather than the deleted row, matching AdminEventController.delete:
+     * there is nothing left to return, and a body describing an account that no
+     * longer exists is an invitation to keep using it.
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(
+            @CurrentUserId Long actorUserId,
+            @PathVariable Long id) {
+        // The id, not just the check: the service refuses an admin deleting
+        // their own account, and it can only do that if it knows who is asking.
+        Long adminUserId = adminResolver.requireAdminUserId(actorUserId);
+        adminUserService.delete(adminUserId, id);
+        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+    }
+
+    /**
+     * Clear the person out of the account, keeping its records.
+     *
+     * <p>The action for every account {@link #delete} refuses, and the one an
+     * admin usually wants: it strips the name, phone, email, Telegram handle,
+     * credentials and photo, and locks the account. The bookings, tickets and
+     * payments stay, because they are the organiser's sales and the platform's
+     * revenue as much as they are the customer's history.
+     *
+     * <p>PATCH, and it returns the row. Unlike delete there is still an account
+     * here afterwards, and the table needs to redraw it - now reading "Deleted
+     * user 812", disabled, with its booking count intact, which is the clearest
+     * possible confirmation that the right thing happened.
+     *
+     * <p>No request body. There is nothing to configure: a partial
+     * anonymisation, leaving the phone but clearing the email, is not a
+     * coherent thing to want.
+     */
+    @PatchMapping("/{id}/anonymize")
+    public ResponseEntity<AdminUserResponse> anonymize(
+            @CurrentUserId Long actorUserId,
+            @PathVariable Long id) {
+        Long adminUserId = adminResolver.requireAdminUserId(actorUserId);
+        return new ResponseEntity<>(adminUserService.anonymize(adminUserId, id), HttpStatus.OK);
+    }
 }
