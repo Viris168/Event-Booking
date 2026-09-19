@@ -338,7 +338,7 @@ export default function EventsPage() {
    * single control, so clearing "from $20" while "to $60" stayed behind would
    * leave the slider in a state the visitor never chose.
    */
-  if (filters.minUsd || filters.maxUsd) {
+  if (!showAdvanced && (filters.minUsd || filters.maxUsd)) {
     const low = filters.minUsd || PRICE_MIN;
     const high = filters.maxUsd
       ? `$${filters.maxUsd}`
@@ -349,7 +349,10 @@ export default function EventsPage() {
       key: "price",
       icon: "wallet",
       label: `$${low} – ${high}`,
-      onRemove: () => update({ minUsd: "", maxUsd: "" }),
+      onRemove: () => {
+        setPriceDraft([PRICE_MIN, PRICE_MAX]);
+        update({ minUsd: "", maxUsd: "" });
+      },
     });
   }
 
@@ -491,6 +494,10 @@ export default function EventsPage() {
                     step={1}
                     value={priceDraft}
                     onChange={setPriceDraft}
+                    onReset={() => {
+                      setPriceDraft([PRICE_MIN, PRICE_MAX]);
+                      update({ minUsd: "", maxUsd: "" });
+                    }}
                     prices={priceShape}
                     lowLabel={t("minPrice")}
                     highLabel={t("maxPrice")}

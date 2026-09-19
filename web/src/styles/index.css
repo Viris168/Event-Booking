@@ -7374,16 +7374,16 @@ html[lang="km"] .contact-card h2 {
 }
 
 .pricerange-ends {
-  @apply mt-[0.7rem] flex items-end gap-2;
+  @apply mt-[0.7rem] flex items-center justify-between gap-2;
 }
-/* items-start / items-end, not stretch: a flex column stretches its children
-   by default, which blew the "$0" pill across the whole left half while the
-   right one stayed compact. */
 .pricerange-end {
-  @apply flex flex-1 flex-col items-start gap-[0.25rem];
+  @apply flex items-center;
 }
-.pricerange-end:last-of-type {
-  @apply items-end;
+.pricerange-mid {
+  @apply flex flex-wrap items-center justify-center gap-[0.4rem];
+}
+.pricerange-reset-btn {
+  @apply !px-2 !py-1 text-muted hover:text-ink;
 }
 /* A read-only pill, not an input: these mirror the handles rather than taking
    typed values, and a box that looks editable but is not is worse than one
@@ -7393,6 +7393,6 @@ html[lang="km"] .contact-card h2 {
   background: var(--color-surface);
 }
 .pricerange-dash {
-  @apply mb-[1.1rem] h-px w-3 shrink-0;
+  @apply h-px w-3 shrink-0 self-center;
   background: var(--color-line);
 }
