@@ -323,7 +323,7 @@ export default function AdminReviewPage() {
             </span>
             <h1>{km ? "ជួរត្រួតពិនិត្យ" : "Review queue"}</h1>
           </div>
-          <p className="muted small">
+          <p>
             {km
               ? "ព្រឹត្តិការណ៍ដែលកំពុងរង់ចាំការសម្រេចចិត្ត ដោយរៀបតាមលំដាប់ដាក់ស្នើមុនគេ។"
               : "Waiting on a decision, oldest submission first."}

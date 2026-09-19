@@ -195,7 +195,10 @@ const dict = {
     en: "Checking transaction with PayWay…",
     km: "កំពុងពិនិត្យប្រតិបត្តិការជាមួយ PayWay…",
   },
-  contactingBank: { en: "Contacting your bank…", km: "កំពុងភ្ជាប់ទៅធនាគាររបស់អ្នក…" },
+  contactingBank: {
+    en: "Contacting your bank…",
+    km: "កំពុងភ្ជាប់ទៅធនាគាររបស់អ្នក…",
+  },
   completingPayment: { en: "Completing payment…", km: "កំពុងបញ្ចប់ការទូទាត់…" },
   paymentCancelled: { en: "Payment cancelled", km: "ការទូទាត់ត្រូវបានបោះបង់" },
   transactionExpired: {
@@ -276,7 +279,10 @@ const dict = {
   // EventTransition, so the button text and the server's available_actions
   // describe the same three moves.
   saveDraft: { en: "Save draft", km: "រក្សាទុកជាសេចក្ដីព្រាង" },
-  submitForReview: { en: "Submit for review", km: "ដាក់ស្នើដើម្បីត្រួតពិនិត្យ" },
+  submitForReview: {
+    en: "Submit for review",
+    km: "ដាក់ស្នើដើម្បីត្រួតពិនិត្យ",
+  },
   // The same action, shortened for the dashboard row where the full label wraps
   // onto two lines and drags the row's height with it. The menu and the event
   // form's footer both have the room, and keep the longer wording.
@@ -298,6 +304,10 @@ const dict = {
   },
   validAdmit: { en: "Valid — admit", km: "សំបុត្រត្រឹមត្រូវ — អនុញ្ញាតឲ្យចូល" },
   alreadyUsed: { en: "Already used", km: "សំបុត្រនេះបានប្រើរួចហើយ" },
+  used: { en: "Used", km: "បានប្រើរួច" },
+  allUsed: { en: "All used", km: "បានប្រើទាំងអស់" },
+  partiallyUsed: { en: "Partially used", km: "បានប្រើខ្លះ" },
+  admitted: { en: "Admitted", km: "បានចូលរួច" },
   notFound: { en: "Not found", km: "រកមិនឃើញសំបុត្រនេះទេ" },
 
   // admin
@@ -456,22 +466,34 @@ export function statusLabel(status, locale) {
 export const NOTIFICATION_TEXT = {
   // ---------------------------------------------------------------- customer
   BOOKING_CONFIRMED: {
-    en: { title: "Booking confirmed", body: "Your tickets for {title} are ready to show at the door." },
+    en: {
+      title: "Booking confirmed",
+      body: "Your tickets for {title} are ready to show at the door.",
+    },
     km: {
       title: "ការកក់ត្រូវបានបញ្ជាក់",
       body: "សំបុត្ររបស់អ្នកសម្រាប់ {title} រួចរាល់សម្រាប់បង្ហាញនៅច្រកចូល។",
     },
   },
   BOOKING_PAYMENT_FAILED: {
-    en: { title: "Payment did not go through", body: "Nothing was charged for {ref}. You can try paying again." },
+    en: {
+      title: "Payment did not go through",
+      body: "Nothing was charged for {ref}. You can try paying again.",
+    },
     km: {
       title: "ការទូទាត់មិនបានសម្រេច",
       body: "មិនមានការកាត់ប្រាក់សម្រាប់ការកក់ {ref} ទេ។ អ្នកអាចព្យាយាមទូទាត់ម្តងទៀត។",
     },
   },
   BOOKING_CANCELLED: {
-    en: { title: "Booking cancelled", body: "{ref} for {title} was cancelled." },
-    km: { title: "ការកក់ត្រូវបានបោះបង់", body: "ការកក់ {ref} សម្រាប់ {title} ត្រូវបានបោះបង់។" },
+    en: {
+      title: "Booking cancelled",
+      body: "{ref} for {title} was cancelled.",
+    },
+    km: {
+      title: "ការកក់ត្រូវបានបោះបង់",
+      body: "ការកក់ {ref} សម្រាប់ {title} ត្រូវបានបោះបង់។",
+    },
   },
   BOOKING_EXPIRED: {
     en: {
@@ -484,20 +506,32 @@ export const NOTIFICATION_TEXT = {
     },
   },
   ORGANIZER_APPLICATION_APPROVED: {
-    en: { title: "You can now run events", body: "{org} was approved. The organiser area is open." },
+    en: {
+      title: "You can now run events",
+      body: "{org} was approved. The organiser area is open.",
+    },
     km: {
       title: "អ្នកអាចរៀបចំព្រឹត្តិការណ៍បានហើយ",
       body: "{org} ត្រូវបានអនុម័ត។ ផ្ទាំងអ្នករៀបចំបើកឱ្យប្រើហើយ។",
     },
   },
   ORGANIZER_APPLICATION_REJECTED: {
-    en: { title: "Application turned down", body: "{org} was not approved. {reason}" },
-    km: { title: "ពាក្យស្នើសុំមិនត្រូវបានអនុម័ត", body: "{org} មិនត្រូវបានអនុម័តទេ។ {reason}" },
+    en: {
+      title: "Application turned down",
+      body: "{org} was not approved. {reason}",
+    },
+    km: {
+      title: "ពាក្យស្នើសុំមិនត្រូវបានអនុម័ត",
+      body: "{org} មិនត្រូវបានអនុម័តទេ។ {reason}",
+    },
   },
 
   // --------------------------------------------------------------- organizer
   EVENT_APPROVED: {
-    en: { title: "Event approved", body: "{title} cleared review. You can publish it now." },
+    en: {
+      title: "Event approved",
+      body: "{title} cleared review. You can publish it now.",
+    },
     km: {
       title: "ព្រឹត្តិការណ៍ត្រូវបានអនុម័ត",
       body: "{title} បានឆ្លងកាត់ការត្រួតពិនិត្យ។ អ្នកអាចផ្សព្វផ្សាយវាបានហើយ។",
@@ -505,21 +539,36 @@ export const NOTIFICATION_TEXT = {
   },
   EVENT_REJECTED: {
     en: { title: "Event rejected", body: "{title} was turned down. {reason}" },
-    km: { title: "ព្រឹត្តិការណ៍ត្រូវបានបដិសេធ", body: "{title} មិនត្រូវបានទទួលយកទេ។ {reason}" },
+    km: {
+      title: "ព្រឹត្តិការណ៍ត្រូវបានបដិសេធ",
+      body: "{title} មិនត្រូវបានទទួលយកទេ។ {reason}",
+    },
   },
   EVENT_CHANGES_REQUESTED: {
-    en: { title: "Changes requested", body: "{title} needs edits before it can go live. {reason}" },
-    km: { title: "ត្រូវការកែប្រែ", body: "{title} ត្រូវការកែប្រែមុនពេលអាចដាក់ផ្សាយ។ {reason}" },
+    en: {
+      title: "Changes requested",
+      body: "{title} needs edits before it can go live. {reason}",
+    },
+    km: {
+      title: "ត្រូវការកែប្រែ",
+      body: "{title} ត្រូវការកែប្រែមុនពេលអាចដាក់ផ្សាយ។ {reason}",
+    },
   },
   EVENT_TAKEN_DOWN: {
-    en: { title: "Event taken down", body: "{title} was removed from the catalogue by a platform admin." },
+    en: {
+      title: "Event taken down",
+      body: "{title} was removed from the catalogue by a platform admin.",
+    },
     km: {
       title: "ព្រឹត្តិការណ៍ត្រូវបានដកចេញ",
       body: "{title} ត្រូវបានដកចេញពីបញ្ជីដោយអ្នកគ្រប់គ្រងប្រព័ន្ធ។",
     },
   },
   EVENT_RESTORED: {
-    en: { title: "Event back on sale", body: "{title} was put back in the catalogue by a platform admin." },
+    en: {
+      title: "Event back on sale",
+      body: "{title} was put back in the catalogue by a platform admin.",
+    },
     km: {
       title: "ព្រឹត្តិការណ៍លក់ឡើងវិញ",
       body: "{title} ត្រូវបានដាក់ចូលបញ្ជីវិញដោយអ្នកគ្រប់គ្រងប្រព័ន្ធ។",
@@ -527,17 +576,32 @@ export const NOTIFICATION_TEXT = {
   },
   EVENT_TICKETS_SOLD: {
     en: { title: "Tickets sold", body: "{ref} was paid for {title}." },
-    km: { title: "លក់សំបុត្របាន", body: "ការកក់ {ref} បានទូទាត់រួចសម្រាប់ {title}។" },
+    km: {
+      title: "លក់សំបុត្របាន",
+      body: "ការកក់ {ref} បានទូទាត់រួចសម្រាប់ {title}។",
+    },
   },
 
   // ------------------------------------------------------------------- admin
   EVENT_SUBMITTED_FOR_REVIEW: {
-    en: { title: "Event waiting for review", body: "{title} is in the review queue." },
-    km: { title: "ព្រឹត្តិការណ៍រង់ចាំការត្រួតពិនិត្យ", body: "{title} កំពុងនៅក្នុងបញ្ជីរង់ចាំត្រួតពិនិត្យ។" },
+    en: {
+      title: "Event waiting for review",
+      body: "{title} is in the review queue.",
+    },
+    km: {
+      title: "ព្រឹត្តិការណ៍រង់ចាំការត្រួតពិនិត្យ",
+      body: "{title} កំពុងនៅក្នុងបញ្ជីរង់ចាំត្រួតពិនិត្យ។",
+    },
   },
   ORGANIZER_APPLICATION_SUBMITTED: {
-    en: { title: "New organiser application", body: "{org} applied to run events." },
-    km: { title: "ពាក្យស្នើសុំធ្វើជាអ្នករៀបចំថ្មី", body: "{org} បានស្នើសុំរៀបចំព្រឹត្តិការណ៍។" },
+    en: {
+      title: "New organiser application",
+      body: "{org} applied to run events.",
+    },
+    km: {
+      title: "ពាក្យស្នើសុំធ្វើជាអ្នករៀបចំថ្មី",
+      body: "{org} បានស្នើសុំរៀបចំព្រឹត្តិការណ៍។",
+    },
   },
   PAYOUT_REQUESTED: {
     en: {

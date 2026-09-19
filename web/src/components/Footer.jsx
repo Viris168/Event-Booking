@@ -33,7 +33,7 @@ const SOCIAL = [
     name: "TikTok",
     icon: "tiktok",
     url: "https://tiktok.com",
-    brandColor: "#25F4EE",
+    brandColor: "#000000",
   },
 ];
 

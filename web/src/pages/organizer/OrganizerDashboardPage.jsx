@@ -285,15 +285,15 @@ export default function OrganizerDashboardPage() {
             title={
               telegramConnected
                 ? km
-                  ? "Telegram: បានភ្ជាប់រួចរាល់"
-                  : "Telegram: Connected"
+                  ? "Telegram Bot: បានភ្ជាប់រួចរាល់"
+                  : "Telegram Bot: Connected"
                 : km
-                  ? "ភ្ជាប់ Telegram ដើម្បីទទួលដំណឹង"
-                  : "Connect Telegram notifications"
+                  ? "ភ្ជាប់ Telegram Bot ដើម្បីទទួលដំណឹង"
+                  : "Connect Telegram Bot notifications"
             }
           >
             <Icon name="telegram" size={16} className="text-[#24A1DE]" />
-            <span>{km ? "Telegram" : "Telegram"}</span>
+            <span>{km ? "Telegram Bot" : "Telegram Bot"}</span>
             {telegramConnected && (
               <span
                 className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 inline-block ml-0.5"
@@ -680,44 +680,65 @@ export default function OrganizerDashboardPage() {
 
         {/* ------------------------------------------------ Row 2: Right (Revenue by event) */}
         <section className="lg:col-span-1 bg-surface border border-line rounded-card shadow-card p-5 self-start">
-          <h2 className="text-base font-bold text-ink m-0 mb-4">
-            {km ? "ចំណូលតាមព្រឹត្តិការណ៍" : "Revenue by event"}
-          </h2>
+          <div className="flex items-center justify-between gap-2 mb-4">
+            <h2 className="text-base font-bold text-ink m-0">
+              {km ? "ចំណូលតាមព្រឹត្តិការណ៍" : "Revenue by event"}
+            </h2>
+            <span className="text-tiny font-medium text-muted">
+              {km ? "កំពូល ៥" : "Top 5"}
+            </span>
+          </div>
           {byRevenue.length ? (
-            <div className="flex flex-col gap-3.5">
-              {byRevenue.map(({ event, sold, capacity, revenue }, i) => (
-                <div key={event.id}>
-                  <div className="flex items-baseline justify-between gap-2 mb-1">
-                    <Link
-                      to={`/organizer/events/${event.id}/sales`}
-                      className="text-small font-semibold truncate"
-                    >
-                      {km ? event.title_km : event.title_en}
-                    </Link>
-                    <span className="text-small font-bold text-ink whitespace-nowrap tabular-nums">
-                      {usd(revenue)}
-                    </span>
-                  </div>
+            <div className="flex flex-col gap-2">
+              {byRevenue.map(({ event, sold, capacity, revenue }, i) => {
+                const pct =
+                  capacity > 0 ? Math.round((sold / capacity) * 100) : 0;
+                return (
                   <div
-                    className="h-2 rounded-full bg-surface-2 overflow-hidden"
-                    title={`${usd(revenue)} · ${sold}/${capacity} ${km ? "សំបុត្រ" : "tickets"}`}
+                    key={event.id}
+                    className="group -mx-2 px-2 py-1.5 rounded-lg transition-colors hover:bg-surface-2/60"
                   >
+                    <div className="flex items-baseline justify-between gap-2 mb-1">
+                      <div className="flex items-baseline gap-1.5 min-w-0 flex-1">
+                        <span className="text-tiny font-bold text-muted tabular-nums shrink-0">
+                          #{i + 1}
+                        </span>
+                        <Link
+                          to={`/organizer/events/${event.id}/sales`}
+                          className="text-small font-semibold text-ink group-hover:text-brand-500 truncate transition-colors"
+                        >
+                          {km ? event.title_km : event.title_en}
+                        </Link>
+                      </div>
+                      <span className="text-small font-bold text-ink whitespace-nowrap tabular-nums">
+                        {usd(revenue)}
+                      </span>
+                    </div>
                     <div
-                      /* Colour is the rank, not the event: position 1 is
-                         always bar-1, so the eye can compare lengths without
-                         first decoding a legend. */
-                      className={`h-full rounded-full bar-${i + 1}`}
-                      style={{ width: `${(revenue / revenuePeak) * 100}%` }}
-                    />
+                      className="h-2 rounded-full bg-surface-2 overflow-hidden"
+                      title={`${usd(revenue)} · ${sold}/${capacity} ${km ? "សំបុត្រ" : "tickets"} (${pct}%)`}
+                    >
+                      <div
+                        /* Colour is the rank, not the event: position 1 is
+                           always bar-1, so the eye can compare lengths without
+                           first decoding a legend. */
+                        className={`h-full rounded-full bar-${i + 1} transition-all duration-500`}
+                        style={{ width: `${(revenue / revenuePeak) * 100}%` }}
+                      />
+                    </div>
+                    {/* Volume stays visible underneath with sell-through % on right */}
+                    <div className="flex items-center justify-between text-tiny text-muted mt-1 tabular-nums">
+                      <span>
+                        {sold.toLocaleString()} / {capacity.toLocaleString()}{" "}
+                        {km ? "សំបុត្រ" : "tickets"}
+                      </span>
+                      <span className="font-semibold text-ink/75">
+                        {pct}% {km ? "បានលក់" : "sold"}
+                      </span>
+                    </div>
                   </div>
-                  {/* Volume stays visible underneath: it is what explains a
-                      short bar on a busy event, or a long one on a quiet one. */}
-                  <div className="text-tiny text-muted mt-1 tabular-nums">
-                    {sold.toLocaleString()} / {capacity.toLocaleString()}{" "}
-                    {km ? "សំបុត្រ" : "tickets"}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <p className="text-small text-muted m-0">

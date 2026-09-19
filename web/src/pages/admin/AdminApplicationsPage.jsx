@@ -253,7 +253,7 @@ export default function AdminApplicationsPage() {
             </span>
             <h1>{km ? "ពាក្យសុំធ្វើជាអ្នករៀបចំ" : "Organiser applications"}</h1>
           </div>
-          <p className="muted small">
+          <p>
             {km
               ? "អ្នកប្រើប្រាស់ដែលកំពុងរង់ចាំការអនុញ្ញាតឱ្យរៀបចំព្រឹត្តិការណ៍ ដោយរៀបតាមលំដាប់ដាក់ស្នើមុនគេ។"
               : "People waiting for permission to run events, oldest application first."}

@@ -55,7 +55,7 @@ export const RQ_CSS = `
   color: var(--color-ink);
   margin: 0;
 }
-.rq-head p { margin: 0.5rem 0 0; font-size: 1.05rem; color: var(--color-muted); }
+.rq-head p { margin: 0.5rem 0 0; font-size: 1.1rem; font-weight: 500; color: var(--color-muted); max-width: 60ch; }
 .rq-head-right { display: flex; gap: var(--rq-4); align-items: baseline; }
 
 /*
