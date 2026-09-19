@@ -4473,6 +4473,12 @@
     color: var(--social-accent, #ffffff);
     background: rgba(255, 255, 255, 0.12);
   }
+  .footer-social a[aria-label="TikTok"]:hover {
+    background: #000000;
+    border-color: rgba(255, 255, 255, 0.4);
+    color: #ffffff;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
+  }
 
   /*
    * The closing bar: copyright on left, payment marks centered, back-to-top on right.
