@@ -1082,7 +1082,7 @@
      has its own background. */
   .notif-stack::before,
   .notif-stack::after {
-    content: '';
+    content: "";
     @apply pointer-events-none absolute border border-line bg-surface-2;
     border-radius: var(--radius-ui);
   }
@@ -2469,6 +2469,10 @@
     @apply border-warning/60;
     box-shadow: inset 3px 0 0 0 var(--color-warning);
   }
+  .bk-row.is-used {
+    @apply border-emerald-500/35;
+    box-shadow: inset 3px 0 0 0 var(--color-success);
+  }
 
   .bk-group + .bk-group {
     @apply mt-[1.6rem];
@@ -2487,6 +2491,125 @@
   }
   .bk-alert > span:nth-child(2) {
     @apply flex-auto;
+  }
+
+  /* --------------------------------------------------- booking toolbar & view toggle */
+  .bk-toolbar {
+    @apply mb-[1.1rem] flex flex-wrap items-center justify-between gap-3;
+  }
+  .bk-view-toggle {
+    @apply inline-flex items-center gap-0.5 rounded-ui border border-line bg-surface p-1 shadow-card;
+  }
+  .bk-view-btn {
+    @apply inline-flex size-8 items-center justify-center rounded-[8px] text-muted transition-colors;
+  }
+  .bk-view-btn:hover {
+    @apply text-ink bg-surface-2;
+  }
+  .bk-view-btn.active {
+    @apply bg-brand-500 text-white shadow-sm;
+  }
+  .bk-view-btn:focus-visible {
+    @apply outline-none ring-2 ring-gold-500;
+  }
+
+  /* --------------------------------------------------------- booking grid card */
+  .bk-card {
+    @apply relative flex flex-col overflow-hidden rounded-card border border-line bg-surface text-inherit shadow-card transition-all duration-200;
+  }
+  .bk-card:hover {
+    @apply -translate-y-1.5 border-brand-500 no-underline shadow-float;
+  }
+  .bk-card.is-closed {
+    @apply bg-surface/60 opacity-80;
+  }
+  .bk-card.is-closed .bk-card-media {
+    filter: saturate(0.25) opacity(0.8);
+  }
+  .bk-card.is-payable {
+    @apply border-warning;
+    box-shadow:
+      0 0 0 1px var(--color-warning),
+      var(--shadow-card);
+  }
+  .bk-card.is-used {
+    @apply border-emerald-500/35;
+  }
+  .bk-card-media {
+    @apply relative isolate flex aspect-[16/10] w-full items-center justify-center overflow-hidden bg-surface-2 text-white/95;
+  }
+  .bk-card-media .ev-photo {
+    @apply absolute inset-0 h-full w-full object-cover transition-transform duration-500 ease-out;
+  }
+  .bk-card:hover .bk-card-media .ev-photo {
+    @apply scale-108;
+  }
+  .bk-card-media-scrim {
+    @apply pointer-events-none absolute inset-0 z-[1];
+    background: linear-gradient(
+      180deg,
+      rgba(0, 0, 0, 0.5) 0%,
+      rgba(0, 0, 0, 0) 45%,
+      rgba(0, 0, 0, 0.6) 100%
+    );
+  }
+  .bk-card-badges {
+    @apply absolute inset-x-2.5 top-2.5 z-[2] flex items-center justify-between gap-1.5;
+  }
+  .bk-card-badges-left {
+    @apply flex items-center gap-1.5 min-w-0;
+  }
+  .bk-card-ref {
+    @apply rounded-full bg-black/65 px-2 py-0.5 font-mono text-[0.68rem] font-bold text-white shadow-sm backdrop-blur-md;
+  }
+  .bk-card-date {
+    @apply absolute bottom-2.5 left-2.5 z-[2] flex min-w-[38px] flex-col items-center rounded-[8px] bg-white/[0.96]
+      px-1.5 py-0.5 text-center text-[0.65rem] font-extrabold leading-[1.15] tracking-[0.04em] text-ink shadow-card;
+  }
+  .bk-card-date b {
+    @apply text-[0.98rem] tracking-[-0.01em];
+  }
+  [data-theme="dark"] .bk-card-date {
+    @apply border border-line-2 bg-surface text-ink;
+  }
+  .bk-card-body {
+    @apply flex flex-1 flex-col gap-2 p-3.5 pb-2;
+  }
+  .bk-card-title {
+    @apply line-clamp-2 text-[0.95rem] font-bold leading-snug text-ink;
+    min-height: 2.6em;
+  }
+  .bk-card-meta {
+    @apply mt-auto flex flex-col gap-1 text-[0.8rem] text-muted;
+  }
+  .bk-card-divider {
+    @apply relative my-0.5 flex h-4 items-center overflow-hidden;
+    margin-left: -1px;
+    margin-right: -1px;
+  }
+  .bk-dashed-line {
+    @apply mx-3.5 flex-1 border-b border-dashed border-line-2;
+  }
+  .bk-notch {
+    @apply absolute top-1/2 size-3.5 -translate-y-1/2 rounded-full border border-line bg-page;
+  }
+  .bk-notch-left {
+    left: -8px;
+  }
+  .bk-notch-right {
+    right: -8px;
+  }
+  .bk-card-foot {
+    @apply flex items-end justify-between p-3.5 pt-1;
+  }
+  .bk-card-booked {
+    @apply mt-0.5 block text-[0.72rem] text-muted;
+  }
+  .bk-card-action {
+    @apply inline-flex items-center gap-1 text-[0.82rem] font-bold text-brand-500 transition-colors;
+  }
+  .bk-card:hover .bk-card-action {
+    @apply text-link;
   }
 
   /* The ABA mark is already a bordered lozenge; the generic slot chrome would
@@ -2633,6 +2756,12 @@
   }
   .s-CANCELLED {
     @apply bg-cancelled-soft text-cancelled;
+  }
+  .badge-used {
+    @apply inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[0.7rem] font-semibold text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border dark:border-emerald-800/60;
+  }
+  .badge-partial {
+    @apply inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[0.7rem] font-semibold text-amber-800 dark:bg-amber-950/70 dark:text-amber-300 dark:border dark:border-amber-800/60;
   }
   /* event + payment + hold states */
   .s-DRAFT {
@@ -4822,6 +4951,42 @@
   padding: 0.15rem 0.4rem;
   border-radius: 0.35rem;
   pointer-events: none;
+}
+
+.qr-used-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(2px);
+  border-radius: 0.6rem;
+  z-index: 2;
+  pointer-events: none;
+}
+[data-theme="dark"] .qr-used-overlay {
+  background: rgba(20, 24, 22, 0.88);
+}
+.qr-used-stamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.55rem;
+  border: 2px solid var(--color-success);
+  border-radius: 6px;
+  color: var(--color-success);
+  font-weight: 800;
+  font-size: 0.74rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transform: rotate(-6deg);
+  background: var(--color-surface);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+.ticket-stub-used {
+  font-weight: 600;
+  color: var(--color-success);
 }
 
 .qr-lightbox {
