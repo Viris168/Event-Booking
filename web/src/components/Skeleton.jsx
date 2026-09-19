@@ -119,6 +119,27 @@ export function EventGridSkeleton({ count = 4, className = "", style }) {
 }
 
 /** The hero's "Top selling" card, on navy — hence the dark variant. */
+export function SpotlightSkeleton() {
+  return (
+    <SkeletonRegion className="spotlight">
+      <div className="spot-head">
+        <Skeleton className="h-[0.8rem] w-16" dark />
+        <Skeleton className="h-[1.1rem] w-20 rounded-full" dark />
+      </div>
+      <Skeleton className="mx-[0.9rem] h-[104px] rounded-ui" dark />
+      <div className="flex flex-col gap-[0.5rem] px-[0.9rem] pb-[0.9rem] pt-[0.8rem]">
+        <Skeleton className="skel-line lg w-[80%]" dark />
+        <Skeleton className="skel-line w-[55%]" dark />
+        <Skeleton className="skel-line w-[65%]" dark />
+      </div>
+      <div className="flex items-center justify-between gap-3 border-t border-white/15 px-[0.9rem] py-[0.75rem]">
+        <Skeleton className="h-[1.6rem] w-20" dark />
+        <Skeleton className="h-8 w-28 rounded-ui" dark />
+      </div>
+    </SkeletonRegion>
+  );
+}
+
 /** Event detail: breadcrumb, cover hero, seat map beside the ticket sidebar. */
 export function EventDetailSkeleton() {
   return (

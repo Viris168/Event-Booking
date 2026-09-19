@@ -1537,58 +1537,295 @@
     );
   }
 
-  /* --------------------------------------------------------- hero card ---
-     One floating card holding the headline, subhead and search - the
-     wireframe's centred white card over an illustrated banner, kept in the
-     product's own dark-jade photo treatment rather than the mock's hills and
-     clouds. Light surface floating on the dark photo, so its own type is set
-     in ink rather than inheriting the white the bare banner text used to
-     need. */
-  .hero {
-    @apply pb-16 md:pb-20;
+  /* Modern bold headline matching platform-wide design language. */
+  .hero-accent {
+    background: linear-gradient(
+      135deg,
+      #ffe599 0%,
+      #f6c05d 40%,
+      #e59c2b 75%,
+      #ffd470 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 2px 14px rgba(230, 160, 50, 0.35));
   }
-  .hero-card {
-    @apply relative z-[1] mx-auto max-w-[720px] rounded-card border border-line/40
-      bg-surface px-6 py-9 text-center shadow-pop sm:px-10 sm:py-11;
+  /* Same box shape as .nav-inner / .container / .footer-inner: the max-width
+     carries its own horizontal padding, so all four content edges are flush. */
+  .hero-inner {
+    @apply mx-auto max-w-shell px-page;
   }
-  .hero-card h1 {
-    @apply mx-auto max-w-[20ch] font-extrabold tracking-tight text-ink;
+  .hero h1 {
+    @apply max-w-[18ch] font-extrabold tracking-tight text-white;
     font-family: var(--font-sans);
-    font-size: clamp(1.9rem, 1.3rem + 2.4vw, 2.85rem);
-    line-height: 1.18;
-    letter-spacing: -0.02em;
+    font-size: clamp(2.35rem, 1.4rem + 3.2vw, 3.85rem);
+    line-height: 1.15;
+    letter-spacing: -0.03em;
+    text-shadow: 0 4px 20px rgba(2, 9, 14, 0.7);
   }
-  html[lang="km"] .hero-card h1 {
+  html[lang="km"] .hero h1 {
     font-family: var(--font-khmer);
     font-weight: 800;
-    line-height: 1.4;
+    line-height: 1.35;
     letter-spacing: normal;
   }
-  /* Solid gold-600, not the old gradient-clip treatment - that gradient was
-     tuned to glow against the dark banner it used to sit on; on a light card
-     it read as a smudge. Plain colour is how the same accent already reads
-     everywhere else on light surfaces (the footer's "FOR ORGANIZERS", the
-     step numbers below). */
-  .hero-card-accent {
-    @apply text-gold-600;
+  html[lang="km"] .hero-accent {
+    background: linear-gradient(135deg, #ffe599 0%, #f6c05d 50%, #e59c2b 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
   }
-  .hero-card p {
-    @apply mx-auto mt-3 max-w-[52ch] text-[1.02rem] leading-relaxed text-ink-2;
+  .hero p {
+    @apply mt-3 max-w-[56ch] text-[1.05rem] font-normal leading-relaxed text-white/80;
   }
-  .hero-card .searchbar {
-    @apply mx-auto mt-7 max-w-[600px] border-line bg-surface-2 shadow-none;
+  /* Copy on the left, the rotating rail on the right. Below 1080px the two
+     stack, and the rail goes wide-and-short instead of disappearing. */
+  .hero-grid {
+    @apply grid items-center gap-10;
+    grid-template-columns: minmax(0, 1fr) 320px;
   }
-  @media (max-width: 640px) {
-    .hero-card .searchbar {
-      @apply max-w-full;
+  @media (max-width: 1080px) {
+    .hero-grid {
+      @apply block;
+    }
+    .hero-rail,
+    .hero-grid > .spotlight {
+      display: none !important;
     }
   }
-
   /* A container, so the headline can size itself against the column it sits in
      rather than against the viewport - the two differ by the 320px card. */
   .hero-copy {
     @apply min-w-0 max-w-[720px];
     container-type: inline-size;
+  }
+
+  /* -------------------------------------------------- hero rotating rail */
+  .hero-viewport {
+    @apply overflow-hidden rounded-card;
+  }
+  .hero-track {
+    @apply flex items-stretch;
+    transition: transform 0.62s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  /* The slide, not the card, carries the width — so all five stay the height of
+     the tallest and the rail does not resize as it advances. */
+  .hero-slide {
+    @apply w-full flex-none;
+  }
+  .hero-slide > .rail-card {
+    @apply h-full;
+  }
+
+  /* One piece of artwork with the detail laid over it — the banner's card, not
+     the grid's. The scrim is what keeps the type legible whatever the photo
+     underneath happens to be. */
+  .rail-card {
+    @apply relative isolate block overflow-hidden rounded-card border border-white/[0.18] shadow-pop transition-all duration-300;
+    aspect-ratio: 1 / 1;
+  }
+  .rail-card:hover {
+    @apply border-brand-500/60 shadow-float -translate-y-1 no-underline;
+  }
+  .rail-card .ev-photo {
+    @apply transition-transform duration-500 ease-out;
+  }
+  .rail-card:hover .ev-photo {
+    transform: scale(1.06);
+  }
+  .rail-card::after {
+    content: "";
+    @apply absolute inset-0 z-[1];
+    background: linear-gradient(
+      180deg,
+      rgba(3, 12, 8, 0.22) 0%,
+      transparent 30%,
+      rgba(4, 16, 10, 0.82) 72%,
+      rgba(3, 11, 7, 0.95) 100%
+    );
+  }
+  .rail-card .rail-icon {
+    @apply absolute left-1/2 top-[38%] z-0 -translate-x-1/2 -translate-y-1/2 text-white/90;
+  }
+  .rail-date {
+    @apply absolute left-[0.75rem] top-[0.75rem] z-[2] min-w-[42px] rounded-[10px] bg-white/[0.96]
+      px-2 py-[0.3rem] text-center text-[0.66rem] font-extrabold leading-[1.2] tracking-[0.04em] text-ink shadow-card;
+  }
+  .rail-date b {
+    @apply block text-[1.05rem] tracking-[-0.01em];
+  }
+  .rail-body {
+    @apply absolute inset-x-0 bottom-0 z-[2] flex flex-col gap-[0.28rem] px-[0.95rem] pb-[0.95rem] text-white;
+  }
+  .rail-body strong {
+    @apply line-clamp-2 text-[1.05rem] font-bold leading-[1.32];
+  }
+  .rail-meta {
+    @apply inline-flex items-center gap-[0.32rem] truncate text-[0.78rem] text-white/70;
+  }
+  .rail-foot {
+    @apply mt-1 flex items-center justify-between;
+  }
+  .rail-price {
+    @apply text-[0.72rem] uppercase tracking-[0.05em] text-white/60;
+  }
+  .rail-price b {
+    @apply ml-[0.25rem] text-[1.05rem] normal-case tracking-normal text-white;
+  }
+  .rail-go {
+    @apply grid size-7 place-items-center rounded-full bg-brand-500 text-white shadow-card transition-all duration-200;
+  }
+  .rail-card:hover .rail-go {
+    @apply bg-brand-600 scale-110;
+  }
+  .hero-rail-head {
+    @apply mb-[0.65rem] flex items-center gap-3;
+  }
+  .rail-pill-badge {
+    @apply inline-flex items-center gap-[0.4rem] rounded-full border border-white/[0.14]
+      bg-white/[0.08] backdrop-blur-md px-[0.75rem] py-[0.25rem] text-[0.72rem] font-bold uppercase
+      tracking-wider text-white/90;
+  }
+  .hero-dots {
+    @apply mt-[0.75rem] flex items-center justify-center gap-[0.35rem];
+  }
+  .hero-dot {
+    @apply h-[6px] w-[6px] cursor-pointer rounded-full border-0 bg-white/30 p-0;
+    transition:
+      width 0.25s ease,
+      background-color 0.25s ease;
+  }
+  .hero-dot:hover {
+    @apply bg-white/60;
+  }
+  .hero-dot.on {
+    @apply w-[16px] bg-white/90;
+  }
+  /* Respect a stated preference for less motion: the rail still advances, it
+     just cuts rather than slides. */
+  @media (prefers-reduced-motion: reduce) {
+    .hero-track {
+      transition: none;
+    }
+    .hero-dot {
+      transition: none;
+    }
+  }
+
+  /* The spotlight card is taller than the copy column, so the grid row already
+     leaves air under the quick links — the rule does not need much more. */
+  .hero-base {
+    @apply mt-[2rem] border-t border-white/[0.12];
+  }
+  @media (max-width: 1080px) {
+    .hero-base {
+      @apply mt-[2.5rem];
+    }
+  }
+  .hero-base-inner {
+    @apply flex flex-wrap items-center gap-x-8 gap-y-3 py-[1.2rem];
+  }
+  .hero-stats {
+    @apply flex flex-wrap gap-y-4;
+  }
+  .hero-stats div {
+    @apply pr-8 text-[0.82rem] font-medium text-white/60;
+  }
+  .hero-stats div + div {
+    @apply border-l border-white/15 pl-8;
+  }
+  /* Once the row wraps, a left divider lands at the start of a line with
+     nothing to divide — fall back to plain spacing. */
+  @media (max-width: 620px) {
+    .hero-stats {
+      @apply gap-x-7;
+    }
+    .hero-stats div {
+      @apply pr-0;
+    }
+    .hero-stats div + div {
+      @apply border-l-0 pl-0;
+    }
+  }
+  .hero-stats b {
+    @apply block text-[1.55rem] font-extrabold tracking-tight text-white leading-tight;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ------------------------------------------------ hero "next up" card */
+  .spotlight {
+    @apply overflow-hidden rounded-card border border-white/[0.16] shadow-pop backdrop-blur-[6px];
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.12),
+      rgba(4, 22, 13, 0.55)
+    );
+  }
+  .spot-head {
+    @apply flex items-center justify-between gap-2 px-[0.9rem] pt-[0.8rem] pb-[0.6rem];
+  }
+  .spot-head .tiny {
+    @apply inline-flex items-center gap-[0.3rem] text-white/60;
+  }
+  .spot-when {
+    @apply rounded-full bg-gold-500/20 px-[0.55rem] py-[0.15rem] text-[0.74rem] font-bold;
+    color: #f5d3ab;
+  }
+  .spot-art {
+    @apply relative mx-[0.9rem] grid h-[104px] place-items-center rounded-ui text-white/95;
+  }
+  .spot-art:hover {
+    @apply no-underline brightness-105;
+  }
+  .spot-art .cat-icon {
+    @apply opacity-95;
+    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.25));
+  }
+  .spot-flag {
+    @apply absolute right-[0.5rem] top-[0.5rem];
+  }
+  .spot-body {
+    @apply flex flex-col gap-[0.15rem] px-[0.9rem] pt-[0.75rem];
+  }
+  .spot-body strong {
+    @apply text-[1.02rem] leading-[1.35] text-white;
+  }
+  .spot-alt {
+    @apply mb-[0.35rem] text-[0.84rem] text-white/55;
+  }
+  .spot-meta {
+    @apply inline-flex items-center gap-[0.4rem] text-[0.82rem] text-white/70;
+  }
+  .spot-meta .icon {
+    @apply text-white/45;
+  }
+  .spot-foot {
+    @apply mt-[0.9rem] flex items-end justify-between gap-3 border-t border-white/10 px-[0.9rem] py-[0.8rem];
+  }
+  .spot-foot .price-tag .tiny {
+    @apply text-white/50;
+  }
+  .spot-foot .price-tag b {
+    @apply text-white;
+  }
+  .spot-foot .price-tag .khr {
+    @apply text-white/55;
+  }
+
+  .quick-links {
+    @apply mt-4 flex flex-wrap items-center gap-[0.45rem];
+  }
+  .quick-links .tiny {
+    @apply mr-1 text-[0.72rem] font-bold uppercase tracking-wider text-white/50;
+  }
+  .quick-chip {
+    @apply inline-flex items-center gap-[0.4rem] rounded-full border border-white/[0.14]
+      bg-white/[0.08] backdrop-blur-md px-[0.8rem] py-[0.32rem] text-[0.82rem] font-semibold text-white/90;
+    transition: all 0.2s ease;
+  }
+  .quick-chip:hover {
+    @apply border-white/40 bg-white/[0.18] text-white -translate-y-0.5 no-underline;
   }
 
   /* ---------------------------------------- split: text beside an image ---
@@ -1634,7 +1871,55 @@
      HomePage.jsx. Square-ish rather than a photo's 16/9, so it reads as an
      illustrated tile and not as a broken image waiting for real art. */
   .home-panel {
-    @apply grid aspect-[4/3] place-items-center rounded-card text-white/90 md:aspect-square;
+    @apply mx-auto grid aspect-[4/3] max-h-[320px] w-full place-items-center justify-self-center rounded-card text-white/90;
+  }
+  /* A real photo filling the same slot as the decorative gradient tile -
+     cover rather than contain, so a wide crop fills the frame instead of
+     letterboxing on a plain background. */
+  .home-shot {
+    @apply border border-line/60 object-cover;
+  }
+  /* The figure takes over the sizing .home-panel otherwise gives the img
+     directly, so the credit and dots can be pinned to a corner without
+     adding height that would knock the split out of alignment with its text
+     column. */
+  .home-photo {
+    @apply relative m-0 overflow-hidden;
+  }
+  /* Every slide stacks in the same box; only the active one is opaque. A
+     cross-fade rather than a slide - these boxes are too small for a track
+     to read as motion rather than a jump cut. */
+  .home-photo .home-shot {
+    @apply absolute inset-0 h-full w-full opacity-0 transition-opacity duration-700 ease-in-out;
+  }
+  .home-photo .home-shot.is-active {
+    @apply opacity-100;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .home-photo .home-shot {
+      transition: none;
+    }
+  }
+  .home-photo figcaption {
+    @apply absolute bottom-2 right-2 z-[1] rounded-full bg-ink/70 px-[0.6rem] py-[0.2rem] text-white/80 backdrop-blur-sm;
+  }
+  .home-photo figcaption a {
+    @apply text-white/90 underline decoration-white/30 underline-offset-2;
+  }
+  .home-photo-dots {
+    @apply absolute bottom-2 left-2 z-[1] flex items-center gap-[0.3rem];
+  }
+  .home-photo-dot {
+    @apply h-[6px] w-[6px] cursor-pointer rounded-full border-0 bg-white/40 p-0;
+    transition:
+      width 0.25s ease,
+      background-color 0.25s ease;
+  }
+  .home-photo-dot:hover {
+    @apply bg-white/70;
+  }
+  .home-photo-dot.on {
+    @apply w-[16px] bg-white/95;
   }
 
   /* --------------------------------------------------------- three steps ---
