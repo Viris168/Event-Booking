@@ -3884,13 +3884,23 @@
    * .nav-brand / .nav-mark, including the gap.
    */
   .footer-lockup {
-    @apply flex items-center gap-[0.5rem];
+    @apply flex flex-none items-center gap-[0.5rem] text-[1.02rem] font-extrabold text-white tracking-[-0.015em] no-underline transition-opacity hover:opacity-90 hover:no-underline;
+  }
+  .footer-lockup:hover,
+  .footer-lockup:focus {
+    @apply text-white no-underline;
+  }
+  .footer-lockup:focus-visible {
+    @apply outline-2 outline-offset-2 outline-gold-500;
+    box-shadow: none;
   }
   .footer-mark {
     @apply h-[30px] w-auto;
   }
+  .footer-brand-text,
+  .footer-lockup strong,
   .footer-brand strong {
-    @apply block text-[1.02rem] font-extrabold tracking-[-0.015em] text-white;
+    @apply whitespace-nowrap text-[1.02rem] font-extrabold tracking-[-0.015em] text-white;
     font-family: var(--font-sans);
   }
   .footer-brand p {
@@ -4028,24 +4038,25 @@
   }
 
   /*
-   * The closing bar: copyright at one edge, trust and payment marks at the other.
+   * The closing bar: copyright on left, payment marks centered, back-to-top on right.
    */
   .footer-bottom {
-    @apply mt-[2.6rem] flex flex-wrap items-center justify-between gap-x-8 gap-y-[1rem]
-      border-t border-white/[0.11] pt-[1.15rem] text-[0.78rem] text-white/[0.56];
+    @apply mt-[2.6rem] flex flex-col items-center justify-between gap-y-4 gap-x-6
+      border-t border-white/[0.11] pt-[1.15rem] text-[0.78rem] text-white/[0.56]
+      md:grid md:grid-cols-3 md:items-center;
   }
   .footer-copy {
-    @apply flex items-center gap-2;
+    @apply flex items-center justify-center text-center md:justify-self-start md:text-left;
   }
-  .footer-trust-cluster {
-    @apply flex flex-wrap items-center gap-2.5;
+  .footer-pay-cluster {
+    @apply flex flex-wrap items-center justify-center gap-2 md:justify-self-center;
+  }
+  .footer-bottom .footer-back-to-top {
+    @apply md:justify-self-end;
   }
   /*
    * Payment marks as plates rather than a line of small type.
    */
-  .footer-pay-row {
-    @apply flex flex-wrap items-center gap-[0.45rem];
-  }
   .footer-pay {
     @apply inline-flex min-h-[32px] items-center gap-[0.4rem] rounded-tiny border
       border-white/[0.14] bg-white/[0.06] px-[0.65rem] py-[0.25rem] text-[0.76rem]

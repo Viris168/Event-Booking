@@ -178,7 +178,7 @@ export default function Footer() {
                 loading="lazy"
                 aria-hidden="true"
               />
-              <strong>{t("brand")}</strong>
+              <span className="footer-brand-text">{t("brand")}</span>
             </Link>
 
             <p className="footer-brand-desc">
@@ -303,8 +303,8 @@ export default function Footer() {
             </span>
           </div>
 
-          {/* Payment marks & Back to top */}
-          <div className="footer-trust-cluster">
+          {/* Payment marks in center */}
+          <div className="footer-pay-cluster">
             <span className="footer-pay" title="ABA PayWay Payment Gateway">
               {t("payway")}
             </span>
@@ -312,19 +312,19 @@ export default function Footer() {
             <span className="footer-pay" title="National KHQR Payment Standard">
               <KhqrWordmark height={18} />
             </span>
-
-            {/* Back to top button */}
-            <button
-              type="button"
-              className="footer-back-to-top"
-              onClick={scrollToTop}
-              title={km ? "ត្រឡប់ទៅលើ" : "Back to top"}
-              aria-label={km ? "ត្រឡប់ទៅលើ" : "Back to top"}
-            >
-              <Icon name="arrowUp" size={13} />
-              <span>{km ? "ត្រឡប់ទៅលើ" : "Back to top"}</span>
-            </button>
           </div>
+
+          {/* Back to top button on right */}
+          <button
+            type="button"
+            className="footer-back-to-top"
+            onClick={scrollToTop}
+            title={km ? "ត្រឡប់ទៅលើ" : "Back to top"}
+            aria-label={km ? "ត្រឡប់ទៅលើ" : "Back to top"}
+          >
+            <Icon name="arrowUp" size={13} />
+            <span>{km ? "ត្រឡប់ទៅលើ" : "Back to top"}</span>
+          </button>
         </div>
       </div>
     </footer>
