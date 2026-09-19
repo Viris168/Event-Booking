@@ -1499,10 +1499,7 @@
     }
     .hero-rail,
     .hero-grid > .spotlight {
-      @apply mx-auto mt-8 max-w-[440px];
-    }
-    .hero-slide > .rail-card {
-      aspect-ratio: 16 / 10;
+      display: none !important;
     }
   }
   /* A container, so the headline can size itself against the column it sits in
