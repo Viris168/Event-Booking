@@ -387,9 +387,7 @@ export default function Navbar({ onOpenAccount }) {
               live hold in it, and search is the one of them that needs
               somewhere to type rather than just somewhere to tap. */}
 
-          {/* Outside the drawer, like the hold countdown: a badge folded behind
-              a burger cannot tell you there is anything to open it for. */}
-          {isAuthenticated && <NotificationBell />}
+          {/* Time-critical hold countdown first */}
           {showHold && (
             <Link
               to={`/checkout?event=${hold.eventId || hold.event_id}&hold=${hold.id}`}
@@ -400,6 +398,10 @@ export default function Navbar({ onOpenAccount }) {
               {countdown(holdMsLeft)}
             </Link>
           )}
+
+          {/* Outside the drawer, like the hold countdown: a badge folded behind
+              a burger cannot tell you there is anything to open it for. */}
+          {isAuthenticated && <NotificationBell />}
 
           {/* The account, as an initial and nothing else.
               It sat only inside the drawer, which made reaching your own
