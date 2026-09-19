@@ -285,15 +285,15 @@ export default function OrganizerDashboardPage() {
             title={
               telegramConnected
                 ? km
-                  ? "Telegram: បានភ្ជាប់រួចរាល់"
-                  : "Telegram: Connected"
+                  ? "Telegram Bot: បានភ្ជាប់រួចរាល់"
+                  : "Telegram Bot: Connected"
                 : km
-                  ? "ភ្ជាប់ Telegram ដើម្បីទទួលដំណឹង"
-                  : "Connect Telegram notifications"
+                  ? "ភ្ជាប់ Telegram Bot ដើម្បីទទួលដំណឹង"
+                  : "Connect Telegram Bot notifications"
             }
           >
             <Icon name="telegram" size={16} className="text-[#24A1DE]" />
-            <span>{km ? "Telegram" : "Telegram"}</span>
+            <span>{km ? "Telegram Bot" : "Telegram Bot"}</span>
             {telegramConnected && (
               <span
                 className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 inline-block ml-0.5"

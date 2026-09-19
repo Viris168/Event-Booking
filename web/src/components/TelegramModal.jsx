@@ -11,8 +11,7 @@ import {
 } from "../api/organizerTelegram.js";
 
 /**
- * Modal dialog allowing organizers to connect/disconnect their Telegram account
- * and receive real-time notifications for ticket sales and event approvals.
+ * Clean modal dialog allowing organizers to connect/disconnect the Telegram bot.
  */
 export default function TelegramModal({ open, onClose, onStatusChange }) {
   const { locale } = useLocale();
@@ -44,9 +43,32 @@ export default function TelegramModal({ open, onClose, onStatusChange }) {
     };
   }, [open, onStatusChange]);
 
+  // Auto-poll while deepLink is waiting for the user to tap "Start" in Telegram
+  useEffect(() => {
+    if (!open || !deepLink || connected) return undefined;
+    const timer = setInterval(() => {
+      getTelegramStatus()
+        .then((s) => {
+          if (s?.connected) {
+            setConnected(true);
+            onStatusChange?.(true);
+            setDeepLink(null);
+            toast(
+              km
+                ? "បានភ្ជាប់ Telegram ដោយជោគជ័យ!"
+                : "Telegram connected successfully!",
+              "success",
+            );
+          }
+        })
+        .catch(() => {});
+    }, 3000);
+    return () => clearInterval(timer);
+  }, [open, deepLink, connected, km, onStatusChange, toast]);
+
   // Lock scroll and handle Escape
   useEffect(() => {
-    if (!open) return;
+    if (!open) return undefined;
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
@@ -72,7 +94,7 @@ export default function TelegramModal({ open, onClose, onStatusChange }) {
       toast(
         e?.response?.status === 409
           ? km
-            ? "Telegram មិនទាន់បានរៀបចំនៅលើម៉ាស៊ីនមេទេ។"
+            ? "Telegram Bot មិនទាន់បានរៀបចំនៅលើម៉ាស៊ីនមេទេ។"
             : "Telegram bot is not configured on this server yet."
           : km
             ? "ចាប់ផ្តើមភ្ជាប់មិនបាន"
@@ -121,7 +143,10 @@ export default function TelegramModal({ open, onClose, onStatusChange }) {
       setDeepLink(null);
       setConfirmDisconnect(false);
       onStatusChange?.(false);
-      toast(km ? "បានផ្តាច់ Telegram" : "Telegram disconnected", "success");
+      toast(
+        km ? "បានផ្តាច់ Telegram Bot" : "Telegram bot disconnected",
+        "success",
+      );
     } catch {
       toast(km ? "ផ្តាច់មិនបានសម្រេច" : "Could not disconnect", "error");
     } finally {
@@ -144,7 +169,7 @@ export default function TelegramModal({ open, onClose, onStatusChange }) {
     >
       <div
         ref={dialogRef}
-        className="bg-surface border border-line rounded-hero shadow-pop p-6 max-w-[480px] w-full mx-4 relative"
+        className="bg-surface border border-line rounded-hero shadow-pop p-6 max-w-[440px] w-full mx-4 relative"
       >
         {/* Close Button */}
         <button
@@ -157,7 +182,7 @@ export default function TelegramModal({ open, onClose, onStatusChange }) {
         </button>
 
         {/* Modal Header */}
-        <div className="flex items-center gap-3.5 mb-4">
+        <div className="flex items-center gap-3.5 mb-5">
           <span className="w-11 h-11 rounded-2xl bg-[#24A1DE]/10 text-[#24A1DE] border border-[#24A1DE]/20 flex items-center justify-center shrink-0">
             <Icon name="telegram" size={22} />
           </span>
@@ -166,12 +191,12 @@ export default function TelegramModal({ open, onClose, onStatusChange }) {
               id="telegram-modal-title"
               className="text-lg font-bold text-ink m-0"
             >
-              {km ? "ការជូនដំណឹងតាម Telegram" : "Telegram notifications"}
+              {km ? "Telegram Bot" : "Telegram Bot"}
             </h2>
             <p className="text-tiny text-muted m-0 mt-0.5">
               {km
-                ? "ទទួលដំណឹងភ្លាមៗពេលមានការលក់សំបុត្រ ឬអនុម័ត"
-                : "Instant alerts for ticket sales & event updates"}
+                ? "ការជូនដំណឹងរហ័សពេលលក់សំបុត្រ ឬអនុម័ត"
+                : "Real-time alerts for ticket sales & event updates"}
             </p>
           </div>
         </div>
@@ -189,12 +214,12 @@ export default function TelegramModal({ open, onClose, onStatusChange }) {
               </span>
               <div>
                 <div className="text-small font-bold text-success">
-                  {km ? "បានភ្ជាប់រួចរាល់" : "Connected & Active"}
+                  {km ? "បានភ្ជាប់រួចរាល់" : "Connected"}
                 </div>
                 <p className="text-tiny text-ink-2 m-0 mt-1">
                   {km
-                    ? "អ្នកនឹងទទួលបានសារភ្លាមៗតាម Telegram រាល់ពេលដែលមានអតិថិជនកក់សំបុត្រ ឬព្រឹត្តិការណ៍ត្រូវបានអនុម័ត។"
-                    : "You will receive real-time Telegram alerts the moment an attendee books tickets or an event gets approved."}
+                    ? "គណនីរបស់អ្នកបានភ្ជាប់ជាមួយ Telegram Bot រួចរាល់។ អ្នកនឹងទទួលបានសារជូនដំណឹងរាល់ពេលមានការកក់សំបុត្រ ឬអនុម័តព្រឹត្តិការណ៍។"
+                    : "Your account is connected to the Telegram bot. You receive real-time alerts for ticket bookings and event updates."}
                 </p>
               </div>
             </div>
@@ -202,55 +227,44 @@ export default function TelegramModal({ open, onClose, onStatusChange }) {
             <div className="flex items-center justify-end gap-2 pt-2">
               <button
                 type="button"
-                className="btn btn-outline text-danger hover:bg-danger/10 border-danger/30 text-small"
+                className="btn btn-ghost text-small"
+                onClick={onClose}
+              >
+                {km ? "បិទ" : "Close"}
+              </button>
+              <button
+                type="button"
+                className="btn btn-outline text-danger hover:bg-danger/10 border-danger/30 text-small inline-flex items-center gap-1.5"
                 disabled={busy}
                 onClick={() => setConfirmDisconnect(true)}
               >
                 <Icon name="logout" size={14} />
-                {km ? "ផ្តាច់ Telegram" : "Disconnect"}
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary text-small"
-                onClick={onClose}
-              >
-                {km ? "រួចរាល់" : "Done"}
+                {km ? "ផ្តាច់" : "Disconnect"}
               </button>
             </div>
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="p-4 rounded-card border border-line-2 bg-surface-2 text-ink-2 text-small">
-              <p className="m-0 font-medium text-ink">
-                {km
-                  ? "ភ្ជាប់ bot Telegram របស់ CamboBook ដើម្បី:"
-                  : "Connect the CamboBook Telegram bot to:"}
-              </p>
-              <ul className="m-0 mt-2 pl-5 space-y-1 text-tiny text-muted list-disc">
-                <li>
+            <div className="p-4 rounded-card border border-line-2 bg-surface-2 text-ink-2 text-small flex items-start gap-3">
+              <span className="w-2.5 h-2.5 rounded-full bg-muted mt-1.5 shrink-0" />
+              <div>
+                <div className="text-small font-bold text-ink">
+                  {km ? "មិនទាន់បានភ្ជាប់" : "Not connected"}
+                </div>
+                <p className="text-tiny text-muted m-0 mt-0.5">
                   {km
-                    ? "ទទួលដំណឹងភ្លាមៗពេលមានការលក់សំបុត្រថ្មី"
-                    : "Get notified immediately when a new ticket is sold"}
-                </li>
-                <li>
-                  {km
-                    ? "ទទួលបានសាររំលឹក និងការអនុម័តព្រឹត្តិការណ៍"
-                    : "Receive event approval & schedule reminders"}
-                </li>
-                <li>
-                  {km
-                    ? "មិនបាច់ចូលមកពិនិត្យផ្ទាំងគ្រប់គ្រងរាល់ពេលទេ"
-                    : "No need to constantly refresh the dashboard"}
-                </li>
-              </ul>
+                    ? "ភ្ជាប់ជាមួយ Telegram Bot ដើម្បីទទួលដំណឹងភ្លាមៗនៅពេលមានការលក់សំបុត្រ ឬអនុម័តព្រឹត្តិការណ៍។"
+                    : "Connect with the Telegram bot to receive instant alerts when tickets sell or events are approved."}
+                </p>
+              </div>
             </div>
 
             {deepLink ? (
               <div className="space-y-3">
                 <div className="p-3.5 rounded-card border border-sky-500/25 bg-sky-500/10 text-sky-800 dark:text-sky-200 text-tiny">
                   {km
-                    ? "ជំហានបន្ទាប់៖ បង្អួច Telegram ត្រូវបានបើក។ សូមចុចប៊ូតុង «Start» ក្នុង Telegram រួចចុច «ពិនិត្យការតភ្ជាប់» ខាងក្រោម។"
-                    : "Next step: Telegram was opened. Click 'Start' in the bot, then click 'Check connection' below."}
+                    ? "ជំហានបន្ទាប់៖ សូមចុច «Start» ក្នុង Telegram រួចចុច «ពិនិត្យការតភ្ជាប់» ខាងក្រោម។"
+                    : "Next step: Click 'Start' in Telegram, then click 'Check connection' below."}
                 </div>
                 <div className="flex items-center justify-end gap-2">
                   <a
@@ -260,7 +274,7 @@ export default function TelegramModal({ open, onClose, onStatusChange }) {
                     className="btn btn-outline text-small inline-flex items-center gap-1.5"
                   >
                     <Icon name="telegram" size={15} />
-                    {km ? "បើក Telegram ឡើងវិញ" : "Reopen Telegram"}
+                    {km ? "បើក Telegram" : "Open Telegram"}
                   </a>
                   <button
                     type="button"
@@ -285,7 +299,7 @@ export default function TelegramModal({ open, onClose, onStatusChange }) {
                   onClick={onClose}
                   disabled={busy}
                 >
-                  {km ? "ពេលក្រោយ" : "Maybe later"}
+                  {km ? "បោះបង់" : "Cancel"}
                 </button>
                 <button
                   type="button"
@@ -299,8 +313,8 @@ export default function TelegramModal({ open, onClose, onStatusChange }) {
                       ? "កំពុងតភ្ជាប់…"
                       : "Connecting…"
                     : km
-                      ? "ភ្ជាប់ Telegram ឥឡូវនេះ"
-                      : "Connect Telegram now"}
+                      ? "ភ្ជាប់"
+                      : "Connect"}
                 </button>
               </div>
             )}
@@ -311,7 +325,7 @@ export default function TelegramModal({ open, onClose, onStatusChange }) {
           open={confirmDisconnect}
           tone="warn"
           busy={busy}
-          title={km ? "ផ្តាច់ Telegram?" : "Disconnect Telegram?"}
+          title={km ? "ផ្តាច់ Telegram Bot?" : "Disconnect Telegram Bot?"}
           confirmLabel={km ? "ផ្តាច់" : "Disconnect"}
           cancelLabel={km ? "បោះបង់" : "Cancel"}
           onConfirm={doDisconnect}
@@ -319,7 +333,7 @@ export default function TelegramModal({ open, onClose, onStatusChange }) {
         >
           <p className="small muted">
             {km
-              ? "អ្នកនឹងឈប់ទទួលសារភ្លាមៗតាម Telegram ប៉ុន្តែការជូនដំណឹងក្នុងកម្មវិធីនៅតែបន្តដដែល។"
+              ? "អ្នកនឹងឈប់ទទួលសារភ្លាមៗតាម Telegram Bot ប៉ុន្តែការជូនដំណឹងក្នុងកម្មវិធីនៅតែបន្តដដែល។"
               : "You'll stop receiving instant Telegram messages, but in-app notifications keep working as before."}
           </p>
         </ConfirmDialog>

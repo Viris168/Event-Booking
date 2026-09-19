@@ -5936,15 +5936,20 @@
   box-shadow: var(--shadow-card);
 }
 
-/* The count rides along muted, so a two-digit number cannot make the labels
-   jump as events move between the two sets. */
 .scope-tab-n {
   color: var(--color-muted);
   font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  transition: color 0.15s ease;
 }
 
 .scope-tab.on .scope-tab-n {
-  color: var(--color-brand-700);
+  color: var(--color-brand-600);
+  font-weight: 700;
+}
+
+[data-theme="dark"] .scope-tab.on .scope-tab-n {
+  color: #4ade80;
 }
 
 /* Where an event stands in its sales window, under the lifecycle badge.
