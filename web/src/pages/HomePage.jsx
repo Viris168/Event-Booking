@@ -338,34 +338,25 @@ const FAQ_ITEMS = [
 const PHOTO_ROTATE_MS = 6000;
 
 /**
- * Licensed photos standing in for the wireframe's stock illustration slots -
- * real photography (Wikimedia Commons, verified against AI-stock lookalikes
- * that turn up in the same searches) rather than screenshots of the product
- * itself or an invented graphic. All CC BY-SA/CC BY, which conditions reuse
- * on carrying the credit with the image - hence FeatureSlider's caption
- * rather than a bare `alt` doing that job silently. One folder per slot
- * under web/public/home/ so a photo can be swapped without touching code.
+ * The team's own photos, standing in for the wireframe's stock illustration
+ * slots. No credit field: FeatureSlider only renders a caption when one is
+ * given, and these need none. One folder per slot under web/public/home/ so
+ * a photo can be swapped without touching code.
  */
 const WHY_BOOK_PHOTOS = [
   {
     src: "/home/why-book/1.webp",
     alt: {
-      en: "A concertgoer filming a fireworks display at a night show",
-      km: "អ្នកទស្សនាថតវីដេអូការបាញ់ភ្លើងក្នុងកម្មវិធីពេលយប់",
+      en: "A band on stage with the crowd's arms raised in front of them",
+      km: "ក្រុមតន្ត្រីលើឆាក ជាមួយបណ្តាជនលើកដៃនៅខាងមុខ",
     },
-    creditName: "Vivu Vietnam",
-    creditUrl:
-      "https://commons.wikimedia.org/wiki/File:Audience_impressed_by_Danang_International_Firework_Festival.jpg",
   },
   {
     src: "/home/why-book/2.webp",
     alt: {
-      en: "A festival crowd raising their hands under crossing stage lights",
-      km: "បណ្តាជនក្នុងមហោស្រពលើកដៃឡើងក្រោមពន្លឺឆាកកាត់គ្នា",
+      en: "Confetti falling over a crowd with their hands in the air",
+      km: "ក្រដាសពណ៌ធ្លាក់ពីលើបណ្តាជនកំពុងលើកដៃ",
     },
-    creditName: "PinkBeachPlanet",
-    creditUrl:
-      "https://commons.wikimedia.org/wiki/File:Beach-Please-2022-crowd-stage-lights-night-performance.jpg",
   },
 ];
 
@@ -373,20 +364,16 @@ const ORGANIZER_PHOTOS = [
   {
     src: "/home/organizer/1.webp",
     alt: {
-      en: "A digital mixing console mid-show, channel faders lit blue",
-      km: "តុលាយសំឡេងឌីជីថលកំពុងដំណើរការ ជាមួយគ្រាប់ចុចពន្លឺខៀវ",
+      en: "A hand adjusting a DJ mixer's controls under coloured light",
+      km: "ដៃកំពុងលៃតម្រូវឧបករណ៍លាយសំឡេង DJ ក្រោមពន្លឺពណ៌",
     },
-    creditName: "Lchader",
-    creditUrl: "https://commons.wikimedia.org/wiki/File:Audio_mixer_wide_shot.jpg",
   },
   {
     src: "/home/organizer/2.webp",
     alt: {
-      en: "A close-up of mixing console channel faders and meters",
-      km: "រូបភាពជិតនៃគ្រាប់ចុចតុលាយសំឡេង និងឧបករណ៍វាស់កម្រិត",
+      en: "Rows of empty stadium seating",
+      km: "ជួរកៅអីទទេនៅក្នុងកីឡដ្ឋាន",
     },
-    creditName: "Lchader",
-    creditUrl: "https://commons.wikimedia.org/wiki/File:Audio_mixer_close_up.jpg",
   },
 ];
 
@@ -394,20 +381,16 @@ const FAQ_PHOTOS = [
   {
     src: "/home/faq/1.webp",
     alt: {
-      en: "A DJ silhouetted in stage light above a cheering crowd in the rain",
-      km: "DJ ក្នុងស្រមោលពន្លឺឆាកនៅខាងលើបណ្តាជនកំពុងលើកដៃក្នុងភ្លៀង",
+      en: "A roll of paper admission tickets",
+      km: "ក្រដាសសំបុត្រចូលមួយវេទ្យ",
     },
-    creditName: "Shane Selig",
-    creditUrl: "https://commons.wikimedia.org/wiki/File:Lights_on_the_Lawn_2015.jpg",
   },
   {
     src: "/home/faq/2.webp",
     alt: {
-      en: "Performers in traditional Cambodian dress at a cultural show",
-      km: "សិល្បករស្លៀកពាក់ប្រពៃណីខ្មែរក្នុងកម្មវិធីវប្បធម៌មួយ",
+      en: "A phone held up recording a concert from the crowd",
+      km: "ទូរស័ព្ទកំពុងថតវីដេអូការប្រគំតន្ត្រីពីចំណោមបណ្តាជន",
     },
-    creditName: "Kalicja",
-    creditUrl: "https://commons.wikimedia.org/wiki/File:Concert_Cambodia.jpg",
   },
 ];
 
@@ -471,13 +454,15 @@ function FeatureSlider({ photos }) {
           ))}
         </div>
       )}
-      <figcaption className="tiny muted">
-        Photo:{" "}
-        <a href={current.creditUrl} target="_blank" rel="noopener noreferrer">
-          {current.creditName}
-        </a>{" "}
-        (CC BY-SA 4.0)
-      </figcaption>
+      {current.creditName && (
+        <figcaption className="tiny muted">
+          Photo:{" "}
+          <a href={current.creditUrl} target="_blank" rel="noopener noreferrer">
+            {current.creditName}
+          </a>
+          {current.creditLicense ? ` (${current.creditLicense})` : null}
+        </figcaption>
+      )}
     </figure>
   );
 }
