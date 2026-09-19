@@ -2,7 +2,8 @@ import { Link } from 'react-router-dom'
 import Icon, { CATEGORY_ICON } from './Icon.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
 import { useProvinces } from '../lib/useProvinces.js'
-import { eventArt } from '../lib/eventArt.js'
+import { eventArt, sized, sizedSrcSet } from '../lib/eventArt.js'
+import { minPriceCents } from '../lib/eventPrice.js'
 import { Money } from './ui.jsx'
 
 function getScarcity(event) {
@@ -14,15 +15,6 @@ function getScarcity(event) {
   if (remaining <= 12) return { level: 'almost-full' }
   if (pct <= 0.2) return { level: 'filling', remaining }
   return { level: 'ok', remaining }
-}
-
-function getMinPriceCents(event) {
-  let min = Infinity
-  const classes = event.seatClasses ?? event.seat_classes ?? []
-  classes.forEach((c) => (min = Math.min(min, c.priceUsdCents ?? c.price_usd_cents ?? 0)))
-  const zones = event.zones ?? []
-  zones.forEach((z) => (min = Math.min(min, z.priceUsdCents ?? z.price_usd_cents ?? 0)))
-  return min === Infinity ? 0 : min
 }
 
 /** Scarcity badge — exact counts only while there is real headroom. */
@@ -63,7 +55,7 @@ export default function EventCard({ event, compact = false }) {
   const { locale, t, date } = useLocale()
   const { provinceName } = useProvinces()
   const venue = event.venue
-  const price = getMinPriceCents(event)
+  const price = minPriceCents(event) ?? 0
   const start = new Date(event.startsAt ?? event.starts_at)
   const art = eventArt(event, 'banner')
   const soldOut = getScarcity(event).level === 'sold-out'
@@ -87,7 +79,12 @@ export default function EventCard({ event, compact = false }) {
         {art.hasImage ? (
           <img
             className="ev-photo"
-            src={art.url}
+            /* 600 rather than the card's ~338: the same card is wider on the
+               full-width grid than beside the map, and one request that suits
+               both beats two that each suit one. */
+            src={sized(art.url, 600)}
+            srcSet={sizedSrcSet(art.url, 600)}
+            sizes="(max-width: 560px) 100vw, 340px"
             alt=""
             loading="lazy"
             decoding="async"
