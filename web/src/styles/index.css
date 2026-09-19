@@ -2725,6 +2725,84 @@
     background: linear-gradient(180deg, #6cc79f 0%, #16744a 100%);
   }
 
+  /* ---------------------------------------------- revenue-by-event card */
+  .rev-event-row {
+    padding: 0.5rem 0.55rem;
+    border-radius: 0.5rem;
+    transition: background 0.15s;
+  }
+  .rev-event-row:hover {
+    background: var(--color-surface-2);
+  }
+  .rev-event-row + .rev-event-row {
+    border-top: 1px solid var(--color-line);
+  }
+
+  .rev-event-rank {
+    font-size: 0.7rem;
+    font-weight: 800;
+    line-height: 1;
+    width: 1rem;
+    flex-shrink: 0;
+    text-align: center;
+    letter-spacing: -0.02em;
+  }
+  .rev-event-rank.rank-1 {
+    color: #45b183;
+  }
+  .rev-event-rank.rank-2 {
+    color: #37bda8;
+  }
+  .rev-event-rank.rank-3 {
+    color: #eda44f;
+  }
+  .rev-event-rank.rank-4 {
+    color: #e8749c;
+  }
+  .rev-event-rank.rank-5 {
+    color: #a37ad6;
+  }
+
+  .rev-event-pct {
+    font-size: 0.65rem;
+    font-weight: 700;
+    line-height: 1;
+    padding: 0.15rem 0.4rem;
+    border-radius: 9999px;
+    white-space: nowrap;
+    background: var(--color-surface-2);
+    color: var(--color-muted);
+    min-width: 2.2rem;
+    text-align: center;
+    flex-shrink: 0;
+  }
+  .rev-event-pct.warm {
+    background: #fef3c7;
+    color: #92400e;
+  }
+  .rev-event-pct.hot {
+    background: #dcfce7;
+    color: #166534;
+  }
+
+  .rev-event-share {
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--color-muted);
+    white-space: nowrap;
+    opacity: 0.7;
+  }
+
+  /* dark mode overrides for revenue event card */
+  [data-theme="dark"] .rev-event-pct.warm {
+    background: rgba(234, 179, 8, 0.15);
+    color: #fbbf24;
+  }
+  [data-theme="dark"] .rev-event-pct.hot {
+    background: rgba(34, 197, 94, 0.15);
+    color: #4ade80;
+  }
+
   /* ---------------------------------------------------------------- badges */
   .badge {
     @apply inline-flex items-center gap-[0.32rem] whitespace-nowrap rounded-full
