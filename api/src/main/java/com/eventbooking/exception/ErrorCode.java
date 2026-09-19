@@ -44,6 +44,12 @@ public enum ErrorCode {
     UNKNOWN_OPERATOR(HttpStatus.BAD_REQUEST),
     INVALID_ADMIT_COUNT(HttpStatus.BAD_REQUEST),
     EMPTY_UPLOAD(HttpStatus.BAD_REQUEST),
+    /* A pasted Google Maps share link could not be resolved to a real Maps
+       URL - wrong host, no redirect, or the chain never landed on /maps. Its
+       own code so the venue form can put the message under that one field and
+       offer the manual pin, rather than failing a form whose other fields are
+       fine. */
+    UNREADABLE_MAP_LINK(HttpStatus.BAD_REQUEST),
     /* The Telegram handle on a profile edit is not one: something is left
        after the @ and t.me/ decoration is stripped, and it is not 5-32
        characters of [A-Za-z0-9_]. Its own code rather than VALIDATION_ERROR so
@@ -200,6 +206,11 @@ public enum ErrorCode {
     // Also raised when Google sign-in is switched off, so a missing client id
     // reads as "that did not work" rather than exposing which half is absent.
     INVALID_GOOGLE_TOKEN(HttpStatus.UNAUTHORIZED),
+
+    // Telegram Mini App sign-in: initData whose signature, freshness or shape
+    // did not hold up. Undifferentiated and 401 for the same reasons as the
+    // Google code above, and raised too when no bot token is configured.
+    INVALID_TELEGRAM_INIT_DATA(HttpStatus.UNAUTHORIZED),
 
     // A Google account has no phone until its owner adds one, and this is the
     // refusal that says so. 409 because the request is coherent and the account

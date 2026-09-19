@@ -399,7 +399,9 @@
   }
   .page-head h1 {
     @apply text-[3rem] font-extrabold leading-tight tracking-tighter;
-    color: var(--color-ink);
+    background: linear-gradient(135deg, var(--color-brand-600) 0%, var(--color-gold-500) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
   }
   .page-head p {
     @apply mt-2 text-[1.1rem] font-medium text-muted max-w-[60ch];
@@ -1233,6 +1235,25 @@
   }
   .btn-danger:hover:not(:disabled) {
     @apply bg-danger-soft;
+  }
+
+  /* The filled counterpart to .btn-danger, for a destructive action that has
+     to read as destructive at a glance rather than on inspection. The reds are
+     literal rather than var(--color-danger): that token lightens to a salmon
+     on the dark theme so it can be used as *text*, and white on salmon is not
+     a legible button. */
+  .btn-danger-solid {
+    @apply border-transparent text-white shadow-card;
+    background: #b02b1f;
+  }
+  .btn-danger-solid:hover:not(:disabled) {
+    background: #8f2218;
+  }
+  [data-theme='dark'] .btn-danger-solid {
+    background: #c9382a;
+  }
+  [data-theme='dark'] .btn-danger-solid:hover:not(:disabled) {
+    background: #dc4535;
   }
 
   .btn-sm {
@@ -6726,6 +6747,57 @@ html[lang='km'] .contact-card h2 {
   overflow-wrap: anywhere;
   line-height: 1.65;
   color: var(--color-ink);
+}
+
+/* ------------------------------------------------------- venue pin preview */
+/*
+ * The confirmation map on the venue form. Sized rather than left to Leaflet,
+ * which gives a container with no height zero pixels and no error.
+ */
+.pin-preview {
+  @apply h-[260px] w-full overflow-hidden rounded-[10px] border border-line;
+  /* Under the panel's own stacking, so Leaflet's zoom buttons and attribution
+     cannot ride over a dialog that opens above them. */
+  z-index: 0;
+}
+
+/*
+ * OpenStreetMap ships one raster style, and it is a light one. Dropped
+ * untouched into this project's dark theme it reads as a lit slab in the
+ * middle of the form, so the tiles - and only the tiles - are inverted and
+ * hue-rotated back. The marker, the zoom buttons and the attribution sit in
+ * other panes and keep their own colours.
+ *
+ * A vector tile provider would do this properly with a real dark style; this
+ * is the honest approximation until the catalogue map needs one anyway.
+ */
+[data-theme='dark'] .pin-preview .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.9);
+}
+
+/* Leaflet's own chrome, brought onto this project's surfaces instead of its
+   default white-on-white.
+   
+   Written as .pin-preview.leaflet-container - one compound selector, no
+   descendant space. Leaflet puts .leaflet-container on the host element
+   ITSELF, so `.pin-preview .leaflet-container` describes a child that does not
+   exist and matches nothing at all.
+
+   The extra class is also needed on purpose: Leaflet's own stylesheet writes
+   these as `.leaflet-container .leaflet-control-attribution`, it is injected
+   after this file by the lazy chunk, and at equal specificity the later rule
+   wins. Getting either half wrong is quiet rather than loud - the colour
+   applies, the background does not, and the attribution ends up light-on-white
+   in dark mode. */
+.pin-preview.leaflet-container {
+  @apply bg-surface-2 font-sans;
+}
+.pin-preview.leaflet-container .leaflet-bar a,
+.pin-preview.leaflet-container .leaflet-control-attribution {
+  @apply border-line bg-surface text-ink-2;
+}
+.pin-preview.leaflet-container .leaflet-control-attribution a {
+  @apply text-muted;
 }
 
 /* --------------------------------------------------------- catalogue split */

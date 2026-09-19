@@ -126,6 +126,32 @@ public class DatabaseSeeder implements CommandLineRunner {
         // 3. Seed Venues
         String[] venueNames = {"Koh Pich Theatre", "Morodok Techo Stadium", "Aeon Mall Hall", "Olympic Stadium", "Chaktomuk Theatre", "Major Cineplex Aeon 2"};
         String[] venueNamesKm = {"រោងមហោស្រពកោះពេជ្រ", "ពហុកីឡដ្ឋានមរតកតេជោ", "សាលអុីអនម៉ល", "ពហុកីឡដ្ឋានជាតិអូឡាំពិក", "រោងមហោស្រពចតុមុខ", "រោងកុនមេជ័រអុីអន២"};
+        /*
+         * Where these buildings actually are.
+         *
+         * Every seeded venue used to get the same pin (11.5540, 104.9388) and
+         * the same invented address - Chamkarmon / Tonle Bassac / "Street 10X"
+         * for all six. That is worse than leaving them null: a null venue is
+         * honestly unplaceable, whereas six identical pins stack into one
+         * marker and read as real data, with Morodok Techo (Chroy Changvar,
+         * 14km north) and Olympic Stadium (Prampir Makara) both claiming to be
+         * on Koh Pich.
+         *
+         * Sourced by geocoding each landmark and reverse-checking that the khan
+         * that came back is the one it belongs to. Good enough for a dev
+         * fixture, which is all this is - a real venue gets its pin from the
+         * organiser pasting a Maps link, and is confirmed on a map before it
+         * is saved.
+         */
+        String[][] venueGeo = {
+                // lat, lng, khan, sangkat, street
+                {"11.554572", "104.941902", "Khan Chamkar Mon", "Koh Pich", "Koh Pich Street"},
+                {"11.682977", "104.876308", "Khan Chroy Changvar", "Sangkat Prek Leap", "National Road 6A"},
+                {"11.548080", "104.932586", "Khan Chamkar Mon", "Koh Pich", "Samdech Sothearos Boulevard"},
+                {"11.558387", "104.912172", "Khan Prampir Makara", "Sangkat Boeng Prolit", "Preah Sihanouk Boulevard"},
+                {"11.562679", "104.934890", "Khan Daun Penh", "Sangkat Chey Chumneah", "Sisowath Quay"},
+                {"11.600216", "104.885368", "Khan Sen Sok", "Sangkat Phnom Penh Thmei", "Street 1003"},
+        };
         List<Venue> venues = new ArrayList<>();
         List<List<VenueSeat>> allVenueSeats = new ArrayList<>();
         // Which venues each organiser owns. An event has to be hosted at a venue
@@ -141,11 +167,11 @@ public class DatabaseSeeder implements CommandLineRunner {
                     .nameEn(venueNames[i])
                     .nameKm(venueNamesKm[i])
                     .provinceCode("12")
-                    .khanDistrict("Chamkarmon")
-                    .sangkatCommune("Tonle Bassac")
-                    .streetAddress("Street " + (100 + i))
-                    .lat(new BigDecimal("11.5540"))
-                    .lng(new BigDecimal("104.9388"))
+                    .khanDistrict(venueGeo[i][2])
+                    .sangkatCommune(venueGeo[i][3])
+                    .streetAddress(venueGeo[i][4])
+                    .lat(new BigDecimal(venueGeo[i][0]))
+                    .lng(new BigDecimal(venueGeo[i][1]))
                     .isDisabled(false)
                     .build();
             venue = venueRepository.save(venue);

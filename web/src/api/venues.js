@@ -16,6 +16,17 @@ export const createVenue = (data) => client.post('/venue', data).then((r) => r.d
 
 export const updateVenue = (id, data) => client.patch(`/venue/${id}`, data).then((r) => r.data)
 
+/**
+ * Where a Google Maps short link points.
+ *
+ * Only needed for the `maps.app.goo.gl` form the phone's Share button
+ * produces: those carry no coordinates, and the redirect that reveals them is
+ * unreadable from a browser. A full Maps URL is parsed locally by
+ * lib/mapLink.js without a round trip, so check `isShortMapLink` first.
+ */
+export const resolveMapLink = (url) =>
+  client.post('/venue/resolve-map-link', { url }).then((r) => r.data.resolvedUrl)
+
 /** The building's seat map. Shared by every event held there. */
 export const getVenueSeatMap = (venueId) =>
   client.get(`/venue/${venueId}/seats`).then((r) => r.data)

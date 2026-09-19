@@ -49,7 +49,20 @@ spring:
     # Flyway finds three applied versions it cannot resolve and refuses to start.
     # They are absent on purpose, so that particular complaint is noise; every
     # other validation (checksum drift, out-of-order, failed) still applies.
-    ignore-migration-patterns: "versioned:missing"
+    #
+    # `missing` only covers an unresolvable version BELOW the highest one on the
+    # classpath. A version ABOVE it is `future`, a different pattern and a
+    # different situation, which is why this is a placeholder and why the
+    # default below leaves `future` alone. On a deployment an applied version
+    # the code has never heard of means the image has been rolled back beneath
+    # its own database - the exact failure that took production down on
+    # 2026-09-15 - and it has to keep stopping the app dead.
+    #
+    # A development machine is the opposite case: one database, many branches,
+    # and checking out a branch that predates another feature's migration is an
+    # ordinary afternoon. Set FLYWAY_IGNORE_MIGRATION_PATTERNS in api/.env,
+    # which is local and gitignored, to say so there and only there.
+    ignore-migration-patterns: ${FLYWAY_IGNORE_MIGRATION_PATTERNS:versioned:missing}
 
   jpa:
     hibernate:

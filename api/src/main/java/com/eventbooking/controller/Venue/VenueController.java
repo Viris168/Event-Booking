@@ -2,9 +2,12 @@ package com.eventbooking.controller.Venue;
 
 import com.eventbooking.security.CurrentUserId;
 import com.eventbooking.dto.venue.CreateVenueRequest;
+import com.eventbooking.dto.venue.ResolveMapLinkRequest;
+import com.eventbooking.dto.venue.ResolvedMapLinkResponse;
 import com.eventbooking.dto.venue.UpdateVenueRequest;
 import com.eventbooking.dto.venue.VenueResponse;
 import com.eventbooking.security.OrganizerResolver;
+import com.eventbooking.service.Venue.MapLinkResolver;
 import com.eventbooking.service.Venue.VenueService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
@@ -21,10 +24,34 @@ import java.util.List;
 public class VenueController {
     private final VenueService venueService;
     private final OrganizerResolver organizerResolver;
+    private final MapLinkResolver mapLinkResolver;
 
-    public VenueController(VenueService venueService, OrganizerResolver organizerResolver) {
+    public VenueController(VenueService venueService,
+                           OrganizerResolver organizerResolver,
+                           MapLinkResolver mapLinkResolver) {
         this.venueService = venueService;
         this.organizerResolver = organizerResolver;
+        this.mapLinkResolver = mapLinkResolver;
+    }
+
+    /**
+     * Follows a Google Maps share link and returns where it led.
+     *
+     * <p>Exists because {@code maps.app.goo.gl} links hold no coordinates, and
+     * the redirect that reveals them cannot be read from a browser. A full Maps
+     * URL never needs this call - the frontend parses those itself.
+     *
+     * <p>Organiser-only, though it touches no venue row. It makes an outbound
+     * request on the caller's say-so, and that is not something to leave open to
+     * anonymous callers however narrow the allowlist is.
+     */
+    @PostMapping("/resolve-map-link")
+    public ResponseEntity<ResolvedMapLinkResponse> resolveMapLink(
+            @CurrentUserId Long actorUserId,
+            @Valid @RequestBody ResolveMapLinkRequest request) {
+        organizerResolver.requireOrganizerId(actorUserId);
+        String resolved = mapLinkResolver.resolve(request.url());
+        return new ResponseEntity<>(new ResolvedMapLinkResponse(resolved), HttpStatus.OK);
     }
 
     @PostMapping
