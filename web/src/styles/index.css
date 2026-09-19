@@ -463,94 +463,6 @@
     @apply flex-none whitespace-nowrap;
   }
 
-  /* ------------------------------------------- home: the closing strips ---
-     The two blocks between the last event card and the footer. They borrow the
-     page's own vocabulary rather than bringing their own: .section-head and
-     .card are what every other band on this page is built from, so these read
-     as more of the site and not as a landing page bolted onto the end of it.
-
-     Spacing matches the 2.5rem the Upcoming section already sets inline, so
-     the rhythm down the page stays even. */
-  .home-strip {
-    @apply mt-10;
-  }
-
-  /* The two fact grids. Same four-up card grid as Featured and Upcoming, on
-     the page's own ground - no band.
-
-     A band was there to mark the section as distinct, which made sense when it
-     was the only one of its kind. With two of them it stopped being emphasis:
-     a coloured strip around one section of several reads as an ad slot rather
-     than as part of the page. The section heading does that job already, and
-     it is the one the rest of this page uses. */
-  .home-facts {
-    @apply m-0 grid list-none grid-cols-4 gap-3 p-0;
-  }
-  .home-facts li {
-    @apply min-w-0 border border-line bg-surface p-[1.05rem];
-    border-radius: var(--radius-card);
-    transition:
-      translate 0.16s ease,
-      box-shadow 0.16s ease;
-  }
-  .home-facts li:hover {
-    @apply -translate-y-[3px] shadow-float;
-  }
-  .home-facts svg {
-    @apply mb-[0.55rem] block text-gold-500;
-  }
-  .home-facts h3 {
-    @apply m-0 text-[0.97rem] font-bold leading-[1.35];
-  }
-  .home-facts p {
-    @apply mb-0 mt-[0.3rem] text-[0.88rem] leading-[1.6] text-ink-2;
-  }
-  /* Two, then one. Three columns would leave the fourth card alone on a row,
-     which reads as something missing rather than as a grid. */
-  @media (max-width: 1080px) {
-    .home-facts {
-      @apply grid-cols-2;
-    }
-  }
-  @media (max-width: 560px) {
-    .home-facts {
-      @apply grid-cols-1;
-    }
-  }
-
-  /* One card rather than a full-bleed band: the page is a column of cards and
-     a strip that breaks out of it would be the only thing on the page that
-     does. */
-  .home-cta .card-body {
-    @apply flex flex-wrap items-center justify-between gap-5 p-[1.6rem];
-  }
-  .home-cta {
-    @apply mt-3;
-  }
-  .home-cta h2 {
-    @apply m-0 max-w-[24ch] text-[1.6rem] leading-[1.2];
-  }
-  .home-cta p {
-    @apply mb-0 mt-[0.6rem] max-w-[56ch] text-[0.95rem] leading-relaxed text-muted;
-  }
-  .home-cta-actions {
-    @apply flex flex-none flex-wrap items-center gap-[0.6rem];
-  }
-
-  /* Below the two-column grid the CTA has no room to sit side by side, and a
-     button row squeezed against a heading reads as an afterthought. */
-  @media (max-width: 760px) {
-    .home-cta .card-body {
-      @apply flex-col items-start gap-4 p-[1.2rem];
-    }
-    .home-cta-actions {
-      @apply w-full;
-    }
-    .home-cta-actions .btn {
-      @apply flex-1;
-    }
-  }
-
   .breadcrumb {
     @apply mb-[0.6rem] text-[0.85rem] text-muted;
   }
@@ -1625,70 +1537,53 @@
     );
   }
 
-  /* Modern bold headline matching platform-wide design language. */
-  .hero-accent {
-    background: linear-gradient(
-      135deg,
-      #ffe599 0%,
-      #f6c05d 40%,
-      #e59c2b 75%,
-      #ffd470 100%
-    );
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    filter: drop-shadow(0 2px 14px rgba(230, 160, 50, 0.35));
+  /* --------------------------------------------------------- hero card ---
+     One floating card holding the headline, subhead and search - the
+     wireframe's centred white card over an illustrated banner, kept in the
+     product's own dark-jade photo treatment rather than the mock's hills and
+     clouds. Light surface floating on the dark photo, so its own type is set
+     in ink rather than inheriting the white the bare banner text used to
+     need. */
+  .hero {
+    @apply pb-16 md:pb-20;
   }
-  /* Same box shape as .nav-inner / .container / .footer-inner: the max-width
-     carries its own horizontal padding, so all four content edges are flush. */
-  .hero-inner {
-    @apply mx-auto max-w-shell px-page;
+  .hero-card {
+    @apply relative z-[1] mx-auto max-w-[720px] rounded-card border border-line/40
+      bg-surface px-6 py-9 text-center shadow-pop sm:px-10 sm:py-11;
   }
-  .hero h1 {
-    @apply max-w-[18ch] font-extrabold tracking-tight text-white;
+  .hero-card h1 {
+    @apply mx-auto max-w-[20ch] font-extrabold tracking-tight text-ink;
     font-family: var(--font-sans);
-    font-size: clamp(2.35rem, 1.4rem + 3.2vw, 3.85rem);
-    line-height: 1.15;
-    letter-spacing: -0.03em;
-    text-shadow: 0 4px 20px rgba(2, 9, 14, 0.7);
+    font-size: clamp(1.9rem, 1.3rem + 2.4vw, 2.85rem);
+    line-height: 1.18;
+    letter-spacing: -0.02em;
   }
-  html[lang="km"] .hero h1 {
+  html[lang="km"] .hero-card h1 {
     font-family: var(--font-khmer);
     font-weight: 800;
-    line-height: 1.35;
+    line-height: 1.4;
     letter-spacing: normal;
   }
-  html[lang="km"] .hero-accent {
-    background: linear-gradient(135deg, #ffe599 0%, #f6c05d 50%, #e59c2b 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
+  /* Solid gold-600, not the old gradient-clip treatment - that gradient was
+     tuned to glow against the dark banner it used to sit on; on a light card
+     it read as a smudge. Plain colour is how the same accent already reads
+     everywhere else on light surfaces (the footer's "FOR ORGANIZERS", the
+     step numbers below). */
+  .hero-card-accent {
+    @apply text-gold-600;
   }
-  .hero p {
-    @apply mt-3 max-w-[56ch] text-[1.05rem] font-normal leading-relaxed text-white/80;
+  .hero-card p {
+    @apply mx-auto mt-3 max-w-[52ch] text-[1.02rem] leading-relaxed text-ink-2;
   }
-  /* Copy on the left, the rotating rail on the right. Below 1080px the two
-     stack, and the rail goes wide-and-short instead of disappearing.
-     It used to be hidden outright, on the reasoning that a 400px square card
-     above the fold is the wrong trade against the search box on a phone. The
-     square was the problem, not the card: at 16/10 it costs about 210px, sits
-     under the quick links where it interrupts nothing, and a phone is exactly
-     where one tap into the next event on sale is worth most. (The loading
-     skeleton never honoured the old rule anyway, so a phone flashed a
-     spotlight placeholder and then lost the card it promised.) */
-  .hero-grid {
-    @apply grid items-center gap-10;
-    grid-template-columns: minmax(0, 1fr) 320px;
+  .hero-card .searchbar {
+    @apply mx-auto mt-7 max-w-[600px] border-line bg-surface-2 shadow-none;
   }
-  @media (max-width: 1080px) {
-    .hero-grid {
-      @apply block;
-    }
-    .hero-rail,
-    .hero-grid > .spotlight {
-      display: none !important;
+  @media (max-width: 640px) {
+    .hero-card .searchbar {
+      @apply max-w-full;
     }
   }
+
   /* A container, so the headline can size itself against the column it sits in
      rather than against the viewport - the two differ by the 320px card. */
   .hero-copy {
@@ -1696,217 +1591,167 @@
     container-type: inline-size;
   }
 
-  /* -------------------------------------------------- hero rotating rail */
-  .hero-viewport {
-    @apply overflow-hidden rounded-card;
+  /* ---------------------------------------- split: text beside an image ---
+     The wireframe's "Outcome" and "Your Name" sections, and its accordion
+     section reversed. One layout serves all three - which side carries the
+     text is the only thing that changes between them. */
+  .home-split {
+    @apply my-14 grid items-center gap-10;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.85fr);
   }
-  .hero-track {
-    @apply flex items-stretch;
-    transition: transform 0.62s cubic-bezier(0.4, 0, 0.2, 1);
+  /* Column widths only - no `order` override. The panel is written FIRST in
+     JSX for this variant, so plain grid auto-placement already lands it in
+     the first (narrower) column and the text in the second: exactly "image
+     left, text right" with nothing to reverse. An order swap here was tried
+     and did the opposite of what it looked like it should - it un-reversed
+     the reverse at desktop width, which is what put the image back on the
+     right and the panel where the text was meant to be. */
+  .home-split-reverse {
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1fr);
   }
-  /* The slide, not the card, carries the width — so all five stay the height of
-     the tallest and the rail does not resize as it advances. */
-  .hero-slide {
-    @apply w-full flex-none;
+  @media (max-width: 860px) {
+    .home-split {
+      @apply grid-cols-1 gap-6;
+    }
   }
-  .hero-slide > .rail-card {
-    @apply h-full;
+  .home-split-text h2 {
+    @apply m-0 max-w-[22ch] text-[1.55rem] leading-[1.2];
+  }
+  .home-split-text > p {
+    @apply mb-0 mt-3 max-w-[54ch] text-[0.98rem] leading-relaxed text-muted;
+  }
+  .home-bullets {
+    @apply m-0 my-5 flex list-none flex-col gap-[0.6rem] p-0;
+  }
+  .home-bullets li {
+    @apply flex items-start gap-[0.55rem] text-[0.95rem] leading-[1.5] text-ink-2;
+  }
+  .home-bullets svg {
+    @apply mt-[0.15rem] flex-none text-success;
   }
 
-  /* One piece of artwork with the detail laid over it — the banner's card, not
-     the grid's. The scrim is what keeps the type legible whatever the photo
-     underneath happens to be. */
-  .rail-card {
-    @apply relative isolate block overflow-hidden rounded-card border border-white/[0.18] shadow-pop transition-all duration-300;
-    aspect-ratio: 1 / 1;
-  }
-  .rail-card:hover {
-    @apply border-brand-500/60 shadow-float -translate-y-1 no-underline;
-  }
-  .rail-card .ev-photo {
-    @apply transition-transform duration-500 ease-out;
-  }
-  .rail-card:hover .ev-photo {
-    transform: scale(1.06);
-  }
-  .rail-card::after {
-    content: "";
-    @apply absolute inset-0 z-[1];
-    background: linear-gradient(
-      180deg,
-      rgba(3, 12, 8, 0.22) 0%,
-      transparent 30%,
-      rgba(4, 16, 10, 0.82) 72%,
-      rgba(3, 11, 7, 0.95) 100%
-    );
-  }
-  .rail-card .rail-icon {
-    @apply absolute left-1/2 top-[38%] z-0 -translate-x-1/2 -translate-y-1/2 text-white/90;
-  }
-  .rail-date {
-    @apply absolute left-[0.75rem] top-[0.75rem] z-[2] min-w-[42px] rounded-[10px] bg-white/[0.96]
-      px-2 py-[0.3rem] text-center text-[0.66rem] font-extrabold leading-[1.2] tracking-[0.04em] text-ink shadow-card;
-  }
-  .rail-date b {
-    @apply block text-[1.05rem] tracking-[-0.01em];
-  }
-  .rail-body {
-    @apply absolute inset-x-0 bottom-0 z-[2] flex flex-col gap-[0.28rem] px-[0.95rem] pb-[0.95rem] text-white;
-  }
-  .rail-body strong {
-    @apply line-clamp-2 text-[1.05rem] font-bold leading-[1.32];
-  }
-  .rail-meta {
-    @apply inline-flex items-center gap-[0.32rem] truncate text-[0.78rem] text-white/70;
-  }
-  .rail-foot {
-    @apply mt-1 flex items-center justify-between;
-  }
-  .rail-price {
-    @apply text-[0.72rem] uppercase tracking-[0.05em] text-white/60;
-  }
-  .rail-price b {
-    @apply ml-[0.25rem] text-[1.05rem] normal-case tracking-normal text-white;
-  }
-  .rail-go {
-    @apply grid size-7 place-items-center rounded-full bg-brand-500 text-white shadow-card transition-all duration-200;
-  }
-  .rail-card:hover .rail-go {
-    @apply bg-brand-600 scale-110;
-  }
-  .hero-rail-head {
-    @apply mb-[0.65rem] flex items-center gap-3;
-  }
-  .rail-pill-badge {
-    @apply inline-flex items-center gap-[0.4rem] rounded-full border border-white/[0.14]
-      bg-white/[0.08] backdrop-blur-md px-[0.75rem] py-[0.25rem] text-[0.72rem] font-bold uppercase
-      tracking-wider text-white/90;
-  }
-  .hero-dots {
-    @apply mt-[0.75rem] flex items-center justify-center gap-[0.35rem];
-  }
-  .hero-dot {
-    @apply h-[6px] w-[6px] cursor-pointer rounded-full border-0 bg-white/30 p-0;
-    transition:
-      width 0.25s ease,
-      background-color 0.25s ease;
-  }
-  .hero-dot:hover {
-    @apply bg-white/60;
-  }
-  .hero-dot.on {
-    @apply w-[16px] bg-white/90;
-  }
-  /* Respect a stated preference for less motion: the rail still advances, it
-     just cuts rather than slides. */
-  @media (prefers-reduced-motion: reduce) {
-    .hero-track {
-      transition: none;
-    }
-    .hero-dot {
-      transition: none;
-    }
+  /* The decorative panel standing in for photography - see FeaturePanel in
+     HomePage.jsx. Square-ish rather than a photo's 16/9, so it reads as an
+     illustrated tile and not as a broken image waiting for real art. */
+  .home-panel {
+    @apply grid aspect-[4/3] place-items-center rounded-card text-white/90 md:aspect-square;
   }
 
-  /* The spotlight card is taller than the copy column, so the grid row already
-     leaves air under the quick links — the rule does not need much more. */
-  .hero-base {
-    @apply mt-[2rem] border-t border-white/[0.12];
+  /* --------------------------------------------------------- three steps ---
+     Numbered and threaded on a rule, which is what turns "three icon boxes"
+     into a sequence: find, pay, scan, in that order, joined by the line the
+     numbers sit on rather than three unrelated cards. */
+  .home-steps-section {
+    @apply my-14;
   }
-  @media (max-width: 1080px) {
-    .hero-base {
-      @apply mt-[2.5rem];
+  .home-steps-head {
+    @apply mb-8 text-center;
+  }
+  .home-steps-head h2 {
+    @apply m-0 text-[1.55rem];
+  }
+  .home-steps {
+    @apply relative m-0 grid list-none gap-8 p-0 md:grid-cols-3 md:gap-10;
+  }
+  /* The connecting line, drawn once behind all three rather than as a border
+     on each - a border per item would just be three more boxes. */
+  @media (min-width: 861px) {
+    .home-steps::before {
+      content: "";
+      @apply absolute left-[16.5%] right-[16.5%] top-[13px] -z-[1] border-t border-dashed border-line;
     }
   }
-  .hero-base-inner {
-    @apply flex flex-wrap items-center gap-x-8 gap-y-3 py-[1.2rem];
+  .home-steps li {
+    @apply flex flex-col items-center gap-[0.35rem] text-center;
   }
-  .hero-stats {
-    @apply flex flex-wrap gap-y-4;
+  .home-steps svg {
+    @apply mb-1 text-gold-500;
   }
-  .hero-stats div {
-    @apply pr-8 text-[0.82rem] font-medium text-white/60;
+  .home-step-num {
+    @apply text-[0.72rem] font-extrabold tracking-[0.16em] text-muted;
   }
-  .hero-stats div + div {
-    @apply border-l border-white/15 pl-8;
+  .home-steps h3 {
+    @apply m-0 mt-1 text-[1.02rem] font-bold;
   }
-  /* Once the row wraps, a left divider lands at the start of a line with
-     nothing to divide — fall back to plain spacing. */
-  @media (max-width: 620px) {
-    .hero-stats {
-      @apply gap-x-7;
-    }
-    .hero-stats div {
-      @apply pr-0;
-    }
-    .hero-stats div + div {
-      @apply border-l-0 pl-0;
-    }
+  .home-steps p {
+    @apply mb-0 mt-[0.3rem] max-w-[26ch] text-[0.9rem] leading-[1.55] text-ink-2;
   }
-  .hero-stats b {
-    @apply block text-[1.55rem] font-extrabold tracking-tight text-white leading-tight;
+  .home-steps-cta {
+    @apply mt-9 flex justify-center;
+  }
+
+  /* ------------------------------------------------------------- proof ---
+     The wireframe's testimonial slot, plain and centred - no card, no
+     quote marks, because there is no customer quote to put there yet. Real
+     numbers instead of an invented one. */
+  .home-proof {
+    @apply my-16 text-center;
+  }
+  .home-proof h2 {
+    @apply m-0 text-[1.4rem];
+  }
+  .home-proof-stats {
+    @apply mx-auto mt-7 flex max-w-[560px] flex-wrap justify-center gap-x-10 gap-y-5;
+  }
+  .home-proof-stats div {
+    @apply min-w-[120px];
+  }
+  .home-proof-stats b {
+    @apply block text-[2rem] font-extrabold tracking-tight text-ink;
     font-variant-numeric: tabular-nums;
   }
+  .home-proof-stats span {
+    @apply text-[0.85rem] text-muted;
+  }
 
-  /* ------------------------------------------------ hero "next up" card */
-  .spotlight {
-    @apply overflow-hidden rounded-card border border-white/[0.16] shadow-pop backdrop-blur-[6px];
-    background: linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.12),
-      rgba(4, 22, 13, 0.55)
-    );
+  /* --------------------------------------------------------------- FAQ ---
+     <details>/<summary> rather than a controlled accordion component: no
+     state to wire up, keyboard and screen-reader behaviour come for free, and
+     more than one can be open at once, which is the ordinary way an FAQ
+     works. */
+  .home-faq {
+    @apply my-5 flex flex-col gap-[0.6rem];
   }
-  .spot-head {
-    @apply flex items-center justify-between gap-2 px-[0.9rem] pt-[0.8rem] pb-[0.6rem];
+  .home-faq-item {
+    @apply rounded-ui border border-line bg-surface px-4 py-3;
   }
-  .spot-head .tiny {
-    @apply inline-flex items-center gap-[0.3rem] text-white/60;
+  .home-faq-item summary {
+    @apply flex cursor-pointer list-none items-center justify-between gap-3
+      text-[0.98rem] font-semibold text-ink;
   }
-  .spot-when {
-    @apply rounded-full bg-gold-500/20 px-[0.55rem] py-[0.15rem] text-[0.74rem] font-bold;
-    color: #f5d3ab;
+  .home-faq-item summary::-webkit-details-marker {
+    display: none;
   }
-  .spot-art {
-    @apply relative mx-[0.9rem] grid h-[104px] place-items-center rounded-ui text-white/95;
+  .home-faq-item summary svg {
+    @apply flex-none text-muted transition-transform duration-200;
   }
-  .spot-art:hover {
-    @apply no-underline brightness-105;
+  .home-faq-item[open] summary svg {
+    @apply rotate-180;
   }
-  .spot-art .cat-icon {
-    @apply opacity-95;
-    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.25));
+  .home-faq-item p {
+    @apply mb-0 mt-[0.6rem] text-[0.9rem] leading-[1.6] text-ink-2;
   }
-  .spot-flag {
-    @apply absolute right-[0.5rem] top-[0.5rem];
+
+  /* --------------------------------------------------------- final band ---
+     Mirrors the hero: a banner behind, one card in front. brand-900 rather
+     than the hero's photo, so the page's last section reads as a deliberate
+     bookend and not as a second hero. */
+  .home-final {
+    @apply bg-brand-900 py-16;
   }
-  .spot-body {
-    @apply flex flex-col gap-[0.15rem] px-[0.9rem] pt-[0.75rem];
+  .home-final-card {
+    @apply mx-auto max-w-[640px] rounded-card bg-surface px-8 py-10 text-center shadow-pop;
   }
-  .spot-body strong {
-    @apply text-[1.02rem] leading-[1.35] text-white;
+  .home-final-card h2 {
+    @apply m-0 text-[1.6rem];
   }
-  .spot-alt {
-    @apply mb-[0.35rem] text-[0.84rem] text-white/55;
+  .home-final-card p {
+    @apply mb-0 mt-3 text-[0.98rem] leading-relaxed text-muted;
   }
-  .spot-meta {
-    @apply inline-flex items-center gap-[0.4rem] text-[0.82rem] text-white/70;
+  .home-final-card .btn {
+    @apply mt-7;
   }
-  .spot-meta .icon {
-    @apply text-white/45;
-  }
-  .spot-foot {
-    @apply mt-[0.9rem] flex items-end justify-between gap-3 border-t border-white/10 px-[0.9rem] py-[0.8rem];
-  }
-  .spot-foot .price-tag .tiny {
-    @apply text-white/50;
-  }
-  .spot-foot .price-tag b {
-    @apply text-white;
-  }
-  .spot-foot .price-tag .khr {
-    @apply text-white/55;
-  }
+
 
   /* ------------------------------------------------------------ search bar */
   /* One pill: query · province · submit, split by hairlines rather than boxes. */
@@ -1965,21 +1810,6 @@
     .searchbar .btn {
       @apply rounded-[10px];
     }
-  }
-
-  .quick-links {
-    @apply mt-4 flex flex-wrap items-center gap-[0.45rem];
-  }
-  .quick-links .tiny {
-    @apply mr-1 text-[0.72rem] font-bold uppercase tracking-wider text-white/50;
-  }
-  .quick-chip {
-    @apply inline-flex items-center gap-[0.4rem] rounded-full border border-white/[0.14]
-      bg-white/[0.08] backdrop-blur-md px-[0.8rem] py-[0.32rem] text-[0.82rem] font-semibold text-white/90;
-    transition: all 0.2s ease;
-  }
-  .quick-chip:hover {
-    @apply border-white/40 bg-white/[0.18] text-white -translate-y-0.5 no-underline;
   }
 
   /* Input/select with a leading icon and an optional trailing clear button. */
@@ -2894,11 +2724,8 @@
   }
   /* Surfaces that stay light in both themes — a QR must keep its contrast to
      scan, and the date chips sit on cover art. Re-declaring the neutral tokens
-     locally re-themes every descendant utility in one place.
-     Both chips belong here: .rail-date is the hero's copy of .ev-date on a
-     white plate of its own, and being left off this list is what left it
-     printing near-white text on near-white in dark mode. */
-  [data-theme="dark"] :is(.qr-frame, .ev-media .ev-date, .rail-date) {
+     locally re-themes every descendant utility in one place. */
+  [data-theme="dark"] :is(.qr-frame, .ev-media .ev-date) {
     /* Re-declaring the tokens fixes descendants that apply a colour utility… */
     --color-ink: #1d1a16;
     --color-ink-2: #4a443b;
