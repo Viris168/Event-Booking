@@ -3832,25 +3832,38 @@
    * navs take a share of the width instead and spread across it, so the row
    * ends flush at both edges with no void in the middle.
    */
-  .footer-top {
-    @apply grid gap-x-12 gap-y-[2.4rem];
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+  /* -------------------------------------------------------- 4-Column Grid */
+  .footer-grid-4 {
+    @apply grid gap-x-10 gap-y-10;
+    grid-template-columns: minmax(0, 1.4fr) repeat(3, minmax(0, 1fr));
   }
-  .footer-nav {
-    @apply grid gap-x-8 gap-y-[1.9rem];
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-  /* Below 900 the brand paragraph and the nav block cannot share a line, so the
-     navs drop underneath and take the full width on their own. */
-  @media (max-width: 900px) {
-    .footer-top {
-      @apply grid-cols-1;
-    }
-  }
-  @media (max-width: 560px) {
-    .footer-nav {
+  @media (max-width: 1024px) {
+    .footer-grid-4 {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
+  }
+  @media (max-width: 580px) {
+    .footer-grid-4 {
+      grid-template-columns: 1fr;
+    }
+  }
+  .footer-brand-col {
+    @apply flex flex-col items-start gap-3;
+  }
+  .footer-brand-desc {
+    @apply m-0 text-[0.84rem] leading-relaxed text-white/70 max-w-[40ch];
+  }
+  .footer-contact-list {
+    @apply my-1 flex flex-col gap-1.5 text-[0.82rem] text-white/65;
+  }
+  .footer-contact-item {
+    @apply inline-flex items-center gap-2 text-white/70 no-underline transition-colors hover:text-white;
+  }
+  .footer-nav-link {
+    @apply inline-flex items-center gap-2 text-[0.84rem] text-white/75 no-underline transition-all hover:text-white;
+  }
+  .footer-back-to-top {
+    @apply inline-flex min-h-[32px] items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.05] px-3.5 py-1 text-[0.76rem] font-semibold text-white/75 no-underline transition-all hover:border-gold-500/60 hover:bg-gold-500/10 hover:text-gold-500 cursor-pointer;
   }
 
   /* The measure is capped on the paragraph, not on the column. Capping the
@@ -4009,41 +4022,30 @@
       color 0.15s ease;
   }
   .footer-social a:hover {
-    @apply bg-white/15 text-white no-underline;
+    border-color: var(--social-accent, rgba(255, 255, 255, 0.3));
+    color: var(--social-accent, #ffffff);
+    background: rgba(255, 255, 255, 0.12);
   }
 
   /*
-   * The closing bar: copyright at one edge, the payment marks at the other.
-   *
-   * It used to run on .footer-grid's four-track template so its three items
-   * would line up with the columns above, which put the social plates in the
-   * dead centre of the bar with nothing above or below them. The accounts live
-   * with the brand now, which leaves two items and no reason for a grid.
+   * The closing bar: copyright at one edge, trust and payment marks at the other.
    */
   .footer-bottom {
     @apply mt-[2.6rem] flex flex-wrap items-center justify-between gap-x-8 gap-y-[1rem]
       border-t border-white/[0.11] pt-[1.15rem] text-[0.78rem] text-white/[0.56];
   }
+  .footer-copy {
+    @apply flex items-center gap-2;
+  }
+  .footer-trust-cluster {
+    @apply flex flex-wrap items-center gap-2.5;
+  }
   /*
    * Payment marks as plates rather than a line of small type.
-   *
-   * They answer "can I actually pay on this site", and a visitor settles that
-   * by spotting a mark they already know - so they are given an edge and a
-   * ground of their own instead of reading as two more footer links that have
-   * stopped working. They travel and wrap together.
    */
   .footer-pay-row {
     @apply flex flex-wrap items-center gap-[0.45rem];
   }
-  /*
-   * min-h rather than symmetric padding: one plate holds a line of type and the
-   * other holds the drawn KHQR mark, which is taller than the type it sits
-   * beside. Padding alone gave them two different heights, and two trust marks
-   * of different heights look like one of them is a mistake. The mark is set at
-   * 18px because the Q in it is a miniature QR symbol - below that the modules
-   * merge and it reads as a filled square, which is the one thing it must not
-   * look like.
-   */
   .footer-pay {
     @apply inline-flex min-h-[32px] items-center gap-[0.4rem] rounded-tiny border
       border-white/[0.14] bg-white/[0.06] px-[0.65rem] py-[0.25rem] text-[0.76rem]

@@ -11,9 +11,11 @@ const PATHS = {
   filter: "M4 5h16M7 12h10M10 19h4",
   arrowRight: "M4 12h15M13 6l6 6-6 6",
   arrowLeft: "M20 12H5M11 18 5 12l6-6",
+  arrowUp: "M12 19V5M5 12l7-7 7 7",
   chevronRight: "M9 6l6 6-6 6",
   chevronLeft: "M15 6l-6 6 6 6",
   chevronDown: "M6 9l6 6 6-6",
+  chevronUp: "M6 15l6-6 6 6",
   external:
     "M14 4h6v6M20 4l-8 8M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5",
   /* Arrow into a tray. The tray is drawn as the same open-topped shape as

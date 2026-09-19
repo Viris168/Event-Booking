@@ -329,20 +329,16 @@ export default function Navbar({ onOpenAccount }) {
             </Link>
           )}
 
+          {/* Divider between active reservation hold and navbar controls */}
+          {showHold && <span className="nav-sep" aria-hidden="true" />}
+
           {/* Theme toggle directly in the navbar, replacing search */}
           {themeToggle}
 
           {!isAuthenticated && langToggle}
 
-          {/*
-            The rule divides preferences from identity, so it is only drawn
-            when there is something on both sides of it. Signed in, the prefs
-            are gone and a leading hairline before the bell would be a divider
-            dividing nothing from the edge of the bar.
-          */}
-          {(!isAuthenticated || showHold) && (
-            <span className="nav-sep" aria-hidden="true" />
-          )}
+          {/* Divider before auth buttons for unauthenticated visitors */}
+          {!isAuthenticated && <span className="nav-sep" aria-hidden="true" />}
 
           {isAuthenticated ? (
             <>
