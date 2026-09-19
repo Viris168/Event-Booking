@@ -347,6 +347,7 @@ public class BookingService {
             }
             stateMachine.transition(booking, BookingStatus.EXPIRED, null, "Payment window elapsed");
             releaseBookingInventory(booking);
+            closeOpenPaymentAttempts(booking, "Payment window elapsed");
             expired++;
         }
 
@@ -355,6 +356,20 @@ public class BookingService {
                     expired, properties.paymentWindowMinutes());
         }
         return expired;
+    }
+
+    /**
+     * Expires a single booking immediately, releasing its seats back to the pool.
+     */
+    @Transactional
+    public void expireBooking(Long bookingId, String note) {
+        Booking booking = bookingRepository.findByIdForUpdate(bookingId).orElse(null);
+        if (booking == null || !stateMachine.canTransition(booking.getState(), BookingStatus.EXPIRED)) {
+            return;
+        }
+        stateMachine.transition(booking, BookingStatus.EXPIRED, null, note);
+        releaseBookingInventory(booking);
+        closeOpenPaymentAttempts(booking, note);
     }
 
     // ------------------------------------------------------------------

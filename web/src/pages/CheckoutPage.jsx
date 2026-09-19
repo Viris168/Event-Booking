@@ -11,7 +11,7 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { useLocale } from "../context/LocaleContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
 import { seatLabel, toLocalPhone, usd } from "../lib/format.js";
-import { getHold, announceHoldChange } from "../api/holds.js";
+import { getHold, releaseHold, announceHoldChange } from "../api/holds.js";
 import { getEvent } from "../api/events.js";
 import { createBooking } from "../api/bookings.js";
 import { mapHoldResponse, mapEvent } from "../api/adapters.js";
@@ -221,6 +221,21 @@ export default function CheckoutPage() {
       });
   }
 
+  function handleRelease() {
+    if (!hold) return;
+    releaseHold(event.id, hold.id)
+      .then(() => {
+        sessionStorage.removeItem(`activeHoldId_${event?.id}`);
+        announceHoldChange();
+        toast(locale === "km" ? "កៅអីត្រូវបានលែងវិញ។" : "Hold released.", "info");
+        navigate(`/events/${event?.id}`);
+      })
+      .catch((e) => {
+        console.error(e);
+        toast(locale === "km" ? "មានបញ្ហាក្នុងការលែងកៅអី" : "Could not release hold", "error");
+      });
+  }
+
   if (!event || !venue) return <CheckoutSkeleton />;
 
   return (
@@ -245,7 +260,7 @@ export default function CheckoutPage() {
           endpoint on the server, so that button sat on the one screen where the
           clock actually matters and did nothing when pressed. Omitting the prop
           hides it, which is the truthful state until the endpoint exists. */}
-      <HoldBar hold={hold} onRelease={() => navigate(`/events/${event?.id}`)} />
+      <HoldBar hold={hold} onRelease={handleRelease} />
 
       <div className="split" style={{ marginTop: "1.3rem" }}>
         <form className="stack" onSubmit={submit} noValidate>

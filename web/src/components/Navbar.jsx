@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
+import { Link, NavLink, useLocation } from "react-router-dom";
 import Icon from "./Icon.jsx";
 import Flag from "./Flag.jsx";
 import NotificationBell from "./NotificationBell.jsx";
@@ -45,46 +45,22 @@ export default function Navbar({ onOpenAccount }) {
   const { t, locale, setLocale } = useLocale();
   const { isDark, toggle: toggleTheme } = useTheme();
   const location = useLocation();
-  const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const navRef = useRef(null);
 
-  /*
-   * Nav search: a shortcut into /events, not a second search.
-   *
-   * /events already owns searching - query, province, sort, price, date and
-   * removable chips - and it drives all of it from the URL, which is why
-   * HomePage's hero can search by doing nothing more than navigating to
-   * `/events?q=`. This does exactly the same thing, so there is one search
-   * implementation in the product and two doors into it.
-   *
-   * `q` is deliberately NOT seeded from the current URL. The box is a fresh
-   * question every time it opens; pre-filling it with whatever is already
-   * being searched for would make the commonest gesture - open, type, enter -
-   * append to a query the person had forgotten was there.
-   */
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [q, setQ] = useState("");
-  const searchInputRef = useRef(null);
-
-  // Close both panels on navigation, on Escape, and on an outside click.
+  // Close menu drawer on navigation, on Escape, and on an outside click.
   useEffect(() => {
     setMenuOpen(false);
-    // Including after a search submits, since that is itself a navigation.
-    setSearchOpen(false);
   }, [location.pathname]);
 
   useEffect(() => {
-    if (!menuOpen && !searchOpen) return;
+    if (!menuOpen) return;
     const onKey = (e) => {
-      if (e.key !== "Escape") return;
-      setMenuOpen(false);
-      setSearchOpen(false);
+      if (e.key === "Escape") setMenuOpen(false);
     };
     const onClick = (e) => {
       if (navRef.current?.contains(e.target)) return;
       setMenuOpen(false);
-      setSearchOpen(false);
     };
     document.addEventListener("keydown", onKey);
     document.addEventListener("mousedown", onClick);
@@ -92,55 +68,7 @@ export default function Navbar({ onOpenAccount }) {
       document.removeEventListener("keydown", onKey);
       document.removeEventListener("mousedown", onClick);
     };
-  }, [menuOpen, searchOpen]);
-
-  /*
-   * When opening search while already on /events, seed the box with the active query.
-   */
-  useEffect(() => {
-    if (searchOpen && location.pathname === "/events") {
-      const urlQ = new URLSearchParams(location.search).get("q") || "";
-      setQ(urlQ);
-    }
-  }, [searchOpen]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  /*
-   * Live search like in EventsPage: debounced after 250ms so there is no need
-   * to press Enter to search.
-   */
-  useEffect(() => {
-    if (!searchOpen) return undefined;
-    const timer = setTimeout(() => {
-      const query = q.trim();
-      const currentQ = new URLSearchParams(location.search).get("q") || "";
-      if (query === currentQ) return;
-
-      if (location.pathname === "/events") {
-        const next = new URLSearchParams(location.search);
-        if (query) next.set("q", query);
-        else next.delete("q");
-        next.delete("page");
-        navigate(`/events${next.toString() ? `?${next.toString()}` : ""}`, {
-          replace: true,
-        });
-      } else if (query) {
-        navigate(`/events?q=${encodeURIComponent(query)}`);
-      }
-    }, 250);
-    return () => clearTimeout(timer);
-  }, [q, searchOpen, location.pathname, location.search, navigate]);
-
-  /*
-   * Focus the box when it opens.
-   *
-   * The whole point of expanding in place rather than navigating somewhere is
-   * that you can type immediately; an input that appears without the caret in
-   * it costs the click it just saved. Not autoFocus, which fires on mount and
-   * would steal focus on first paint if this ever rendered open.
-   */
-  useEffect(() => {
-    if (searchOpen) searchInputRef.current?.focus();
-  }, [searchOpen]);
+  }, [menuOpen]);
 
   /*
    * Publish the navbar's height as --nav-h, for whatever has to sit under it.
@@ -295,146 +223,6 @@ export default function Navbar({ onOpenAccount }) {
     },
   ].filter((l) => l.show);
 
-  /**
-   * Hand the query to /events and let it do the searching.
-   *
-   * <p>Only `q` is sent. The province, sort, price and date filters live on
-   * that page and are not represented here, so carrying the current URL's
-   * copies of them across would apply filters the person cannot see from this
-   * box - a search for "rock" silently restricted to Battambang under $5
-   * because of a filter set ten minutes ago.
-   *
-   * <p>An empty box still navigates: pressing enter on nothing means "show me
-   * what is on", which is what /events with no query is.
-   */
-  const submitSearch = (e) => {
-    e.preventDefault();
-    const query = q.trim();
-    if (location.pathname === "/events") {
-      const next = new URLSearchParams(location.search);
-      if (query) next.set("q", query);
-      else next.delete("q");
-      next.delete("page");
-      navigate(`/events${next.toString() ? `?${next.toString()}` : ""}`, {
-        replace: true,
-      });
-    } else {
-      navigate(query ? `/events?q=${encodeURIComponent(query)}` : "/events");
-      setSearchOpen(false);
-    }
-    setMenuOpen(false);
-  };
-
-  /*
-   * On every page, /events included.
-   *
-   * It was hidden there at first, on the reasoning that the page already
-   * carries a sticky search panel and a second control pointing at it is
-   * redundant. That reasoning was about the page and ignored the bar: a
-   * control that is in the chrome everywhere except one route does not read as
-   * "not needed here", it reads as missing. Chrome earns its place by being in
-   * the same spot every time you look for it.
-   *
-   * Nothing breaks by searching from up here while already on /events.
-   * EventsPage drives its box and its chips from the URL and explicitly
-   * handles `q` changing from somewhere other than itself - the same path the
-   * home hero and the back button take - so the panel below simply updates to
-   * match.
-   *
-   * Only drawn while the box is shut, which is why it has no open state.
-   *
-   * It used to stay put and flip to a ✕, which put two close buttons a few
-   * pixels apart - one on the pill, one where the magnifier had been - with
-   * nothing to say whether they did the same thing. The pill's own ✕ is the
-   * one that survives: it sits beside the text it is dismissing, rather than
-   * out in a cluster of unrelated controls.
-   *
-   * So this is a button that opens, and the pill is what closes. Escape and a
-   * click outside close it too.
-   */
-  const searchToggle = (
-    <button
-      type="button"
-      className="nav-icon-btn"
-      onClick={() => setSearchOpen(true)}
-      title={t("search")}
-      aria-label={t("search")}
-      aria-expanded={searchOpen}
-    >
-      <Icon name="search" size={17} />
-    </button>
-  );
-
-  /*
-   * One renderer, two placements - and they are genuinely different controls,
-   * not the same one moved.
-   *
-   * In the wide bar the box is a thing you open: it takes the centre track
-   * from the links, autofocuses, and carries its own close. In the drawer
-   * there is nothing to open - the drawer IS the open state - so it simply
-   * sits at the top, full width, with no toggle and no close of its own.
-   *
-   * And no autofocus down there. Focusing an input on a phone raises the
-   * keyboard, which would cover the links the person actually opened the
-   * drawer to reach.
-   */
-  const renderSearch = ({ inDrawer = false } = {}) => (
-    <form
-      className={`nav-search${inDrawer ? " in-drawer" : ""}`}
-      onSubmit={submitSearch}
-      role="search"
-    >
-      {/* type="submit", so it searches on click and is reachable by keyboard
-          as the button it looks like. */}
-      <button
-        type="submit"
-        className="nav-search-go"
-        title={t("search")}
-        aria-label={t("search")}
-      >
-        <Icon name="search" size={16} />
-      </button>
-      <input
-        /* Only the bar's copy takes the ref. The two are never mounted at
-           once, but tying the focus effect to the one that can be opened
-           keeps that a fact about the code rather than about the viewport. */
-        ref={inDrawer ? undefined : searchInputRef}
-        type="search"
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        placeholder={t("search")}
-        aria-label={t("search")}
-      />
-      {!inDrawer && (
-        <button
-          type="button"
-          className="nav-search-close"
-          onClick={() => {
-            if (q) {
-              setQ("");
-              if (location.pathname === "/events") {
-                const next = new URLSearchParams(location.search);
-                next.delete("q");
-                next.delete("page");
-                navigate(
-                  `/events${next.toString() ? `?${next.toString()}` : ""}`,
-                  { replace: true },
-                );
-              }
-              searchInputRef.current?.focus();
-            } else {
-              setSearchOpen(false);
-            }
-          }}
-          title={q ? (locale === "km" ? "សម្អាត" : "Clear") : t("close")}
-          aria-label={q ? (locale === "km" ? "សម្អាត" : "Clear") : t("close")}
-        >
-          <Icon name="close" size={15} />
-        </button>
-      )}
-    </form>
-  );
-
   /*
    * The language switch: one flag, the one you are reading in.
    *
@@ -518,21 +306,13 @@ export default function Navbar({ onOpenAccount }) {
           being shoved leftward by however wide the right-hand cluster happens
           to be for this particular signed-in user.
         */}
-        {/* The links stand down while the box is open - that is where its
-            width comes from, so nothing has to overflow or shrink to make
-            room. Unmounted rather than hidden: a hidden row of links is still
-            a row of tab stops in the middle of a search you are typing. */}
-        {searchOpen ? (
-          renderSearch()
-        ) : (
-          <div className="nav-links">
-            {links.map((l) => (
-              <NavLink key={l.to} to={l.to} end={l.end} className="nav-link">
-                {l.label}
-              </NavLink>
-            ))}
-          </div>
-        )}
+        <div className="nav-links">
+          {links.map((l) => (
+            <NavLink key={l.to} to={l.to} end={l.end} className="nav-link">
+              {l.label}
+            </NavLink>
+          ))}
+        </div>
 
         {/* --------------------------------------------- wide bar: the right */}
         <div className="nav-right">
@@ -541,7 +321,7 @@ export default function Navbar({ onOpenAccount }) {
               screen and it reads left-to-right before the controls do. */}
           {showHold && (
             <Link
-              to={`/events/${hold.eventId || hold.event_id}`}
+              to={`/checkout?event=${hold.eventId || hold.event_id}&hold=${hold.id}`}
               className="nav-link nav-hold"
             >
               <Icon name="clock" size={14} />
@@ -549,32 +329,16 @@ export default function Navbar({ onOpenAccount }) {
             </Link>
           )}
 
-          {/* First of the controls, and closest to the links, because it is
-              the only one of them that is also a way of getting somewhere. */}
-          {!searchOpen && searchToggle}
+          {/* Divider between active reservation hold and navbar controls */}
+          {showHold && <span className="nav-sep" aria-hidden="true" />}
 
-          {/*
-            Signed out only. Once you have an account, language and theme live
-            in the account panel and nowhere else.
+          {/* Theme toggle directly in the navbar, replacing search */}
+          {themeToggle}
 
-            The reasoning is the one the bar has always used: both are set once
-            and then never touched again, so a permanent slot in the chrome is
-            a poor trade for something you use on your first visit and never
-            again. A signed-out visitor is the case where that does not hold -
-            they have no panel to keep the setting in, and no account for it to
-            persist against, so the control has to be in front of them.
-          */}
-          {!isAuthenticated && displayPrefs}
+          {!isAuthenticated && langToggle}
 
-          {/*
-            The rule divides preferences from identity, so it is only drawn
-            when there is something on both sides of it. Signed in, the prefs
-            are gone and a leading hairline before the bell would be a divider
-            dividing nothing from the edge of the bar.
-          */}
-          {(!isAuthenticated || showHold) && (
-            <span className="nav-sep" aria-hidden="true" />
-          )}
+          {/* Divider before auth buttons for unauthenticated visitors */}
+          {!isAuthenticated && <span className="nav-sep" aria-hidden="true" />}
 
           {isAuthenticated ? (
             <>
@@ -628,7 +392,7 @@ export default function Navbar({ onOpenAccount }) {
           {isAuthenticated && <NotificationBell />}
           {showHold && (
             <Link
-              to={`/events/${hold.eventId || hold.event_id}`}
+              to={`/checkout?event=${hold.eventId || hold.event_id}&hold=${hold.id}`}
               className="nav-link nav-hold"
               aria-label={t("holdActive")}
             >
@@ -703,10 +467,6 @@ export default function Navbar({ onOpenAccount }) {
                 </Link>
               </div>
             )}
-
-            {/* Above the links, because it is the broadest way to get
-                somewhere and the links below it are the narrow ones. */}
-            {renderSearch({ inDrawer: true })}
 
             <div className="drawer-links">
               {drawerLinks.map((l) => (

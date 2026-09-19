@@ -27,7 +27,9 @@ import { useLocale } from '../context/LocaleContext.jsx'
  * it cannot deliver. Tier colours live beside the tier selector, where they are
  * backed by data.
  */
-export default function VenueLayoutPanel({ imageUrl, venue }) {
+const CLASS_COLORS = ['#12613c', '#0e6f8a', '#c2410c', '#6b3aa0', '#7a5c12']
+
+export default function VenueLayoutPanel({ imageUrl, venue, zones = [] }) {
   const { locale } = useLocale()
   const km = locale === 'km'
   const [zoomed, setZoomed] = useState(false)
@@ -77,6 +79,22 @@ export default function VenueLayoutPanel({ imageUrl, venue }) {
               <Icon name="qr" size={12} />
               {km ? 'ចុចដើម្បីពង្រីក' : 'Tap to enlarge'}
             </span>
+          )}
+
+          {zones.length > 0 && (
+            <div className="venue-layout-legend" style={{ marginTop: '1rem' }}>
+              <div style={{ fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.4rem', color: 'var(--color-ink-2)' }}>
+                {km ? 'តំបន់កៅអីអង្គុយ' : 'Seating Zones'}
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.8rem' }}>
+                {zones.map((z, i) => (
+                  <div key={z.id} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem' }}>
+                    <div style={{ width: '12px', height: '12px', borderRadius: '2px', background: CLASS_COLORS[i % 5] }}></div>
+                    <span style={{ color: 'var(--color-muted)' }}>{z.key}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
         </div>
       </div>

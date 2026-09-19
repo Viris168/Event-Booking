@@ -32,3 +32,6 @@ Thumbs.db
 *.class
 logs/
 api/logs/
+
+### Node ###
+node_modules/

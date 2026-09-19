@@ -56,6 +56,8 @@ export function mapEvent(e) {
   return {
     id: e.id,
     organizer_id: e.organizer_id ?? e.organizerId,
+    organizer_name_en: e.organizerNameEn ?? e.organizer_name_en ?? null,
+    organizer_name_km: e.organizerNameKm ?? e.organizer_name_km ?? null,
     // EventResponse carries the venue as a nested object and no flat id, so
     // the first two are always undefined on a real response. Without the third
     // the edit form loaded an event, found no venue, never fetched that venue's

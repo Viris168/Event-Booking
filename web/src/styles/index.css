@@ -431,6 +431,9 @@
     @apply mb-3 flex flex-wrap items-end justify-between gap-4;
   }
   .page-head h1,
+  .rq-head h1,
+  .page-title-lockup h1,
+  .checkin-head h1,
   .about-head h1,
   .contact-head h1,
   .org-apply-head h1 {
@@ -3722,25 +3725,30 @@
     animation: scan 2.2s ease-in-out infinite;
   }
   .scan-result {
-    @apply flex items-center gap-[0.9rem] rounded-ui px-[1.2rem] py-[1.1rem] text-white;
+    @apply flex items-start gap-[1rem] rounded-[14px] px-[1.35rem] py-[1.25rem] text-white;
+    animation: rise 0.28s ease-out both;
+    border-bottom: 3px solid rgba(255, 255, 255, 0.18);
   }
   .scan-result.ok {
     background: linear-gradient(135deg, #0f6b46, #17915f);
+    border-bottom-color: #34d399;
   }
   .scan-result.bad {
     background: linear-gradient(135deg, #8e2418, #c24433);
+    border-bottom-color: #f87171;
   }
   .scan-result.warn {
     background: linear-gradient(135deg, #96540a, #cc8420);
+    border-bottom-color: #fbbf24;
   }
   .scan-result > .icon {
-    @apply grid size-[46px] flex-none place-items-center rounded-[14px] bg-white/[0.18];
+    @apply grid size-[52px] flex-none place-items-center rounded-[14px] bg-white/[0.18];
   }
   .scan-result b {
-    @apply block text-[1.15rem];
+    @apply block text-[1.25rem] font-bold leading-snug;
   }
   .scan-result span {
-    @apply block text-[0.86rem] text-white/85;
+    @apply mt-0.5 block text-[0.86rem] text-white/85;
   }
 
   /* ----------------------------------------------------------------- alerts */
@@ -3823,6 +3831,15 @@
   .timeline li::before {
     content: "";
     @apply mt-[0.45rem] size-[9px] rounded-full bg-brand-500;
+  }
+  .timeline li.dot-ok::before {
+    @apply bg-success;
+  }
+  .timeline li.dot-warn::before {
+    background: #d97706;
+  }
+  .timeline li.dot-bad::before {
+    @apply bg-danger;
   }
   .timeline li:not(:last-child)::after {
     content: "";
@@ -4016,25 +4033,38 @@
    * navs take a share of the width instead and spread across it, so the row
    * ends flush at both edges with no void in the middle.
    */
-  .footer-top {
-    @apply grid gap-x-12 gap-y-[2.4rem];
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+  /* -------------------------------------------------------- 4-Column Grid */
+  .footer-grid-4 {
+    @apply grid gap-x-10 gap-y-10;
+    grid-template-columns: minmax(0, 1.4fr) repeat(3, minmax(0, 1fr));
   }
-  .footer-nav {
-    @apply grid gap-x-8 gap-y-[1.9rem];
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-  /* Below 900 the brand paragraph and the nav block cannot share a line, so the
-     navs drop underneath and take the full width on their own. */
-  @media (max-width: 900px) {
-    .footer-top {
-      @apply grid-cols-1;
-    }
-  }
-  @media (max-width: 560px) {
-    .footer-nav {
+  @media (max-width: 1024px) {
+    .footer-grid-4 {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
+  }
+  @media (max-width: 580px) {
+    .footer-grid-4 {
+      grid-template-columns: 1fr;
+    }
+  }
+  .footer-brand-col {
+    @apply flex flex-col items-start gap-3;
+  }
+  .footer-brand-desc {
+    @apply m-0 text-[0.84rem] leading-relaxed text-white/70 max-w-[40ch];
+  }
+  .footer-contact-list {
+    @apply my-1 flex flex-col gap-1.5 text-[0.82rem] text-white/65;
+  }
+  .footer-contact-item {
+    @apply inline-flex items-center gap-2 text-white/70 no-underline transition-colors hover:text-white;
+  }
+  .footer-nav-link {
+    @apply inline-flex items-center gap-2 text-[0.84rem] text-white/75 no-underline transition-all hover:text-white;
+  }
+  .footer-back-to-top {
+    @apply inline-flex min-h-[32px] items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.05] px-3.5 py-1 text-[0.76rem] font-semibold text-white/75 no-underline transition-all hover:border-gold-500/60 hover:bg-gold-500/10 hover:text-gold-500 cursor-pointer;
   }
 
   /* The measure is capped on the paragraph, not on the column. Capping the
@@ -4055,13 +4085,23 @@
    * .nav-brand / .nav-mark, including the gap.
    */
   .footer-lockup {
-    @apply flex items-center gap-[0.5rem];
+    @apply flex flex-none items-center gap-[0.5rem] text-[1.02rem] font-extrabold text-white tracking-[-0.015em] no-underline transition-opacity hover:opacity-90 hover:no-underline;
+  }
+  .footer-lockup:hover,
+  .footer-lockup:focus {
+    @apply text-white no-underline;
+  }
+  .footer-lockup:focus-visible {
+    @apply outline-2 outline-offset-2 outline-gold-500;
+    box-shadow: none;
   }
   .footer-mark {
     @apply h-[30px] w-auto;
   }
+  .footer-brand-text,
+  .footer-lockup strong,
   .footer-brand strong {
-    @apply block text-[1.02rem] font-extrabold tracking-[-0.015em] text-white;
+    @apply whitespace-nowrap text-[1.02rem] font-extrabold tracking-[-0.015em] text-white;
     font-family: var(--font-sans);
   }
   .footer-brand p {
@@ -4193,40 +4233,30 @@
       color 0.15s ease;
   }
   .footer-social a:hover {
-    @apply bg-white/15 text-white no-underline;
+    border-color: var(--social-accent, rgba(255, 255, 255, 0.3));
+    color: var(--social-accent, #ffffff);
+    background: rgba(255, 255, 255, 0.12);
   }
 
   /*
-   * The closing bar: copyright at one edge, the payment marks at the other.
-   *
-   * It used to run on .footer-grid's four-track template so its three items
-   * would line up with the columns above, which put the social plates in the
-   * dead centre of the bar with nothing above or below them. The accounts live
-   * with the brand now, which leaves two items and no reason for a grid.
+   * The closing bar: copyright on left, payment marks centered, back-to-top on right.
    */
   .footer-bottom {
-    @apply mt-[2.6rem] flex flex-wrap items-center justify-between gap-x-8 gap-y-[1rem]
-      border-t border-white/[0.11] pt-[1.15rem] text-[0.78rem] text-white/[0.56];
+    @apply mt-[2.6rem] flex flex-col items-center justify-between gap-y-4 gap-x-6
+      border-t border-white/[0.11] pt-[1.15rem] text-[0.78rem] text-white/[0.56]
+      md:grid md:grid-cols-3 md:items-center;
+  }
+  .footer-copy {
+    @apply flex items-center justify-center text-center md:justify-self-start md:text-left;
+  }
+  .footer-pay-cluster {
+    @apply flex flex-wrap items-center justify-center gap-2 md:justify-self-center;
+  }
+  .footer-bottom .footer-back-to-top {
+    @apply md:justify-self-end;
   }
   /*
    * Payment marks as plates rather than a line of small type.
-   *
-   * They answer "can I actually pay on this site", and a visitor settles that
-   * by spotting a mark they already know - so they are given an edge and a
-   * ground of their own instead of reading as two more footer links that have
-   * stopped working. They travel and wrap together.
-   */
-  .footer-pay-row {
-    @apply flex flex-wrap items-center gap-[0.45rem];
-  }
-  /*
-   * min-h rather than symmetric padding: one plate holds a line of type and the
-   * other holds the drawn KHQR mark, which is taller than the type it sits
-   * beside. Padding alone gave them two different heights, and two trust marks
-   * of different heights look like one of them is a mistake. The mark is set at
-   * 18px because the Q in it is a miniature QR symbol - below that the modules
-   * merge and it reads as a filled square, which is the one thing it must not
-   * look like.
    */
   .footer-pay {
     @apply inline-flex min-h-[32px] items-center gap-[0.4rem] rounded-tiny border
@@ -4338,6 +4368,62 @@
   }
   .fact b {
     @apply block text-[0.92rem];
+  }
+
+  /* ----------------------------------------- about-event combined card */
+  .about-event-card {
+    @apply flex flex-col;
+    gap: 1.1rem;
+  }
+  .about-event-heading {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: #1a1f36;
+  }
+  .about-event-meta {
+    @apply flex items-center;
+    gap: 2rem;
+  }
+  .about-event-meta-item {
+    @apply flex items-center;
+    gap: 0.55rem;
+  }
+  .about-event-circle {
+    @apply inline-grid place-items-center rounded-full flex-none;
+    width: 36px;
+    height: 36px;
+    background: var(--color-tint-2);
+    color: #1a1f36;
+  }
+  .about-event-circle.blue {
+    background: #e7ecfc;
+    color: #1a1f36;
+  }
+  .about-event-circle.gold {
+    background: #fdf0d5;
+    color: #b8860b;
+  }
+  .about-event-meta-label {
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-muted);
+    line-height: 1;
+    margin-bottom: 0.15rem;
+  }
+  .about-event-meta-value {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #0f172a;
+  }
+  .about-event-desc {
+    color: var(--color-ink-2);
+    line-height: 1.65;
+    font-size: 0.87rem;
+  }
+  .about-event-desc p + p {
+    margin-top: 0.55rem;
   }
 
   /* ------------------------------------------------------------------ icons */
@@ -5014,12 +5100,65 @@
    far fewer pixels than that, and the room on screen is better spent on the
    verdict. */
 .scan-live {
-  width: min(100%, 320px);
+  position: relative;
+  width: min(100%, 360px);
   aspect-ratio: 1;
   margin-inline: auto;
   overflow: hidden;
-  border-radius: 0.7rem;
+  border-radius: 0.85rem;
   background: #000;
+}
+/* Corner bracket decorations — four L-shaped corners over the viewfinder. */
+.scan-live::before,
+.scan-live::after {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  width: 28px;
+  height: 28px;
+  border-color: rgba(255, 255, 255, 0.7);
+  border-style: solid;
+  pointer-events: none;
+}
+.scan-live::before {
+  top: 12px;
+  left: 12px;
+  border-width: 3px 0 0 3px;
+  border-radius: 4px 0 0 0;
+}
+.scan-live::after {
+  top: 12px;
+  right: 12px;
+  border-width: 3px 3px 0 0;
+  border-radius: 0 4px 0 0;
+}
+/* Bottom corners need a wrapper element since ::before/::after are taken. */
+.scan-corners {
+  position: relative;
+  width: min(100%, 360px);
+  margin-inline: auto;
+}
+.scan-corners::before,
+.scan-corners::after {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  bottom: 12px;
+  width: 28px;
+  height: 28px;
+  border-color: rgba(255, 255, 255, 0.7);
+  border-style: solid;
+  pointer-events: none;
+}
+.scan-corners::before {
+  left: 12px;
+  border-width: 0 0 3px 3px;
+  border-radius: 0 0 0 4px;
+}
+.scan-corners::after {
+  right: 12px;
+  border-width: 0 3px 3px 0;
+  border-radius: 0 0 4px 0;
 }
 
 /* The library writes inline width/height onto the elements it injects, so these
@@ -5042,14 +5181,97 @@
 
 .scanner-idle {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.4rem;
-  padding: 0.7rem;
-  border: 1px dashed rgba(163, 152, 137, 0.4);
-  border-radius: 0.6rem;
-  font-size: 0.78rem;
-  color: rgba(163, 152, 137, 0.9);
+  gap: 0.5rem;
+  padding: 1.5rem 1rem;
+  border: 1.5px dashed rgba(163, 152, 137, 0.3);
+  border-radius: 0.85rem;
+  font-size: 0.82rem;
+  color: rgba(163, 152, 137, 0.75);
+  background: rgba(163, 152, 137, 0.04);
+}
+.scanner-idle .scanner-idle-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(163, 152, 137, 0.1);
+  color: rgba(163, 152, 137, 0.6);
+}
+
+/* -------------------------------------------------------- check-in page extras */
+
+/* The page header lockup: icon-chip + title on the same line. */
+.page-title-lockup,
+.checkin-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.page-title-lockup h1,
+.checkin-head h1 {
+  font-size: clamp(1.85rem, 1.4rem + 1.4vw, 2.25rem);
+  @apply font-extrabold leading-tight tracking-tight text-ink;
+  margin: 0;
+}
+
+/* Camera toggle when active: tinted green to indicate live state. */
+.btn-cam-active {
+  border-color: color-mix(
+    in oklab,
+    var(--color-success) 50%,
+    transparent
+  ) !important;
+  background: color-mix(
+    in oklab,
+    var(--color-success) 12%,
+    transparent
+  ) !important;
+  color: var(--color-success) !important;
+}
+
+/* Scan prompt: the empty state shown when camera is on but nothing scanned. */
+.scan-prompt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1.2rem;
+  border-radius: 0.85rem;
+  background: color-mix(in oklab, var(--color-brand-500) 8%, transparent);
+  border: 1px solid color-mix(in oklab, var(--color-brand-500) 18%, transparent);
+  text-align: center;
+}
+.scan-prompt .scan-prompt-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: color-mix(in oklab, var(--color-brand-500) 14%, transparent);
+  color: var(--color-brand-500);
+}
+.scan-prompt span {
+  font-size: 0.84rem;
+  color: var(--color-ink-2);
+}
+
+/* Scan count badge next to the Recent scans panel title. */
+.scan-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: color-mix(in oklab, var(--color-brand-500) 14%, transparent);
+  color: var(--color-brand-500);
 }
 
 /* ---------------------------------------------------------------------------
@@ -7540,6 +7762,374 @@ html[lang="km"] .contact-card h2 {
   @apply inline-block rounded-full border border-line px-[0.85rem] py-[0.35rem] text-[0.86rem] font-bold;
   background: var(--color-surface);
 }
+
+/* Reserve Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 22%, rgba(18, 97, 60, 0.24), transparent 34%),
+    rgba(13, 18, 14, 0.68);
+  backdrop-filter: blur(10px);
+  display: grid;
+  place-items: center;
+  z-index: 9999;
+  padding: 1.1rem;
+}
+
+.modal-container.reserve-modal {
+  background: var(--color-surface);
+  border: 1px solid color-mix(in srgb, var(--color-line) 82%, transparent);
+  border-radius: var(--radius-card);
+  width: 100%;
+  max-width: 456px;
+  max-height: calc(100dvh - 2.2rem);
+  box-shadow: 0 26px 70px -24px rgba(6, 39, 24, 0.62);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: reserve-slide-in 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes reserve-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(56px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+.reserve-head {
+  padding: 1.15rem 1.25rem;
+  border-bottom: 1px solid var(--color-line-2);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--color-tint) 78%, var(--color-surface)), var(--color-surface) 58%),
+    var(--color-surface);
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.reserve-head h3 {
+  margin: 0;
+  font-size: 1.18rem;
+}
+
+.reserve-head-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  color: var(--color-brand-700);
+  background: var(--color-brand-100);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-brand-500) 18%, transparent);
+}
+
+.reserve-kicker {
+  color: var(--color-muted);
+  font-size: 0.78rem;
+  font-weight: 750;
+  line-height: 1.2;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.reserve-count {
+  margin-left: auto;
+  flex: none;
+  border: 1px solid color-mix(in srgb, var(--color-brand-500) 22%, var(--color-line));
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-on-tint);
+  padding: 0.35rem 0.62rem;
+  font-size: 0.76rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.reserve-quit {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    transform 0.06s ease;
+}
+.reserve-quit:hover {
+  background: var(--color-surface-2);
+  color: var(--color-ink);
+}
+.reserve-quit:active {
+  transform: scale(0.96);
+}
+
+.modal-body {
+  padding: 1rem 1rem 0;
+  overflow-y: auto;
+}
+
+.reserve-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin-bottom: 1rem;
+}
+
+.reserve-line {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.78rem;
+  border: 1px solid var(--color-line-2);
+  border-radius: var(--radius-ui);
+  background: color-mix(in srgb, var(--color-surface) 88%, var(--color-surface-2));
+  padding: 0.78rem;
+  box-shadow: 0 1px 0 rgba(41, 34, 24, 0.03);
+}
+
+.reserve-line-mark {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  color: var(--color-brand-700);
+  background: var(--color-tint);
+}
+
+.reserve-line .line-info {
+  min-width: 0;
+}
+
+.reserve-line .line-title {
+  color: var(--color-ink);
+  font-size: 0.95rem;
+  font-weight: 750;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.reserve-line .line-sub {
+  margin-top: 0.16rem;
+  color: var(--color-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.line-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.45rem;
+}
+
+.line-price {
+  color: var(--color-ink);
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.btn-remove {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-muted);
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    transform 0.06s ease;
+}
+.btn-remove:hover {
+  border-color: var(--color-danger-soft);
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+.btn-remove:active {
+  transform: scale(0.96);
+}
+
+.reserve-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  margin: 0 -1rem;
+  border-top: 1px dashed var(--color-line);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--color-gold-100) 58%, var(--color-surface)), var(--color-surface-2));
+  color: var(--color-ink);
+  font-size: 0.92rem;
+  font-weight: 750;
+}
+
+.reserve-total .total-val {
+  font-size: 1.28rem;
+  letter-spacing: 0;
+}
+
+.modal-footer {
+  padding: 1rem 1.25rem 1.2rem;
+  background: var(--color-surface);
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  border-top: 1px solid var(--color-line-2);
+}
+
+.reserve-timer {
+  align-self: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.42rem;
+  border-radius: 999px;
+  background: var(--color-tint);
+  color: var(--color-on-tint);
+  padding: 0.45rem 0.72rem;
+  font-size: 0.86rem;
+  font-weight: 750;
+}
+
+.reserve-timer.warn {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+
+.reserve-actions {
+  display: flex;
+  gap: 0.7rem;
+}
+
+.btn-release {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-ui);
+  background: var(--color-surface);
+  color: var(--color-ink-2);
+  padding: 0.72rem 1rem;
+  font-size: 0.95rem;
+  font-weight: 750;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.06s ease;
+}
+.btn-release:hover {
+  border-color: var(--color-danger-soft);
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+.btn-release:active {
+  transform: translateY(1px);
+}
+
+.btn-checkout {
+  flex: 1 1 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 48px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-ui);
+  background: var(--color-brand-600);
+  color: white;
+  padding: 0.72rem 1.1rem;
+  font-size: 0.95rem;
+  font-weight: 800;
+  line-height: 1.25;
+  text-align: center;
+  white-space: nowrap;
+  cursor: pointer;
+  text-decoration: none;
+  box-shadow: 0 12px 22px -16px rgba(18, 97, 60, 0.9);
+  transition:
+    background 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.06s ease;
+}
+.btn-checkout:hover {
+  background: var(--color-brand-700);
+  color: white;
+  text-decoration: none;
+  box-shadow: 0 16px 26px -18px rgba(18, 97, 60, 0.95);
+}
+.btn-checkout:active {
+  transform: translateY(1px);
+}
+
+.reserve-note {
+  margin: -0.15rem 0 0;
+  color: var(--color-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: center;
+}
+
+html[lang="km"] .reserve-kicker {
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+@media (max-width: 460px) {
+  .modal-overlay {
+    align-items: end;
+    padding: 0.6rem;
+  }
+  .modal-container.reserve-modal {
+    border-radius: 18px;
+  }
+  .reserve-head {
+    align-items: flex-start;
+  }
+  .reserve-count {
+    display: none;
+  }
+  .reserve-quit {
+    margin-left: auto;
+  }
+  .reserve-line {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .line-actions {
+    grid-column: 2;
+    justify-content: space-between;
+  }
+  .reserve-actions {
+    flex-direction: column-reverse;
+  }
+  .btn-release,
+  .btn-checkout {
+    width: 100%;
+  }
+}
+
 .pricerange-dash {
   @apply h-px w-3 shrink-0 self-center;
   background: var(--color-line);

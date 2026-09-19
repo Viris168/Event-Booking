@@ -104,7 +104,7 @@ export default function BookingDetailPage() {
   const openAttempt = (apiPayments ?? []).find((p) =>
     ['PENDING', 'CREATED'].includes(p.status ?? p.state),
   )
-  const expiresAt = openAttempt?.expires_at ?? openAttempt?.expiresAt
+  const expiresAt = apiBooking?.expires_at ?? apiBooking?.expiresAt ?? openAttempt?.expires_at ?? openAttempt?.expiresAt
   const msLeft = expiresAt ? Date.parse(expiresAt) - now : null
 
   // Ticks only while there is a live deadline on screen. An interval running on
@@ -286,7 +286,15 @@ export default function BookingDetailPage() {
       </div>
 
       <Alert tone={TONE[booking.state]}>
-        {STATE_COPY[booking.state]?.[locale] || STATE_COPY[booking.state]?.en}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
+          <span>{STATE_COPY[booking.state]?.[locale] || STATE_COPY[booking.state]?.en}</span>
+          {msLeft !== null && msLeft > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontWeight: '700', whiteSpace: 'nowrap' }}>
+              <Icon name="clock" size={16} />
+              {t('timeLeft', 'Time left:')} {countdown(msLeft)}
+            </div>
+          )}
+        </div>
       </Alert>
 
       {mine && (act.canPay || act.canCancel) && (

@@ -267,6 +267,7 @@ const dict = {
   myEvents: { en: "My events", km: "ព្រឹត្តិការណ៍របស់ខ្ញុំ" },
   createEvent: { en: "Create event", km: "បង្កើតព្រឹត្តិការណ៍" },
   editEvent: { en: "Edit event", km: "កែសម្រួលព្រឹត្តិការណ៍" },
+  venue: { en: "Venue", km: "ទីតាំង" },
   venues: { en: "Venues", km: "ទីតាំងរៀបចំ" },
   seatMap: { en: "Seat map", km: "ប្លង់កៅអី" },
   sales: { en: "Sales", km: "របាយការណ៍លក់" },

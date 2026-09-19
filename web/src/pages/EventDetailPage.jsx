@@ -1,7 +1,7 @@
 import { useDocumentTitle } from '../lib/useDocumentTitle.js'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import HoldBar from '../components/HoldBar.jsx'
+import ReserveModal from '../components/ReserveModal.jsx'
 import Icon, { CATEGORY_ICON } from '../components/Icon.jsx'
 import SeatMap from '../components/SeatMap.jsx'
 import VenueLayoutPanel from '../components/VenueLayoutPanel.jsx'
@@ -16,7 +16,7 @@ import { useProvinces } from '../lib/useProvinces.js'
 import { eventArt, artUrl, sized, sizedSrcSet } from '../lib/eventArt.js'
 import { getEvent } from '../api/events.js'
 import { getSeatMap, getZoneAvailability } from '../api/availability.js'
-import { createHold, releaseHold, getHold, extendHold } from '../api/holds.js'
+import { createHold, releaseHold, getHold, extendHold, announceHoldChange } from '../api/holds.js'
 import { mapEvent, mapSeatMap, mapZone, mapHoldResponse } from '../api/adapters.js'
 import QrLightbox from '../components/QrLightbox.jsx'
 
@@ -84,6 +84,7 @@ export default function EventDetailPage() {
             if (res.status === 'EXPIRED') {
               sessionStorage.removeItem(`activeHoldId_${id}`)
               setExpiredNotice(true)
+              announceHoldChange()
             } else {
               setApiHoldData(mapHoldResponse(res))
             }
@@ -294,6 +295,7 @@ export default function EventDetailPage() {
         setApiHoldData(mapHoldResponse(res))
         setSelectedSeats([])
         setZoneQty({})
+        announceHoldChange()
         toast(locale === 'km' ? 'កៅអីត្រូវបានកក់ទុក។' : 'Held successfully — finish checkout to keep them.', 'success')
       })
       .catch((err) => {
@@ -328,6 +330,7 @@ export default function EventDetailPage() {
     extendHold(event.id, hold.id)
       .then((res) => {
         setApiHoldData(mapHoldResponse(res))
+        announceHoldChange()
         toast(t('extended'), 'success')
       })
       .catch((err) => {
@@ -347,6 +350,7 @@ export default function EventDetailPage() {
           sessionStorage.removeItem(`activeHoldId_${event.id}`)
           setApiHoldData(null)
           setSelectedSeats([])
+          announceHoldChange()
           toast(
             locale === 'km'
               ? 'ការកក់បានផុតកំណត់ ហើយកៅអីត្រូវបានដាក់លក់វិញ។'
@@ -365,9 +369,58 @@ export default function EventDetailPage() {
     releaseHold(event.id, hold.id).then(() => {
       sessionStorage.removeItem(`activeHoldId_${event.id}`)
       setApiHoldData(null)
+      
+      // Refresh inventory so released seats become available again
+      getSeatMap(id).then((res) => { if (res) setApiSeats(mapSeatMap(res).seats) })
+      getZoneAvailability(id).then((res) => { if (Array.isArray(res)) setApiZones(res.map(mapZone)) })
+      
+      announceHoldChange()
       toast(locale === 'km' ? 'បានលែងកៅអីវិញ។' : 'Hold released.', 'info')
     }).catch(() => {
       toast(`Could not release hold`, 'error')
+    })
+  }
+
+  function handleRemoveItem(type, itemId) {
+    if (!hold) return
+    
+    let newSeatIds = apiHoldData?.seats.map(s => s.id) || []
+    let newZoneQty = {}
+    ;(apiHoldData?.zoneLines || []).forEach(z => {
+      newZoneQty[z.event_zone_id] = z.qty
+    })
+
+    if (type === 'seat') {
+      newSeatIds = newSeatIds.filter(id => id !== itemId)
+    } else if (type === 'zone') {
+      if (newZoneQty[itemId] > 1) {
+        newZoneQty[itemId]--
+      } else {
+        delete newZoneQty[itemId]
+      }
+    }
+
+    if (newSeatIds.length === 0 && Object.keys(newZoneQty).length === 0) {
+      onRelease()
+      return
+    }
+
+    // Attempt to quickly swap the hold
+    releaseHold(event.id, hold.id).then(() => {
+      return createHold(event.id, { seat_ids: newSeatIds, zone_qty: newZoneQty })
+    }).then((res) => {
+      sessionStorage.setItem(`activeHoldId_${event.id}`, res.id)
+      setApiHoldData(mapHoldResponse(res))
+      
+      // Refresh inventory
+      getSeatMap(id).then((sm) => { if (sm) setApiSeats(mapSeatMap(sm).seats) })
+      getZoneAvailability(id).then((za) => { if (Array.isArray(za)) setApiZones(za.map(mapZone)) })
+      announceHoldChange()
+    }).catch((err) => {
+      toast('Could not update selection', 'error')
+      setApiHoldData(null)
+      sessionStorage.removeItem(`activeHoldId_${event.id}`)
+      announceHoldChange()
     })
   }
 
@@ -508,65 +561,46 @@ export default function EventDetailPage() {
       )}
 
       {hold && (
-        <div style={{ marginTop: '1rem' }}>
-          <HoldBar
-            hold={hold}
-            onExtend={onExtend}
-            onRelease={onRelease}
-            checkoutTo={`/checkout?event=${event.id}&hold=${hold.id}`}
-          />
-        </div>
+        <ReserveModal
+          hold={hold}
+          seats={apiHoldData?.seats}
+          zoneLines={apiHoldData?.zoneLines}
+          subtotalUsdCents={apiHoldData?.subtotalUsdCents}
+          onRelease={onRelease}
+          onRemoveItem={handleRemoveItem}
+          checkoutTo={`/checkout?event=${event.id}&hold=${hold.id}`}
+        />
       )}
 
       <div className="split" style={{ marginTop: '1.4rem' }}>
         <div className="stack">
           <div className="card">
-            <div className="card-body">
-              <div className="event-facts">
-                <div className="fact">
-                  <div className="tiny">{t('doorsOpen')}</div>
-                  <b>{time(event.doors_open_at)}</b>
+            <div className="card-body about-event-card">
+              <h2 className="about-event-heading">{t('about')}</h2>
+
+              <div className="about-event-meta">
+                <div className="about-event-meta-item">
+                  <span className="about-event-circle blue">
+                    <Icon name="calendar" size={16} />
+                  </span>
+                  <div>
+                    <div className="about-event-meta-label">{t('starts')}</div>
+                    <div className="about-event-meta-value">{dateTime(event.starts_at)}</div>
+                  </div>
                 </div>
-                <div className="fact">
-                  <div className="tiny">{t('starts')}</div>
-                  <b>{dateTime(event.starts_at)}</b>
-                </div>
-                <div className="fact">
-                  <div className="tiny">{t('salesClose')}</div>
-                  <b>{date(event.sales_close_at)}</b>
-                </div>
-                <div className="fact">
-                  <div className="tiny">{t('from_price')}</div>
-                  <b>
-                    <Money
-                      cents={
-                        [...classes, ...zones].length
-                          ? Math.min(...[...classes, ...zones].map((x) => x.price_usd_cents))
-                          : 0
-                      }
-                    />
-                  </b>
+
+                <div className="about-event-meta-item">
+                  <span className="about-event-circle gold">
+                    <Icon name="user" size={16} />
+                  </span>
+                  <div>
+                    <div className="about-event-meta-label">{t('organizer')}</div>
+                    <div className="about-event-meta-value">{(locale === 'km' ? event.organizer_name_km : event.organizer_name_en) || venueName}</div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
 
-          {/* No plain venue card here. It would show the venue name and
-              address, which the hero above already states in full - the same
-              two lines twice on one screen for no reason. VenueLayoutPanel
-              carries that same duplication, but earns it once there is a
-              seating chart to go with it: the one thing the hero cannot
-              carry. Without a map it would be a duplicate with a heading, so
-              it is gated on mapUrl rather than rendered unconditionally. */}
-          {mapUrl && <VenueLayoutPanel imageUrl={mapUrl} venue={venue} />}
-
-          <div className="card">
-            <div className="card-head">
-              <h2>{t('about')}</h2>
-            </div>
-
-            <div className="card-body about-body">
-              <div className="about-text stack-sm">
+              <div className="about-event-desc">
                 <p>{locale === 'km' ? event.description_km : event.description_en}</p>
                 <p className={locale === 'km' ? 'small muted' : 'small muted km'}>
                   {locale === 'km' ? event.description_en : event.description_km}
@@ -574,6 +608,11 @@ export default function EventDetailPage() {
               </div>
             </div>
           </div>
+
+          {/* Now rendered if there is a map OR if there are seating zones to display as a legend */}
+          {(mapUrl || unifiedZones.length > 0) && (
+            <VenueLayoutPanel imageUrl={mapUrl} venue={venue} zones={unifiedZones} />
+          )}
 
           {/* canBuy gates the picker too: choosing seats you cannot reserve is
               worse than not being offered the choice — the work is only

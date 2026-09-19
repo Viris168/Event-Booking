@@ -64,8 +64,9 @@ public class EventServiceimpl implements EventService {
     private final EventSnapshotter eventSnapshotter;
     private final ApplicationEventPublisher events;
     private final OrganizerContactLookup organizerContactLookup;
+    private final OrganizerProfileRepository organizerProfileRepository;
 
-    public EventServiceimpl(VenueRepository venueRepository, EventRepository eventRepository, SeatClassRepository seatClassRepository, EventZoneRepository eventZoneRepository, CloudinaryService cloudinaryService, OrganizerResolver organizerResolver, EventStateMachine stateMachine, EventReviewRepository eventReviewRepository, AppUserRepository appUserRepository, EventSeatRepository eventSeatRepository, EventSnapshotter eventSnapshotter, ApplicationEventPublisher events, OrganizerContactLookup organizerContactLookup) {
+    public EventServiceimpl(VenueRepository venueRepository, EventRepository eventRepository, SeatClassRepository seatClassRepository, EventZoneRepository eventZoneRepository, CloudinaryService cloudinaryService, OrganizerResolver organizerResolver, EventStateMachine stateMachine, EventReviewRepository eventReviewRepository, AppUserRepository appUserRepository, EventSeatRepository eventSeatRepository, EventSnapshotter eventSnapshotter, ApplicationEventPublisher events, OrganizerContactLookup organizerContactLookup, OrganizerProfileRepository organizerProfileRepository) {
         this.organizerResolver = organizerResolver;
         this.stateMachine = stateMachine;
         this.eventReviewRepository = eventReviewRepository;
@@ -79,6 +80,7 @@ public class EventServiceimpl implements EventService {
         this.eventSnapshotter = eventSnapshotter;
         this.events = events;
         this.organizerContactLookup = organizerContactLookup;
+        this.organizerProfileRepository = organizerProfileRepository;
     }
 
     @Override
@@ -154,7 +156,7 @@ public class EventServiceimpl implements EventService {
                 // Nothing sold - it was created a line ago.
                 actionsFor(event, Audience.ORGANIZER, 0),
                 stateMachine.isEditable(event.getStatus()),
-                null, null, null);
+                null, null, null, null, null);
     }
 
     @Override
@@ -880,18 +882,27 @@ public class EventServiceimpl implements EventService {
                 ? organizerContact(event.getOrganizerId())
                 : new String[] { null, null };
 
+        String orgNameEn = null;
+        String orgNameKm = null;
+        var orgProfile = organizerProfileRepository.findById(event.getOrganizerId()).orElse(null);
+        if (orgProfile != null) {
+            orgNameEn = orgProfile.getOrgNameEn();
+            orgNameKm = orgProfile.getOrgNameKm();
+        }
+
         return EventMapper.toEventResponse(
                 event,
                 seatClasses,
                 zones,
-                // Stored as delivery URLs since V18, so they go straight out.
                 event.getCloudinaryImageId(),
                 event.getCloudinaryBannerId(),
                 actionsFor(event, audience, sold),
                 stateMachine.isEditable(event.getStatus()),
                 latestReview(event.getId()),
                 contact[0],
-                contact[1]);
+                contact[1],
+                orgNameEn,
+                orgNameKm);
     }
 
     /**
