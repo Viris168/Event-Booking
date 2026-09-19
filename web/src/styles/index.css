@@ -391,6 +391,32 @@
     }
   }
 
+  /* Exactly one row, whatever the grid is currently doing.
+     Capping the array in JS cannot do this on its own: four items is one row
+     at 4-up and a row plus an orphan at 3-up, and the component has no idea
+     which is on screen. The breakpoints below are .grid-cards' own, so the two
+     stay in step - change a column count there and the matching rule here has
+     to move with it. The trimmed cards are still in the DOM and still fetched;
+     "View all" is one click away and this is a preview, not the catalogue. */
+  .grid-one-row > :nth-child(n + 5) {
+    @apply hidden;
+  }
+  @media (max-width: 1180px) {
+    .grid-one-row > :nth-child(n + 4) {
+      @apply hidden;
+    }
+  }
+  @media (max-width: 980px) {
+    .grid-one-row > :nth-child(n + 3) {
+      @apply hidden;
+    }
+  }
+  @media (max-width: 640px) {
+    .grid-one-row > :nth-child(n + 2) {
+      @apply hidden;
+    }
+  }
+
   .split {
     @apply grid items-start gap-[1.4rem];
     grid-template-columns: minmax(0, 1fr) 340px;
@@ -1554,14 +1580,7 @@
     @apply mt-3 max-w-[56ch] text-[1.05rem] font-normal leading-relaxed text-white/80;
   }
   /* Copy on the left, the rotating rail on the right. Below 1080px the two
-     stack, and the rail goes wide-and-short instead of disappearing.
-     It used to be hidden outright, on the reasoning that a 400px square card
-     above the fold is the wrong trade against the search box on a phone. The
-     square was the problem, not the card: at 16/10 it costs about 210px, sits
-     under the quick links where it interrupts nothing, and a phone is exactly
-     where one tap into the next event on sale is worth most. (The loading
-     skeleton never honoured the old rule anyway, so a phone flashed a
-     spotlight placeholder and then lost the card it promised.) */
+     stack, and the rail goes wide-and-short instead of disappearing. */
   .hero-grid {
     @apply grid items-center gap-10;
     grid-template-columns: minmax(0, 1fr) 320px;
@@ -1794,6 +1813,231 @@
     @apply text-white/55;
   }
 
+  .quick-links {
+    @apply mt-4 flex flex-wrap items-center gap-[0.45rem];
+  }
+  .quick-links .tiny {
+    @apply mr-1 text-[0.72rem] font-bold uppercase tracking-wider text-white/50;
+  }
+  .quick-chip {
+    @apply inline-flex items-center gap-[0.4rem] rounded-full border border-white/[0.14]
+      bg-white/[0.08] backdrop-blur-md px-[0.8rem] py-[0.32rem] text-[0.82rem] font-semibold text-white/90;
+    transition: all 0.2s ease;
+  }
+  .quick-chip:hover {
+    @apply border-white/40 bg-white/[0.18] text-white -translate-y-0.5 no-underline;
+  }
+
+  /* ---------------------------------------- split: text beside an image ---
+     The wireframe's "Outcome" and "Your Name" sections, and its accordion
+     section reversed. One layout serves all three - which side carries the
+     text is the only thing that changes between them. */
+  .home-split {
+    @apply mb-8 grid items-center gap-10 border-t border-line pt-8;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.85fr);
+  }
+  /* Column widths only - no `order` override. The panel is written FIRST in
+     JSX for this variant, so plain grid auto-placement already lands it in
+     the first (narrower) column and the text in the second: exactly "image
+     left, text right" with nothing to reverse. An order swap here was tried
+     and did the opposite of what it looked like it should - it un-reversed
+     the reverse at desktop width, which is what put the image back on the
+     right and the panel where the text was meant to be. */
+  .home-split-reverse {
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1fr);
+  }
+  @media (max-width: 860px) {
+    .home-split {
+      @apply grid-cols-1 gap-6;
+    }
+  }
+  .home-split-text h2 {
+    @apply m-0 max-w-[22ch] text-[1.55rem] leading-[1.2];
+  }
+  .home-split-text > p {
+    @apply mb-0 mt-3 max-w-[54ch] text-[0.98rem] leading-relaxed text-muted;
+  }
+  .home-bullets {
+    @apply m-0 my-5 flex list-none flex-col gap-[0.6rem] p-0;
+  }
+  .home-bullets li {
+    @apply flex items-start gap-[0.55rem] text-[0.95rem] leading-[1.5] text-ink-2;
+  }
+  .home-bullets svg {
+    @apply mt-[0.15rem] flex-none text-success;
+  }
+
+  /* The decorative panel standing in for photography - see FeaturePanel in
+     HomePage.jsx. Square-ish rather than a photo's 16/9, so it reads as an
+     illustrated tile and not as a broken image waiting for real art. */
+  .home-panel {
+    @apply mx-auto grid aspect-[4/3] max-h-[320px] w-full place-items-center justify-self-center rounded-card text-white/90;
+  }
+  /* A real photo filling the same slot as the decorative gradient tile -
+     cover rather than contain, so a wide crop fills the frame instead of
+     letterboxing on a plain background. */
+  .home-shot {
+    @apply border border-line/60 object-cover;
+  }
+  /* The figure takes over the sizing .home-panel otherwise gives the img
+     directly, so the credit and dots can be pinned to a corner without
+     adding height that would knock the split out of alignment with its text
+     column. */
+  .home-photo {
+    @apply relative m-0 overflow-hidden;
+  }
+  /* Every slide stacks in the same box; only the active one is opaque. A
+     cross-fade rather than a slide - these boxes are too small for a track
+     to read as motion rather than a jump cut. */
+  .home-photo .home-shot {
+    @apply absolute inset-0 h-full w-full opacity-0 transition-opacity duration-700 ease-in-out;
+  }
+  .home-photo .home-shot.is-active {
+    @apply opacity-100;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .home-photo .home-shot {
+      transition: none;
+    }
+  }
+  .home-photo figcaption {
+    @apply absolute bottom-2 right-2 z-[1] rounded-full bg-ink/70 px-[0.6rem] py-[0.2rem] text-white/80 backdrop-blur-sm;
+  }
+  .home-photo figcaption a {
+    @apply text-white/90 underline decoration-white/30 underline-offset-2;
+  }
+  .home-photo-dots {
+    @apply absolute bottom-2 left-2 z-[1] flex items-center gap-[0.3rem];
+  }
+  .home-photo-dot {
+    @apply h-[6px] w-[6px] cursor-pointer rounded-full border-0 bg-white/40 p-0;
+    transition:
+      width 0.25s ease,
+      background-color 0.25s ease;
+  }
+  .home-photo-dot:hover {
+    @apply bg-white/70;
+  }
+  .home-photo-dot.on {
+    @apply w-[16px] bg-white/95;
+  }
+
+  /* --------------------------------------------------------- three steps ---
+     Numbered and threaded on a rule, which is what turns "three icon boxes"
+     into a sequence: find, pay, scan, in that order, joined by the line the
+     numbers sit on rather than three unrelated cards. */
+  .home-steps-section {
+    @apply mb-8 border-t border-line pt-8;
+  }
+  .home-steps-head {
+    @apply mb-8 text-center;
+  }
+  .home-steps-head h2 {
+    @apply m-0 text-[1.55rem];
+  }
+  .home-steps {
+    @apply relative m-0 grid list-none gap-8 p-0 md:grid-cols-3 md:gap-10;
+  }
+  /* The connecting line, drawn once behind all three rather than as a border
+     on each - a border per item would just be three more boxes. */
+  @media (min-width: 861px) {
+    .home-steps::before {
+      content: "";
+      @apply absolute left-[16.5%] right-[16.5%] top-[13px] -z-[1] border-t border-dashed border-line;
+    }
+  }
+  .home-steps li {
+    @apply flex flex-col items-center gap-[0.35rem] text-center;
+  }
+  .home-steps svg {
+    @apply mb-1 text-gold-500;
+  }
+  .home-step-num {
+    @apply text-[0.72rem] font-extrabold tracking-[0.16em] text-muted;
+  }
+  .home-steps h3 {
+    @apply m-0 mt-1 text-[1.02rem] font-bold;
+  }
+  .home-steps p {
+    @apply mb-0 mt-[0.3rem] max-w-[26ch] text-[0.9rem] leading-[1.55] text-ink-2;
+  }
+  .home-steps-cta {
+    @apply mt-9 flex justify-center;
+  }
+
+  /* ------------------------------------------------------------- proof ---
+     The wireframe's testimonial slot, plain and centred - no card, no
+     quote marks, because there is no customer quote to put there yet. Real
+     numbers instead of an invented one. */
+  .home-proof {
+    @apply mb-8 border-t border-line pt-10 text-center;
+  }
+  .home-proof h2 {
+    @apply m-0 text-[1.4rem];
+  }
+  .home-proof-stats {
+    @apply mx-auto mt-7 flex max-w-[560px] flex-wrap justify-center gap-x-10 gap-y-5;
+  }
+  .home-proof-stats div {
+    @apply min-w-[120px];
+  }
+  .home-proof-stats b {
+    @apply block text-[2rem] font-extrabold tracking-tight text-ink;
+    font-variant-numeric: tabular-nums;
+  }
+  .home-proof-stats span {
+    @apply text-[0.85rem] text-muted;
+  }
+
+  /* --------------------------------------------------------------- FAQ ---
+     <details>/<summary> rather than a controlled accordion component: no
+     state to wire up, keyboard and screen-reader behaviour come for free, and
+     more than one can be open at once, which is the ordinary way an FAQ
+     works. */
+  .home-faq {
+    @apply my-5 flex flex-col gap-[0.6rem];
+  }
+  .home-faq-item {
+    @apply rounded-ui border border-line bg-surface px-4 py-3;
+  }
+  .home-faq-item summary {
+    @apply flex cursor-pointer list-none items-center justify-between gap-3
+      text-[0.98rem] font-semibold text-ink;
+  }
+  .home-faq-item summary::-webkit-details-marker {
+    display: none;
+  }
+  .home-faq-item summary svg {
+    @apply flex-none text-muted transition-transform duration-200;
+  }
+  .home-faq-item[open] summary svg {
+    @apply rotate-180;
+  }
+  .home-faq-item p {
+    @apply mb-0 mt-[0.6rem] text-[0.9rem] leading-[1.6] text-ink-2;
+  }
+
+  /* --------------------------------------------------------- final band ---
+     Mirrors the hero: a banner behind, one card in front. brand-900 rather
+     than the hero's photo, so the page's last section reads as a deliberate
+     bookend and not as a second hero. */
+  .home-final {
+    @apply bg-brand-900 py-16;
+  }
+  .home-final-card {
+    @apply mx-auto max-w-[640px] rounded-card bg-surface px-8 py-10 text-center shadow-pop;
+  }
+  .home-final-card h2 {
+    @apply m-0 text-[1.6rem];
+  }
+  .home-final-card p {
+    @apply mb-0 mt-3 text-[0.98rem] leading-relaxed text-muted;
+  }
+  .home-final-card .btn {
+    @apply mt-7;
+  }
+
+
   /* ------------------------------------------------------------ search bar */
   /* One pill: query · province · submit, split by hairlines rather than boxes. */
   .searchbar {
@@ -1851,21 +2095,6 @@
     .searchbar .btn {
       @apply rounded-[10px];
     }
-  }
-
-  .quick-links {
-    @apply mt-4 flex flex-wrap items-center gap-[0.45rem];
-  }
-  .quick-links .tiny {
-    @apply mr-1 text-[0.72rem] font-bold uppercase tracking-wider text-white/50;
-  }
-  .quick-chip {
-    @apply inline-flex items-center gap-[0.4rem] rounded-full border border-white/[0.14]
-      bg-white/[0.08] backdrop-blur-md px-[0.8rem] py-[0.32rem] text-[0.82rem] font-semibold text-white/90;
-    transition: all 0.2s ease;
-  }
-  .quick-chip:hover {
-    @apply border-white/40 bg-white/[0.18] text-white -translate-y-0.5 no-underline;
   }
 
   /* Input/select with a leading icon and an optional trailing clear button. */
@@ -2939,11 +3168,8 @@
   }
   /* Surfaces that stay light in both themes — a QR must keep its contrast to
      scan, and the date chips sit on cover art. Re-declaring the neutral tokens
-     locally re-themes every descendant utility in one place.
-     Both chips belong here: .rail-date is the hero's copy of .ev-date on a
-     white plate of its own, and being left off this list is what left it
-     printing near-white text on near-white in dark mode. */
-  [data-theme="dark"] :is(.qr-frame, .ev-media .ev-date, .rail-date) {
+     locally re-themes every descendant utility in one place. */
+  [data-theme="dark"] :is(.qr-frame, .ev-media .ev-date) {
     /* Re-declaring the tokens fixes descendants that apply a colour utility… */
     --color-ink: #1d1a16;
     --color-ink-2: #4a443b;

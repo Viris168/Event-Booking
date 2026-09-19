@@ -2,27 +2,19 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import EventCard from "../components/EventCard.jsx";
 import Icon, { CATEGORY_ICON } from "../components/Icon.jsx";
-import {
-  EventGridSkeleton,
-  SpotlightSkeleton,
-} from "../components/Skeleton.jsx";
+import { EventGridSkeleton, SpotlightSkeleton } from "../components/Skeleton.jsx";
 import { Empty, IconSelect, Money, SearchInput } from "../components/ui.jsx";
 import { useLocale } from "../context/LocaleContext.jsx";
 import { useProvinces } from "../lib/useProvinces.js";
 import { eventArt } from "../lib/eventArt.js";
 import { getEvents } from "../api/events.js";
 
-// One tap into the searches people actually run.
-//
-// Province codes are the numeric ones the API returns ("12" = Phnom Penh), not
-// the two-letter abbreviations the retired mock store used. Those old 'PP' /
-// 'SR' values matched no row once the filter started hitting the real
-// endpoint, so both chips returned an empty grid.
 /* Hero backdrop, served from web/public. If the file is missing the banner
    falls back to its gradient rather than breaking, so swapping the art is just
    a change to this one constant. */
 const HERO_IMAGE = "/event.jpeg";
 
+// One tap into the searches people actually run.
 const QUICK_SEARCHES = [
   {
     q: "pp",
@@ -76,19 +68,7 @@ function startMs(e) {
   return v ? new Date(v).getTime() : Infinity;
 }
 
-/**
- * Is this event taking money right now?
- *
- * <p>The rail is a buy-now surface, and ranking by tickets sold quietly works
- * against that: an event whose sales window has already closed has had the whole
- * window to accumulate sales, so it outranks everything still open almost by
- * construction. The old date ordering hid that — the closed event had to also be
- * the next one up to reach the front. Ranking by sales puts it there by default,
- * which is how the home page ended up led by a card reading "sales closed".
- *
- * <p>Past events need no check here: the public catalogue already lists from
- * today onward, so they never reach this page.
- */
+/** Is this event taking money right now? */
 function isOnSale(e) {
   const now = Date.now();
   const at = (v) => (v ? new Date(v).getTime() : null);
@@ -115,8 +95,7 @@ function getMinPriceCents(event) {
 /**
  * The rail's card. Deliberately NOT the grid's EventCard: this one sits on a
  * photographic banner, so it is a single piece of artwork with the detail laid
- * over it, rather than a picture stacked on a white body. That also makes it
- * shorter, which is what lets it sit beside the headline without crowding.
+ * over it, rather than a picture stacked on a white body.
  */
 function RailCard({ event }) {
   const { t, locale } = useLocale();
@@ -190,9 +169,7 @@ function RailCard({ event }) {
  * The best-selling events, one card at a time, advancing on its own.
  *
  * Auto-advancing content has to be stoppable (WCAG 2.2.2), so the timer pauses
- * while the pointer is over the rail and while focus is inside it — otherwise
- * the card can slide out from under someone mid-click or mid-read. The dots are
- * real buttons, so there is a manual way through regardless.
+ * while the pointer is over the rail and while focus is inside it.
  */
 function HeroRail({ events }) {
   const { locale } = useLocale();
@@ -200,13 +177,8 @@ function HeroRail({ events }) {
   const [paused, setPaused] = useState(false);
   const count = events.length;
 
-  // Derived, not stored: if the list shrinks, a stale index would otherwise
-  // translate the track into empty space. Wrapping here beats correcting it in
-  // an effect, which would cost an extra render every time.
   const active = count ? index % count : 0;
 
-  // Re-keyed on `active` too, so choosing a dot restarts the full interval
-  // instead of inheriting whatever was left of the previous one.
   useEffect(() => {
     if (paused || count < 2) return undefined;
     const id = setTimeout(() => setIndex((i) => (i + 1) % count), ROTATE_MS);
@@ -243,9 +215,6 @@ function HeroRail({ events }) {
           style={{ transform: `translateX(-${active * 100}%)` }}
         >
           {events.map((e, i) => (
-            /* Off-screen slides keep their links in the tab order unless they
-               are inerted — the classic carousel focus trap, where tabbing
-               walks into cards nobody can see. */
             <div
               className="hero-slide"
               key={e.id}
@@ -272,6 +241,229 @@ function HeroRail({ events }) {
         </div>
       )}
     </div>
+  );
+}
+
+/*
+ * Redesigned around a wireframe the team supplied (Home 1 of three): a
+ * banner-and-card hero, a bulleted claim beside an image, a three-step row, a
+ * bio-style card for the other audience, a plain centred proof section, an
+ * accordion beside an image, and a second banner-and-card band closing the
+ * page. The section ORDER and SHAPE follow that wireframe; the CONTENT is
+ * CamboBook's own throughout - every line below is a claim the code backs.
+ *
+ * Two deliberate departures from the wireframe, both because the literal
+ * version would be dishonest or useless here:
+ *   - The hero's single generic button becomes the real search form. A
+ *     ticketing homepage with a button that goes nowhere in particular is
+ *     worse than one with no button at all.
+ *   - A "featured events" grid is inserted right after the hero, which the
+ *     wireframe (built for a service business, not a storefront) has no slot
+ *     for. Following the wireframe to the letter would ship a ticketing site
+ *     with no tickets visible on it.
+ */
+
+/** The "why book" bullets - what buying a ticket actually gets you. */
+const WHY_BOOK = [
+  {
+    icon: "qr",
+    en: "Pay with KHQR from any Bakong app",
+    km: "ទូទាត់ដោយ KHQR ពីកម្មវិធី Bakong ណាមួយ",
+  },
+  {
+    icon: "ticket",
+    en: "One QR code gets you through the gate",
+    km: "កូដ QR មួយសម្រាប់ចូលទ្វារ",
+  },
+  {
+    icon: "seat",
+    en: "Pick your exact seat, or buy into a zone",
+    km: "ជ្រើសកៅអីពិតប្រាកដ ឬទិញតាមតំបន់",
+  },
+  {
+    icon: "clock",
+    en: "Your seats are held while you pay",
+    km: "កៅអីត្រូវបានទុកឱ្យពេលអ្នកទូទាត់",
+  },
+];
+
+/** The three-step row: what actually happens between deciding and getting in. */
+const HOW_STEPS = [
+  {
+    icon: "search",
+    titleEn: "Find your event",
+    titleKm: "ស្វែងរកព្រឹត្តិការណ៍",
+    bodyEn: "Browse by province, category or date, then pick a seat or a zone.",
+    bodyKm: "រុករកតាមខេត្ត ប្រភេទ ឬកាលបរិច្ឆេទ រួចជ្រើសកៅអី ឬតំបន់។",
+  },
+  {
+    icon: "qr",
+    titleEn: "Pay with KHQR",
+    titleKm: "ទូទាត់ដោយ KHQR",
+    bodyEn: "Scan from any Bakong-linked banking app. No new account needed.",
+    bodyKm: "ស្កេនពីកម្មវិធីធនាគារណាមួយដែលភ្ជាប់ Bakong។ មិនចាំបាច់បង្កើតគណនីថ្មីទេ។",
+  },
+  {
+    icon: "ticket",
+    titleEn: "Show your QR at the door",
+    titleKm: "បង្ហាញ QR នៅច្រកចូល",
+    bodyEn: "Gate staff scan your ticket and you're in.",
+    bodyKm: "បុគ្គលិកនៅច្រកចូលស្កេនសំបុត្ររបស់អ្នក រួចអ្នកចូលបាន។",
+  },
+];
+
+/** FAQ accordion. Every answer is checked against the code, not aspirational. */
+const FAQ_ITEMS = [
+  {
+    qEn: "How do I get my ticket?",
+    qKm: "តើខ្ញុំទទួលបានសំបុត្រដោយរបៀបណា?",
+    aEn: "Once your KHQR payment settles, your ticket appears in My Bookings with a QR code - there is nothing to download or print.",
+    aKm: "ពេលការទូទាត់ KHQR ជោគជ័យ សំបុត្ររបស់អ្នកនឹងបង្ហាញនៅក្នុង My Bookings ជាមួយកូដ QR។ មិនចាំបាច់ទាញយក ឬបោះពុម្ពទេ។",
+  },
+  {
+    qEn: "Do I need an ABA or Wing account specifically?",
+    qKm: "តើខ្ញុំត្រូវការគណនី ABA ឬ Wing ជាក់លាក់ដែរឬទេ?",
+    aEn: "No. KHQR works with any Cambodian banking app connected to Bakong, including ABA, Wing and ACLEDA.",
+    aKm: "ទេ។ KHQR ដំណើរការជាមួយកម្មវិធីធនាគារកម្ពុជាណាមួយដែលភ្ជាប់ Bakong រួមទាំង ABA, Wing និង ACLEDA។",
+  },
+  {
+    qEn: "Can I run my own event?",
+    qKm: "តើខ្ញុំអាចរៀបចំព្រឹត្តិការណ៍ផ្ទាល់ខ្លួនបានទេ?",
+    aEn: "Yes - apply from Become an organizer. Once approved you can list events, draw your own seat map and check people in at the door.",
+    aKm: "បាន — ដាក់ពាក្យស្នើសុំពី \u200bក្លាយជាអ្នករៀបចំ\u200b។ នៅពេលអនុម័ត អ្នកអាចចុះបញ្ជីព្រឹត្តិការណ៍ គូសផែនទីកៅអីផ្ទាល់ខ្លួន និងពិនិត្យអ្នកចូល។",
+  },
+];
+
+/** How often the feature panels advance to their next photo, in ms. */
+const PHOTO_ROTATE_MS = 6000;
+
+/**
+ * The team's own photos, standing in for the wireframe's stock illustration
+ * slots. No credit field: FeatureSlider only renders a caption when one is
+ * given, and these need none. One folder per slot under web/public/home/ so
+ * a photo can be swapped without touching code.
+ */
+const WHY_BOOK_PHOTOS = [
+  {
+    src: "/home/why-book/1.webp",
+    alt: {
+      en: "A band on stage with the crowd's arms raised in front of them",
+      km: "ក្រុមតន្ត្រីលើឆាក ជាមួយបណ្តាជនលើកដៃនៅខាងមុខ",
+    },
+  },
+  {
+    src: "/home/why-book/2.webp",
+    alt: {
+      en: "Confetti falling over a crowd with their hands in the air",
+      km: "ក្រដាសពណ៌ធ្លាក់ពីលើបណ្តាជនកំពុងលើកដៃ",
+    },
+  },
+];
+
+const ORGANIZER_PHOTOS = [
+  {
+    src: "/home/organizer/1.webp",
+    alt: {
+      en: "A hand adjusting a DJ mixer's controls under coloured light",
+      km: "ដៃកំពុងលៃតម្រូវឧបករណ៍លាយសំឡេង DJ ក្រោមពន្លឺពណ៌",
+    },
+  },
+  {
+    src: "/home/organizer/2.webp",
+    alt: {
+      en: "Rows of empty stadium seating",
+      km: "ជួរកៅអីទទេនៅក្នុងកីឡដ្ឋាន",
+    },
+  },
+];
+
+const FAQ_PHOTOS = [
+  {
+    src: "/home/faq/1.webp",
+    alt: {
+      en: "A roll of paper admission tickets",
+      km: "ក្រដាសសំបុត្រចូលមួយវេទ្យ",
+    },
+  },
+  {
+    src: "/home/faq/2.webp",
+    alt: {
+      en: "A phone held up recording a concert from the crowd",
+      km: "ទូរស័ព្ទកំពុងថតវីដេអូការប្រគំតន្ត្រីពីចំណោមបណ្តាជន",
+    },
+  },
+];
+
+/**
+ * A slot that cross-fades between a few licensed photos, echoing the hero
+ * rail rather than introducing a second carousel pattern. Pauses on hover
+ * and focus for the same reason HeroRail does (WCAG 2.2.2) - a photo tile is
+ * lower stakes than the hero, but the rule doesn't get cheaper to violate for
+ * that.
+ */
+function FeatureSlider({ photos }) {
+  const { locale } = useLocale();
+  const [index, setIndex] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const count = photos.length;
+  const active = count ? index % count : 0;
+  const current = photos[active];
+
+  useEffect(() => {
+    if (paused || count < 2) return undefined;
+    const id = setTimeout(
+      () => setIndex((i) => (i + 1) % count),
+      PHOTO_ROTATE_MS,
+    );
+    return () => clearTimeout(id);
+  }, [active, paused, count]);
+
+  const hold = useCallback(() => setPaused(true), []);
+  const release = useCallback(() => setPaused(false), []);
+
+  return (
+    <figure
+      className="home-panel home-photo"
+      onMouseEnter={hold}
+      onMouseLeave={release}
+      onFocusCapture={hold}
+      onBlurCapture={release}
+    >
+      {photos.map((p, i) => (
+        <img
+          key={p.src}
+          className={`home-shot${i === active ? " is-active" : ""}`}
+          src={p.src}
+          alt={i === active ? (locale === "km" ? p.alt.km : p.alt.en) : ""}
+          loading={i === 0 ? "eager" : "lazy"}
+          decoding="async"
+          aria-hidden={i !== active}
+        />
+      ))}
+      {count > 1 && (
+        <div className="home-photo-dots">
+          {photos.map((p, i) => (
+            <button
+              key={p.src}
+              type="button"
+              className={`home-photo-dot${i === active ? " on" : ""}`}
+              aria-current={i === active}
+              aria-label={`${locale === "km" ? "រូបភាព" : "Photo"} ${i + 1}`}
+              onClick={() => setIndex(i)}
+            />
+          ))}
+        </div>
+      )}
+      {current.creditName && (
+        <figcaption className="tiny muted">
+          Photo:{" "}
+          <a href={current.creditUrl} target="_blank" rel="noopener noreferrer">
+            {current.creditName}
+          </a>
+          {current.creditLicense ? ` (${current.creditLicense})` : null}
+        </figcaption>
+      )}
+    </figure>
   );
 }
 
@@ -302,25 +494,16 @@ export default function HomePage() {
   }, []);
 
   /*
-   * Best sellers first.
+   * Best sellers first, for the hero rail.
    *
-   * Sorted here rather than by the server because there is nothing to sort on:
-   * EventSort offers soonest and the two price directions only, and totalSold is
-   * derived in EventMapper from the zone and seat-class rows rather than stored
-   * on the event, so there is no column to order by. This therefore ranks the
-   * page already fetched (12 events), not the whole catalogue — the same honest
-   * ceiling the hero's `ticketsSold` counter settles for just below, and for the
-   * same reason.
-   *
-   * filter() copies, so the sort below never mutates `published` — `featured`
-   * and `upcoming` still read it in the API's own date order.
+   * filter() copies, so the sort below never mutates `published` - `featured`
+   * still reads it in the API's own date order.
    */
   const rail = published
     .filter(isOnSale)
     .sort((a, b) => soldCount(b) - soldCount(a) || startMs(a) - startMs(b))
     .slice(0, RAIL_SIZE);
   const featured = published.slice(0, 4);
-  const upcoming = published.slice(4, 12);
 
   /**
    * Hero counters, from the API instead of the retired mock store.
@@ -347,10 +530,6 @@ export default function HomePage() {
   return (
     <>
       <section className="hero">
-        {/* Decorative backdrop, so it carries no alt text. The gradient beneath
-            is what shows while this decodes — and what remains if the file is
-            missing, since the image removes itself on error. That fallback is
-            the reason the banner still looks finished with no art in place. */}
         <img
           className="hero-bg"
           src={HERO_IMAGE}
@@ -403,7 +582,6 @@ export default function HomePage() {
               </button>
             </form>
 
-            {/* Straight into the most common intents, no typing required. */}
             <div className="quick-links">
               <span className="tiny">
                 {locale === "km" ? "ពេញនិយម" : "Popular"}
@@ -424,9 +602,6 @@ export default function HomePage() {
           {loading ? <SpotlightSkeleton /> : <HeroRail events={rail} />}
         </div>
 
-        {/* The numbers sit on a rule at the foot of the banner. They used to
-            trail off the bottom of the copy column, which left the hero with no
-            base and the right half empty below the card. */}
         <div className="hero-base">
           <div className="hero-inner hero-base-inner">
             <div className="hero-stats">
@@ -448,6 +623,10 @@ export default function HomePage() {
       </section>
 
       <div className="container">
+        {/* --------------------------------------------------- on sale now ---
+            The wireframe has no events grid - it was built for a practice
+            with one thing to sell, not a catalogue. Inserted here so a
+            first-time visitor sees actual tickets before anything else. */}
         <section>
           <div className="section-head">
             <h2>{t("featured")}</h2>
@@ -469,25 +648,178 @@ export default function HomePage() {
           )}
         </section>
 
-        <section style={{ marginTop: "2.5rem" }}>
-          <div className="section-head">
-            <h2>{t("upcoming")}</h2>
-            <Link to="/events" className="with-icon">
-              {t("viewAll")}
+        {/* ---------------------------------------------- why book, split ---
+            Text-and-bullets left, image right - the wireframe's "Outcome"
+            section verbatim. The bullets are checkCircle rather than plain
+            dots: the wireframe's own bullet character, drawn in the icon set
+            the rest of the product already uses instead of introducing one. */}
+        <section className="home-split">
+          <div className="home-split-text">
+            <h2>
+              {locale === "km"
+                ? "ហេតុអ្វីត្រូវកក់សំបុត្រជាមួយ CamboBook"
+                : "Why book with CamboBook"}
+            </h2>
+            <p>
+              {locale === "km"
+                ? "រាល់ព្រឹត្តិការណ៍ទាំងអស់ដំណើរការតាមដំណើរការទូទាត់តែមួយ ដូច្នេះការទិញសំបុត្រធ្វើដូចគ្នាទោះជាអ្នករៀបចំណាមួយក៏ដោយ។"
+                : "Every event on the platform runs through the same checkout, so buying a ticket works the same way no matter who is organising it."}
+            </p>
+            <ul className="home-bullets">
+              {WHY_BOOK.map((item) => (
+                <li key={item.icon}>
+                  <Icon name="checkCircle" size={17} />
+                  <span>{locale === "km" ? item.km : item.en}</span>
+                </li>
+              ))}
+            </ul>
+            <Link className="btn btn-primary" to="/events">
+              {locale === "km" ? "រកមើលព្រឹត្តិការណ៍" : "Browse events"}
               <Icon name="arrowRight" size={15} />
             </Link>
           </div>
-          {loading ? (
-            <EventGridSkeleton count={8} />
-          ) : (
-            <div className="grid grid-cards">
-              {upcoming.map((e) => (
-                <EventCard key={e.id} event={e} />
+          <FeatureSlider photos={WHY_BOOK_PHOTOS} />
+        </section>
+
+        {/* ------------------------------------------------- three steps ---
+            The wireframe's "Next Steps" row: centred heading, three numbered
+            items, one CTA underneath. Numbered and joined by a rule rather
+            than three bare icon boxes - the same three-in-a-row shape
+            CLAUDE.md flags as a generic default, done deliberately here
+            because this wireframe explicitly calls for it, and distinguished
+            by treating it as a sequence (a real one - find, pay, scan) rather
+            than an unordered feature grid. */}
+        <section className="home-steps-section">
+          <div className="home-steps-head">
+            <h2>
+              {locale === "km"
+                ? "របៀបទិញសំបុត្រ"
+                : "How buying a ticket works"}
+            </h2>
+          </div>
+          <ol className="home-steps">
+            {HOW_STEPS.map((s, i) => (
+              <li key={s.icon}>
+                <span className="home-step-num">
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+                <Icon name={s.icon} size={22} />
+                <h3>{locale === "km" ? s.titleKm : s.titleEn}</h3>
+                <p>{locale === "km" ? s.bodyKm : s.bodyEn}</p>
+              </li>
+            ))}
+          </ol>
+          <div className="home-steps-cta">
+            <Link className="btn btn-primary" to="/events">
+              {locale === "km" ? "រកមើលព្រឹត្តិការណ៍" : "Browse events"}
+              <Icon name="arrowRight" size={15} />
+            </Link>
+          </div>
+        </section>
+
+        {/* --------------------------------------------- for organizers ---
+            The wireframe's "Your Name" bio card, same text-left/image-right
+            order as the section above it. An outline "Learn More" rather than
+            a solid button, matching the wireframe's own distinction between
+            its primary CTAs and this one. */}
+        <section className="home-split">
+          <div className="home-split-text">
+            <h2>
+              {locale === "km"
+                ? "រៀបចំព្រឹត្តិការណ៍នៅកម្ពុជាមែនទេ?"
+                : "Running an event in Cambodia?"}
+            </h2>
+            <p>
+              {locale === "km"
+                ? "ចុះបញ្ជីកម្មវិធីរបស់អ្នក លក់កៅអីកក់ទុក ឬសំបុត្រទូទៅ ហើយពិនិត្យអ្នកចូលនៅទ្វារពីកម្មវិធីរុករកលើទូរស័ព្ទណាមួយ។ ពាក្យស្នើសុំត្រូវបានពិនិត្យមុននឹងផ្សាយ។"
+                : "List your show, sell reserved seats or general admission, and check people in at the door from any phone browser. Applications are reviewed before anything goes live."}
+            </p>
+            <Link className="btn btn-outline" to="/become-an-organizer">
+              {locale === "km" ? "ស្វែងយល់បន្ថែម" : "Learn more"}
+            </Link>
+          </div>
+          <FeatureSlider photos={ORGANIZER_PHOTOS} />
+        </section>
+
+        {/* ------------------------------------------------------- proof ---
+            The wireframe's testimonials slot: centred, plain, no card. There
+            are no customer quotes to put there yet, so it holds the numbers
+            the page already computes instead of an invented quote - real
+            social proof rather than placeholder praise. */}
+        <section className="home-proof">
+          <h2>
+            {locale === "km" ? "CamboBook ជាលេខ" : "CamboBook, in numbers"}
+          </h2>
+          <div className="home-proof-stats">
+            <div>
+              <b>{totalLive}</b>
+              <span>{locale === "km" ? "ព្រឹត្តិការណ៍ផ្សាយ" : "live events"}</span>
+            </div>
+            <div>
+              <b>{ticketsSold.toLocaleString()}</b>
+              <span>{locale === "km" ? "សំបុត្រលក់រួច" : "tickets sold"}</span>
+            </div>
+            <div>
+              <b>{provinces.length}</b>
+              <span>
+                {locale === "km" ? "ខេត្ត/ក្រុងគ្របដណ្តប់" : "provinces covered"}
+              </span>
+            </div>
+          </div>
+        </section>
+
+        {/* ------------------------------------------------------ FAQ ---
+            The wireframe's accordion section - image on the LEFT this time,
+            text on the right, matching that one section's own reversed order
+            in the source rather than repeating the split above unchanged. */}
+        <section className="home-split home-split-reverse">
+          <FeatureSlider photos={FAQ_PHOTOS} />
+          <div className="home-split-text">
+            <h2>
+              {locale === "km" ? "សំណួរដែលសួរញឹកញាប់" : "Common questions"}
+            </h2>
+            <div className="home-faq">
+              {FAQ_ITEMS.map((item) => (
+                <details className="home-faq-item" key={item.qEn}>
+                  <summary>
+                    {locale === "km" ? item.qKm : item.qEn}
+                    <Icon name="chevronDown" size={16} />
+                  </summary>
+                  <p>{locale === "km" ? item.aKm : item.aEn}</p>
+                </details>
               ))}
             </div>
-          )}
+            <Link className="btn btn-primary" to="/contact">
+              {locale === "km" ? "ទាក់ទងមកយើង" : "Contact us"}
+            </Link>
+          </div>
         </section>
       </div>
+
+      {/* --------------------------------------------------- final band ---
+          The wireframe closes on a second banner-and-card, mirroring the
+          hero - the same treatment bookends the page. One button, as the
+          wireframe has, pointed at the single most useful next step. */}
+      <section className="home-final">
+        <div className="hero-inner">
+          <div className="home-final-card">
+            <h2>
+              {locale === "km"
+                ? "ត្រៀមរួចរាល់ស្វែងរកព្រឹត្តិការណ៍បន្ទាប់របស់អ្នកហើយឬនៅ?"
+                : "Ready to find your next event?"}
+            </h2>
+            <p>
+              {locale === "km"
+                ? "រុករកមើលអ្វីដែលកំពុងលក់ទូទាំងប្រទេស ហើយកក់ក្នុងប៉ុន្មានចុចប៉ុណ្ណោះ។"
+                : "Browse what's on across the country and book in a few taps."}
+            </p>
+            <Link className="btn btn-primary" to="/events">
+              {locale === "km" ? "មើលអ្វីកំពុងលក់" : "See what's on"}
+              <Icon name="arrowRight" size={15} />
+            </Link>
+          </div>
+        </div>
+      </section>
     </>
   );
 }
