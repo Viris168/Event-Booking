@@ -1833,7 +1833,7 @@
      section reversed. One layout serves all three - which side carries the
      text is the only thing that changes between them. */
   .home-split {
-    @apply my-14 grid items-center gap-10;
+    @apply mb-8 grid items-center gap-10 border-t border-line pt-8;
     grid-template-columns: minmax(0, 1fr) minmax(0, 0.85fr);
   }
   /* Column widths only - no `order` override. The panel is written FIRST in
@@ -1927,7 +1927,7 @@
      into a sequence: find, pay, scan, in that order, joined by the line the
      numbers sit on rather than three unrelated cards. */
   .home-steps-section {
-    @apply my-14;
+    @apply mb-8 border-t border-line pt-8;
   }
   .home-steps-head {
     @apply mb-8 text-center;
@@ -1970,7 +1970,7 @@
      quote marks, because there is no customer quote to put there yet. Real
      numbers instead of an invented one. */
   .home-proof {
-    @apply my-16 text-center;
+    @apply mb-8 border-t border-line pt-10 text-center;
   }
   .home-proof h2 {
     @apply m-0 text-[1.4rem];
