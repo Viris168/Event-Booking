@@ -19,7 +19,7 @@
    and control heights are generous and nothing is locked to one line.
    ========================================================================== */
 
-@import 'tailwindcss';
+@import "tailwindcss";
 
 @source '../**/*.{js,jsx}';
 
@@ -85,20 +85,23 @@
   /* Shadows are cast in the warm ink, not a blue-black — a cool shadow on warm
      paper is the thing that reads as grey haze rather than depth. */
   --shadow-card: 0 1px 2px rgba(41, 34, 24, 0.05);
-  --shadow-float: 0 6px 20px -6px rgba(41, 34, 24, 0.16), 0 2px 6px -2px rgba(41, 34, 24, 0.07);
+  --shadow-float:
+    0 6px 20px -6px rgba(41, 34, 24, 0.16),
+    0 2px 6px -2px rgba(41, 34, 24, 0.07);
   --shadow-pop: 0 24px 60px -18px rgba(41, 34, 24, 0.3);
   --shadow-focus: 0 0 0 3px rgba(18, 97, 60, 0.26);
 
   /* type */
-  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-khmer: 'Noto Sans Khmer', 'Khmer OS Battambang', 'Hanuman', var(--font-sans);
-  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-khmer:
+    "Noto Sans Khmer", "Khmer OS Battambang", "Hanuman", var(--font-sans);
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
   /* The hero headline, and nothing else. A script face is unreadable at body
      sizes and has no system fallback that resembles it, so it is scoped to the
      one line it was chosen for. Khmer gets Moul rather than a Latin script,
      which cannot render the script at all. */
-  --font-display: 'Berkshire Swash', Georgia, 'Times New Roman', serif;
-  --font-display-khmer: 'Moul', var(--font-khmer);
+  --font-display: "Berkshire Swash", Georgia, "Times New Roman", serif;
+  --font-display-khmer: "Moul", var(--font-khmer);
 
   --text-small: 0.82rem;
   --text-tiny: 0.74rem;
@@ -124,7 +127,7 @@
    re-themes every @apply rule in the components layer at once. */
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 
-[data-theme='dark'] {
+[data-theme="dark"] {
   /* Dark is the same warm family turned down, not a separate blue-black one:
      the surfaces carry the paper's warmth so the two themes read as one product
      rather than two. */
@@ -187,7 +190,11 @@
     /* Faint brand wash under the navbar so inner pages are not a flat slab of
        paper. Anchored to the document, not the viewport: `fixed` would drag the
        tint down the screen as you scroll and read as a smudge. */
-    background-image: radial-gradient(1100px 460px at 50% 0%, rgba(18, 97, 60, 0.055), transparent 72%);
+    background-image: radial-gradient(
+      1100px 460px at 50% 0%,
+      rgba(18, 97, 60, 0.055),
+      transparent 72%
+    );
     background-repeat: no-repeat;
   }
 
@@ -221,7 +228,7 @@
   }
 
   /* Khmer needs more vertical room and a script-aware family. */
-  html[lang='km'] body {
+  html[lang="km"] body {
     @apply font-khmer;
     line-height: 1.9;
   }
@@ -234,7 +241,7 @@
     line-height: 1.3;
     letter-spacing: -0.01em;
   }
-  html[lang='km'] :is(h1, h2, h3) {
+  html[lang="km"] :is(h1, h2, h3) {
     line-height: 1.55;
     letter-spacing: 0;
   }
@@ -258,7 +265,7 @@
 
   /* Tailwind 4's preflight gives buttons `cursor: default`. */
   button:not(:disabled),
-  [role='button']:not(:disabled) {
+  [role="button"]:not(:disabled) {
     @apply cursor-pointer;
   }
 
@@ -397,9 +404,12 @@
   .page-head {
     @apply mb-3 flex flex-wrap items-end justify-between gap-4;
   }
-  .page-head h1 {
-    @apply text-[3rem] font-extrabold leading-tight tracking-tighter;
-    color: var(--color-ink);
+  .page-head h1,
+  .about-head h1,
+  .contact-head h1,
+  .org-apply-head h1 {
+    font-size: clamp(1.85rem, 1.4rem + 1.4vw, 2.25rem);
+    @apply font-extrabold leading-tight tracking-tight text-ink;
   }
   .page-head p {
     @apply mt-2 text-[1.1rem] font-medium text-muted max-w-[60ch];
@@ -525,7 +535,7 @@
   /* The rule itself. Inset to the text rather than the padding box, so it
      underlines the word and not the hit area. */
   .nav-link::after {
-    content: '';
+    content: "";
     @apply pointer-events-none absolute inset-x-[0.75rem] bottom-[0.1rem] h-[2px] rounded-full bg-white/80;
     transform: scaleX(0);
     transition: transform 0.18s cubic-bezier(0.4, 0, 0.2, 1);
@@ -620,8 +630,10 @@
    * and knock the box out of line with the icon buttons beside it. The float
    * shadow is repeated because box-shadow does not merge across rules.
    */
-  [data-theme='dark'] .nav-search {
-    box-shadow: var(--shadow-float), inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+  [data-theme="dark"] .nav-search {
+    box-shadow:
+      var(--shadow-float),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.14);
   }
 
   /*
@@ -640,9 +652,11 @@
     box-shadow: none;
   }
   .nav-search:focus-within {
-    box-shadow: var(--shadow-float), 0 0 0 2px var(--color-gold-500);
+    box-shadow:
+      var(--shadow-float),
+      0 0 0 2px var(--color-gold-500);
   }
-  [data-theme='dark'] .nav-search:focus-within {
+  [data-theme="dark"] .nav-search:focus-within {
     box-shadow:
       var(--shadow-float),
       inset 0 0 0 1px rgba(255, 255, 255, 0.14),
@@ -659,7 +673,9 @@
    */
   .nav-search-go {
     @apply grid size-[30px] flex-none cursor-pointer place-items-center rounded-full border-0 bg-transparent p-0 text-muted;
-    transition: background-color 0.15s ease, color 0.15s ease;
+    transition:
+      background-color 0.15s ease,
+      color 0.15s ease;
   }
   .nav-search-go:hover {
     @apply bg-tint text-on-tint;
@@ -684,7 +700,9 @@
 
   .nav-search-close {
     @apply grid size-[30px] flex-none cursor-pointer place-items-center rounded-full border-0 bg-transparent p-0 text-muted;
-    transition: background-color 0.15s ease, color 0.15s ease;
+    transition:
+      background-color 0.15s ease,
+      color 0.15s ease;
   }
   .nav-search-close:hover {
     @apply bg-surface-2 text-ink;
@@ -703,7 +721,7 @@
     grid-column: auto;
     animation: none;
   }
-  [data-theme='dark'] .nav-search.in-drawer {
+  [data-theme="dark"] .nav-search.in-drawer {
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
   }
   .nav-search.in-drawer:focus-within {
@@ -759,11 +777,11 @@
 
   .nav-hold {
     @apply inline-flex items-center gap-[0.3rem] font-bold tabular-nums;
-    background: rgba(224, 123, 57, 0.20);
+    background: rgba(224, 123, 57, 0.2);
     color: #f5d3ab !important;
   }
   .nav-hold:hover {
-    background: rgba(224, 123, 57, 0.30);
+    background: rgba(224, 123, 57, 0.3);
   }
 
   /* Icon-only navbar control. */
@@ -904,7 +922,7 @@
   /* Logical property, not `left`: the marker belongs on the side the language
      starts from, and this is the one rule here that would be wrong in RTL. */
   .drawer-link.active::before {
-    content: '';
+    content: "";
     @apply pointer-events-none absolute inset-y-[0.35rem] start-0 w-[3px] rounded-full bg-gold-500;
   }
   .drawer-link:focus-visible {
@@ -963,7 +981,7 @@
   .notif-tabs button:hover {
     @apply bg-surface-2 text-ink-2;
   }
-  .notif-tabs button[aria-selected='true'] {
+  .notif-tabs button[aria-selected="true"] {
     @apply bg-tint text-on-tint;
   }
   .notif-tab-count {
@@ -1122,11 +1140,21 @@
     --scroll-hint-bg: var(--color-surface);
     @apply overflow-x-auto;
     background:
-      linear-gradient(to right, var(--scroll-hint-bg) 40%, transparent) left center / 2.5rem 100% no-repeat local,
-      linear-gradient(to left, var(--scroll-hint-bg) 40%, transparent) right center / 2.5rem 100% no-repeat local,
-      radial-gradient(farthest-side at 0 50%, color-mix(in oklab, var(--color-ink) 20%, transparent), transparent)
+      linear-gradient(to right, var(--scroll-hint-bg) 40%, transparent) left
+        center / 2.5rem 100% no-repeat local,
+      linear-gradient(to left, var(--scroll-hint-bg) 40%, transparent) right
+        center / 2.5rem 100% no-repeat local,
+      radial-gradient(
+          farthest-side at 0 50%,
+          color-mix(in oklab, var(--color-ink) 20%, transparent),
+          transparent
+        )
         left center / 0.9rem 100% no-repeat scroll,
-      radial-gradient(farthest-side at 100% 50%, color-mix(in oklab, var(--color-ink) 20%, transparent), transparent)
+      radial-gradient(
+          farthest-side at 100% 50%,
+          color-mix(in oklab, var(--color-ink) 20%, transparent),
+          transparent
+        )
         right center / 0.9rem 100% no-repeat scroll;
     /* A trough inside a 46px bar eats a third of the text. Touch, trackpad and
        keyboard scrolling are all unaffected; the shadow is the affordance. */
@@ -1187,7 +1215,10 @@
       rounded-[10px] border border-transparent bg-surface-2 px-4 py-[0.58rem]
       text-[0.9rem] leading-[1.35] text-ink no-underline;
     font-weight: 650;
-    transition: transform 0.06s ease, background 0.15s ease, box-shadow 0.15s ease;
+    transition:
+      transform 0.06s ease,
+      background 0.15s ease,
+      box-shadow 0.15s ease;
   }
   .btn:hover {
     @apply no-underline;
@@ -1196,7 +1227,7 @@
     @apply translate-y-px;
   }
   .btn:disabled,
-  .btn[aria-disabled='true'] {
+  .btn[aria-disabled="true"] {
     @apply translate-y-0 cursor-not-allowed opacity-50;
   }
 
@@ -1279,10 +1310,10 @@
   .contact-btn-facebook:hover {
     background: rgba(24, 119, 242, 0.18);
   }
-  [data-theme='dark'] .contact-btn-telegram {
+  [data-theme="dark"] .contact-btn-telegram {
     color: #7cd0f4;
   }
-  [data-theme='dark'] .contact-btn-facebook {
+  [data-theme="dark"] .contact-btn-facebook {
     color: #8fb4f7;
   }
 
@@ -1306,7 +1337,10 @@
   /* Cards that are themselves links (booking rows). */
   a.card {
     @apply block text-inherit;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+    transition:
+      border-color 0.15s ease,
+      box-shadow 0.15s ease,
+      transform 0.1s ease;
   }
   a.card:hover {
     @apply -translate-y-px border-brand-500 no-underline shadow-float;
@@ -1341,7 +1375,11 @@
   .hero {
     @apply relative isolate overflow-hidden pt-[4.4rem] pb-0 text-white;
     background:
-      radial-gradient(820px 500px at 74% 120%, rgba(8, 46, 29, 0.42), transparent 62%),
+      radial-gradient(
+        820px 500px at 74% 120%,
+        rgba(8, 46, 29, 0.42),
+        transparent 62%
+      ),
       linear-gradient(168deg, #02100a 0%, #03150f 52%, #051d14 100%);
     box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.12);
   }
@@ -1354,24 +1392,50 @@
     @apply pointer-events-none absolute inset-0 -z-20 h-full w-full object-cover;
   }
   .hero::before {
-    content: '';
+    content: "";
     @apply pointer-events-none absolute inset-0 -z-10;
     background:
       /* Warm bloom behind the headline. Gold type on a photograph needs
          something warm and dark directly under it or the strokes read as dirt
          on the picture rather than as lettering. */
-      radial-gradient(720px 420px at 22% 38%, rgba(190, 124, 44, 0.22), transparent 66%),
-      linear-gradient(100deg, rgba(2, 9, 14, 0.9) 0%, rgba(3, 13, 18, 0.79) 38%, rgba(4, 20, 22, 0.44) 72%, rgba(5, 26, 26, 0.24) 100%),
-      linear-gradient(180deg, rgba(2, 10, 14, 0.5) 0%, transparent 32%, rgba(2, 9, 12, 0.76) 100%);
+      radial-gradient(
+        720px 420px at 22% 38%,
+        rgba(190, 124, 44, 0.22),
+        transparent 66%
+      ),
+      linear-gradient(
+        100deg,
+        rgba(2, 9, 14, 0.9) 0%,
+        rgba(3, 13, 18, 0.79) 38%,
+        rgba(4, 20, 22, 0.44) 72%,
+        rgba(5, 26, 26, 0.24) 100%
+      ),
+      linear-gradient(
+        180deg,
+        rgba(2, 10, 14, 0.5) 0%,
+        transparent 32%,
+        rgba(2, 9, 12, 0.76) 100%
+      );
   }
   /* Fine dot grid for texture, faded out before it reaches the content. */
   .hero::after {
-    content: '';
+    content: "";
     @apply pointer-events-none absolute inset-0 -z-10;
-    background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+    background-image: radial-gradient(
+      rgba(255, 255, 255, 0.08) 1px,
+      transparent 1px
+    );
     background-size: 22px 22px;
-    mask-image: radial-gradient(120% 90% at 80% 0%, rgba(0, 0, 0, 0.95), transparent 62%);
-    -webkit-mask-image: radial-gradient(120% 90% at 80% 0%, rgba(0, 0, 0, 0.95), transparent 62%);
+    mask-image: radial-gradient(
+      120% 90% at 80% 0%,
+      rgba(0, 0, 0, 0.95),
+      transparent 62%
+    );
+    -webkit-mask-image: radial-gradient(
+      120% 90% at 80% 0%,
+      rgba(0, 0, 0, 0.95),
+      transparent 62%
+    );
   }
 
   /* The headline runs as one unbroken gold script, so the accent word is no
@@ -1425,22 +1489,27 @@
   }
   @supports (background-clip: text) or (-webkit-background-clip: text) {
     .hero h1 {
-      background: linear-gradient(174deg, #fdf3d8 4%, #f4cd82 40%, #dda253 74%, #bd8236 100%);
+      background: linear-gradient(
+        174deg,
+        #fdf3d8 4%,
+        #f4cd82 40%,
+        #dda253 74%,
+        #bd8236 100%
+      );
       -webkit-background-clip: text;
       background-clip: text;
       -webkit-text-fill-color: transparent;
       /* text-shadow paints under transparent fill, so the lift has to come from
          a filter on the painted glyphs instead. */
       text-shadow: none;
-      filter:
-        drop-shadow(0 2px 10px rgba(2, 9, 14, 0.66))
+      filter: drop-shadow(0 2px 10px rgba(2, 9, 14, 0.66))
         drop-shadow(0 0 30px rgba(226, 165, 82, 0.26));
     }
   }
   /* Moul is a display face in its own right, and a heavy one: Khmer needs less
      size and far more leading than the Latin script at the same optical
      weight, or the subscript forms collide with the line above. */
-  html[lang='km'] .hero h1 {
+  html[lang="km"] .hero h1 {
     font-family: var(--font-display-khmer);
     /* One line here too, the same way the Latin rule does it.
        
@@ -1532,7 +1601,7 @@
     @apply border-white/35 no-underline;
   }
   .rail-card::after {
-    content: '';
+    content: "";
     @apply absolute inset-0 z-[1];
     background: linear-gradient(
       180deg,
@@ -1579,7 +1648,9 @@
   }
   .hero-dot {
     @apply h-[5px] w-[5px] cursor-pointer rounded-full border-0 bg-white/30 p-0;
-    transition: width 0.25s ease, background-color 0.25s ease;
+    transition:
+      width 0.25s ease,
+      background-color 0.25s ease;
   }
   .hero-dot:hover {
     @apply bg-white/60;
@@ -1641,7 +1712,11 @@
   /* ------------------------------------------------ hero "next up" card */
   .spotlight {
     @apply overflow-hidden rounded-card border border-white/[0.16] shadow-pop backdrop-blur-[6px];
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(4, 22, 13, 0.55));
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.12),
+      rgba(4, 22, 13, 0.55)
+    );
   }
   .spot-head {
     @apply flex items-center justify-between gap-2 px-[0.9rem] pt-[0.8rem] pb-[0.6rem];
@@ -1705,14 +1780,14 @@
     @apply relative flex min-w-0 items-center;
   }
   .searchbar .sb-cell + .sb-cell::before {
-    content: '';
+    content: "";
     @apply absolute left-0 top-[20%] bottom-[20%] w-px bg-line;
   }
   .searchbar .input,
   .searchbar .select {
     @apply min-h-[46px] border-transparent bg-transparent text-[0.95rem] shadow-none;
   }
-  html[lang='km'] :is(.searchbar .input, .searchbar .select) {
+  html[lang="km"] :is(.searchbar .input, .searchbar .select) {
     @apply min-h-[52px];
   }
   .searchbar .input:focus,
@@ -1781,7 +1856,7 @@
   /* Events-page search panel: query + province + sort on one line, advanced
      date/price controls revealed on demand. */
   .searchpanel {
-    @apply sticky top-[54px] z-20;
+    @apply relative z-10;
   }
   .province-pills-row {
     display: flex;
@@ -1864,13 +1939,13 @@
   .range-fill {
     @apply absolute inset-y-0 rounded-full bg-brand-600;
   }
-  .range input[type='range'] {
+  .range input[type="range"] {
     @apply absolute inset-x-0 m-0 w-full bg-transparent;
     -webkit-appearance: none;
     appearance: none;
     pointer-events: none;
   }
-  .range input[type='range']::-webkit-slider-thumb {
+  .range input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none;
     pointer-events: auto;
     height: 16px;
@@ -1881,7 +1956,7 @@
     box-shadow: var(--shadow-float);
     cursor: grab;
   }
-  .range input[type='range']::-moz-range-thumb {
+  .range input[type="range"]::-moz-range-thumb {
     pointer-events: auto;
     height: 16px;
     width: 16px;
@@ -1890,13 +1965,13 @@
     background: var(--color-brand-600);
     cursor: grab;
   }
-  .range input[type='range']:active::-webkit-slider-thumb {
+  .range input[type="range"]:active::-webkit-slider-thumb {
     cursor: grabbing;
   }
-  .range input[type='range']:focus-visible::-webkit-slider-thumb {
+  .range input[type="range"]:focus-visible::-webkit-slider-thumb {
     box-shadow: var(--shadow-focus);
   }
-  .range input[type='range']:focus-visible::-moz-range-thumb {
+  .range input[type="range"]:focus-visible::-moz-range-thumb {
     box-shadow: var(--shadow-focus);
   }
   /* The advanced row's columns are sized for a date or a number; a two-thumb
@@ -2014,7 +2089,7 @@
   }
   .gsi-sep::before,
   .gsi-sep::after {
-    content: '';
+    content: "";
     @apply flex-1 border-t border-line;
   }
   /*
@@ -2057,7 +2132,7 @@
   .pw-toggle:hover {
     @apply bg-surface-2 text-ink;
   }
-  .pw-toggle[aria-pressed='true'] {
+  .pw-toggle[aria-pressed="true"] {
     @apply text-link;
   }
 
@@ -2101,7 +2176,9 @@
   /* ------------------------------------------------------------ event card */
   .ev-card {
     @apply flex h-full flex-col overflow-hidden rounded-card border border-line bg-surface shadow-card;
-    transition: transform 0.16s ease, box-shadow 0.16s ease;
+    transition:
+      transform 0.16s ease,
+      box-shadow 0.16s ease;
   }
   .ev-card:hover {
     @apply -translate-y-[3px] no-underline shadow-float;
@@ -2112,11 +2189,19 @@
   /* Soft light sweep so flat gradients read as artwork, not a colour block. */
   .ev-media::before,
   .event-hero::before {
-    content: '';
+    content: "";
     @apply absolute inset-0 z-0;
     background:
-      radial-gradient(120% 90% at 15% 5%, rgba(255, 255, 255, 0.3), transparent 55%),
-      radial-gradient(90% 80% at 100% 100%, rgba(0, 0, 0, 0.28), transparent 60%);
+      radial-gradient(
+        120% 90% at 15% 5%,
+        rgba(255, 255, 255, 0.3),
+        transparent 55%
+      ),
+      radial-gradient(
+        90% 80% at 100% 100%,
+        rgba(0, 0, 0, 0.28),
+        transparent 60%
+      );
   }
 
   /* Uploaded artwork. Sits above the gradient but below every chip, so the
@@ -2142,7 +2227,12 @@
      the image is still the thing you see. */
   .ev-media.has-photo::before {
     background:
-      linear-gradient(to top, rgba(0, 0, 0, 0.58) 0%, rgba(0, 0, 0, 0.14) 34%, transparent 58%),
+      linear-gradient(
+        to top,
+        rgba(0, 0, 0, 0.58) 0%,
+        rgba(0, 0, 0, 0.14) 34%,
+        transparent 58%
+      ),
       linear-gradient(to bottom, rgba(0, 0, 0, 0.34) 0%, transparent 26%);
     @apply z-[1];
   }
@@ -2191,12 +2281,23 @@
     filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.2));
   }
   .ev-media:not(.has-photo)::after {
-    content: '';
+    content: "";
     @apply pointer-events-none absolute inset-0 z-0;
-    background-image: radial-gradient(rgba(255, 255, 255, 0.11) 1px, transparent 1px);
+    background-image: radial-gradient(
+      rgba(255, 255, 255, 0.11) 1px,
+      transparent 1px
+    );
     background-size: 16px 16px;
-    mask-image: radial-gradient(110% 80% at 12% 0%, rgba(0, 0, 0, 0.9), transparent 68%);
-    -webkit-mask-image: radial-gradient(110% 80% at 12% 0%, rgba(0, 0, 0, 0.9), transparent 68%);
+    mask-image: radial-gradient(
+      110% 80% at 12% 0%,
+      rgba(0, 0, 0, 0.9),
+      transparent 68%
+    );
+    -webkit-mask-image: radial-gradient(
+      110% 80% at 12% 0%,
+      rgba(0, 0, 0, 0.9),
+      transparent 68%
+    );
   }
   .ev-media .ev-date {
     @apply absolute bottom-[0.7rem] left-[0.7rem] z-[2] min-w-[40px] rounded-[10px] bg-white/[0.96]
@@ -2251,7 +2352,10 @@
      up the brand colour on hover instead of competing as a second target. */
   .ev-go {
     @apply border-line-2 bg-surface-2 text-ink-2;
-    transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+    transition:
+      background-color 0.16s ease,
+      border-color 0.16s ease,
+      color 0.16s ease;
   }
   .ev-card:hover .ev-go {
     @apply border-brand-600 bg-brand-600 text-white;
@@ -2273,7 +2377,10 @@
     @apply grid items-center gap-[0.9rem] rounded-card border border-line bg-surface p-[0.8rem]
       text-inherit shadow-card;
     grid-template-columns: auto minmax(0, 1fr) auto;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+    transition:
+      border-color 0.15s ease,
+      box-shadow 0.15s ease,
+      transform 0.1s ease;
   }
   .bk-row:hover {
     @apply -translate-y-px border-brand-500 no-underline shadow-float;
@@ -2422,16 +2529,30 @@
      Numbered rather than named: they are assigned by position in a ranking,
      and a name like `.bar-revenue` would imply a meaning the colour does not
      carry. */
-  .bar-1 { background: linear-gradient(90deg, #12613c 0%, #45b183 100%); }
-  .bar-2 { background: linear-gradient(90deg, #0e7d72 0%, #37bda8 100%); }
-  .bar-3 { background: linear-gradient(90deg, #c06a18 0%, #eda44f 100%); }
-  .bar-4 { background: linear-gradient(90deg, #b23464 0%, #e8749c 100%); }
-  .bar-5 { background: linear-gradient(90deg, #6b3aa0 0%, #a37ad6 100%); }
+  .bar-1 {
+    background: linear-gradient(90deg, #12613c 0%, #45b183 100%);
+  }
+  .bar-2 {
+    background: linear-gradient(90deg, #0e7d72 0%, #37bda8 100%);
+  }
+  .bar-3 {
+    background: linear-gradient(90deg, #c06a18 0%, #eda44f 100%);
+  }
+  .bar-4 {
+    background: linear-gradient(90deg, #b23464 0%, #e8749c 100%);
+  }
+  .bar-5 {
+    background: linear-gradient(90deg, #6b3aa0 0%, #a37ad6 100%);
+  }
 
   /* The month chart is one series, so it takes one colour - but vertically,
      brightest at the top, so the bars read as growing rather than as blocks. */
-  .bar-month { background: linear-gradient(180deg, #45b183 0%, #12613c 100%); }
-  .bar-month:hover { background: linear-gradient(180deg, #6cc79f 0%, #16744a 100%); }
+  .bar-month {
+    background: linear-gradient(180deg, #45b183 0%, #12613c 100%);
+  }
+  .bar-month:hover {
+    background: linear-gradient(180deg, #6cc79f 0%, #16744a 100%);
+  }
 
   /* ---------------------------------------------------------------- badges */
   .badge {
@@ -2586,7 +2707,9 @@
   .select,
   .textarea {
     @apply min-h-[42px] w-full rounded-[10px] border border-line bg-surface px-[0.7rem] py-[0.55rem] text-ink;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    transition:
+      border-color 0.15s ease,
+      box-shadow 0.15s ease;
   }
 
   /* Native select chrome is inconsistent and washed out; draw our own chevron. */
@@ -2596,11 +2719,15 @@
     background-position: right 0.6rem center;
   }
   .select:hover {
-    border-color: color-mix(in oklab, var(--color-muted) 40%, var(--color-line));
+    border-color: color-mix(
+      in oklab,
+      var(--color-muted) 40%,
+      var(--color-line)
+    );
   }
   /* The chevron is a data URI, so its stroke can't read a variable — swap the
      whole image for a lighter one in dark mode. */
-  [data-theme='dark'] .select {
+  [data-theme="dark"] .select {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238b96b1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   }
   /* Surfaces that stay light in both themes — a QR must keep its contrast to
@@ -2609,7 +2736,7 @@
      Both chips belong here: .rail-date is the hero's copy of .ev-date on a
      white plate of its own, and being left off this list is what left it
      printing near-white text on near-white in dark mode. */
-  [data-theme='dark'] :is(.qr-frame, .ev-media .ev-date, .rail-date) {
+  [data-theme="dark"] :is(.qr-frame, .ev-media .ev-date, .rail-date) {
     /* Re-declaring the tokens fixes descendants that apply a colour utility… */
     --color-ink: #1d1a16;
     --color-ink-2: #4a443b;
@@ -2619,7 +2746,7 @@
   }
   /* Cards need a visible edge against a dark page, and the toast needs to
      separate from it. */
-  [data-theme='dark'] :is(.toast, .qr-frame) {
+  [data-theme="dark"] :is(.toast, .qr-frame) {
     @apply border border-line;
   }
   /* The pref group sits on the always-dark navbar, so it never inverts. */
@@ -2637,7 +2764,7 @@
   .textarea:focus {
     @apply border-brand-500 shadow-focus outline-none;
   }
-  .input[aria-invalid='true'] {
+  .input[aria-invalid="true"] {
     @apply border-danger;
   }
   .input::placeholder {
@@ -2665,10 +2792,10 @@
   }
   /* `type="search"` draws a native clear button in WebKit/Blink, which appeared
      alongside our own <SearchInput> clear button — two X icons in one field. */
-  .input[type='search']::-webkit-search-cancel-button,
-  .input[type='search']::-webkit-search-decoration,
-  .input[type='search']::-webkit-search-results-button,
-  .input[type='search']::-webkit-search-results-decoration {
+  .input[type="search"]::-webkit-search-cancel-button,
+  .input[type="search"]::-webkit-search-decoration,
+  .input[type="search"]::-webkit-search-results-button,
+  .input[type="search"]::-webkit-search-results-decoration {
     @apply hidden;
     -webkit-appearance: none;
     appearance: none;
@@ -2722,10 +2849,10 @@
     border-radius: 0;
     overflow: hidden;
     font-family: Arial, sans-serif;
-    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.05);
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.05);
   }
   .aba-khqr-logo-icon .aba-top {
-    background: #005E7B;
+    background: #005e7b;
     color: white;
     flex: 1.5;
     display: flex;
@@ -2737,11 +2864,11 @@
     padding-bottom: 1px;
   }
   .aba-khqr-logo-icon .aba-top .aba-quote {
-    color: #E1232E;
+    color: #e1232e;
     margin-left: 0.5px;
   }
   .aba-khqr-logo-icon .aba-bot {
-    background: #E1232E;
+    background: #e1232e;
     color: white;
     flex: 1;
     display: flex;
@@ -2903,7 +3030,10 @@
    */
   .stat-link {
     @apply block text-ink no-underline;
-    transition: transform 0.06s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+    transition:
+      transform 0.06s ease,
+      border-color 0.15s ease,
+      box-shadow 0.15s ease;
   }
   .stat-link:hover {
     @apply -translate-y-px border-brand-500 no-underline shadow-pop;
@@ -2953,7 +3083,7 @@
   .section-name {
     @apply mb-2 text-[10px] font-bold uppercase tracking-[0.1em] text-ink-2;
   }
-  html[lang='km'] .section-name {
+  html[lang="km"] .section-name {
     @apply tracking-normal;
   }
   /* The SVG seat map that used to live here (.seatmap, .stage, .stage-text,
@@ -3003,7 +3133,7 @@
     stroke: var(--color-brand-900);
     stroke-width: 2;
   }
-  [data-theme='dark'] .seat-selected {
+  [data-theme="dark"] .seat-selected {
     stroke: var(--color-surface);
   }
   .seat-held,
@@ -3017,7 +3147,11 @@
     fill: color-mix(in oklab, var(--color-muted) 40%, var(--color-surface-2));
   }
   .seat-held {
-    fill: color-mix(in oklab, var(--color-gold-500) 62%, var(--color-surface-2));
+    fill: color-mix(
+      in oklab,
+      var(--color-gold-500) 62%,
+      var(--color-surface-2)
+    );
   }
   /* Not for sale — deliberately reads as "inert", with a dashed outline so it
      is never mistaken for a sold seat at a glance. */
@@ -3028,16 +3162,28 @@
   }
   /* Legend swatches read the same mixes so map and key can never drift. */
   .swatch-sold {
-    background: color-mix(in oklab, var(--color-muted) 40%, var(--color-surface-2));
+    background: color-mix(
+      in oklab,
+      var(--color-muted) 40%,
+      var(--color-surface-2)
+    );
   }
   .swatch-selected {
     background: var(--color-ink);
   }
   .swatch-held {
-    background: color-mix(in oklab, var(--color-gold-500) 62%, var(--color-surface-2));
+    background: color-mix(
+      in oklab,
+      var(--color-gold-500) 62%,
+      var(--color-surface-2)
+    );
   }
   .swatch-blocked {
-    background: color-mix(in oklab, var(--color-muted) 12%, var(--color-surface-2));
+    background: color-mix(
+      in oklab,
+      var(--color-muted) 12%,
+      var(--color-surface-2)
+    );
     border-style: dashed;
     border-color: color-mix(in oklab, var(--color-muted) 55%, transparent);
   }
@@ -3059,7 +3205,7 @@
   .legend-cap {
     @apply text-tiny font-bold uppercase tracking-[0.05em] text-muted;
   }
-  html[lang='km'] .legend-cap {
+  html[lang="km"] .legend-cap {
     @apply tracking-normal;
   }
   .legend span {
@@ -3112,7 +3258,11 @@
   .holdbar {
     @apply sticky top-[54px] z-30 flex flex-wrap items-center gap-[0.9rem] rounded-ui
       px-[0.95rem] py-3 text-white shadow-float;
-    background: linear-gradient(135deg, var(--color-brand-800), var(--color-brand-600));
+    background: linear-gradient(
+      135deg,
+      var(--color-brand-800),
+      var(--color-brand-600)
+    );
   }
   .holdbar.warn {
     background: linear-gradient(135deg, #8e2418, #c8492f);
@@ -3225,7 +3375,7 @@
     @apply relative;
   }
   .qr-expired::after {
-    content: '';
+    content: "";
     @apply absolute inset-0 bg-white/[0.72];
   }
 
@@ -3452,7 +3602,7 @@
    * amber and the danger chip a red, with nothing to keep in step. 16% is low
    * enough that the icon on top still reads at full strength.
    */
-  [data-theme='dark'] .alert-icon {
+  [data-theme="dark"] .alert-icon {
     background: color-mix(in oklab, currentColor 16%, transparent);
   }
   .alert-info {
@@ -3512,11 +3662,11 @@
     grid-template-columns: 14px minmax(0, 1fr);
   }
   .timeline li::before {
-    content: '';
+    content: "";
     @apply mt-[0.45rem] size-[9px] rounded-full bg-brand-500;
   }
   .timeline li:not(:last-child)::after {
-    content: '';
+    content: "";
     @apply absolute bottom-0 left-1 top-[1.1rem] w-px bg-line;
   }
 
@@ -3547,7 +3697,7 @@
   .tabbar button:hover {
     @apply text-ink;
   }
-  .tabbar button[aria-pressed='true'] {
+  .tabbar button[aria-pressed="true"] {
     @apply text-ink;
     border-bottom-color: var(--color-brand-600);
   }
@@ -3556,7 +3706,7 @@
       px-[0.32rem] text-[0.74rem] text-muted;
     font-variant-numeric: tabular-nums;
   }
-  .tabbar button[aria-pressed='true'] .tab-n {
+  .tabbar button[aria-pressed="true"] .tab-n {
     @apply bg-brand-100 text-brand-800;
   }
 
@@ -3567,7 +3717,7 @@
     @apply grid h-9 min-w-9 place-items-center rounded-[9px] border border-line bg-surface text-[0.85rem];
     font-weight: 650;
   }
-  .pager button[aria-current='true'] {
+  .pager button[aria-current="true"] {
     @apply border-brand-600 bg-brand-600 text-white;
   }
   .pager button:disabled {
@@ -3681,8 +3831,8 @@
    * edge is darker or lighter than the navbar's they stop reading as one piece
    * of chrome, which is the thing these two were just matched to fix.
    */
-  [data-theme='dark'] .nav,
-  [data-theme='dark'] .footer {
+  [data-theme="dark"] .nav,
+  [data-theme="dark"] .footer {
     border-color: rgba(255, 255, 255, 0.16);
   }
   .footer-inner {
@@ -3791,7 +3941,10 @@
   .footer-cta {
     @apply inline-flex min-h-10 items-center gap-[0.45rem] rounded-full border
       border-gold-500/45 px-[1.05rem] text-[0.85rem] font-bold text-gold-500 no-underline;
-    transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+    transition:
+      background 0.16s ease,
+      border-color 0.16s ease,
+      color 0.16s ease;
   }
   .footer-cta:hover {
     @apply border-gold-500 bg-gold-500 text-brand-900 no-underline;
@@ -3834,11 +3987,16 @@
    */
   .footer-col a {
     @apply pb-[2px] text-white/[0.78] no-underline;
-    background-image: linear-gradient(rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.8));
+    background-image: linear-gradient(
+      rgba(255, 255, 255, 0.8),
+      rgba(255, 255, 255, 0.8)
+    );
     background-repeat: no-repeat;
     background-position: 0 100%;
     background-size: 0 2px;
-    transition: background-size 0.18s ease, color 0.18s ease;
+    transition:
+      background-size 0.18s ease,
+      color 0.18s ease;
   }
   .footer-col a:hover,
   .footer-col a:focus-visible {
@@ -3871,7 +4029,9 @@
   .footer-social span {
     @apply grid size-10 place-items-center rounded-[11px] border border-white/[0.14]
       bg-white/[0.06] text-white/[0.74] no-underline;
-    transition: background 0.15s ease, color 0.15s ease;
+    transition:
+      background 0.15s ease,
+      color 0.15s ease;
   }
   .footer-social a:hover {
     @apply bg-white/15 text-white no-underline;
@@ -3949,9 +4109,13 @@
     }
   }
   .event-hero::after {
-    content: '';
+    content: "";
     @apply absolute inset-0 z-0;
-    background: linear-gradient(180deg, rgba(0, 0, 0, 0) 30%, rgba(0, 0, 0, 0.5));
+    background: linear-gradient(
+      180deg,
+      rgba(0, 0, 0, 0) 30%,
+      rgba(0, 0, 0, 0.5)
+    );
   }
   .event-hero > * {
     @apply relative z-[1];
@@ -4024,7 +4188,15 @@
   }
   /* The baseline nudge above is for icons sitting next to text; inside a grid or
      flex centring context it just pushes them off-centre. */
-  :is(.stepper button, .pager button, .nav-icon-btn, .icon-chip, .alert-icon, .clear-btn, .filter-pill button)
+  :is(
+      .stepper button,
+      .pager button,
+      .nav-icon-btn,
+      .icon-chip,
+      .alert-icon,
+      .clear-btn,
+      .filter-pill button
+    )
     > .icon {
     vertical-align: baseline;
   }
@@ -4070,12 +4242,18 @@
   }
 
   /* ------------------------------------------------------------- zone & seat */
-  .zone-radios { @apply flex flex-wrap gap-[10px] mb-4; }
+  .zone-radios {
+    @apply flex flex-wrap gap-[10px] mb-4;
+  }
   .zone-radio {
     @apply flex flex-1 basis-[150px] cursor-pointer items-center gap-[10px] rounded-ui border border-line bg-surface px-3 py-[10px];
-    transition: border-color 0.1s ease, background 0.1s ease;
+    transition:
+      border-color 0.1s ease,
+      background 0.1s ease;
   }
-  .zone-radio:hover { @apply border-brand-500; }
+  .zone-radio:hover {
+    @apply border-brand-500;
+  }
   /* The fill has to be the tint token, not brand-50: brand-50 keeps its light
      value in dark mode, so the selected card turned near-white while its text
      stayed light ink. In light mode the two are the same colour. */
@@ -4083,25 +4261,43 @@
     @apply bg-tint border-brand-500;
     box-shadow: inset 0 0 0 1px var(--color-brand-500);
   }
-  .zone-radio input[type="radio"] { @apply m-0 size-4 flex-none cursor-pointer accent-brand-500; }
-  .zr-body { @apply min-w-0 flex-1; }
-  .zr-name { @apply block text-[13.5px] font-bold; }
-  .zr-meta { @apply block text-[12px] text-muted; }
+  .zone-radio input[type="radio"] {
+    @apply m-0 size-4 flex-none cursor-pointer accent-brand-500;
+  }
+  .zr-body {
+    @apply min-w-0 flex-1;
+  }
+  .zr-name {
+    @apply block text-[13.5px] font-bold;
+  }
+  .zr-meta {
+    @apply block text-[12px] text-muted;
+  }
   .z-count {
     @apply inline-flex min-w-[20px] h-[20px] flex-none items-center justify-center rounded-full bg-brand-500 px-1 text-[11px] font-bold text-white;
   }
-  .z-count.zero { @apply bg-line-2 text-muted; }
+  .z-count.zero {
+    @apply bg-line-2 text-muted;
+  }
 
-  .seatmap-scroll { @apply overflow-x-auto; }
+  .seatmap-scroll {
+    @apply overflow-x-auto;
+  }
   /* Shrink-wrapped to the widest row, then centred as a block. Both seat maps
      draw with these classes - the buyer's picker and the organiser's preview -
      and a house laid out one way for the person who built it and another for
      the person buying a seat in it is two maps, which is the split this markup
      exists to avoid. When a row is wider than its panel the auto margins
      collapse to zero and the scroll container takes over. */
-  .rows { @apply mx-auto flex w-max flex-col gap-[10px]; }
-  .row { @apply flex items-center gap-[10px]; }
-  .row-label { @apply w-[18px] text-center text-[12px] font-semibold text-muted; }
+  .rows {
+    @apply mx-auto flex w-max flex-col gap-[10px];
+  }
+  .row {
+    @apply flex items-center gap-[10px];
+  }
+  .row-label {
+    @apply w-[18px] text-center text-[12px] font-semibold text-muted;
+  }
   /* Ragged rows straddle the middle of the widest one, the way a real house is
      laid out: a 12-seat row in front of a 14-seat row sits centred over it
      rather than flush left with an empty gap down the right-hand side. Rows
@@ -4115,34 +4311,64 @@
      short rows centred on a width no one can see. Auto margins only ever
      consume space that is already spare, so the overflow case falls back to
      plain left alignment and scrolls, which is what it did before. */
-  .seats { @apply mx-auto flex flex-nowrap gap-2; }
+  .seats {
+    @apply mx-auto flex flex-nowrap gap-2;
+  }
   .seat {
     @apply relative grid size-[34px] cursor-pointer place-items-center rounded-tiny text-[12.5px] font-bold;
     color: #fff;
     border: 1px solid color-mix(in oklab, var(--color-ink) 14%, transparent);
-    transition: transform 0.06s ease, box-shadow 0.1s ease;
+    transition:
+      transform 0.06s ease,
+      box-shadow 0.1s ease;
   }
-  .seat:hover:not(:disabled) { @apply -translate-y-[2px]; }
-  .seat:focus-visible { @apply outline-none shadow-focus; }
+  .seat:hover:not(:disabled) {
+    @apply -translate-y-[2px];
+  }
+  .seat:focus-visible {
+    @apply outline-none shadow-focus;
+  }
   /* Five tiers that must stay apart at ~14px. Pulled off one hue family on
      purpose: jade, steel, clay, plum, bronze. */
-  .seat.tier-0 { background: #12613c; }
-  .seat.tier-1 { background: #0e6f8a; }
-  .seat.tier-2 { background: #c2410c; }
-  .seat.tier-3 { background: #6b3aa0; }
-  .seat.tier-4 { background: #7a5c12; }
+  .seat.tier-0 {
+    background: #12613c;
+  }
+  .seat.tier-1 {
+    background: #0e6f8a;
+  }
+  .seat.tier-2 {
+    background: #c2410c;
+  }
+  .seat.tier-3 {
+    background: #6b3aa0;
+  }
+  .seat.tier-4 {
+    background: #7a5c12;
+  }
   .seat.sold {
     @apply cursor-not-allowed line-through;
-    background: color-mix(in oklab, var(--color-muted) 40%, var(--color-surface-2));
+    background: color-mix(
+      in oklab,
+      var(--color-muted) 40%,
+      var(--color-surface-2)
+    );
     color: color-mix(in oklab, var(--color-muted) 70%, var(--color-surface));
   }
   .seat.held {
     @apply cursor-not-allowed text-white;
-    background: color-mix(in oklab, var(--color-gold-500) 62%, var(--color-surface-2));
+    background: color-mix(
+      in oklab,
+      var(--color-gold-500) 62%,
+      var(--color-surface-2)
+    );
   }
   .seat.blocked {
     @apply cursor-not-allowed text-white;
-    background: color-mix(in oklab, var(--color-muted) 12%, var(--color-surface-2));
+    background: color-mix(
+      in oklab,
+      var(--color-muted) 12%,
+      var(--color-surface-2)
+    );
     border-style: dashed;
     border-color: color-mix(in oklab, var(--color-muted) 55%, transparent);
   }
@@ -4152,7 +4378,7 @@
     border-color: var(--color-brand-900);
     border-width: 2px;
   }
-  [data-theme='dark'] .seat.selected {
+  [data-theme="dark"] .seat.selected {
     border-color: var(--color-surface);
   }
 
@@ -4163,10 +4389,14 @@
      reduced-motion rule stops it and the plain block stays visible. */
   .skel {
     @apply relative isolate block overflow-hidden rounded-ui;
-    background: color-mix(in oklab, var(--color-muted) 16%, var(--color-surface-2));
+    background: color-mix(
+      in oklab,
+      var(--color-muted) 16%,
+      var(--color-surface-2)
+    );
   }
   .skel::after {
-    content: '';
+    content: "";
     @apply absolute inset-0;
     background: linear-gradient(
       90deg,
@@ -4184,7 +4414,12 @@
     background: rgba(255, 255, 255, 0.14);
   }
   .skel-dark::after {
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.2),
+      transparent
+    );
   }
   .skel-line {
     @apply h-[0.72rem] rounded-tiny;
@@ -4299,7 +4534,7 @@
 .pw-ticket {
   @apply w-full max-w-[320px] bg-white shadow-[0_4px_24px_rgba(0,0,0,0.12)] flex flex-col;
   border-radius: 16px;
-  border: 1px solid rgba(0,0,0,0.04);
+  border: 1px solid rgba(0, 0, 0, 0.04);
   overflow: hidden;
 }
 .pw-ticket-red {
@@ -4384,8 +4619,8 @@
 .pw-btn-outline {
   width: 100%;
   padding: 12px;
-  border: 1px solid #48C58F;
-  color: #48C58F;
+  border: 1px solid #48c58f;
+  color: #48c58f;
   background: white;
   border-radius: 6px;
   font-weight: 600;
@@ -4399,7 +4634,7 @@
 .pw-btn-solid {
   width: 100%;
   padding: 12px;
-  background: #48C58F;
+  background: #48c58f;
   color: white;
   border: none;
   border-radius: 6px;
@@ -4658,7 +4893,6 @@
   color: rgba(163, 152, 137, 0.9);
 }
 
-
 /* ---------------------------------------------------------------------------
    Group pass modal.
 
@@ -4686,9 +4920,19 @@
   overflow: hidden;
 }
 
-.gp-head { align-items: flex-start; }
-.gp-title { display: flex; align-items: center; gap: 0.65rem; }
-.gp-title h2 { margin: 0; font-size: 1.02rem; line-height: 1.25; }
+.gp-head {
+  align-items: flex-start;
+}
+.gp-title {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+.gp-title h2 {
+  margin: 0;
+  font-size: 1.02rem;
+  line-height: 1.25;
+}
 
 /* Monospace so a steward reading a ref aloud does not lose their place. */
 .gp-ref {
@@ -4698,7 +4942,9 @@
   letter-spacing: 0.02em;
 }
 
-.gp-panel .panel-body { overflow-y: auto; }
+.gp-panel .panel-body {
+  overflow-y: auto;
+}
 
 .gp-topline {
   display: flex;
@@ -4708,7 +4954,10 @@
   font-size: 0.92rem;
 }
 
-.gp-topline-counts { font-size: 0.78rem; color: var(--color-muted); }
+.gp-topline-counts {
+  font-size: 0.78rem;
+  color: var(--color-muted);
+}
 
 .gp-group {
   border: 1px solid var(--color-line);
@@ -4726,7 +4975,10 @@
   border-bottom: 1px solid var(--color-line-2);
 }
 
-.gp-group-head b { font-size: 0.88rem; display: block; }
+.gp-group-head b {
+  font-size: 0.88rem;
+  display: block;
+}
 
 .gp-group-kind {
   font-size: 0.68rem;
@@ -4775,10 +5027,20 @@
   cursor: pointer;
 }
 
-.gp-stepper button:disabled { opacity: 0.35; cursor: default; }
-.gp-stepper span { min-width: 1.4rem; text-align: center; font-weight: 800; }
+.gp-stepper button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.gp-stepper span {
+  min-width: 1.4rem;
+  text-align: center;
+  font-weight: 800;
+}
 
-.gp-rows { display: flex; flex-direction: column; }
+.gp-rows {
+  display: flex;
+  flex-direction: column;
+}
 
 .gp-row {
   display: flex;
@@ -4794,13 +5056,22 @@
   text-align: left;
 }
 
-.gp-rows > .gp-row:first-child { border-top: 0; }
+.gp-rows > .gp-row:first-child {
+  border-top: 0;
+}
 
 /* Only seats are tappable — picking which interchangeable zone ticket goes in
    is a decision with no content, so those rows are plain text. */
-.gp-row.seat { cursor: pointer; }
-.gp-row.seat:disabled { cursor: default; }
-.gp-row.seat:focus-visible { outline: 2px solid var(--color-brand-500); outline-offset: -2px; }
+.gp-row.seat {
+  cursor: pointer;
+}
+.gp-row.seat:disabled {
+  cursor: default;
+}
+.gp-row.seat:focus-visible {
+  outline: 2px solid var(--color-brand-500);
+  outline-offset: -2px;
+}
 
 .gp-row.on {
   background: var(--color-tint);
@@ -4808,7 +5079,9 @@
   font-weight: 700;
 }
 
-.gp-row.in { color: var(--color-muted); }
+.gp-row.in {
+  color: var(--color-muted);
+}
 
 .gp-row-name {
   flex: 1 1 auto;
@@ -4849,7 +5122,10 @@
   border-top: 1px solid var(--color-line-2);
 }
 
-.gp-foot .btn { flex: 1 1 0; justify-content: center; }
+.gp-foot .btn {
+  flex: 1 1 0;
+  justify-content: center;
+}
 
 .gp-error {
   display: flex;
@@ -4874,9 +5150,16 @@
    size the moment deserves. Nothing new is minted or signed.
    --------------------------------------------------------------------------- */
 
-.wallet { display: flex; flex-direction: column; gap: 0.7rem; }
+.wallet {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
 
-.wallet-head { display: flex; justify-content: flex-end; }
+.wallet-head {
+  display: flex;
+  justify-content: flex-end;
+}
 
 .wallet-count {
   font-size: 0.76rem;
@@ -4975,10 +5258,16 @@
   cursor: pointer;
 }
 
-.wallet-chev { transition: transform 0.15s ease; }
-.wallet-chev.open { transform: rotate(90deg); }
+.wallet-chev {
+  transition: transform 0.15s ease;
+}
+.wallet-chev.open {
+  transform: rotate(90deg);
+}
 
-.wallet-note { margin: 0; }
+.wallet-note {
+  margin: 0;
+}
 
 .sr-only {
   position: absolute;
@@ -5015,8 +5304,12 @@
   outline-offset: -2px;
 }
 
-.gp-chev { transition: transform 0.15s ease; }
-.gp-chev.open { transform: rotate(90deg); }
+.gp-chev {
+  transition: transform 0.15s ease;
+}
+.gp-chev.open {
+  transform: rotate(90deg);
+}
 
 /* The open attempt's deadline, beside the pay button. The button alone does not
    say the offer is expiring — and when it lapses the seats go back on sale. */
@@ -5069,7 +5362,10 @@
   background: var(--color-surface);
 }
 
-.drawer-head h2 { margin: 0; font-size: 1rem; }
+.drawer-head h2 {
+  margin: 0;
+  font-size: 1rem;
+}
 
 .drawer-body {
   flex: 1 1 auto;
@@ -5087,7 +5383,9 @@
   font-weight: 600;
   cursor: pointer;
 }
-.linkish:hover { text-decoration: underline; }
+.linkish:hover {
+  text-decoration: underline;
+}
 
 /* Retiring a venue is reversible-ish and non-destructive, but it is still the
    one action here nobody wants to hit by accident — pushed away from Edit and
@@ -5196,7 +5494,9 @@
   cursor: pointer;
 }
 
-.scope-tab:hover { color: var(--color-ink); }
+.scope-tab:hover {
+  color: var(--color-ink);
+}
 
 .scope-tab.on {
   background: var(--color-surface);
@@ -5211,7 +5511,9 @@
   font-variant-numeric: tabular-nums;
 }
 
-.scope-tab.on .scope-tab-n { color: var(--color-brand-700); }
+.scope-tab.on .scope-tab-n {
+  color: var(--color-brand-700);
+}
 
 /* Where an event stands in its sales window, under the lifecycle badge.
 
@@ -5237,7 +5539,7 @@
 }
 
 .sales-pill::before {
-  content: '';
+  content: "";
   width: 0.42rem;
   height: 0.42rem;
   border-radius: 50%;
@@ -5248,9 +5550,18 @@
 /* info, not brand green - the Badge above is already that green for
    "Published", and a second green pill right under it reads as the same fact
    said twice rather than the different one it actually is. */
-.sales-pill.ok { color: var(--color-info); background: var(--color-info-soft); }
-.sales-pill.warn { color: var(--color-warning); background: var(--color-warning-soft); }
-.sales-pill.bad { color: var(--color-danger); background: var(--color-danger-soft); }
+.sales-pill.ok {
+  color: var(--color-info);
+  background: var(--color-info-soft);
+}
+.sales-pill.warn {
+  color: var(--color-warning);
+  background: var(--color-warning-soft);
+}
+.sales-pill.bad {
+  color: var(--color-danger);
+  background: var(--color-danger-soft);
+}
 /* quiet keeps the muted default background - nothing is happening, and that is the point. */
 
 /* A table row that opens something when clicked.
@@ -5408,12 +5719,20 @@
    file", not "is this the exact crop" - and two boxes of different shapes read
    as two different kinds of control. The cover is still used portrait on the
    public page; that is the renderer's business, not this preview's. */
-.img-field .img-drop { width: 176px; }
+.img-field .img-drop {
+  width: 176px;
+}
 
-.img-field { display: flex; flex-direction: column; gap: 0.35rem; }
+.img-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
 
 /* Wraps under its thumbnail rather than stretching the row. */
-.img-field .hint { max-width: 13rem; }
+.img-field .hint {
+  max-width: 13rem;
+}
 
 .img-field-head {
   display: flex;
@@ -5431,7 +5750,9 @@
   color: var(--color-muted);
   cursor: pointer;
 }
-.img-field-clear:hover:not(:disabled) { color: var(--color-danger); }
+.img-field-clear:hover:not(:disabled) {
+  color: var(--color-danger);
+}
 
 .img-drop {
   position: relative;
@@ -5445,9 +5766,17 @@
   cursor: pointer;
 }
 
-.img-drop.has-image { border-style: solid; }
-.img-drop:disabled { cursor: default; opacity: 0.6; }
-.img-drop:focus-visible { outline: 2px solid var(--color-brand-500); outline-offset: 2px; }
+.img-drop.has-image {
+  border-style: solid;
+}
+.img-drop:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+.img-drop:focus-visible {
+  outline: 2px solid var(--color-brand-500);
+  outline-offset: 2px;
+}
 
 .img-drop img {
   width: 100%;
@@ -5520,7 +5849,7 @@
   border-top: 1px solid var(--color-line-2);
 }
 
-.crop-zoom input[type='range'] {
+.crop-zoom input[type="range"] {
   flex: 1 1 auto;
   accent-color: var(--color-brand-500);
 }
@@ -5606,7 +5935,9 @@
   min-width: 0;
 }
 
-.venue-layout-tap { margin-top: 0.2rem; }
+.venue-layout-tap {
+  margin-top: 0.2rem;
+}
 
 .venue-layout-full {
   /*
@@ -5667,7 +5998,7 @@
 /* Khmer runs taller than Latin and needs the script-aware family. Scoped to
    elements that declare lang="km" so it follows the content, not the UI
    language - the Khmer name field stays Khmer on an English page. */
-.org-apply [lang='km'] {
+.org-apply [lang="km"] {
   font-family: var(--font-khmer);
   line-height: 1.7;
 }
@@ -5677,9 +6008,6 @@
   margin-bottom: 1.4rem;
 }
 .org-apply-head h1 {
-  font-size: clamp(1.5rem, 4vw, 1.75rem);
-  font-weight: 700;
-  letter-spacing: -0.02em;
   margin: 0 0 0.15rem;
 }
 .org-apply-head-km {
@@ -5793,14 +6121,17 @@
   font-weight: 500;
   padding: 0.35rem 0.85rem;
   cursor: pointer;
-  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
 .org-apply-chip:hover {
   border-color: color-mix(in oklab, var(--color-muted) 40%, var(--color-line));
 }
 /* Selection is carried by aria-pressed, so the styling cannot drift from the
    state a screen reader announces. */
-.org-apply-chip[aria-pressed='true'] {
+.org-apply-chip[aria-pressed="true"] {
   background: var(--color-tint);
   border-color: var(--color-brand-600);
   color: var(--color-on-tint);
@@ -5986,7 +6317,7 @@
 }
 .invoice-no {
   margin: 0.1rem 0 0.4rem;
-  font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
   font-size: 1.05rem;
   font-weight: 700;
   color: var(--color-ink);
@@ -6138,7 +6469,7 @@
  * fine, matched the element, and silently lost every time. Matched on the ARIA
  * role rather than Google's class names, which are minified per release.
  */
-.gsi-host [role='button'] {
+.gsi-host [role="button"] {
   height: 3rem; /* .btn-lg is min-h-12 */
   border-radius: var(--radius-ui);
 }
@@ -6160,7 +6491,7 @@
  * Google's minified class names. If they restructure, this stops matching and
  * the plate comes back — visible, not broken.
  */
-:root[data-theme='dark'] .gsi-host [role='button'] div:has(svg) {
+:root[data-theme="dark"] .gsi-host [role="button"] div:has(svg) {
   background-color: transparent;
 }
 
@@ -6211,7 +6542,7 @@
   margin: 0;
   max-width: 62ch;
 }
-html[lang='km'] .about-lead {
+html[lang="km"] .about-lead {
   line-height: 1.95;
 }
 
@@ -6274,7 +6605,7 @@ html[lang='km'] .about-lead {
      nudging down to share a baseline with the first line of text. */
   padding-top: 0.1rem;
 }
-html[lang='km'] .about-step-n {
+html[lang="km"] .about-step-n {
   /* Moul has no lining numerals worth setting at this size, and the Latin
      digits are what the numeral is - so it keeps the Latin face in both
      locales, the way .nav-brand-text does for the wordmark. */
@@ -6557,7 +6888,7 @@ html[lang='km'] .about-step-n {
   color: var(--color-muted);
   margin: 0 0 0.8rem;
 }
-html[lang='km'] .contact-card h2 {
+html[lang="km"] .contact-card h2 {
   text-transform: none;
   letter-spacing: 0;
 }
@@ -6741,32 +7072,25 @@ html[lang='km'] .contact-card h2 {
  */
 
 /*
- * The catalogue runs wider than the rest of the site.
+ * Events page: catalogue on the left, map on the right.
  *
- * Every other page is capped at the 1360px shell, which is a reading width -
- * right for a form or an event's details. Here it was leaving a 273px void
- * down the left of a 1905px screen while the map sat against the right edge,
- * because a list and a map side by side want the window, not a column.
- *
- * Wide, but not unbounded: past ~2100px the cards stop gaining anything and
- * the eye has too far to travel between a card and its pin. Even gutters
- * rather than bleeding to the edge - which is what the big travel sites
- * actually do, and it drops the negative-margin and overflow-clip workarounds
- * that reaching the edge needed.
+ * Sized to match .nav-inner and .footer-inner via .container (max-w-shell: 1360px, px-page).
  */
 .events-page {
-  max-width: min(2100px, 100%);
-  padding-inline: clamp(var(--spacing-page), 3vw, 2.75rem);
+  /* Inherits max-w-shell and px-page from .container */
 }
-/* Two across. The list is sharing the shell with a map now, and the
-   four-across grid of the full-width page loses its titles to ellipsis. */
+/* Two across. Sized to match the exact card width of HomePage's 4-up grid
+   ((--container-shell - 2*--spacing-page - 3*gap) / 4) ~317.6px per card.
+   2 cards + 1 gap = (--container-shell - 2*--spacing-page - gap) / 2 = ~652.8px. */
 .grid-cards-split {
   @apply grid-cols-2;
 }
 
 .events-split {
   @apply mt-[1.4rem] grid items-start;
-  grid-template-columns: minmax(0, 1fr) clamp(360px, 42vw, 820px);
+  grid-template-columns:
+    calc((var(--container-shell) - 2 * var(--spacing-page) - 1.1rem) / 2)
+    minmax(0, 1fr);
   gap: 1.5rem;
 }
 .events-list {
@@ -6815,7 +7139,10 @@ html[lang='km'] .contact-card h2 {
   color: var(--color-ink);
   border: 1px solid var(--color-line);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.22);
-  transition: transform 0.15s, background 0.15s, color 0.15s;
+  transition:
+    transform 0.15s,
+    background 0.15s,
+    color 0.15s;
 }
 .evmap-pin:hover {
   transform: translate(-50%, -50%) scale(1.06);
@@ -6826,14 +7153,16 @@ html[lang='km'] .contact-card h2 {
   background: var(--color-surface);
   color: var(--color-brand-600);
   border-color: var(--color-brand-500);
-  box-shadow: 0 0 0 2px var(--color-brand-500), 0 2px 6px rgba(0, 0, 0, 0.18);
+  box-shadow:
+    0 0 0 2px var(--color-brand-500),
+    0 2px 6px rgba(0, 0, 0, 0.18);
   transform: translate(-50%, -50%) scale(1.08);
 }
 
 /* The card whose pin is lit. A ring rather than a transform: the cards sit in
    a grid and scaling one nudges its neighbours. */
 .ev-slot {
-  @apply min-w-0 rounded-[14px] transition-shadow;
+  @apply flex h-full min-w-0 flex-col rounded-card transition-shadow;
 }
 .ev-slot.is-active {
   box-shadow: 0 0 0 2px var(--color-brand-500);
@@ -6887,12 +7216,6 @@ html[lang='km'] .contact-card h2 {
   .events-chrome {
     @apply mb-4;
   }
-  .events-page .page-head {
-    @apply mb-2 items-baseline;
-  }
-  .events-page .page-head h1 {
-    @apply text-[2rem];
-  }
   .events-split {
     @apply mt-0 items-start;
   }
@@ -6912,12 +7235,6 @@ html[lang='km'] .contact-card h2 {
 /* The toggle is mobile-only; on desktop both columns are on screen at once. */
 .events-map-toggle {
   @apply hidden;
-}
-
-@media (max-width: 1240px) {
-  .grid-cards-split {
-    @apply grid-cols-1;
-  }
 }
 
 /*
@@ -6988,14 +7305,14 @@ html[lang='km'] .contact-card h2 {
 }
 /* Bigger than the stock 16px thumb: this one has to be grabbable over a chart
    and is the only affordance in the control. */
-.pricerange-slider input[type='range']::-webkit-slider-thumb {
+.pricerange-slider input[type="range"]::-webkit-slider-thumb {
   height: 24px;
   width: 24px;
   border: 1px solid var(--color-line);
   background: var(--color-surface);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.26);
 }
-.pricerange-slider input[type='range']::-moz-range-thumb {
+.pricerange-slider input[type="range"]::-moz-range-thumb {
   height: 24px;
   width: 24px;
   border: 1px solid var(--color-line);
