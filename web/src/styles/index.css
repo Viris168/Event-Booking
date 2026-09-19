@@ -399,9 +399,7 @@
   }
   .page-head h1 {
     @apply text-[3rem] font-extrabold leading-tight tracking-tighter;
-    background: linear-gradient(135deg, var(--color-brand-600) 0%, var(--color-gold-500) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: var(--color-ink);
   }
   .page-head p {
     @apply mt-2 text-[1.1rem] font-medium text-muted max-w-[60ch];
@@ -1235,25 +1233,6 @@
   }
   .btn-danger:hover:not(:disabled) {
     @apply bg-danger-soft;
-  }
-
-  /* The filled counterpart to .btn-danger, for a destructive action that has
-     to read as destructive at a glance rather than on inspection. The reds are
-     literal rather than var(--color-danger): that token lightens to a salmon
-     on the dark theme so it can be used as *text*, and white on salmon is not
-     a legible button. */
-  .btn-danger-solid {
-    @apply border-transparent text-white shadow-card;
-    background: #b02b1f;
-  }
-  .btn-danger-solid:hover:not(:disabled) {
-    background: #8f2218;
-  }
-  [data-theme='dark'] .btn-danger-solid {
-    background: #c9382a;
-  }
-  [data-theme='dark'] .btn-danger-solid:hover:not(:disabled) {
-    background: #dc4535;
   }
 
   .btn-sm {

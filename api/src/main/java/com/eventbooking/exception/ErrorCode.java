@@ -207,10 +207,6 @@ public enum ErrorCode {
     // reads as "that did not work" rather than exposing which half is absent.
     INVALID_GOOGLE_TOKEN(HttpStatus.UNAUTHORIZED),
 
-    // Telegram Mini App sign-in: initData whose signature, freshness or shape
-    // did not hold up. Undifferentiated and 401 for the same reasons as the
-    // Google code above, and raised too when no bot token is configured.
-    INVALID_TELEGRAM_INIT_DATA(HttpStatus.UNAUTHORIZED),
 
     // A Google account has no phone until its owner adds one, and this is the
     // refusal that says so. 409 because the request is coherent and the account
