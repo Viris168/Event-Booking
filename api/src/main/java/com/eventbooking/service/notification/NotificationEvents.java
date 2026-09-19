@@ -92,4 +92,32 @@ public final class NotificationEvents {
      */
     public record PayoutDecided(Long payoutId, PayoutStatus decision) {
     }
+
+    /**
+     * An admin erased an event that had sold tickets, and the bookings went
+     * with it.
+     *
+     * <p>The one event in this file that carries its facts inline rather than
+     * an id, breaking the rule stated at the top - and the rule's own reasoning
+     * is why. It says to pass ids because the listener runs after the
+     * transaction commits, when a loaded entity would be detached. Here the
+     * problem is one worse: after that commit the booking does not exist, so
+     * there is no id the listener could usefully resolve. The facts have to
+     * travel with the announcement or they are gone.
+     *
+     * <p>Only values, still: no entity is in here, so nothing can throw on a
+     * lazy field.
+     *
+     * @param buyers one per booking destroyed, in the order they were taken
+     */
+    public record EventForceDeleted(Long eventId,
+                                    String titleEn,
+                                    String titleKm,
+                                    java.util.List<Buyer> buyers) {
+
+        /** Who to tell, and the details their notification prints. */
+        public record Buyer(Long userId, String bookingRef, Long totalUsdCents) {
+        }
+    }
+
 }

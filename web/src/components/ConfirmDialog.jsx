@@ -26,6 +26,17 @@ export default function ConfirmDialog({
   cancelLabel,
   tone = 'danger',
   busy = false,
+  /*
+   * Hold the confirm button shut while the dialog's own body says the answer is
+   * not ready yet - a reason not typed, a file not downloaded.
+   *
+   * Separate from `busy` rather than folded into it, because the two mean
+   * opposite things to the person looking at the button. `busy` says the action
+   * is under way and renders "Working…"; this says it has not been asked for
+   * yet, and the label must keep naming what the button will do so they know
+   * what they are working towards.
+   */
+  confirmDisabled = false,
   onConfirm,
   onClose,
 }) {
@@ -102,7 +113,7 @@ export default function ConfirmDialog({
             type="button"
             className={`btn ${tone === 'danger' ? 'btn-danger' : 'btn-primary'}`}
             onClick={onConfirm}
-            disabled={busy}
+            disabled={busy || confirmDisabled}
           >
             {busy ? (km ? 'កំពុងដំណើរការ…' : 'Working…') : confirmLabel}
           </button>

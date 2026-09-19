@@ -11,6 +11,7 @@ import com.eventbooking.exception.security.LastAdminException;
 import com.eventbooking.exception.security.LastSignInMethodException;
 import com.eventbooking.exception.security.PhoneAlreadyRegisteredException;
 import com.eventbooking.exception.security.RoleChangeBlockedException;
+import com.eventbooking.exception.security.UserNotDeletableException;
 import com.eventbooking.exception.security.UserNotFoundException;
 import com.eventbooking.model.AppUser;
 import com.eventbooking.model.Booking;
@@ -18,10 +19,12 @@ import com.eventbooking.model.OrganizerProfile;
 import com.eventbooking.repository.AppUserRepository;
 import com.eventbooking.repository.BookingRepository;
 import com.eventbooking.repository.OrganizerProfileRepository;
+import com.eventbooking.repository.RefreshTokenRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
@@ -63,13 +66,16 @@ public class AdminUserService {
     private final AppUserRepository userRepository;
     private final BookingRepository bookingRepository;
     private final OrganizerProfileRepository organizerProfileRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
 
     public AdminUserService(AppUserRepository userRepository,
                             BookingRepository bookingRepository,
-                            OrganizerProfileRepository organizerProfileRepository) {
+                            OrganizerProfileRepository organizerProfileRepository,
+                            RefreshTokenRepository refreshTokenRepository) {
         this.userRepository = userRepository;
         this.bookingRepository = bookingRepository;
         this.organizerProfileRepository = organizerProfileRepository;
+        this.refreshTokenRepository = refreshTokenRepository;
     }
 
     /**
@@ -104,8 +110,16 @@ public class AdminUserService {
                 .stream()
                 .collect(Collectors.groupingBy(Booking::getUserId));
 
+        /*
+         * One more query for the whole page, not one per row. The alternative -
+         * asking countReferences per user - is eleven sub-queries times twenty
+         * rows to decide whether to draw a menu item.
+         */
+        Set<Long> withHistory = Set.copyOf(userRepository.findIdsWithHistory(userIds));
+
         return users.stream()
-                .map(u -> toResponse(u, byUser.getOrDefault(u.getId(), List.of())))
+                .map(u -> toResponse(u, byUser.getOrDefault(u.getId(), List.of()),
+                        !withHistory.contains(u.getId())))
                 .toList();
     }
 
@@ -132,6 +146,161 @@ public class AdminUserService {
         userRepository.save(user);
 
         return toResponse(user);
+    }
+
+    /**
+     * Erase the account.
+     *
+     * <p>Narrow on purpose. It is for the rows that have never done anything -
+     * a spam signup, a duplicate registration, a test account someone made on
+     * production - where the row disappearing leaves no gap anywhere. The guard
+     * below is what keeps it to those: {@code app_user} is referenced by
+     * fourteen columns and only four carry an ON DELETE clause, so an account
+     * with any history at all cannot be deleted without either failing or
+     * taking somebody's booking history with it.
+     *
+     * <p>{@link #anonymize} is the action for every other case, and the refusal
+     * says so. An admin reaching for delete usually wants the person gone, not
+     * the records, and those are different operations on this schema.
+     *
+     * <p>What DOES go with the row, by cascades the schema declares: the
+     * refresh tokens, the notification inbox, and any organizer application.
+     * All three describe this account and nothing else. A dormant
+     * {@code organizer_profile} - one created by a promotion and left behind by
+     * a demotion - goes too, but only once the guard has established it owns no
+     * events, venues or payouts.
+     */
+    @Transactional
+    public void delete(Long actorAdminUserId, Long userId) {
+        AppUser user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException(userId));
+
+        // Deleting yourself is the same event as disabling yourself, only
+        // permanent, so it answers to the same guard rather than a second copy
+        // of the rule - including the last-admin half of it.
+        requireAdminMayLoseAccess(actorAdminUserId, user, "deleted");
+
+        AppUserRepository.UserReferences refs = userRepository.countReferences(userId);
+        if (hasHistory(refs)) {
+            throw new UserNotDeletableException(userId, user.getDisplayName(), refs);
+        }
+
+        /*
+         * The profile before the user, because organizer_profile.user_id has no
+         * ON DELETE clause. Safe only because the guard above just established
+         * this profile owns no events, no venues and no payout claims - which
+         * is to say it is a promotion that was never used.
+         */
+        organizerProfileRepository.findByUserId(userId)
+                .ifPresent(organizerProfileRepository::delete);
+
+        userRepository.delete(user);
+
+        // Name and role in the line, not just the id: after this commits there
+        // is nothing left to look the id up against, and "admin 4 deleted user
+        // 812" answers no question anybody will later ask.
+        log.info("Admin {} deleted user {} (\"{}\", {}, registered {})",
+                actorAdminUserId, userId, user.getDisplayName(), user.getRole(), user.getCreatedAt());
+    }
+
+    /**
+     * Strip the person out of the account and leave the account standing.
+     *
+     * <p>The answer for every user {@link #delete} refuses, and the one that is
+     * usually wanted anyway: somebody asking to be removed from the platform
+     * means their name and phone number, not the record that seat 4B was sold
+     * on the 3rd. Those bookings are also the organiser's sales figures and the
+     * platform's revenue, and they are not the customer's alone to erase.
+     *
+     * <p>So the identifying columns are cleared and everything else is left
+     * exactly where it is. The booking rows keep their own {@code buyer_name}
+     * and {@code buyer_phone_e164} - those are a snapshot taken at checkout,
+     * deliberately not a join to this table, which means an anonymised account
+     * does NOT blank the ticket somebody is carrying to a gate tomorrow.
+     *
+     * <p>Irreversible, and worth saying plainly: nothing here is recoverable
+     * afterwards. There is no copy of the cleared values.
+     */
+    @Transactional
+    public AdminUserResponse anonymize(Long actorAdminUserId, Long userId) {
+        AppUser user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException(userId));
+
+        // An anonymised account cannot sign in - there is no identifier left to
+        // sign in with - so this ends the account's ability to administer just
+        // as surely as disabling it, and answers to the same guard.
+        requireAdminMayLoseAccess(actorAdminUserId, user, "anonymized");
+
+        /*
+         * Cleared to null rather than to a placeholder string. Both columns are
+         * UNIQUE, and Postgres permits any number of NULLs in a unique index
+         * but exactly one "deleted@example.com" - so placeholders would make
+         * the second anonymisation on the platform fail as a 23505.
+         */
+        user.setPhoneE164(null);
+        user.setEmail(null);
+        user.setTelegramUsername(null);
+
+        // The credential and the Google link, which are identifying in their
+        // own right: provider_subject is the account's id at Google.
+        user.setPasswordHash(null);
+        user.setProviderSubject(null);
+
+        // Their photograph. The Cloudinary asset itself is left alone - this
+        // service has no upload lane and no CloudinaryService, and an admin
+        // screen is not where an irreversible call to a third party belongs.
+        user.setCloudinaryImageId(null);
+
+        // NOT NULL, so it takes a value rather than a blank. The id is in it
+        // because the admin table still lists this row and "Deleted user"
+        // repeated nine times is not a list anybody can work with.
+        user.setDisplayName("Deleted user " + userId);
+
+        // Without this the row is a live account with no way to sign in, which
+        // is not the same as a closed one: an admin could later set a phone
+        // number on it and hand somebody else's booking history to a stranger.
+        user.setIsDisabled(true);
+
+        userRepository.saveAndFlush(user);
+
+        /*
+         * After the flush, deliberately. revokeAllForUser clears the
+         * persistence context, so the changes above have to be written before
+         * it runs or they are dropped - the same trap the password-change path
+         * documents on that query.
+         */
+        int revoked = refreshTokenRepository.revokeAllForUser(user, Instant.now());
+
+        log.info("Admin {} anonymized user {}, revoking {} session(s)",
+                actorAdminUserId, userId, revoked);
+
+        // Re-read: the context was cleared above, so the instance in hand is
+        // detached and its lazy state cannot be walked for the response.
+        return toResponse(userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException(userId)));
+    }
+
+    /**
+     * Has this account done anything the database would keep a record of?
+     *
+     * <p>Every counted column, not a representative sample. A guard that misses
+     * one does not fail politely - it lets the delete through to a foreign key
+     * violation, which reaches the caller as a 500 and reads like a bug rather
+     * than a rule. See AppUserRepository.countReferences for why they are
+     * counted in one query.
+     */
+    private static boolean hasHistory(AppUserRepository.UserReferences r) {
+        return r.getBookings() > 0
+                || r.getHolds() > 0
+                || r.getScans() > 0
+                || r.getReviews() > 0
+                || r.getCheckIns() > 0
+                || r.getHandledMessages() > 0
+                || r.getReviewedPayouts() > 0
+                || r.getReviewedApplications() > 0
+                || r.getOwnedEvents() > 0
+                || r.getOwnedVenues() > 0
+                || r.getOwnedPayouts() > 0;
     }
 
     /**
@@ -357,11 +526,14 @@ public class AdminUserService {
      * into two different answers about the same user.
      */
     private AdminUserResponse toResponse(AppUser user) {
-        return toResponse(user, bookingRepository.findByUserIdInOrderByCreatedAtDesc(List.of(user.getId())));
+        return toResponse(user,
+                bookingRepository.findByUserIdInOrderByCreatedAtDesc(List.of(user.getId())),
+                !hasHistory(userRepository.countReferences(user.getId())));
     }
 
     /** The list path's variant: bookings already fetched for everyone at once. */
-    private static AdminUserResponse toResponse(AppUser user, List<Booking> bookings) {
+    private static AdminUserResponse toResponse(AppUser user, List<Booking> bookings,
+                                                boolean deletable) {
         long spend = bookings.stream()
                 .filter(b -> SPEND_STATES.contains(b.getState()))
                 .mapToLong(b -> b.getTotalUsdCents() == null ? 0L : b.getTotalUsdCents())
@@ -378,6 +550,7 @@ public class AdminUserService {
                 user.getCreatedAt(),
                 bookings.size(),
                 spend,
+                deletable,
                 bookings.stream().map(AdminUserService::toSummary).toList());
     }
 

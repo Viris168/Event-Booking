@@ -80,6 +80,66 @@ export const restoreEvent = (id) =>
 export const deleteEvent = (id) => client.delete(`/admin/events/${id}`).then(() => undefined)
 
 /**
+ * Download this event's sales as a CSV file.
+ *
+ * Returns a Blob rather than parsed data, because nothing on the screen reads
+ * it - the file is for the admin, and what they do with it happens in a
+ * spreadsheet. saveBlob below is what turns it into a download.
+ *
+ * Its whole reason for existing is forceDeleteEvent. There is no refund path
+ * anywhere in this product, so once an event's bookings are erased the list of
+ * people owed their money back exists only in whatever was exported first.
+ */
+export const exportEventSales = (id) =>
+  client.get(`/admin/events/${id}/export`, { responseType: 'blob' }).then((r) => ({
+    blob: r.data,
+    // The server names the file - it puts the event id in it, which matters
+    // more than the title six weeks later when somebody goes looking for it.
+    filename:
+      /filename="(.+?)"/.exec(r.headers['content-disposition'] || '')?.[1] ||
+      `event-${id}-sales.csv`,
+  }))
+
+/**
+ * Hand the browser a file to save.
+ *
+ * The object URL is revoked on the next tick rather than immediately: Safari
+ * reads it asynchronously after the click, and revoking in the same frame
+ * cancels the download it was about to start.
+ */
+export const saveBlob = ({ blob, filename }) => {
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  setTimeout(() => URL.revokeObjectURL(url), 0)
+}
+
+/**
+ * Erase an event AND the bookings on it. No body comes back.
+ *
+ * The most destructive call in this module, and the only one that voids tickets
+ * people paid for. Not an escalation of deleteEvent so much as a different
+ * decision: that one is for listings nobody bought, this is for listings that
+ * are illegal and have to leave the platform completely.
+ *
+ * The server refuses exactly one thing - an event whose payout has already been
+ * PAID - because that transfer is recorded against the event and deleting it
+ * would leave the money unaccounted for.
+ *
+ * POST, not DELETE, because the reason is required and travels in the body;
+ * DELETE with a body is poorly specified and some proxies drop it.
+ *
+ * @param {string} reason why this listing had to go. At least 20 characters -
+ *        the server enforces it. Nothing reads the field; it is written to the
+ *        log beside the sales record, because "an admin deleted it" is not an
+ *        adequate answer to someone asking what happened to their ticket.
+ */
+export const forceDeleteEvent = (id, reason) =>
+  client.post(`/admin/events/${id}/force-delete`, { reason }).then(() => undefined)
+
+/**
  * One event in full, any status, for the edit dialog.
  *
  * Deliberately not getEvent() from events.js. That one is the public detail
@@ -203,6 +263,36 @@ export const setUserDisabled = (id, disabled) =>
  */
 export const updateUser = (id, payload) =>
   client.patch(`/admin/users/${id}`, payload).then((r) => r.data)
+
+/**
+ * Erase an account. No body comes back.
+ *
+ * Only works on accounts that have never done anything - a spam signup, a
+ * duplicate registration, a test account. Anything with a booking, a gate scan
+ * or a review decision behind it answers 409 with a message naming what is
+ * holding it down, and the answer for those is anonymizeUser.
+ *
+ * That refusal is not a limitation to work around. app_user is referenced by
+ * fourteen columns and most of them have no ON DELETE clause, because the rows
+ * on the other end are the organiser's sales and the platform's revenue as much
+ * as they are one person's history.
+ */
+export const deleteUser = (id) => client.delete(`/admin/users/${id}`).then(() => undefined)
+
+/**
+ * Strip the person out of an account and leave the account standing. Returns
+ * the updated user.
+ *
+ * Clears the name, phone, email, Telegram handle, credentials and photo, then
+ * locks the account. The bookings, tickets and payments stay exactly where they
+ * are - and so does the ticket somebody is carrying to a gate tomorrow, because
+ * booking rows carry their own buyer_name and buyer_phone snapshotted at
+ * checkout rather than joining to the account.
+ *
+ * Irreversible. There is no copy of the cleared values anywhere.
+ */
+export const anonymizeUser = (id) =>
+  client.patch(`/admin/users/${id}/anonymize`).then((r) => r.data)
 
 // --- payments ---------------------------------------------------------------
 

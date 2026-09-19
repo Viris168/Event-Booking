@@ -8,6 +8,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -272,4 +273,34 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
      * is paid against.
      */
     long countByEvent_IdAndStateIn(Long eventId, Collection<BookingStatus> states);
+
+    // --- force delete ---------------------------------------------------------
+
+    /**
+     * Every booking on this event, oldest first, with the buyer's details.
+     *
+     * <p>Feeds the export an admin downloads before a force delete, so the
+     * order is the order they happened rather than anything the screen chose:
+     * the file is a record of the event's sales, and a record reads
+     * chronologically.
+     *
+     * <p>Unfiltered by state on purpose, matching {@link #countByEvent_Id}. An
+     * EXPIRED booking is not money owed to anybody, but it is a row the force
+     * delete is about to destroy, and an export that omitted it would not be
+     * the complete record it claims to be.
+     */
+    List<Booking> findByEvent_IdOrderByCreatedAtAsc(Long eventId);
+
+    /**
+     * Erase every booking on this event.
+     *
+     * <p>Only ever called by EventForceDeletionService, and only after
+     * everything pointing AT these bookings has already gone - tickets,
+     * payments, history. Called in any other order it fails as a 23503, which
+     * is the right outcome: the constraint is the last thing standing between
+     * a mis-ordered delete and a half-erased event.
+     */
+    @Modifying
+    @Query("delete from Booking b where b.event.id = :eventId")
+    int deleteByEventId(@Param("eventId") Long eventId);
 }

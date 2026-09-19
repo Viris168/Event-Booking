@@ -3,6 +3,7 @@ package com.eventbooking.repository;
 import com.eventbooking.Enumeration.PayoutStatus;
 import com.eventbooking.model.PayoutRequest;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -81,4 +82,18 @@ public interface PayoutRequestRepository extends JpaRepository<PayoutRequest, Lo
      */
     @Query(value = "select nextval('payout_invoice_seq')", nativeQuery = true)
     long nextInvoiceSequence();
+
+    /**
+     * Drop the payout claim against this event.
+     *
+     * <p>The schema's comment on {@code payout_request.event_id} says the
+     * implicit RESTRICT is wanted, and it still is for every path but this one.
+     * The force delete may only reach a claim that has not been PAID - see
+     * EventForceDeletionService, which refuses outright once money has left to
+     * the organiser, because that invoice is evidence of a transfer and would
+     * survive the event it describes for exactly that reason.
+     */
+    @Modifying
+    @Query("delete from PayoutRequest p where p.eventId = :eventId")
+    int deleteByEventId(@Param("eventId") Long eventId);
 }

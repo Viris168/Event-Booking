@@ -1,9 +1,10 @@
 import { useDocumentTitle } from '../../lib/useDocumentTitle.js'
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import ConfirmDialog from '../../components/ConfirmDialog.jsx'
 import Icon from '../../components/Icon.jsx'
-import { Empty, Field } from '../../components/ui.jsx'
+import MapLinkField from '../../components/MapLinkField.jsx'
+import { Alert, Empty, Field } from '../../components/ui.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
 import {
@@ -26,6 +27,14 @@ const BLANK = {
   lat: '',
   lng: '',
 }
+
+/*
+ * Leaflet and its stylesheet are ~45kB gzipped, and the only screen that wants
+ * them is this form - which no ticket buyer ever opens. Split out so that
+ * weight is fetched when an organiser actually resolves a pin, rather than
+ * riding in the bundle every visitor downloads to look at the catalogue.
+ */
+const VenuePinPreview = lazy(() => import('../../components/VenuePinPreview.jsx'))
 
 export default function OrganizerVenuesPage() {
   const { t, locale } = useLocale()
@@ -142,6 +151,9 @@ export default function OrganizerVenuesPage() {
     setEditing(venue.id)
   }
 
+  // Venues the catalogue map could not plot.
+  const unpinned = venues.filter((v) => v.lat == null || v.lng == null).length
+
   async function save(e) {
     e.preventDefault()
     if (busy) return
@@ -209,6 +221,28 @@ export default function OrganizerVenuesPage() {
         </button>
       </div>
 
+      {/* One line saying how much of the map is still missing, because the
+          per-row badges only add up once you have scrolled the whole list -
+          and an unpinned venue is invisible on the catalogue map rather than
+          visibly broken. Hidden at zero: a standing banner reporting nothing
+          wrong is one people stop reading. */}
+      {editing === null && unpinned > 0 && (
+        <div style={{ marginBottom: '1.1rem' }}>
+          <Alert
+            tone="warn"
+            title={
+              locale === 'km'
+                ? `ទីកន្លែង ${unpinned} មិនទាន់មានទីតាំងលើផែនទី`
+                : `${unpinned} ${unpinned === 1 ? 'venue has' : 'venues have'} no map pin`
+            }
+          >
+            {locale === 'km'
+              ? 'បើកទីកន្លែង ចុចកែ រួចបិទភ្ជាប់តំណ Google Maps របស់វា។'
+              : 'Open one, choose Edit, and paste its Google Maps link. Until then it cannot be shown on a map.'}
+          </Alert>
+        </div>
+      )}
+
       {editing !== null && (
         <div className="panel" style={{ marginBottom: '1.4rem' }}>
           <div className="panel-head">
@@ -264,24 +298,31 @@ export default function OrganizerVenuesPage() {
                   onChange={(e) => set('street_address', e.target.value)}
                 />
               </Field>
-              <Field label="Latitude" hint="Map pin, optional">
-                <input
-                  className="input"
-                  type="number"
-                  step="0.000001"
-                  value={form.lat}
-                  onChange={(e) => set('lat', e.target.value)}
+              {/* The pin. Was two decimal-degree number boxes marked optional,
+                  which is why nine of ten venues carry a null one - see
+                  MapLinkField for what replaced them and why the manual pair
+                  is still reachable underneath. */}
+              <div className="span-2">
+                <MapLinkField
+                  locale={locale}
+                  value={{ lat: form.lat, lng: form.lng }}
+                  onChange={(pin) => setForm((f) => ({ ...f, lat: pin.lat, lng: pin.lng }))}
+                  preview={
+                    form.lat !== '' && form.lng !== '' ? (
+                      <Suspense fallback={<div className="pin-preview" />}>
+                        <VenuePinPreview
+                          locale={locale}
+                          lat={Number(form.lat)}
+                          lng={Number(form.lng)}
+                          onMove={(pin) =>
+                            setForm((f) => ({ ...f, lat: String(pin.lat), lng: String(pin.lng) }))
+                          }
+                        />
+                      </Suspense>
+                    ) : null
+                  }
                 />
-              </Field>
-              <Field label="Longitude" hint="Map pin, optional">
-                <input
-                  className="input"
-                  type="number"
-                  step="0.000001"
-                  value={form.lng}
-                  onChange={(e) => set('lng', e.target.value)}
-                />
-              </Field>
+              </div>
             </div>
             <div className="row" style={{ marginTop: '1rem' }}>
               <button className="btn btn-primary" type="submit">
@@ -318,9 +359,20 @@ export default function OrganizerVenuesPage() {
                     {provinceLabel(venue.province_code)}
                   </span>
                 </div>
-                {venue.lat != null && (
+                {venue.lat != null ? (
                   <div className="small muted mono">
                     {Number(venue.lat).toFixed(4)}, {Number(venue.lng).toFixed(4)}
+                  </div>
+                ) : (
+                  /* Said out loud rather than shown as an absence. A venue
+                     with no pin is invisible on any map of the catalogue, and
+                     the row that omits its coordinates looks the same as one
+                     that never had room for them. */
+                  <div className="small">
+                    <span className="badge badge-warm">
+                      <Icon name="mapPin" size={12} />
+                      {locale === 'km' ? 'គ្មានទីតាំងលើផែនទី' : 'No map pin'}
+                    </span>
                   </div>
                 )}
                 <div className="row row-tight">

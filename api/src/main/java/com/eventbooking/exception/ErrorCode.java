@@ -44,6 +44,12 @@ public enum ErrorCode {
     UNKNOWN_OPERATOR(HttpStatus.BAD_REQUEST),
     INVALID_ADMIT_COUNT(HttpStatus.BAD_REQUEST),
     EMPTY_UPLOAD(HttpStatus.BAD_REQUEST),
+    /* A pasted Google Maps share link could not be resolved to a real Maps
+       URL - wrong host, no redirect, or the chain never landed on /maps. Its
+       own code so the venue form can put the message under that one field and
+       offer the manual pin, rather than failing a form whose other fields are
+       fine. */
+    UNREADABLE_MAP_LINK(HttpStatus.BAD_REQUEST),
     /* The Telegram handle on a profile edit is not one: something is left
        after the @ and t.me/ decoration is stripped, and it is not 5-32
        characters of [A-Za-z0-9_]. Its own code rather than VALIDATION_ERROR so
@@ -149,6 +155,12 @@ public enum ErrorCode {
        take-down instead - which is the reversible action that exists for
        exactly this case. */
     EVENT_NOT_DELETABLE(HttpStatus.CONFLICT),
+    /* Force delete met the one thing it will not go through: an event whose
+       payout has already been PAID. The bookings it would destroy are the point
+       of force delete and no obstacle to it; a completed transfer to the
+       organiser is money that left the building, and the invoice describing it
+       has to keep having a subject. */
+    EVENT_PAID_OUT(HttpStatus.CONFLICT),
     /* An organiser tried to pull their own event after it had sold something.
        Taking a show off sale once people hold tickets to it is a money-back
        decision, which is the platform's to make - so past the first sale the
@@ -171,6 +183,11 @@ public enum ErrorCode {
        disabling themselves. There is no way back from zero through the API -
        enabling an account requires an admin - so the only remedy is SQL against
        the database, which is exactly what this refusal exists to avoid. */
+    /* A delete was asked for on an account with history behind it. Not a
+       refusal to act on the person - anonymise does that and the message says
+       so - but a refusal to take their bookings, gate scans and review
+       decisions down with the row. */
+    USER_NOT_DELETABLE(HttpStatus.CONFLICT),
     LAST_ADMIN(HttpStatus.CONFLICT),
     /* A fourth administrator. The cap is small on purpose: every admin sees all
        platform data and can act on any of it, so the list should stay short
@@ -200,6 +217,7 @@ public enum ErrorCode {
     // Also raised when Google sign-in is switched off, so a missing client id
     // reads as "that did not work" rather than exposing which half is absent.
     INVALID_GOOGLE_TOKEN(HttpStatus.UNAUTHORIZED),
+
 
     // A Google account has no phone until its owner adds one, and this is the
     // refusal that says so. 409 because the request is coherent and the account

@@ -15,6 +15,10 @@ const PATHS = {
   chevronLeft: 'M15 6l-6 6 6 6',
   chevronDown: 'M6 9l6 6 6-6',
   external: 'M14 4h6v6M20 4l-8 8M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5',
+  /* Arrow into a tray. The tray is drawn as the same open-topped shape as
+     `external`, so the two read as a pair: one sends you out of the app, one
+     brings a file back. */
+  download: 'M12 4v10M8 10.5l4 4 4-4M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3',
   close: 'M6 6l12 12M18 6 6 18',
   menu: 'M4 7h16M4 12h16M4 17h16',
   /* The row-actions kebab. Filled, not stroked: the rest of the set draws with
