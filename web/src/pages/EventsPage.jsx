@@ -617,21 +617,30 @@ export default function EventsPage() {
             </button>
           </Empty>
         ) : (
-          <Empty icon="search" title={t("noEvents")}>
-            {locale === "km"
-              ? "សូមសម្រួលតម្រងរបស់អ្នក"
-              : "Try widening your filters."}
+          <>
+            <Empty icon="search" title={t("noEvents")}>
+              {locale === "km"
+                ? "សូមសម្រួលតម្រងរបស់អ្នក"
+                : "Try widening your filters."}
+            </Empty>
             {chips.length > 0 && (
-              <button
-                className="btn btn-sm btn-primary"
-                style={{ marginTop: "0.8rem" }}
-                onClick={() => setParams(new URLSearchParams())}
+              <div
+                style={{
+                  textAlign: "center",
+                  marginTop: "-1.5rem",
+                  paddingBottom: "2rem",
+                }}
               >
-                <Icon name="close" size={14} />
-                {t("reset")}
-              </button>
+                <button
+                  className="btn btn-sm btn-outline"
+                  onClick={() => setParams(new URLSearchParams())}
+                >
+                  <Icon name="close" size={14} />
+                  {t("reset")}
+                </button>
+              </div>
             )}
-          </Empty>
+          </>
         )}
       </div>
     </div>

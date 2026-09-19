@@ -1854,45 +1854,56 @@
   }
 
   /* Events-page search panel: query + province + sort on one line, advanced
-     date/price controls revealed on demand. */
+     date/price controls revealed on demand.
+
+     The panel drops the bordered-card wrapper (.panel) used before: on a split
+     page with map and cards, a heavy card-in-a-card frame competed with the
+     actual content. Now it sits flush on the page surface so the pills and
+     search row read as toolbar chrome, not a separate widget. */
   .searchpanel {
     @apply relative z-10;
   }
+  /* Strip the .panel border/shadow when applied to .searchpanel — the
+     search area should feel like inline chrome, not a separate card. */
+  .searchpanel.panel {
+    @apply border-0 bg-transparent shadow-none;
+  }
+  .searchpanel > .panel-body {
+    @apply px-0;
+  }
   .province-pills-row {
-    display: flex;
-    gap: 0.8rem;
-    margin-bottom: 0.5rem;
-    overflow-x: auto;
-    padding-bottom: 0.2rem;
+    @apply flex gap-[0.45rem] overflow-x-auto pb-[0.15rem];
+    margin-bottom: 0.75rem;
+    scrollbar-width: none;
   }
   .province-pills-row::-webkit-scrollbar {
     display: none;
   }
   .pill-btn {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    padding: 0.5rem 1.2rem;
-    border-radius: 9999px;
-    border: 1px solid transparent;
-    white-space: nowrap;
-    transition: all 0.2s;
-    background: transparent;
-    color: var(--color-ink-2);
-    font-weight: 500;
+    @apply flex items-center gap-[0.4rem] whitespace-nowrap rounded-full border
+      border-line bg-surface-2 px-[0.9rem] py-[0.4rem] text-[0.82rem]
+      font-semibold text-ink-2 cursor-pointer;
+    transition:
+      border-color 0.15s ease,
+      background-color 0.15s ease,
+      color 0.15s ease,
+      box-shadow 0.15s ease;
   }
   .pill-btn:hover {
-    background: var(--color-surface-hover);
+    @apply border-brand-500/40 bg-surface text-ink;
   }
   .pill-btn.is-active {
-    border-color: var(--color-brand-500);
-    background: var(--color-surface-2);
-    color: var(--color-ink);
+    @apply border-brand-600 bg-brand-600 text-white;
   }
 
   .search-row {
     @apply grid items-center gap-[0.6rem];
     grid-template-columns: minmax(0, 1fr) 190px auto;
+    /* Cap to the left cards column so the input does not stretch across the
+       full 1360px container — keeps it proportional to the grid below. */
+    max-width: calc(
+      (var(--container-shell) - 2 * var(--spacing-page) - 1.1rem) / 2
+    );
   }
   .search-row .btn {
     @apply relative min-h-[42px];
