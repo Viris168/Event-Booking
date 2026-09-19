@@ -496,8 +496,63 @@
     @apply -translate-y-[3px] shadow-float;
   }
 
+  /* ---- the ticket -------------------------------------------------------
+     Each card is a stub: a short head holding the mark and a serial, a tear
+     across the middle, and the copy below it. The product is a ticket, so the
+     one shape on this page that is not a plain rectangle is the shape of the
+     thing being sold - which is a reason a rounded box with an icon in it
+     never has.
+
+     The tear is three parts that have to agree: a dashed rule at the foot of
+     the stub, and two circles straddling the card's edges at that same line.
+     The circles are painted in --color-page - whatever is BEHIND the card -
+     so they read as holes punched through it rather than dots drawn on it.
+     That is also why the stub's height is fixed: the circles are positioned
+     against it, and a stub that grew with its content would leave them
+     floating above or below the rule they belong to. */
+  /* Two classes, because .card sets overflow-hidden and is declared further
+     down this file - at equal specificity the later rule wins, and the notches
+     were being clipped away by the very card they are cut into. */
+  .card.home-feature {
+    @apply relative overflow-visible;
+  }
+  .home-feature-stub {
+    @apply flex h-[3.1rem] flex-none items-center justify-between px-[1.1rem];
+    border-bottom: 1px dashed var(--color-line);
+  }
+  .home-feature-serial {
+    @apply text-[0.68rem] font-extrabold tracking-[0.16em] text-muted;
+  }
+  /* The punched holes. -8px on a 16px circle centres it on the edge, and the
+     top lines it up with the dashed rule.
+
+     Each is then clipped to the half INSIDE the card. Left whole, the circle's
+     ring carries on past the card's edge and draws an arc in the space beside
+     it - and a hole punched through paper has no outline in the air next to
+     it, so it stopped reading as a hole and started reading as a dot stuck to
+     the card. Clipped, what is left is a half-disc bitten out of the edge,
+     outlined on its curved side only.
+
+     The outline is why these are not simply filled circles: --color-page and
+     --color-surface are two shades apart in light mode, and with no arc the
+     notch all but vanishes there. */
+  .home-feature::before,
+  .home-feature::after {
+    content: '';
+    @apply pointer-events-none absolute size-4 rounded-full border border-line bg-page;
+    top: calc(3.1rem - 8px);
+  }
+  .home-feature::before {
+    @apply -left-2;
+    clip-path: inset(0 0 0 50%);
+  }
+  .home-feature::after {
+    @apply -right-2;
+    clip-path: inset(0 50% 0 0);
+  }
+
   .home-feature .card-body {
-    @apply flex flex-col gap-[0.5rem] p-[1.1rem];
+    @apply flex flex-col gap-[0.4rem] p-[1.1rem];
   }
   .home-feature svg {
     @apply text-gold-500;

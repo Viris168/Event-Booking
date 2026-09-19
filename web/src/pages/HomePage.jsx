@@ -287,6 +287,7 @@ function HeroRail({ events }) {
 const HOW_IT_WORKS = [
   {
     icon: "qr",
+    serial: "01",
     en: "KHQR and ABA PayWay",
     km: "KHQR និង ABA PayWay",
     bodyEn:
@@ -296,6 +297,7 @@ const HOW_IT_WORKS = [
   },
   {
     icon: "ticket",
+    serial: "02",
     en: "A QR ticket at the door",
     km: "សំបុត្រ QR នៅទ្វារចូល",
     bodyEn:
@@ -305,6 +307,7 @@ const HOW_IT_WORKS = [
   },
   {
     icon: "seat",
+    serial: "03",
     en: "Reserved seats or zoned entry",
     km: "កៅអីកក់ទុក ឬចូលតាមតំបន់",
     bodyEn:
@@ -314,6 +317,7 @@ const HOW_IT_WORKS = [
   },
   {
     icon: "telegram",
+    serial: "04",
     en: "Told on Telegram",
     km: "ដំណឹងតាម Telegram",
     bodyEn:
@@ -342,8 +346,14 @@ function HowItWorks({ locale }) {
       <div className="grid grid-cards">
         {HOW_IT_WORKS.map((f) => (
           <article className="card home-feature" key={f.icon}>
+            {/* The stub half. Fixed height, because the notches punched into
+                the two edges are positioned against it and a stub that grew
+                with its icon would drag them out of line with the tear. */}
+            <div className="home-feature-stub">
+              <Icon name={f.icon} size={18} />
+              <span className="home-feature-serial">{f.serial}</span>
+            </div>
             <div className="card-body">
-              <Icon name={f.icon} size={20} />
               <h3>{locale === "km" ? f.km : f.en}</h3>
               <p>{locale === "km" ? f.bodyKm : f.bodyEn}</p>
             </div>
