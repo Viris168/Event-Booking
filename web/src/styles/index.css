@@ -2396,6 +2396,12 @@
   .meta-dim {
     @apply text-muted/75;
   }
+  /* Row that holds the pin button and the arrow side by side. */
+  .ev-foot-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
   /* The arrow is decoration - the whole card is the link - so it only picks
      up the brand colour on hover instead of competing as a second target. */
   .ev-go {
@@ -2407,6 +2413,30 @@
   }
   .ev-card:hover .ev-go {
     @apply border-brand-600 bg-brand-600 text-white;
+  }
+  /* Pin button: always visible, subtle by default, active when pinned. */
+  .ev-pin {
+    @apply border-line-2 bg-surface-2 text-muted;
+    transition:
+      background-color 0.16s ease,
+      border-color 0.16s ease,
+      color 0.16s ease,
+      transform 0.16s ease;
+  }
+  .ev-pin:hover {
+    @apply border-brand-500 text-brand-600;
+  }
+  .ev-pin.is-pinned {
+    @apply border-orange-500 bg-orange-500 text-white;
+    animation: ev-pin-pop 0.25s ease-out;
+  }
+  .ev-pin.is-pinned:hover {
+    @apply text-white;
+  }
+  @keyframes ev-pin-pop {
+    0%   { transform: scale(1); }
+    50%  { transform: scale(1.22); }
+    100% { transform: scale(1); }
   }
   /* Sold out stays legible and clickable (the page still explains itself),
      just visibly spent next to cards you can still buy. */
@@ -7627,8 +7657,22 @@ html[lang="km"] .contact-card h2 {
 .evmap-pin-wrap {
   @apply !h-auto !w-auto;
 }
+/* Column that stacks the needle icon on top of the price pill. */
+.evmap-pin-stack {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  transform: translate(-50%, -50%);
+  gap: 1px;
+}
+/* The SVG pin needle that appears when a marker is pinned (clicked). */
+.evmap-needle {
+  color: #f97316;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.32));
+  flex-shrink: 0;
+}
 .evmap-pin {
-  @apply inline-block -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full px-[0.55rem] py-[0.22rem] text-[0.76rem] font-bold;
+  @apply inline-block whitespace-nowrap rounded-full px-[0.55rem] py-[0.22rem] text-[0.76rem] font-bold;
   background: var(--color-surface);
   color: var(--color-ink);
   border: 1px solid var(--color-line);
@@ -7639,7 +7683,7 @@ html[lang="km"] .contact-card h2 {
     color 0.15s;
 }
 .evmap-pin:hover {
-  transform: translate(-50%, -50%) scale(1.06);
+  transform: scale(1.06);
 }
 /* Selected gets a brand highlight ring and accent color on a white surface
    so it stands out cleanly without dark color bleeding into popups. */
@@ -7650,7 +7694,24 @@ html[lang="km"] .contact-card h2 {
   box-shadow:
     0 0 0 2px var(--color-brand-500),
     0 2px 6px rgba(0, 0, 0, 0.18);
-  transform: translate(-50%, -50%) scale(1.08);
+  transform: scale(1.08);
+}
+/* Pinned (clicked) marker: solid orange fill so the user knows it's locked.
+   Overrides is-active when both apply (hover on top of pinned). */
+.evmap-pin.is-pinned {
+  background: #f97316;
+  color: #fff;
+  border-color: #ea580c;
+  box-shadow:
+    0 0 0 3px rgba(249, 115, 22, 0.3),
+    0 3px 8px rgba(0, 0, 0, 0.28);
+  transform: scale(1.12);
+  animation: evmap-pin-pulse 0.3s ease-out;
+}
+@keyframes evmap-pin-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.4), 0 3px 8px rgba(0,0,0,0.28); }
+  60%  { box-shadow: 0 0 0 8px rgba(249, 115, 22, 0), 0 3px 8px rgba(0,0,0,0.28); }
+  100% { box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.3), 0 3px 8px rgba(0,0,0,0.28); }
 }
 
 /* Leaflet's chrome on this project's surfaces. Compound selector, not
@@ -7676,7 +7737,54 @@ html[lang="km"] .contact-card h2 {
   @apply text-muted text-[0.78rem];
 }
 .evmap-pop-price {
-  @apply mt-1 font-bold;
+  @apply font-bold;
+}
+.evmap-pop-foot {
+  @apply mt-[0.4rem] flex items-center justify-between gap-[0.5rem];
+}
+.leaflet-popup-content a.evmap-pop-detail,
+.events-map .evmap-pop-detail,
+.evmap-pop-detail {
+  @apply inline-flex items-center justify-center gap-[0.35rem] rounded-full px-[0.85rem] py-[0.3rem]
+    text-[0.75rem] font-semibold no-underline overflow-hidden relative cursor-pointer select-none;
+  background: linear-gradient(135deg, var(--color-brand-600), var(--color-brand-700)) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 6px -1px rgba(18, 97, 60, 0.4);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transform: translateY(0);
+  text-decoration: none !important;
+}
+
+.leaflet-popup-content a.evmap-pop-detail::before,
+.evmap-pop-detail::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%;
+  width: 100%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
+  transition: left 0.5s ease-out;
+}
+
+.leaflet-popup-content a.evmap-pop-detail:hover,
+.events-map .evmap-pop-detail:hover,
+.evmap-pop-detail:hover {
+  background: linear-gradient(135deg, var(--color-brand-500), var(--color-brand-600)) !important;
+  color: #ffffff !important;
+  box-shadow: 0 5px 14px -2px rgba(18, 97, 60, 0.5);
+  transform: translateY(-1.5px) scale(1.03);
+  text-decoration: none !important;
+}
+
+.leaflet-popup-content a.evmap-pop-detail:hover::before,
+.evmap-pop-detail:hover::before {
+  left: 100%;
+}
+
+.leaflet-popup-content a.evmap-pop-detail:active,
+.events-map .evmap-pop-detail:active,
+.evmap-pop-detail:active {
+  transform: translateY(0.5px) scale(0.97);
+  box-shadow: 0 1px 3px -1px rgba(18, 97, 60, 0.4);
 }
 
 /*

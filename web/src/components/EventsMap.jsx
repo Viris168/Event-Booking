@@ -40,8 +40,8 @@ const ARRIVAL_ZOOM = 16
  * treatment as a mid-size one. Raised, and the distance formula below now
  * reaches further before flattening out against it.
  */
-const MIN_FLIGHT_S = 0.8
-const MAX_FLIGHT_S = 1.8
+const MIN_FLIGHT_S = 0.7
+const MAX_FLIGHT_S = 1.2
 
 /**
  * How long the camera holds at cruise altitude before diving in.
@@ -71,7 +71,7 @@ const HOVER_SETTLE_MS = 200
  * would fit on screen, holds there for a beat, then drops into the target.
  * Two legs, not one continuous interpolation.
  */
-const CRUISE_ZOOM = 8
+const CRUISE_ZOOM = 12
 
 /** Below this distance a climb reads as fidgeting, not travel - just ease in. */
 const CLIMB_THRESHOLD_M = 5000
@@ -124,10 +124,15 @@ const CAMBODIA = { center: [12.5657, 104.991], zoom: 7 }
  * sit centred over the venue. iconSize is left null and the anchor handled in
  * CSS with a translate, because the width is not known until it renders.
  */
-function priceIcon({ label, active }) {
+// SVG map-pin needle rendered above the pill when the marker is pinned.
+const PIN_SVG = `<svg class="evmap-needle" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="22" height="22" aria-hidden="true"><path fill-rule="evenodd" d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-2.099 3.468-4.698 3.468-7.827C20 6.04 16.418 2 12 2S4 6.04 4 11.5c0 3.13 1.524 5.729 3.468 7.827a19.58 19.58 0 002.683 2.282 16.974 16.974 0 001.09.712zM12 13.25a1.75 1.75 0 100-3.5 1.75 1.75 0 000 3.5z" clip-rule="evenodd"/></svg>`
+
+function priceIcon({ label, active, pinned }) {
+  const cls = ['evmap-pin', active && 'is-active', pinned && 'is-pinned'].filter(Boolean).join(' ')
+  const needle = pinned ? PIN_SVG : ''
   return L.divIcon({
     className: 'evmap-pin-wrap',
-    html: `<span class="evmap-pin${active ? ' is-active' : ''}">${escapeHtml(label)}</span>`,
+    html: `<span class="evmap-pin-stack">${needle}<span class="${cls}">${escapeHtml(label)}</span></span>`,
     iconSize: null,
     popupAnchor: [0, -18],
   })
@@ -135,7 +140,10 @@ function priceIcon({ label, active }) {
 
 
 
-export default function EventsMap({ events, activeId, onSelect, locale = 'en' }) {
+export default function EventsMap({ events, hoveredId, pinnedId, onSelect, locale = 'en' }) {
+  // The active event the map highlights: the hovered card takes priority;
+  // the pinned event is the fallback when nothing is being hovered.
+  const activeId = hoveredId ?? pinnedId
   const { provinceName } = useProvinces()
   const { isDark } = useTheme()
   const hostRef = useRef(null)
@@ -149,6 +157,8 @@ export default function EventsMap({ events, activeId, onSelect, locale = 'en' })
   // The one `moveend` listener a climb registers, kept so it can be taken off
   // by name. See the comment in flyTo for why it cannot be taken off wholesale.
   const climbEndRef = useRef(null)
+  // Which event id was last flown to, so province-aware flights can compare.
+  const lastActiveRef = useRef(null)
   const onSelectRef = useRef(onSelect)
   useEffect(() => {
     onSelectRef.current = onSelect
@@ -163,6 +173,9 @@ export default function EventsMap({ events, activeId, onSelect, locale = 'en' })
   }, [points])
   const framedRef = useRef(false)
 
+  // Track the current active destination so we don't interrupt a flight in progress to restart an identical one.
+  const flightDestRef = useRef(null)
+
   /**
    * The two-stage flight.
    *
@@ -172,12 +185,12 @@ export default function EventsMap({ events, activeId, onSelect, locale = 'en' })
    * was in flight; the token makes a superseded flight abandon its own
    * second leg rather than landing on top of the newer one.
    */
-  const flyTo = useCallback((center, targetZoom = ARRIVAL_ZOOM) => {
+  const flyTo = useCallback((center, targetZoom = ARRIVAL_ZOOM, { smooth = false } = {}) => {
     const map = mapRef.current
     if (!map) return
-    const token = ++flightRef.current
     const to = L.latLng(center)
     const from = map.getCenter()
+
     /*
      * A map that has never had a size has no centre worth interpolating from -
      * fitBounds on a zero-height container leaves the view at (NaN, NaN), and
@@ -189,7 +202,30 @@ export default function EventsMap({ events, activeId, onSelect, locale = 'en' })
       map.setView(to, targetZoom, { animate: false })
       return
     }
+
+    // If we're already exactly where we want to be, don't trigger a flight that
+    // just wobbles the view or zooms out/in unnecessarily.
     const metres = map.distance(from, to)
+    if (metres < 5 && Math.abs(map.getZoom() - targetZoom) < 0.1) {
+      return
+    }
+
+    /*
+     * If an identical flight is still in progress, let it finish. Do not let a
+     * stale remembered destination block a real retry: that is what left
+     * single-event province pages sitting at country zoom after a frame was
+     * interrupted before arrival.
+     */
+    if (flightDestRef.current &&
+        flightDestRef.current.to.equals(to) &&
+        flightDestRef.current.zoom === targetZoom &&
+        metres < 250 &&
+        Math.abs(map.getZoom() - targetZoom) < 1) {
+      return
+    }
+
+    const token = ++flightRef.current
+    flightDestRef.current = { to, zoom: targetZoom }
 
     /*
      * Duration scales with distance, so a hop across Phnom Penh and one to
@@ -220,12 +256,20 @@ export default function EventsMap({ events, activeId, onSelect, locale = 'en' })
     if (token !== flightRef.current) return
 
     /*
-     * Short hops ease straight in - one leg, the same as before. A climb over
-     * a few hundred metres would look like the map flinching rather than
-     * travelling, since there is nowhere for the pull-back to go.
+     * If we are already at or above the target zoom, and it's a short hop or same province,
+     * use a flat pan. This prevents the dizzying 'zoom out, zoom in' dip that flyTo naturally does.
+     */
+    if ((smooth || metres <= CLIMB_THRESHOLD_M) && map.getZoom() >= targetZoom) {
+      map.panTo(to, { animate: true, duration: seconds })
+      return
+    }
+
+    /*
+     * For zoom-ins from high altitude, or short hops that require zooming,
+     * use Leaflet's native flyTo for a smooth pan+zoom interpolation.
      */
     const alreadyLow = map.getZoom() <= CRUISE_ZOOM
-    if (metres <= CLIMB_THRESHOLD_M || alreadyLow) {
+    if (metres <= CLIMB_THRESHOLD_M || alreadyLow || map.getZoom() < targetZoom) {
       map.flyTo(to, targetZoom, { animate: true, duration: seconds, easeLinearity: 0.1 })
       return
     }
@@ -294,6 +338,10 @@ export default function EventsMap({ events, activeId, onSelect, locale = 'en' })
     const map = L.map(hostRef.current, { zoomControl: true, scrollWheelZoom: true })
       .setView(CAMBODIA.center, CAMBODIA.zoom)
     mapRef.current = map
+
+    // Clear active flight destination only on manual drag, NOT zoomstart, 
+    // because automated flights inherently trigger zoomstart and clear their own protection!
+    map.on('dragstart', () => { flightDestRef.current = null })
 
     /*
      * Leaflet measures its container once, at creation, and this one is
@@ -393,25 +441,28 @@ export default function EventsMap({ events, activeId, onSelect, locale = 'en' })
       if (province) vParts.push(province)
       const venueHtml = vParts.length > 0 ? `<div class="evmap-pop-venue">${escapeHtml(vParts.join(' · '))}</div>` : ''
 
+      const detailLabel = locale === 'km' ? '\u179b\u1798\u17d2\u17a2\u17b7\u178f' : 'Detail'
+
       const marker = L.marker([+venue.lat, +venue.lng], { icon: priceIcon({ label, active: false }) })
         .addTo(map)
         .bindPopup(
           `<div class="evmap-pop">
              <div class="evmap-pop-title">${escapeHtml(title ?? '')}</div>
              ${venueHtml}
-             ${from == null ? '' : `<div class="evmap-pop-price">${usd(from)}</div>`}
+             <div class="evmap-pop-foot">
+               ${from == null ? '' : `<span class="evmap-pop-price">${usd(from)}</span>`}
+               <a href="/events/${e.id}" class="evmap-pop-detail"><span>${escapeHtml(detailLabel)}</span></a>
+             </div>
            </div>`,
         )
       marker.on('click', () => onSelectRef.current?.(e.id))
       // The icon is rebuilt on selection, and rebuilding it needs the label
       // again - cheaper to carry it than to recompute the price from the event.
       marker.options.priceLabel = label
+      marker.options.provinceCode = venue.provinceCode ?? venue.province_code
       mine[e.id] = marker
     })
     markersRef.current = mine
-
-    // Frame the whole result set, unless there is nothing to frame.
-    frame(points)
 
     /*
      * Each run tears down the markers it created, rather than the next run
@@ -427,46 +478,64 @@ export default function EventsMap({ events, activeId, onSelect, locale = 'en' })
     }
   }, [points, locale, frame, provinceName])
 
-  // Selection: light up the chosen pin, dim the rest, and go to it.
+  // Frame the whole result set only when the set of plotted events changes.
+  // Selection changes such as pinning repaint marker icons, but must not pull
+  // the camera back out to the all-results view.
+  useEffect(() => {
+    frame(points)
+  }, [points, frame])
+
+  // Icon repaint: light up the chosen pin, dim the rest.
+  // Depends on both activeId and pinnedId so the pinned fill updates the
+  // instant the visitor clicks pin - without triggering a flight.
+  useEffect(() => {
+    if (!mapRef.current) return
+    Object.entries(markersRef.current).forEach(([id, m]) => {
+      const isActive = String(id) === String(activeId)
+      const isPinned = String(id) === String(pinnedId)
+      m.setIcon(priceIcon({ label: m.options.priceLabel, active: isActive, pinned: isPinned }))
+    })
+  }, [activeId, pinnedId])
+
+  // Hover flight + popup: fires when hoveredId changes.
+  // - hoveredId goes non-null  → fly to that card and open its popup
+  // - hoveredId goes null      → return to the pinned event if there is one
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
 
-    // The pill lighting up is immediate - that is the answer to "which one is
-    // this?", and it should never wait on an animation.
-    Object.entries(markersRef.current).forEach(([id, m]) => {
-      m.setIcon(priceIcon({ label: m.options.priceLabel, active: String(id) === String(activeId) }))
-    })
-
-    const chosen = markersRef.current[activeId]
-    if (!chosen) {
-      // Nothing selected any more, so nothing should still be labelled. The
-      // early return used to skip this: a popup opened on one hover stayed on
-      // the map indefinitely, pointing at a card the reader had long left, and
-      // with no pin lit to match it.
+    // Pinning is not itself a camera command, but once the visitor has hovered
+    // away from the pin, leaving that hover should settle the map back on it.
+    if (!hoveredId) {
+      const pinned = markersRef.current[pinnedId]
+      if (pinned) {
+        pinned.openPopup()
+        flyTo(pinned.getLatLng(), ARRIVAL_ZOOM, { smooth: true })
+        lastActiveRef.current = pinnedId
+        return
+      }
       map.closePopup()
       return
     }
+
+    const chosen = markersRef.current[hoveredId]
+    if (!chosen) { map.closePopup(); return }
+
+    // Same-province hops get a smooth direct pan — no climb-hold-dive.
+    const prevMarker = lastActiveRef.current ? markersRef.current[lastActiveRef.current] : null
+    const sameProvince = prevMarker && prevMarker.options.provinceCode && prevMarker.options.provinceCode === chosen.options.provinceCode
 
     // Moving the map does wait. The cleanup cancels a pending flight whenever
     // the selection changes again, so only a hover the visitor actually settled
     // on ever reaches the map.
     const timer = setTimeout(() => {
       chosen.openPopup()
-
-      /*
-       * No "already visible, so stay put" shortcut here.
-       *
-       * It was added to stop the map lurching, and it did - by doing nothing at
-       * all for this catalogue, where every pin sits inside the same view. The
-       * lurch was the flat slide, not the travelling; now that a flight rises
-       * and settles, going somewhere is the thing worth watching.
-       */
-      flyTo(chosen.getLatLng())
+      flyTo(chosen.getLatLng(), ARRIVAL_ZOOM, { smooth: !!sameProvince })
+      lastActiveRef.current = hoveredId
     }, HOVER_SETTLE_MS)
 
     return () => clearTimeout(timer)
-  }, [activeId, flyTo])
+  }, [hoveredId, pinnedId, flyTo])
 
   return <div ref={hostRef} className="events-map" />
 }

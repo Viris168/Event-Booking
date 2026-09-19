@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { getProvinces } from '../api/provinces.js'
 
 /**
@@ -48,12 +48,12 @@ export function useProvinces() {
    * a data problem, and showing "12" makes that visible instead of rendering a
    * card that looks like it simply has no location.
    */
-  function provinceName(code, locale = 'en') {
+  const provinceName = useCallback((code, locale = 'en') => {
     if (code == null) return ''
     const p = provinces.find((x) => String(x.code) === String(code))
     if (!p) return String(code)
     return locale === 'km' ? p.name_km : p.name_en
-  }
+  }, [provinces])
 
   return { provinces, provinceName }
 }

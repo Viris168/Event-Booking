@@ -57,6 +57,8 @@ function ScarcityFlag({ event }) {
 export default function EventCard({
   event,
   compact = false,
+  pinned = false,
+  onPin,
   className = "",
   ...rest
 }) {
@@ -183,8 +185,23 @@ export default function EventCard({
           <Money cents={price} stacked />
         </span>
         {!compact && (
-          <span className="btn btn-sm btn-outline ev-go" aria-hidden="true">
-            <Icon name="arrowRight" size={15} />
+          <span className="ev-foot-actions">
+            {onPin && (
+              <button
+                type="button"
+                className={`btn btn-sm btn-outline ev-pin${pinned ? " is-pinned" : ""}`}
+                aria-label={pinned ? "Unpin from map" : "Pin on map"}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onPin(); }}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill={pinned ? "currentColor" : "none"} stroke="currentColor" strokeWidth={pinned ? "0" : "2"} width="15" height="15">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
+                </svg>
+              </button>
+            )}
+            <span className="btn btn-sm btn-outline ev-go" aria-hidden="true">
+              <Icon name="arrowRight" size={15} />
+            </span>
           </span>
         )}
       </div>

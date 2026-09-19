@@ -124,9 +124,10 @@ export default function EventsPage() {
   };
   // The scrolling half of the split, so turning the page can send it back up.
   const listRef = useRef(null);
-  // Which card the map is pointing at, and vice versa. Not in the URL: it is
-  // a pointer within the page, not part of what the page is showing.
-  const [activeId, setActiveId] = useState(null);
+  // Two-layer selection: a pinned event persists as a visual marker, while a
+  // hovered event is the only card interaction that moves the map camera.
+  const [pinnedId, setPinnedId] = useState(null);
+  const [hoveredId, setHoveredId] = useState(null);
   const [showMapOnMobile, setShowMapOnMobile] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [apiResults, setApiResults] = useState([]);
@@ -242,7 +243,8 @@ export default function EventsPage() {
         }
         // A result set the visitor did not choose should not keep an old card
         // lit up on a map that no longer shows it.
-        setActiveId(null);
+        setPinnedId(null);
+        setHoveredId(null);
       })
       .catch(() => {
         // No mock fallback: seeded events standing in for a failed read looked
@@ -546,8 +548,10 @@ export default function EventsPage() {
                     key={e.id}
                     event={e}
                     data-event-id={e.id}
-                    onMouseEnter={() => setActiveId(e.id)}
-                    onMouseLeave={() => setActiveId(null)}
+                    pinned={String(pinnedId) === String(e.id)}
+                    onPin={() => setPinnedId((prev) => (String(prev) === String(e.id) ? null : e.id))}
+                    onMouseEnter={() => setHoveredId(e.id)}
+                    onMouseLeave={() => setHoveredId(null)}
                   />
                 ))}
               </div>
@@ -563,8 +567,9 @@ export default function EventsPage() {
                 >
                   <EventsMap
                     events={apiResults}
-                    activeId={activeId}
-                    onSelect={setActiveId}
+                    hoveredId={hoveredId}
+                    pinnedId={pinnedId}
+                    onSelect={(id) => setPinnedId((prev) => (prev === id ? null : id))}
                     locale={locale}
                   />
                 </Suspense>
