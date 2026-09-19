@@ -287,7 +287,6 @@ function HeroRail({ events }) {
 const HOW_IT_WORKS = [
   {
     icon: "qr",
-    serial: "01",
     en: "KHQR and ABA PayWay",
     km: "KHQR និង ABA PayWay",
     bodyEn:
@@ -297,7 +296,6 @@ const HOW_IT_WORKS = [
   },
   {
     icon: "ticket",
-    serial: "02",
     en: "A QR ticket at the door",
     km: "សំបុត្រ QR នៅទ្វារចូល",
     bodyEn:
@@ -307,7 +305,6 @@ const HOW_IT_WORKS = [
   },
   {
     icon: "seat",
-    serial: "03",
     en: "Reserved seats or zoned entry",
     km: "កៅអីកក់ទុក ឬចូលតាមតំបន់",
     bodyEn:
@@ -317,7 +314,6 @@ const HOW_IT_WORKS = [
   },
   {
     icon: "telegram",
-    serial: "04",
     en: "Told on Telegram",
     km: "ដំណឹងតាម Telegram",
     bodyEn:
@@ -329,42 +325,44 @@ const HOW_IT_WORKS = [
 
 function HowItWorks({ locale }) {
   return (
-    /* A band rather than another block in the column: this section is the one
-       place the page explains itself, and changing the ground under it says so
-       once, at the size of the whole section, instead of four times over on
-       four cards. Outer/inner is the split .footer and .hero-base already use. */
+    /* The heading sits BESIDE the items, not on top of them.
+     *
+     * Heading, then a lede, then four equal cards in a row is the shape of
+     * every template on the internet, and it is that way because it needs no
+     * decisions - which is also why it reads as though none were made. Four
+     * boxes of identical weight give the eye nowhere to land first, so the
+     * section has no entry point and every item competes with the other three.
+     *
+     * Splitting it asymmetrically fixes both. The heading becomes a column of
+     * its own with real size, which is the thing you read first; the items sit
+     * beside it as a plain two-by-two list. They carry no borders of their own
+     * because the band already is the container - boxing them inside it would
+     * be a second edge drawn around things that are already enclosed.
+     */
     <section className="home-band">
-      <div className="home-band-inner">
-      <div className="section-head">
-        <h2>
-          {locale === "km"
-            ? "សំបុត្ររបស់អ្នក ពីការទូទាត់ដល់ទ្វារចូល"
-            : "Your ticket, from payment to the gate"}
-        </h2>
-      </div>
-      <p className="home-strip-lede">
-        {locale === "km"
-          ? "ទូទាត់ដោយកម្មវិធីធនាគារដែលអ្នកមានស្រាប់ ហើយកូដ QR សម្រាប់ចូលមកដល់ពេលការទូទាត់ជោគជ័យ។"
-          : "Pay with the banking app you already have, and the code that gets you in arrives as soon as the payment clears."}
-      </p>
+      <div className="home-band-inner home-how">
+        <div className="home-how-lede">
+          <h2>
+            {locale === "km"
+              ? "សំបុត្ររបស់អ្នក ពីការទូទាត់ដល់ទ្វារចូល"
+              : "Your ticket, from payment to the gate"}
+          </h2>
+          <p>
+            {locale === "km"
+              ? "ទូទាត់ដោយកម្មវិធីធនាគារដែលអ្នកមានស្រាប់ ហើយកូដ QR សម្រាប់ចូលមកដល់ពេលការទូទាត់ជោគជ័យ។"
+              : "Pay with the banking app you already have, and the code that gets you in arrives as soon as the payment clears."}
+          </p>
+        </div>
 
-      <div className="grid grid-cards">
-        {HOW_IT_WORKS.map((f) => (
-          <article className="card home-feature" key={f.icon}>
-            {/* The stub half. Fixed height, because the notches punched into
-                the two edges are positioned against it and a stub that grew
-                with its icon would drag them out of line with the tear. */}
-            <div className="home-feature-stub">
-              <Icon name={f.icon} size={18} />
-              <span className="home-feature-serial">{f.serial}</span>
-            </div>
-            <div className="card-body">
+        <ul className="home-how-list">
+          {HOW_IT_WORKS.map((f) => (
+            <li key={f.icon}>
+              <Icon name={f.icon} size={17} />
               <h3>{locale === "km" ? f.km : f.en}</h3>
               <p>{locale === "km" ? f.bodyKm : f.bodyEn}</p>
-            </div>
-          </article>
-        ))}
-      </div>
+            </li>
+          ))}
+        </ul>
       </div>
     </section>
   );

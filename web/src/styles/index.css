@@ -476,14 +476,16 @@
      shell everything else uses - the shape .footer and .hero-base are built
      from. It carries its own vertical padding rather than .home-strip's top
      margin, because a band's space belongs inside it. */
+  /* --color-tint, not surface-2. The band has to be the ground and the cards
+     the figure, and in dark mode surface-2 (#23201a) is LIGHTER than a card
+     (#1c1915) - the cards sank into it. The tint separates by hue instead of
+     by lightness, so warm paper sits on a green ground and the relationship
+     holds in both themes rather than inverting between them. */
   .home-band {
-    @apply border-y border-line bg-surface-2 py-11;
+    @apply border-y border-line bg-tint py-11;
   }
   .home-band-inner {
     @apply mx-auto max-w-shell px-page;
-  }
-  .home-strip-lede {
-    @apply mb-[1.1rem] max-w-[62ch] text-[1rem] leading-relaxed text-muted;
   }
 
   /* The mark sits on the card, not in a filled tile. A row of coloured boxes
@@ -496,94 +498,73 @@
      the standalone translate property, so a transform transition animates
      nothing and the card jumps to its lifted position while only the shadow
      fades in. .ev-card above has the same pair and the same jump. */
-  .home-feature,
   .home-cta {
     transition:
       translate 0.16s ease,
       box-shadow 0.16s ease;
   }
-  .home-feature:hover,
   .home-cta:hover {
     @apply -translate-y-[3px] shadow-float;
   }
 
-  /* ---- the ticket -------------------------------------------------------
-     Each card is a stub: a short head holding the mark and a serial, a tear
-     across the middle, and the copy below it. The product is a ticket, so the
-     one shape on this page that is not a plain rectangle is the shape of the
-     thing being sold - which is a reason a rounded box with an icon in it
-     never has.
-
-     The tear is three parts that have to agree: a dashed rule at the foot of
-     the stub, and two circles straddling the card's edges at that same line.
-     The circles are painted in --color-page - whatever is BEHIND the card -
-     so they read as holes punched through it rather than dots drawn on it.
-     That is also why the stub's height is fixed: the circles are positioned
-     against it, and a stub that grew with its content would leave them
-     floating above or below the rule they belong to. */
-  /* Two classes, because .card sets overflow-hidden and is declared further
-     down this file - at equal specificity the later rule wins, and the notches
-     were being clipped away by the very card they are cut into. */
-  .card.home-feature {
-    @apply relative overflow-visible;
+  /* The asymmetric split. 0.85fr against 1.5fr rather than two equal halves:
+     equal columns read as a comparison of two things, and this is one thing
+     introducing four others. Spacing is on an 8px scale, as the rest is. */
+  .home-how {
+    @apply grid items-center gap-x-12 gap-y-8;
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.5fr);
   }
-  .home-feature-stub {
-    @apply flex h-[3.1rem] flex-none items-center justify-between px-[1.1rem];
-    border-bottom: 1px dashed var(--color-line);
+  .home-how-lede h2 {
+    @apply m-0 max-w-[15ch] text-[1.7rem] leading-[1.18] tracking-[-0.01em];
   }
-  .home-feature-serial {
-    @apply text-[0.68rem] font-extrabold tracking-[0.16em] text-muted;
-  }
-  /* The punched holes. -8px on a 16px circle centres it on the edge, and the
-     top lines it up with the dashed rule.
-
-     Each is then clipped to the half INSIDE the card. Left whole, the circle's
-     ring carries on past the card's edge and draws an arc in the space beside
-     it - and a hole punched through paper has no outline in the air next to
-     it, so it stopped reading as a hole and started reading as a dot stuck to
-     the card. Clipped, what is left is a half-disc bitten out of the edge,
-     outlined on its curved side only.
-
-     The outline is why these are not simply filled circles: --color-page and
-     --color-surface are two shades apart in light mode, and with no arc the
-     notch all but vanishes there. */
-  /* --notch-bg is what the card is sitting ON, and the hole shows it through.
-     Declared here and overridden by any ground the ticket is placed on: inside
-     .home-band the page colour would be a shade nobody can see from there, and
-     the holes would stop being holes and go back to being dots. */
-  .home-feature {
-    --notch-bg: var(--color-page);
-  }
-  .home-band .home-feature {
-    --notch-bg: var(--color-surface-2);
-  }
-  .home-feature::before,
-  .home-feature::after {
-    content: '';
-    @apply pointer-events-none absolute size-4 rounded-full border border-line;
-    background: var(--notch-bg);
-    top: calc(3.1rem - 8px);
-  }
-  .home-feature::before {
-    @apply -left-2;
-    clip-path: inset(0 0 0 50%);
-  }
-  .home-feature::after {
-    @apply -right-2;
-    clip-path: inset(0 50% 0 0);
+  .home-how-lede p {
+    @apply mb-0 mt-4 max-w-[42ch] text-[0.95rem] leading-relaxed text-muted;
   }
 
-  .home-feature .card-body {
-    @apply flex flex-col gap-[0.4rem] p-[1.1rem];
+  /* Boxed, on the band. The heading column beside them is what gives the
+     section its entry point, so these four can carry equal weight without
+     the eye having nowhere to land - which is what made them generic when
+     they sat under a heading instead of next to one.
+     Warm --color-surface on the green band: they separate from their ground
+     by hue rather than by lightness, so the figure holds in both themes. */
+  .home-how-list {
+    @apply m-0 grid list-none grid-cols-2 gap-3 p-0;
   }
-  .home-feature svg {
-    @apply text-gold-500;
+  .home-how-list li {
+    @apply min-w-0 border border-line bg-surface p-[1.05rem];
+    border-radius: var(--radius-card);
+    transition:
+      translate 0.16s ease,
+      box-shadow 0.16s ease;
   }
-  .home-feature h3 {
-    @apply m-0 text-[0.98rem] font-bold leading-[1.35];
+  .home-how-list li:hover {
+    @apply -translate-y-[3px] shadow-float;
   }
-  .home-feature p {
-    @apply m-0 text-[0.87rem] leading-[1.55] text-ink-2;
+  .home-how-list svg {
+    @apply mb-[0.55rem] block text-gold-500;
+  }
+  .home-how-list h3 {
+    @apply m-0 text-[0.97rem] font-bold leading-[1.35];
+  }
+  .home-how-list p {
+    @apply mb-0 mt-[0.3rem] text-[0.88rem] leading-[1.6] text-ink-2;
+  }
+
+  /* The split needs room for two columns of prose. Below that the heading
+     goes back on top, which is the right shape once there is only one
+     column to put it above. */
+  @media (max-width: 980px) {
+    .home-how {
+      @apply grid-cols-1 gap-y-7;
+    }
+    .home-how-lede h2 {
+      @apply max-w-[24ch];
+    }
+  }
+  @media (max-width: 560px) {
+    .home-how-list {
+      @apply grid-cols-1;
+    }
   }
 
   /* One card rather than a full-bleed band: the page is a column of cards and
