@@ -1,5 +1,6 @@
 package com.eventbooking.controller.Notification;
 
+import com.eventbooking.Enumeration.NotificationFilter;
 import com.eventbooking.dto.notification.NotificationResponse;
 import com.eventbooking.dto.notification.UnreadCountResponse;
 import com.eventbooking.security.CurrentUserId;
@@ -50,16 +51,18 @@ public class NotificationController {
             description = """
                     Returns a Spring Page, so the client reads `content` and `total_elements`.
 
+                    `filter` is ALL, UNREAD or READ, and defaults to ALL.
+
                     No `message` field by design: a row carries a `type` and the `params` the
                     sentence needs, and the client renders it in whichever language the viewer
                     has selected. `size` is capped server-side at 100.""")
     public Page<NotificationResponse> list(
-            @RequestParam(defaultValue = "false") boolean unreadOnly,
+            @RequestParam(defaultValue = "ALL") NotificationFilter filter,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @CurrentUserId Long actorUserId) {
 
-        return notificationService.inbox(actorUserId, unreadOnly, page, size);
+        return notificationService.inbox(actorUserId, filter, page, size);
     }
 
     @GetMapping("/unread-count")

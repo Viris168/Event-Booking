@@ -1,5 +1,6 @@
 package com.eventbooking.notification;
 
+import com.eventbooking.Enumeration.NotificationFilter;
 import com.eventbooking.Enumeration.NotificationType;
 import com.eventbooking.dto.notification.NotificationResponse;
 import com.eventbooking.model.Notification;
@@ -185,7 +186,7 @@ class NotificationIT {
         notificationService.notifyUser(customerId, NotificationType.BOOKING_CONFIRMED, "MINE", null, Map.of());
         notificationService.notifyUser(stranger, NotificationType.BOOKING_CONFIRMED, "THEIRS", null, Map.of());
 
-        Page<NotificationResponse> mine = notificationService.inbox(customerId, false, 0, 20);
+        Page<NotificationResponse> mine = notificationService.inbox(customerId, NotificationFilter.ALL, 0, 20);
 
         assertThat(mine.getTotalElements()).isEqualTo(1);
         assertThat(mine.getContent().getFirst().params()).isEmpty();
@@ -229,8 +230,40 @@ class NotificationIT {
                 .getContent().getFirst().getId();
         notificationService.markRead(customerId, firstId);
 
-        assertThat(notificationService.inbox(customerId, false, 0, 20).getTotalElements()).isEqualTo(2);
-        assertThat(notificationService.inbox(customerId, true, 0, 20).getTotalElements()).isEqualTo(1);
+        assertThat(notificationService.inbox(customerId, NotificationFilter.ALL, 0, 20).getTotalElements()).isEqualTo(2);
+        assertThat(notificationService.inbox(customerId, NotificationFilter.UNREAD, 0, 20).getTotalElements()).isEqualTo(1);
+    }
+
+    @Test
+    void readOnlyIsTheComplementOfUnread() {
+        notificationService.notifyUser(customerId, NotificationType.BOOKING_CONFIRMED, "A", null, Map.of());
+        notificationService.notifyUser(customerId, NotificationType.BOOKING_CANCELLED, "B", null, Map.of());
+        notificationService.notifyUser(customerId, NotificationType.BOOKING_EXPIRED, "C", null, Map.of());
+
+        Long firstId = notificationRepository
+                .findByRecipientUserIdOrderByCreatedAtDesc(customerId, page(10))
+                .getContent().getFirst().getId();
+        notificationService.markRead(customerId, firstId);
+
+        assertThat(notificationService.inbox(customerId, NotificationFilter.READ, 0, 20).getTotalElements())
+                .isEqualTo(1);
+        assertThat(notificationService.inbox(customerId, NotificationFilter.READ, 0, 20)
+                .getContent().getFirst().id()).isEqualTo(firstId);
+
+        // The two filters partition the inbox: nothing counted twice, nothing lost.
+        long read = notificationService.inbox(customerId, NotificationFilter.READ, 0, 20).getTotalElements();
+        long unread = notificationService.inbox(customerId, NotificationFilter.UNREAD, 0, 20).getTotalElements();
+        long all = notificationService.inbox(customerId, NotificationFilter.ALL, 0, 20).getTotalElements();
+        assertThat(read + unread).isEqualTo(all);
+    }
+
+    /** A null filter is the whole inbox, not an exception - see the service. */
+    @Test
+    void aMissingFilterReturnsEverything() {
+        notificationService.notifyUser(customerId, NotificationType.BOOKING_CONFIRMED, "A", null, Map.of());
+        notificationService.notifyUser(customerId, NotificationType.BOOKING_CANCELLED, "B", null, Map.of());
+
+        assertThat(notificationService.inbox(customerId, null, 0, 20).getTotalElements()).isEqualTo(2);
     }
 
     @Test
@@ -250,7 +283,7 @@ class NotificationIT {
     void requestingAnEnormousPageIsCappedRatherThanServed() {
         notificationService.notifyUser(customerId, NotificationType.BOOKING_CONFIRMED, "A", null, Map.of());
 
-        assertThat(notificationService.inbox(customerId, false, 0, 100_000).getSize()).isEqualTo(100);
+        assertThat(notificationService.inbox(customerId, NotificationFilter.ALL, 0, 100_000).getSize()).isEqualTo(100);
     }
 
     // ------------------------------------------------------------------

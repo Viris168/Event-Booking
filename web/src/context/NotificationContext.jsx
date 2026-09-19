@@ -30,10 +30,10 @@ export function NotificationProvider({ children }) {
   const [loading, setLoading] = useState(false)
 
   /*
-   * Guards a slow inbox response from overwriting a newer one. Switching the
-   * All/Unread filter twice quickly fires two requests, and without this the
-   * first to be sent can be the last to arrive - leaving the list showing the
-   * filter that is no longer selected.
+   * Guards a slow inbox response from overwriting a newer one. Switching
+   * between All/Unread/Read twice quickly fires two requests, and without this
+   * the first to be sent can be the last to arrive - leaving the list showing
+   * the filter that is no longer selected.
    */
   const requestSeq = useRef(0)
 
@@ -46,15 +46,21 @@ export function NotificationProvider({ children }) {
       .catch(() => {})
   }, [isAuthenticated])
 
-  /** Load the list itself. Only called when something is actually showing it. */
+  /**
+   * Load the list itself. Only called when something is actually showing it.
+   *
+   * `filter` is 'ALL' | 'UNREAD' | 'READ' and goes to the server untouched -
+   * filtering a page of fifteen in the browser would hide rows the server had
+   * already decided to send, which is a list that lies about how much there is.
+   */
   const loadInbox = useCallback(
-    (unreadOnly = false, size = 15) => {
+    (filter = 'ALL', size = 15) => {
       if (!isAuthenticated) return Promise.resolve()
 
       const seq = ++requestSeq.current
       setLoading(true)
 
-      return getNotifications({ unreadOnly, size })
+      return getNotifications({ filter, size })
         .then((page) => {
           if (seq !== requestSeq.current) return
           setItems(page.content || [])

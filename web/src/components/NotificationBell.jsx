@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Icon from './Icon.jsx'
-import NotificationItem from './NotificationItem.jsx'
+import NotificationGroup from './NotificationGroup.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
 import { useNotifications } from '../context/NotificationContext.jsx'
+import { groupByType } from '../lib/notifications.js'
 
 /**
  * The bell, and the panel behind it.
@@ -18,12 +19,12 @@ export default function NotificationBell() {
   const { unread, items, loading, loadInbox, markRead, markAllRead } = useNotifications()
 
   const [open, setOpen] = useState(false)
-  const [unreadOnly, setUnreadOnly] = useState(false)
+  const [filter, setFilter] = useState('ALL')
   const wrapRef = useRef(null)
 
   useEffect(() => {
-    if (open) loadInbox(unreadOnly)
-  }, [open, unreadOnly, loadInbox])
+    if (open) loadInbox(filter)
+  }, [open, filter, loadInbox])
 
   // Click-away and Escape. Both, because a panel that only closes on click
   // traps keyboard users in it.
@@ -81,19 +82,27 @@ export default function NotificationBell() {
             <button
               type="button"
               role="tab"
-              aria-selected={!unreadOnly}
-              onClick={() => setUnreadOnly(false)}
+              aria-selected={filter === 'ALL'}
+              onClick={() => setFilter('ALL')}
             >
               {t('notificationsAll')}
             </button>
             <button
               type="button"
               role="tab"
-              aria-selected={unreadOnly}
-              onClick={() => setUnreadOnly(true)}
+              aria-selected={filter === 'UNREAD'}
+              onClick={() => setFilter('UNREAD')}
             >
               {t('notificationsUnread')}
               {unread > 0 && <span className="notif-tab-count">{unread}</span>}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={filter === 'READ'}
+              onClick={() => setFilter('READ')}
+            >
+              {t('notificationsRead')}
             </button>
           </div>
 
@@ -102,15 +111,17 @@ export default function NotificationBell() {
 
             {!loading && items.length === 0 && (
               <p className="notif-empty">
-                {unreadOnly ? t('noUnreadNotifications') : t('noNotifications')}
+                {filter === 'UNREAD' && t('noUnreadNotifications')}
+                {filter === 'READ' && t('noReadNotifications')}
+                {filter === 'ALL' && t('noNotifications')}
               </p>
             )}
 
             {!loading &&
-              items.map((n) => (
-                <NotificationItem
-                  key={n.id}
-                  notification={n}
+              groupByType(items).map((group) => (
+                <NotificationGroup
+                  key={group.type}
+                  group={group}
                   onOpen={(item) => {
                     if (!item.read_at) markRead(item.id)
                     setOpen(false)

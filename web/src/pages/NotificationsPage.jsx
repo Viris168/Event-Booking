@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import Icon from '../components/Icon.jsx'
-import NotificationItem from '../components/NotificationItem.jsx'
+import NotificationGroup from '../components/NotificationGroup.jsx'
 import { Empty, Pager } from '../components/ui.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
 import { useNotifications } from '../context/NotificationContext.jsx'
 import { getNotifications } from '../api/notifications.js'
+import { groupByType } from '../lib/notifications.js'
 import { useDocumentTitle } from '../lib/useDocumentTitle.js'
 
 const PAGE_SIZE = 20
@@ -26,7 +27,7 @@ export default function NotificationsPage() {
 
   const [rows, setRows] = useState([])
   const [pageInfo, setPageInfo] = useState({ page: 1, pages: 1 })
-  const [unreadOnly, setUnreadOnly] = useState(false)
+  const [filter, setFilter] = useState('ALL')
   const [loading, setLoading] = useState(true)
 
   const load = useCallback(
@@ -34,7 +35,7 @@ export default function NotificationsPage() {
       setLoading(true)
       // The API is 0-indexed; Pager is 1-indexed. Converting here keeps the
       // off-by-one in one place instead of at every call site.
-      return getNotifications({ unreadOnly, page: page - 1, size: PAGE_SIZE })
+      return getNotifications({ filter, page: page - 1, size: PAGE_SIZE })
         .then((data) => {
           setRows(data.content || [])
           setPageInfo({ page, pages: Math.max(1, data.total_pages || 1) })
@@ -42,7 +43,7 @@ export default function NotificationsPage() {
         .catch(() => setRows([]))
         .finally(() => setLoading(false))
     },
-    [unreadOnly],
+    [filter],
   )
 
   useEffect(() => {
@@ -60,10 +61,10 @@ export default function NotificationsPage() {
   const clearAll = () => {
     const now = new Date().toISOString()
     markAllRead()
-    // On the unread filter the rows have just stopped matching it, so refetch
-    // rather than leaving a list of read notifications under a tab that says
-    // they are not.
-    if (unreadOnly) load(1)
+    // Both filtered tabs have just stopped describing their contents - Unread
+    // is now empty and Read has gained everything - so refetch rather than
+    // leaving rows under a tab that says they are something else.
+    if (filter !== 'ALL') load(1)
     else setRows((list) => list.map((n) => (n.read_at ? n : { ...n, read_at: now })))
   }
 
@@ -87,9 +88,9 @@ export default function NotificationsPage() {
         <button
           type="button"
           role="tab"
-          aria-selected={!unreadOnly}
+          aria-selected={filter === 'ALL'}
           onClick={() => {
-            setUnreadOnly(false)
+            setFilter('ALL')
             refreshCount()
           }}
         >
@@ -98,11 +99,22 @@ export default function NotificationsPage() {
         <button
           type="button"
           role="tab"
-          aria-selected={unreadOnly}
-          onClick={() => setUnreadOnly(true)}
+          aria-selected={filter === 'UNREAD'}
+          onClick={() => setFilter('UNREAD')}
         >
           {t('notificationsUnread')}
           {unread > 0 && <span className="notif-tab-count">{unread}</span>}
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={filter === 'READ'}
+          onClick={() => {
+            setFilter('READ')
+            refreshCount()
+          }}
+        >
+          {t('notificationsRead')}
         </button>
       </div>
 
@@ -111,14 +123,20 @@ export default function NotificationsPage() {
       {!loading && rows.length === 0 && (
         <Empty
           icon="bell"
-          title={unreadOnly ? t('noUnreadNotifications') : t('noNotifications')}
+          title={
+            filter === 'UNREAD'
+              ? t('noUnreadNotifications')
+              : filter === 'READ'
+                ? t('noReadNotifications')
+                : t('noNotifications')
+          }
         />
       )}
 
       {!loading && rows.length > 0 && (
         <div className="notif-page-list">
-          {rows.map((n) => (
-            <NotificationItem key={n.id} notification={n} onOpen={openRow} />
+          {groupByType(rows).map((group) => (
+            <NotificationGroup key={group.type} group={group} onOpen={openRow} />
           ))}
         </div>
       )}

@@ -346,6 +346,9 @@ const dict = {
   notifications: { en: "Notifications", km: "ការជូនដំណឹង" },
   notificationsAll: { en: "All", km: "ទាំងអស់" },
   notificationsUnread: { en: "Unread", km: "មិនទាន់អាន" },
+  notificationsRead: { en: "Read", km: "បានអាន" },
+  notificationsMore: { en: "more like this", km: "ដំណឹងស្រដៀងគ្នា" },
+  notificationsCollapse: { en: "Show less", km: "បង្ហាញតិច" },
   markAllRead: { en: "Mark all read", km: "សម្គាល់ថាបានអានទាំងអស់" },
   noNotifications: {
     en: "Nothing to catch up on",
@@ -354,6 +357,10 @@ const dict = {
   noUnreadNotifications: {
     en: "You are all caught up",
     km: "អ្នកបានអានទាំងអស់ហើយ",
+  },
+  noReadNotifications: {
+    en: "Nothing opened yet",
+    km: "មិនទាន់មានដំណឹងដែលបានអានទេ",
   },
   viewAllNotifications: { en: "See all", km: "មើលទាំងអស់" },
 

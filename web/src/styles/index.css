@@ -994,49 +994,64 @@
   }
 
   .notif-list {
-    @apply flex min-h-0 flex-col overflow-y-auto;
+    @apply flex min-h-0 flex-col gap-[0.4rem] overflow-y-auto p-[0.5rem];
     max-height: min(60vh, 430px);
   }
   .notif-empty {
     @apply px-[0.9rem] py-[1.6rem] text-center text-[0.85rem] text-muted;
   }
 
+  /* A card each, rather than one ruled column.
+     A shared divider reads as "more of the same thing" and the eye runs down
+     it; these are separate events that happened at separate times to separate
+     bookings, and a boundary on all four sides is what says so. The border is
+     --line, the same neutral every other surface in the app is drawn with. */
   .notif-row {
-    @apply flex items-start gap-[0.6rem] border-b border-line-2 px-[0.85rem] py-[0.65rem] text-ink;
-  }
-  .notif-row:last-child {
-    @apply border-b-0;
+    @apply flex items-start gap-[0.6rem] border border-line bg-surface px-[0.85rem] py-[0.7rem] text-ink;
+    border-radius: var(--radius-ui);
   }
   a.notif-row:hover {
-    @apply bg-surface-2 no-underline;
+    @apply border-line-2 bg-surface-2 no-underline;
   }
   /* The tint is the quiet half of the unread signal; .notif-dot is the half
      that survives being unable to tell the two backgrounds apart. */
   .notif-row.is-unread {
-    @apply bg-tint/40;
+    @apply bg-tint/70;
   }
 
+  /* The mark alone - no plate behind it.
+     The tone still comes through in the icon's own colour, which is the part
+     that carries the meaning; the filled disc was a second, louder copy of the
+     same signal, and against a card that already has an edge it read as a
+     badge stuck onto the row. The box keeps its size so titles stay aligned
+     whatever the glyph. */
   .notif-glyph {
-    @apply mt-[1px] grid size-[26px] flex-none place-items-center rounded-full;
+    @apply mt-[1px] grid size-[26px] flex-none place-items-center;
   }
   .notif-glyph.t-ok {
-    @apply bg-success-soft text-success;
+    @apply text-success;
   }
   .notif-glyph.t-bad {
-    @apply bg-danger-soft text-danger;
+    @apply text-danger;
   }
   .notif-glyph.t-warn {
-    @apply bg-warning-soft text-warning;
+    @apply text-warning;
   }
   .notif-glyph.t-info {
-    @apply bg-info-soft text-info;
+    @apply text-info;
   }
   .notif-glyph.t-quiet {
-    @apply bg-quiet-soft text-quiet;
+    @apply text-quiet;
   }
 
+  /* flex-1 so the dot below lands on the row's right edge rather than trailing
+     the last word. In the 370px dropdown the text fills the width anyway and
+     the two were indistinguishable; on the full page, where a row uses about a
+     third of its width, the dot was landing 396px from the edge on one row and
+     852px on the next - close enough to a stray speck that it read as a
+     rendering fault rather than a marker. */
   .notif-body {
-    @apply flex min-w-0 flex-col gap-[0.1rem];
+    @apply flex min-w-0 flex-1 flex-col gap-[0.1rem];
   }
   .notif-title {
     @apply text-[0.86rem] font-bold leading-[1.35];
@@ -1047,6 +1062,54 @@
   .notif-when {
     @apply mt-[0.1rem] text-[0.7rem] text-muted;
   }
+  /* ------------------------------------------------ collapsed groups ---
+     Several of one type shown as the newest of them, with the rest implied by
+     two shoulders behind it - the shape a phone's notification shade uses.
+     The shoulders are pseudo-elements, not the rows themselves rendered small:
+     what is behind is never read, and mounting twenty cards to show one is a
+     cost paid on every open of the bell. */
+  .notif-group {
+    @apply flex flex-col gap-[0.35rem];
+  }
+  .notif-stack {
+    @apply relative;
+  }
+  /* Drawn below the card, inset from each edge, so the stack tapers downwards.
+     z-index is not needed: both sit earlier in paint order than the row, which
+     has its own background. */
+  .notif-stack::before,
+  .notif-stack::after {
+    content: '';
+    @apply pointer-events-none absolute border border-line bg-surface-2;
+    border-radius: var(--radius-ui);
+  }
+  .notif-stack::before {
+    @apply inset-x-[0.45rem] -bottom-[0.3rem] h-[0.75rem];
+  }
+  .notif-stack::after {
+    @apply inset-x-[0.9rem] -bottom-[0.55rem] h-[0.75rem];
+  }
+  /* A group of two has one thing behind it, not two. */
+  .notif-group.is-pair .notif-stack::after {
+    @apply hidden;
+  }
+
+  .notif-group-toggle {
+    @apply inline-flex cursor-pointer items-center gap-[0.3rem] self-start border-0 bg-transparent
+           px-[0.25rem] py-[0.15rem] text-[0.72rem] font-semibold text-muted;
+  }
+  .notif-group-toggle:hover {
+    @apply text-ink-2 underline;
+  }
+  /* Closed, the toggle clears the shoulders below the card. */
+  .notif-group:not(.is-open) .notif-group-toggle {
+    @apply mt-[0.4rem];
+  }
+  /* One chevron for both directions - see NotificationGroup.jsx. */
+  .notif-group.is-open .notif-group-toggle svg {
+    @apply rotate-180;
+  }
+
   .notif-dot {
     @apply mt-[0.45rem] size-[7px] flex-none rounded-full bg-gold-500;
   }
@@ -1073,9 +1136,16 @@
     }
   }
 
-  /* The full page: same rows, given a card to sit in rather than a dropdown. */
+  /* The full page: the same cards, spaced rather than wrapped in a second one.
+     The rows carry their own border now, so an outer card around them would be
+     a box of boxes - an edge that means nothing, drawn around edges that do.
+     Capped, because the shell is 1228px here and a notification is one or two
+     lines: uncapped, a row drew its text across a third of the width and left
+     the rest empty, and the body ran to a 765px measure the eye has to track
+     back across. The cap is close to the width the rows were already using. */
   .notif-page-list {
-    @apply overflow-hidden rounded-card border border-line bg-surface shadow-card;
+    @apply flex flex-col gap-[0.5rem];
+    max-width: 46rem;
   }
 
   .role-switch {
