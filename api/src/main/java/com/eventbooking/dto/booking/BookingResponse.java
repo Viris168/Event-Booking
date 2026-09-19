@@ -22,6 +22,7 @@ public record BookingResponse(
         Long totalKhr,
         Instant createdAt,
         Instant stateChangedAt,
+        Instant expiresAt,
         List<BookingItemResponse> items
 ) {
 }

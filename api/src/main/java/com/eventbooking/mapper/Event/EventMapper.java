@@ -54,7 +54,8 @@ public class EventMapper {
                                                  String coverImageUrl, String bannerImageUrl,
                                                  List<EventTransition> availableActions, boolean editable,
                                                  EventReviewResponse latestReview,
-                                                 String organizerTelegramHandle, String organizerFacebookUrl) {
+                                                 String organizerTelegramHandle, String organizerFacebookUrl,
+                                                 String organizerNameEn, String organizerNameKm) {
 
 
         VenueResponse v = new VenueResponse(
@@ -121,6 +122,8 @@ public class EventMapper {
                 totalCapacity,
                 totalSold,
                 totalHeld,
+                organizerNameEn,
+                organizerNameKm,
                 organizerTelegramHandle,
                 organizerFacebookUrl
         );

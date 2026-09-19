@@ -321,7 +321,7 @@ export default function Navbar({ onOpenAccount }) {
               screen and it reads left-to-right before the controls do. */}
           {showHold && (
             <Link
-              to={`/events/${hold.eventId || hold.event_id}`}
+              to={`/checkout?event=${hold.eventId || hold.event_id}&hold=${hold.id}`}
               className="nav-link nav-hold"
             >
               <Icon name="clock" size={14} />
@@ -392,7 +392,7 @@ export default function Navbar({ onOpenAccount }) {
           {isAuthenticated && <NotificationBell />}
           {showHold && (
             <Link
-              to={`/events/${hold.eventId || hold.event_id}`}
+              to={`/checkout?event=${hold.eventId || hold.event_id}&hold=${hold.id}`}
               className="nav-link nav-hold"
               aria-label={t("holdActive")}
             >

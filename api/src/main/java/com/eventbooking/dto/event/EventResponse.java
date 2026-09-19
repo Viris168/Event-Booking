@@ -72,6 +72,8 @@ public record EventResponse(
          * changes can message the organiser directly instead of only leaving an
          * in-app note.
          */
+        String organizerNameEn,
+        String organizerNameKm,
         String organizerTelegramHandle,
         String organizerFacebookUrl
 ) {

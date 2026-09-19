@@ -82,6 +82,7 @@ class BookingCancelTest {
         when(paymentTransactionRepository.findByBookingIdOrderByCreatedAtDesc(anyLong()))
                 .thenReturn(List.of());
 
+        BookingProperties properties = new BookingProperties(new BigDecimal("4100.0000"), 15);
         service = new BookingService(
                 bookingRepository,
                 mock(HoldRepository.class),
@@ -91,8 +92,8 @@ class BookingCancelTest {
                 paymentTransactionRepository,
                 new BookingStateMachine(historyRepository, mock(ApplicationEventPublisher.class)),
                 mock(BookingRefGenerator.class),
-                new BookingMapper(),
-                new BookingProperties(new BigDecimal("4100.0000"), 15));
+                new BookingMapper(properties),
+                properties);
     }
 
     // ------------------------------------------------------------------
