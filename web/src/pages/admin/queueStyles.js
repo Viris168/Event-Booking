@@ -43,12 +43,19 @@ export const RQ_CSS = `
   padding: var(--spacing-page, 1.15rem); color: var(--color-ink);
 }
 
-.rq-head { display: flex; gap: var(--rq-4); align-items: baseline;
+.rq-head { display: flex; gap: var(--rq-4); align-items: flex-end;
            justify-content: space-between; flex-wrap: wrap;
            padding-bottom: var(--rq-3); margin-bottom: var(--rq-5);
            border-bottom: 1px solid var(--color-line); }
-.rq-head h1 { margin: 0; letter-spacing: -.022em; }
-.rq-head p { margin: var(--rq-1) 0 0; color: var(--color-muted); }
+.rq-head h1 {
+  font-size: clamp(1.85rem, 1.4rem + 1.4vw, 2.25rem);
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: -0.025em;
+  color: var(--color-ink);
+  margin: 0;
+}
+.rq-head p { margin: 0.5rem 0 0; font-size: 1.05rem; color: var(--color-muted); }
 .rq-head-right { display: flex; gap: var(--rq-4); align-items: baseline; }
 
 /*
@@ -421,4 +428,4 @@ export const RQ_CSS = `
 /* The reason, indented under the outcome it belongs to. */
 .rq-decided-note { margin: var(--rq-2) 0 0; font-size: .86rem; line-height: 1.5;
   color: var(--color-ink-2); padding-left: calc(15px + var(--rq-2)); }
-`
+`;
