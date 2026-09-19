@@ -7081,7 +7081,7 @@ html[lang="km"] .contact-card h2 {
  * A vector tile provider would do this properly with a real dark style; this
  * is the honest approximation until the catalogue map needs one anyway.
  */
-[data-theme='dark'] .pin-preview .leaflet-tile-pane {
+[data-theme="dark"] .pin-preview .leaflet-tile-pane {
   filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.9);
 }
 
@@ -7208,15 +7208,6 @@ html[lang="km"] .contact-card h2 {
     0 0 0 2px var(--color-brand-500),
     0 2px 6px rgba(0, 0, 0, 0.18);
   transform: translate(-50%, -50%) scale(1.08);
-}
-
-/* The card whose pin is lit. A ring rather than a transform: the cards sit in
-   a grid and scaling one nudges its neighbours. */
-.ev-slot {
-  @apply flex h-full min-w-0 flex-col rounded-card transition-shadow;
-}
-.ev-slot.is-active {
-  box-shadow: 0 0 0 2px var(--color-brand-500);
 }
 
 /* Leaflet's chrome on this project's surfaces. Compound selector, not

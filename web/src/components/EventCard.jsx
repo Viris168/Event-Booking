@@ -1,48 +1,51 @@
-import { Link } from 'react-router-dom'
-import Icon, { CATEGORY_ICON } from './Icon.jsx'
-import { useLocale } from '../context/LocaleContext.jsx'
-import { useProvinces } from '../lib/useProvinces.js'
-import { eventArt, sized, sizedSrcSet } from '../lib/eventArt.js'
-import { minPriceCents } from '../lib/eventPrice.js'
-import { Money } from './ui.jsx'
+import { Link } from "react-router-dom";
+import Icon, { CATEGORY_ICON } from "./Icon.jsx";
+import { useLocale } from "../context/LocaleContext.jsx";
+import { useProvinces } from "../lib/useProvinces.js";
+import { eventArt, sized, sizedSrcSet } from "../lib/eventArt.js";
+import { minPriceCents } from "../lib/eventPrice.js";
+import { Money } from "./ui.jsx";
 
 function getScarcity(event) {
-  const capacity = event.totalCapacity ?? event.total_capacity ?? 0
-  if (!capacity) return { level: 'none' }
-  const remaining = capacity - (event.totalSold ?? event.total_sold ?? 0) - (event.totalHeld ?? event.total_held ?? 0)
-  if (remaining <= 0) return { level: 'sold-out' }
-  const pct = remaining / capacity
-  if (remaining <= 12) return { level: 'almost-full' }
-  if (pct <= 0.2) return { level: 'filling', remaining }
-  return { level: 'ok', remaining }
+  const capacity = event.totalCapacity ?? event.total_capacity ?? 0;
+  if (!capacity) return { level: "none" };
+  const remaining =
+    capacity -
+    (event.totalSold ?? event.total_sold ?? 0) -
+    (event.totalHeld ?? event.total_held ?? 0);
+  if (remaining <= 0) return { level: "sold-out" };
+  const pct = remaining / capacity;
+  if (remaining <= 12) return { level: "almost-full" };
+  if (pct <= 0.2) return { level: "filling", remaining };
+  return { level: "ok", remaining };
 }
 
 /** Scarcity badge — exact counts only while there is real headroom. */
 function ScarcityFlag({ event }) {
-  const { t } = useLocale()
-  const s = getScarcity(event)
-  if (s.level === 'sold-out')
+  const { t } = useLocale();
+  const s = getScarcity(event);
+  if (s.level === "sold-out")
     return (
       <span className="badge badge-solid badge-hot">
         <Icon name="xCircle" size={12} />
-        {t('soldOut')}
+        {t("soldOut")}
       </span>
-    )
-  if (s.level === 'almost-full')
+    );
+  if (s.level === "almost-full")
     return (
       <span className="badge badge-solid badge-hot">
         <Icon name="trending" size={12} />
-        {t('almostFull')}
+        {t("almostFull")}
       </span>
-    )
-  if (s.level === 'filling')
+    );
+  if (s.level === "filling")
     return (
       <span className="badge badge-solid badge-warm">
         <Icon name="trending" size={12} />
-        {s.remaining} {t('seatsLeft')}
+        {s.remaining} {t("seatsLeft")}
       </span>
-    )
-  return null
+    );
+  return null;
 }
 
 /**
@@ -51,31 +54,45 @@ function ScarcityFlag({ event }) {
  *   cannot afford the full record — and the date is already on the artwork
  *   chip, so showing it again was pure duplication.
  */
-export default function EventCard({ event, compact = false }) {
-  const { locale, t, date } = useLocale()
-  const { provinceName } = useProvinces()
-  const venue = event.venue
-  const price = minPriceCents(event) ?? 0
-  const start = new Date(event.startsAt ?? event.starts_at)
-  const art = eventArt(event, 'banner')
-  const soldOut = getScarcity(event).level === 'sold-out'
+export default function EventCard({
+  event,
+  compact = false,
+  className = "",
+  ...rest
+}) {
+  const { locale, t, date } = useLocale();
+  const { provinceName } = useProvinces();
+  const venue = event.venue;
+  const price = minPriceCents(event) ?? 0;
+  const start = new Date(event.startsAt ?? event.starts_at);
+  const art = eventArt(event, "banner");
+  const soldOut = getScarcity(event).level === "sold-out";
 
-  const titleEn = event.titleEn ?? event.title_en
-  const titleKm = event.titleKm ?? event.title_km
-  const title = locale === 'km' ? titleKm : titleEn
-  const subtitle = locale === 'km' ? titleEn : titleKm
+  const titleEn = event.titleEn ?? event.title_en;
+  const titleKm = event.titleKm ?? event.title_km;
+  const title = locale === "km" ? titleKm : titleEn;
+  const subtitle = locale === "km" ? titleEn : titleKm;
 
-  const province = provinceName(venue?.provinceCode ?? venue?.province_code, locale)
-  const venueName = locale === 'km' ? venue?.nameKm ?? venue?.name_km : venue?.nameEn ?? venue?.name_en
+  const province = provinceName(
+    venue?.provinceCode ?? venue?.province_code,
+    locale,
+  );
+  const venueName =
+    locale === "km"
+      ? (venue?.nameKm ?? venue?.name_km)
+      : (venue?.nameEn ?? venue?.name_en);
 
   return (
     <Link
       to={`/events/${event.id}`}
-      className={`ev-card${soldOut ? ' is-soldout' : ''}${compact ? ' ev-card-compact' : ''}`}
+      className={`ev-card${soldOut ? " is-soldout" : ""}${compact ? " ev-card-compact" : ""}${className ? ` ${className}` : ""}`}
+      {...rest}
     >
       {/* The gradient class stays on the box even when a photo loads: it is the
           colour behind a decoding image and the fallback if the URL 404s. */}
-      <div className={`ev-media ${art.className}${art.hasImage ? ' has-photo' : ''}`}>
+      <div
+        className={`ev-media ${art.className}${art.hasImage ? " has-photo" : ""}`}
+      >
         {art.hasImage ? (
           <img
             className="ev-photo"
@@ -91,12 +108,12 @@ export default function EventCard({ event, compact = false }) {
             /* Drop back to the gradient underneath rather than showing a
                broken-image glyph if Cloudinary is unreachable. */
             onError={(e) => {
-              e.currentTarget.remove()
+              e.currentTarget.remove();
             }}
           />
         ) : (
           <Icon
-            name={CATEGORY_ICON[event.category] || 'ticket'}
+            name={CATEGORY_ICON[event.category] || "ticket"}
             size={44}
             strokeWidth={1.4}
             className="cat-icon"
@@ -104,7 +121,7 @@ export default function EventCard({ event, compact = false }) {
         )}
 
         <span className="ev-date">
-          {start.toLocaleDateString('en-GB', { month: 'short' }).toUpperCase()}
+          {start.toLocaleDateString("en-GB", { month: "short" }).toUpperCase()}
           <b>{start.getDate()}</b>
         </span>
         <span className="ev-flag">
@@ -112,27 +129,36 @@ export default function EventCard({ event, compact = false }) {
         </span>
 
         <span className="ev-mode">
-          <Icon name={(event.inventoryMode ?? event.inventory_mode) === 'ZONED' ? 'users' : 'seat'} size={11} />
+          <Icon
+            name={
+              (event.inventoryMode ?? event.inventory_mode) === "ZONED"
+                ? "users"
+                : "seat"
+            }
+            size={11}
+          />
           {event.inventoryMode ?? event.inventory_mode}
         </span>
 
         {event.category && (
           <span className="ev-cat">
-            <Icon name={CATEGORY_ICON[event.category] || 'ticket'} size={12} />
+            <Icon name={CATEGORY_ICON[event.category] || "ticket"} size={12} />
             {event.category}
           </span>
         )}
       </div>
 
       <div className="ev-body">
-        {event.status !== 'PUBLISHED' && (
+        {event.status !== "PUBLISHED" && (
           <div className="row row-tight">
             <span className={`badge s-${event.status}`}>{event.status}</span>
           </div>
         )}
         <div className="ev-title">{title}</div>
         {!compact && (
-          <div className={locale === 'km' ? 'ev-title-km' : 'ev-title-km km'}>{subtitle}</div>
+          <div className={locale === "km" ? "ev-title-km" : "ev-title-km km"}>
+            {subtitle}
+          </div>
         )}
         <div className="ev-meta">
           <span className="meta-row">
@@ -153,7 +179,7 @@ export default function EventCard({ event, compact = false }) {
 
       <div className="ev-foot">
         <span className="price-tag">
-          <span className="tiny">{t('from_price')}</span>
+          <span className="tiny">{t("from_price")}</span>
           <Money cents={price} stacked />
         </span>
         {!compact && (
@@ -163,5 +189,5 @@ export default function EventCard({ event, compact = false }) {
         )}
       </div>
     </Link>
-  )
+  );
 }

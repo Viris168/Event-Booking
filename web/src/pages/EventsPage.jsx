@@ -519,9 +519,7 @@ export default function EventsPage() {
             <div className="events-list">
               <div className="grid grid-cards grid-cards-split">
                 {Array.from({ length: 4 }, (_, i) => (
-                  <div key={i} className="ev-slot">
-                    <EventCardSkeleton />
-                  </div>
+                  <EventCardSkeleton key={i} />
                 ))}
               </div>
             </div>
@@ -537,14 +535,13 @@ export default function EventsPage() {
             >
               <div className="grid grid-cards grid-cards-split">
                 {apiResults.map((e) => (
-                  <div
+                  <EventCard
                     key={e.id}
-                    className={`ev-slot${String(activeId) === String(e.id) ? " is-active" : ""}`}
+                    event={e}
+                    data-event-id={e.id}
                     onMouseEnter={() => setActiveId(e.id)}
                     onMouseLeave={() => setActiveId(null)}
-                  >
-                    <EventCard event={e} />
-                  </div>
+                  />
                 ))}
               </div>
               <Pager page={page} pages={totalPages} onChange={setPage} />
