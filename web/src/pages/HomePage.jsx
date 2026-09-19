@@ -275,6 +275,118 @@ function HeroRail({ events }) {
   );
 }
 
+/*
+ * What the product actually does, between the last event card and the footer.
+ *
+ * Every line here is a claim about CamboBook that the code backs: KHQR through
+ * PayWay, a scannable code per booking, SEATED/ZONED/MIXED inventory, and the
+ * Telegram connection an organiser makes on /become-an-organizer. Nothing about
+ * wallets, native apps or settlement speed - a storefront that promises what
+ * the gate cannot do is a support ticket waiting at the door.
+ */
+const HOW_IT_WORKS = [
+  {
+    icon: "qr",
+    en: "KHQR and ABA PayWay",
+    km: "KHQR និង ABA PayWay",
+    bodyEn:
+      "Pay from ABA Mobile, Wing, ACLEDA or any Bakong app. The booking confirms itself once the payment settles.",
+    bodyKm:
+      "ទូទាត់ពី ABA Mobile, Wing, ACLEDA ឬកម្មវិធី Bakong ណាមួយ។ ការកក់បញ្ជាក់ដោយខ្លួនឯងពេលការទូទាត់ជោគជ័យ។",
+  },
+  {
+    icon: "ticket",
+    en: "A QR ticket at the door",
+    km: "សំបុត្រ QR នៅទ្វារចូល",
+    bodyEn:
+      "Every booking carries its own code. Gate staff scan it and it checks in on the spot.",
+    bodyKm:
+      "រាល់ការកក់មានកូដរៀងៗខ្លួន។ បុគ្គលិកនៅទ្វារស្កេន ហើយចូលបានភ្លាម។",
+  },
+  {
+    icon: "seat",
+    en: "Reserved seats or zoned entry",
+    km: "កៅអីកក់ទុក ឬចូលតាមតំបន់",
+    bodyEn:
+      "Pick an exact seat from the map, or buy into a zone. Each event decides which it sells.",
+    bodyKm:
+      "ជ្រើសកៅអីពិតប្រាកដពីផែនទី ឬទិញតាមតំបន់។ ព្រឹត្តិការណ៍នីមួយៗសម្រេចដោយខ្លួនឯង។",
+  },
+  {
+    icon: "telegram",
+    en: "Told on Telegram",
+    km: "ដំណឹងតាម Telegram",
+    bodyEn:
+      "Organisers connect a Telegram account and hear about each sale there as well as in the inbox here.",
+    bodyKm:
+      "អ្នករៀបចំភ្ជាប់គណនី Telegram ហើយទទួលដំណឹងរាល់ការលក់នៅទីនោះផងដែរ។",
+  },
+];
+
+function HowItWorks({ locale }) {
+  return (
+    <section className="home-strip">
+      <div className="section-head">
+        <h2>
+          {locale === "km"
+            ? "សំបុត្ររបស់អ្នក ពីការទូទាត់ដល់ទ្វារចូល"
+            : "Your ticket, from payment to the gate"}
+        </h2>
+      </div>
+      <p className="home-strip-lede">
+        {locale === "km"
+          ? "ទូទាត់ដោយកម្មវិធីធនាគារដែលអ្នកមានស្រាប់ ហើយកូដ QR សម្រាប់ចូលមកដល់ពេលការទូទាត់ជោគជ័យ។"
+          : "Pay with the banking app you already have, and the code that gets you in arrives as soon as the payment clears."}
+      </p>
+
+      <div className="grid grid-cards">
+        {HOW_IT_WORKS.map((f) => (
+          <article className="card home-feature" key={f.icon}>
+            <div className="card-body">
+              <Icon name={f.icon} size={20} />
+              <h3>{locale === "km" ? f.km : f.en}</h3>
+              <p>{locale === "km" ? f.bodyKm : f.bodyEn}</p>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function OrganizerCta({ locale }) {
+  return (
+    <section className="home-strip">
+      <div className="card home-cta">
+        <div className="card-body">
+          <div>
+            <h2>
+              {locale === "km"
+                ? "រៀបចំព្រឹត្តិការណ៍នៅកម្ពុជាមែនទេ?"
+                : "Running an event in Cambodia?"}
+            </h2>
+            <p>
+              {locale === "km"
+                ? "ចុះបញ្ជីកម្មវិធីរបស់អ្នក លក់កៅអីកក់ទុក ឬសំបុត្រទូទៅ ហើយពិនិត្យអ្នកចូលនៅទ្វារពីកម្មវិធីរុករកលើទូរស័ព្ទណាក៏បាន។"
+                : "List your show, sell reserved seats or general admission, and check people in at the door from any phone browser."}
+            </p>
+          </div>
+
+          <div className="home-cta-actions">
+            <Link className="btn btn-primary" to="/become-an-organizer">
+              {locale === "km" ? "ក្លាយជាអ្នករៀបចំ" : "Become an organizer"}
+              <Icon name="arrowRight" size={15} />
+            </Link>
+            <Link className="btn btn-outline" to="/about">
+              {locale === "km" ? "មើលរបៀបដំណើរការ" : "See how it works"}
+            </Link>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function HomePage() {
   const { t, locale } = useLocale();
   const { provinces } = useProvinces();
@@ -459,7 +571,7 @@ export default function HomePage() {
           {loading ? (
             <EventGridSkeleton count={4} />
           ) : featured.length ? (
-            <div className="grid grid-cards">
+            <div className="grid grid-cards grid-one-row">
               {featured.map((e) => (
                 <EventCard key={e.id} event={e} />
               ))}
@@ -478,15 +590,18 @@ export default function HomePage() {
             </Link>
           </div>
           {loading ? (
-            <EventGridSkeleton count={8} />
+            <EventGridSkeleton count={4} />
           ) : (
-            <div className="grid grid-cards">
+            <div className="grid grid-cards grid-one-row">
               {upcoming.map((e) => (
                 <EventCard key={e.id} event={e} />
               ))}
             </div>
           )}
         </section>
+
+        <HowItWorks locale={locale} />
+        <OrganizerCta locale={locale} />
       </div>
     </>
   );
