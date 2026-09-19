@@ -253,7 +253,6 @@ export default function OrganizerDashboardPage() {
     .filter((r) => r.revenue > 0)
     .sort((a, b) => b.revenue - a.revenue)
     .slice(0, 5);
-  const revenuePeak = Math.max(...byRevenue.map((r) => r.revenue), 1);
 
   const km = locale === "km";
 
@@ -684,7 +683,7 @@ export default function OrganizerDashboardPage() {
             {km ? "ចំណូលតាមព្រឹត្តិការណ៍" : "Revenue by event"}
           </h2>
           {byRevenue.length ? (
-            <div className="flex flex-col gap-1">
+            <div className="rev-ticket-grid">
               {byRevenue.map(({ event, sold, capacity, revenue }, i) => {
                 const pct =
                   capacity > 0 ? Math.round((sold / capacity) * 100) : 0;
@@ -692,53 +691,79 @@ export default function OrganizerDashboardPage() {
                   totals.revenue > 0
                     ? Math.round((revenue / totals.revenue) * 100)
                     : 0;
+                const startDate = event.starts_at
+                  ? new Date(event.starts_at)
+                  : null;
+                const month = startDate
+                  ? startDate
+                      .toLocaleDateString(km ? "km" : "en", { month: "short" })
+                      .toUpperCase()
+                  : null;
+                const day = startDate ? startDate.getDate() : null;
+
                 return (
-                  <div key={event.id} className="rev-event-row">
-                    {/* Rank + Event name + Revenue */}
-                    <div className="flex items-baseline gap-2 mb-0.5">
-                      <span className={`rev-event-rank rank-${i + 1}`}>
+                  <Link
+                    key={event.id}
+                    to={`/organizer/events/${event.id}/sales`}
+                    className={`rev-ticket rev-ticket-${i + 1}`}
+                  >
+                    {/* Colored accent strip */}
+                    <div className={`rev-ticket-accent bar-${i + 1}`} />
+
+                    {/* Top: Rank + Revenue amount */}
+                    <div className="rev-ticket-head">
+                      <span className={`rev-ticket-rank rank-${i + 1}`}>
                         #{i + 1}
                       </span>
-                      <Link
-                        to={`/organizer/events/${event.id}/sales`}
-                        className="text-small font-semibold truncate flex-1 min-w-0"
-                      >
-                        {km ? event.title_km : event.title_en}
-                      </Link>
-                      <span className="text-small font-bold text-ink whitespace-nowrap tabular-nums">
-                        {usd(revenue)}
-                      </span>
+                      <span className="rev-ticket-revenue">{usd(revenue)}</span>
                     </div>
 
-                    {/* Progress bar + sell-through badge */}
-                    <div className="flex items-center gap-2 ml-6">
-                      <div
-                        className="h-2 rounded-full bg-surface-2 overflow-hidden flex-1"
-                        title={`${usd(revenue)} · ${sold}/${capacity} ${km ? "សំបុត្រ" : "tickets"}`}
-                      >
+                    {/* Body: Event name + meta */}
+                    <div className="rev-ticket-body">
+                      <h3 className="rev-ticket-title">
+                        {km ? event.title_km : event.title_en}
+                      </h3>
+                      {startDate && (
+                        <span className="rev-ticket-date-badge">
+                          <span>{month}</span>
+                          <b>{day}</b>
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Progress bar */}
+                    <div className="rev-ticket-progress">
+                      <div className="rev-ticket-bar-track">
                         <div
-                          className={`h-full rounded-full bar-${i + 1}`}
-                          style={{ width: `${(revenue / revenuePeak) * 100}%` }}
+                          className={`rev-ticket-bar-fill bar-${i + 1}`}
+                          style={{ width: `${pct}%` }}
                         />
                       </div>
                       <span
-                        className={`rev-event-pct ${pct >= 90 ? "hot" : pct >= 60 ? "warm" : ""}`}
+                        className={`rev-ticket-pct ${pct >= 90 ? "hot" : pct >= 60 ? "warm" : ""}`}
                       >
                         {pct}%
                       </span>
                     </div>
 
-                    {/* Ticket count + share of total */}
-                    <div className="flex items-center gap-2 ml-6 mt-0.5">
-                      <span className="text-tiny text-muted tabular-nums">
-                        {sold.toLocaleString()} / {capacity.toLocaleString()}{" "}
-                        {km ? "សំបុត្រ" : "tickets"}
+                    {/* Notch divider */}
+                    <div className="rev-ticket-divider" aria-hidden="true">
+                      <span className="rev-notch rev-notch-left" />
+                      <span className="rev-dashed" />
+                      <span className="rev-notch rev-notch-right" />
+                    </div>
+
+                    {/* Foot: tickets + share */}
+                    <div className="rev-ticket-foot">
+                      <span className="rev-ticket-tickets">
+                        <Icon name="ticket" size={12} />
+                        {sold.toLocaleString()} / {capacity.toLocaleString()}
                       </span>
-                      <span className="rev-event-share">
+                      <span className="rev-ticket-share">
                         {share}% {km ? "នៃសរុប" : "of total"}
                       </span>
                     </div>
-                  </div>
+                  </Link>
                 );
               })}
             </div>

@@ -2725,45 +2725,140 @@
     background: linear-gradient(180deg, #6cc79f 0%, #16744a 100%);
   }
 
-  /* ---------------------------------------------- revenue-by-event card */
-  .rev-event-row {
-    padding: 0.5rem 0.55rem;
-    border-radius: 0.5rem;
-    transition: background 0.15s;
-  }
-  .rev-event-row:hover {
-    background: var(--color-surface-2);
-  }
-  .rev-event-row + .rev-event-row {
-    border-top: 1px solid var(--color-line);
+  /* ---------------------------------------------- revenue-by-event ticket cards */
+  .rev-ticket-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
   }
 
-  .rev-event-rank {
-    font-size: 0.7rem;
+  .rev-ticket {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: var(--radius-card, 0.75rem);
+    border: 1px solid var(--color-line);
+    background: var(--color-surface);
+    color: inherit;
+    text-decoration: none;
+    transition: all 0.2s;
+  }
+  .rev-ticket:hover {
+    transform: translateY(-2px);
+    border-color: var(--color-brand-500);
+    box-shadow: var(--shadow-float, 0 8px 24px rgba(0, 0, 0, 0.12));
+    text-decoration: none;
+  }
+
+  .rev-ticket-accent {
+    height: 4px;
+    width: 100%;
+    flex-shrink: 0;
+  }
+
+  .rev-ticket-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 0.65rem 0.85rem 0;
+    gap: 0.5rem;
+  }
+
+  .rev-ticket-rank {
+    font-size: 0.72rem;
     font-weight: 800;
     line-height: 1;
-    width: 1rem;
-    flex-shrink: 0;
-    text-align: center;
     letter-spacing: -0.02em;
   }
-  .rev-event-rank.rank-1 {
+  .rev-ticket-rank.rank-1 {
     color: #45b183;
   }
-  .rev-event-rank.rank-2 {
+  .rev-ticket-rank.rank-2 {
     color: #37bda8;
   }
-  .rev-event-rank.rank-3 {
+  .rev-ticket-rank.rank-3 {
     color: #eda44f;
   }
-  .rev-event-rank.rank-4 {
+  .rev-ticket-rank.rank-4 {
     color: #e8749c;
   }
-  .rev-event-rank.rank-5 {
+  .rev-ticket-rank.rank-5 {
     color: #a37ad6;
   }
 
-  .rev-event-pct {
+  .rev-ticket-revenue {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: var(--color-ink);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .rev-ticket-body {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.35rem 0.85rem 0;
+  }
+
+  .rev-ticket-title {
+    font-size: 0.82rem;
+    font-weight: 600;
+    line-height: 1.35;
+    color: var(--color-ink);
+    margin: 0;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .rev-ticket-date-badge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 34px;
+    border-radius: 6px;
+    background: var(--color-surface-2);
+    padding: 0.2rem 0.35rem;
+    text-align: center;
+    font-size: 0.6rem;
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: 0.04em;
+    color: var(--color-ink);
+    flex-shrink: 0;
+  }
+  .rev-ticket-date-badge b {
+    font-size: 0.88rem;
+    letter-spacing: -0.01em;
+  }
+
+  .rev-ticket-progress {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.85rem 0.35rem;
+  }
+
+  .rev-ticket-bar-track {
+    flex: 1;
+    height: 6px;
+    border-radius: 9999px;
+    background: var(--color-surface-2);
+    overflow: hidden;
+  }
+  .rev-ticket-bar-fill {
+    height: 100%;
+    border-radius: 9999px;
+    transition: width 0.4s ease-out;
+  }
+
+  .rev-ticket-pct {
     font-size: 0.65rem;
     font-weight: 700;
     line-height: 1;
@@ -2776,16 +2871,64 @@
     text-align: center;
     flex-shrink: 0;
   }
-  .rev-event-pct.warm {
+  .rev-ticket-pct.warm {
     background: #fef3c7;
     color: #92400e;
   }
-  .rev-event-pct.hot {
+  .rev-ticket-pct.hot {
     background: #dcfce7;
     color: #166534;
   }
 
-  .rev-event-share {
+  /* Notch divider — mirrors the booking card tear line */
+  .rev-ticket-divider {
+    position: relative;
+    display: flex;
+    height: 14px;
+    align-items: center;
+    overflow: hidden;
+    margin: 0 -1px;
+  }
+  .rev-dashed {
+    flex: 1;
+    margin: 0 0.85rem;
+    border-bottom: 1px dashed var(--color-line-2, var(--color-line));
+  }
+  .rev-notch {
+    position: absolute;
+    top: 50%;
+    width: 12px;
+    height: 12px;
+    transform: translateY(-50%);
+    border-radius: 50%;
+    border: 1px solid var(--color-line);
+    background: var(--color-page);
+  }
+  .rev-notch-left {
+    left: -7px;
+  }
+  .rev-notch-right {
+    right: -7px;
+  }
+
+  .rev-ticket-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.3rem 0.85rem 0.6rem;
+  }
+
+  .rev-ticket-tickets {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--color-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .rev-ticket-share {
     font-size: 0.65rem;
     font-weight: 600;
     color: var(--color-muted);
@@ -2793,12 +2936,12 @@
     opacity: 0.7;
   }
 
-  /* dark mode overrides for revenue event card */
-  [data-theme="dark"] .rev-event-pct.warm {
+  /* dark mode overrides for ticket card */
+  [data-theme="dark"] .rev-ticket-pct.warm {
     background: rgba(234, 179, 8, 0.15);
     color: #fbbf24;
   }
-  [data-theme="dark"] .rev-event-pct.hot {
+  [data-theme="dark"] .rev-ticket-pct.hot {
     background: rgba(34, 197, 94, 0.15);
     color: #4ade80;
   }
