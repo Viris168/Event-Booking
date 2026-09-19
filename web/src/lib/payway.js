@@ -18,65 +18,67 @@
  */
 export const PAYMENT_OPTIONS = [
   {
-    id: 'ABA_PAYWAY',
-    icon: 'lock',
-    currency: 'USD',
-    kind: 'qr',
-    titleEn: 'ABA PayWay',
-    titleKm: 'ABA PayWay',
-    subEn: 'Pay securely with ABA PayWay checkout',
-    subKm: 'បង់ប្រាក់តាមរយៈ ABA PayWay',
+    id: "ABA_PAYWAY",
+    icon: "lock",
+    currency: "USD",
+    kind: "qr",
+    titleEn: "ABA PayWay",
+    titleKm: "ABA PayWay",
+    subEn: "Pay securely with ABA PayWay checkout",
+    subKm: "បង់ប្រាក់តាមរយៈ ABA PayWay",
   },
   {
-    id: 'BAKONG_KHQR',
-    icon: 'qr',
-    currency: 'USD',
-    kind: 'qr',
-    titleEn: 'Bakong KHQR',
-    titleKm: 'Bakong KHQR',
-    subEn: 'Scan with any KHQR supported app',
-    subKm: 'ស្កេនដោយកម្មវិធីធនាគារ KHQR ណាមួយ',
+    id: "BAKONG_KHQR",
+    icon: "qr",
+    logo: "/logo/bakong.png",
+    currency: "USD",
+    kind: "qr",
+    titleEn: "Bakong KHQR",
+    titleKm: "Bakong KHQR",
+    subEn: "Scan with any KHQR supported app",
+    subKm: "ស្កេនដោយកម្មវិធីធនាគារ KHQR ណាមួយ",
   },
-]
+];
 
-export const DEFAULT_OPTION = 'ABA_PAYWAY'
+export const DEFAULT_OPTION = "ABA_PAYWAY";
 
 export function paymentOption(id) {
-  return PAYMENT_OPTIONS.find((o) => o.id === id) || PAYMENT_OPTIONS[0]
+  return PAYMENT_OPTIONS.find((o) => o.id === id) || PAYMENT_OPTIONS[0];
 }
 
 export function optionTitle(id, locale) {
-  const o = paymentOption(id)
-  return locale === 'km' ? o.titleKm : o.titleEn
+  const o = paymentOption(id);
+  return locale === "km" ? o.titleKm : o.titleEn;
 }
 
 export function optionSub(id, locale) {
-  const o = paymentOption(id)
-  return locale === 'km' ? o.subKm : o.subEn
+  const o = paymentOption(id);
+  return locale === "km" ? o.subKm : o.subEn;
 }
 
 /**
  * The provider enum the booking API stores an attempt under. Every option here
  * settles through ABA, KHQR scans included — the QR is PayWay's, not Bakong's.
  */
-export const PROVIDER = 'ABA_PAYWAY'
+export const PROVIDER = "ABA_PAYWAY";
 
-export const MERCHANT_ID = 'event_booking_kh'
-export const MERCHANT_NAME = 'CamboBook'
+export const MERCHANT_ID = "event_booking_kh";
+export const MERCHANT_NAME = "CamboBook";
 
 /** PayWay's req_time format: yyyyMMddHHmmss, UTC. */
 export function reqTime(d = new Date()) {
-  const p = (n, w = 2) => String(n).padStart(w, '0')
+  const p = (n, w = 2) => String(n).padStart(w, "0");
   return (
     `${d.getUTCFullYear()}${p(d.getUTCMonth() + 1)}${p(d.getUTCDate())}` +
     `${p(d.getUTCHours())}${p(d.getUTCMinutes())}${p(d.getUTCSeconds())}`
-  )
+  );
 }
 
-function rand(len, alphabet = '0123456789ABCDEFGHJKLMNPQRSTUVWXYZ') {
-  let out = ''
-  for (let i = 0; i < len; i++) out += alphabet[Math.floor(Math.random() * alphabet.length)]
-  return out
+function rand(len, alphabet = "0123456789ABCDEFGHJKLMNPQRSTUVWXYZ") {
+  let out = "";
+  for (let i = 0; i < len; i++)
+    out += alphabet[Math.floor(Math.random() * alphabet.length)];
+  return out;
 }
 
 /**
@@ -85,15 +87,17 @@ function rand(len, alphabet = '0123456789ABCDEFGHJKLMNPQRSTUVWXYZ') {
  * server, which is where it will live once the API is wired to PayWay.
  */
 function fakeHash(seed) {
-  let h = 2166136261
+  let h = 2166136261;
   for (let i = 0; i < seed.length; i++) {
-    h ^= seed.charCodeAt(i)
-    h = Math.imul(h, 16777619)
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619);
   }
-  return btoa(`${seed}:${(h >>> 0).toString(16)}`).replace(/=+$/, '').slice(0, 44)
+  return btoa(`${seed}:${(h >>> 0).toString(16)}`)
+    .replace(/=+$/, "")
+    .slice(0, 44);
 }
 
-const key = (bookingId) => `payway_txn_${bookingId}`
+const key = (bookingId) => `payway_txn_${bookingId}`;
 
 /**
  * The purchase request/response pair, flattened. `status` follows PayWay's
@@ -106,87 +110,93 @@ export function createTransaction({
   option = DEFAULT_OPTION,
   amountUsdCents = 0,
   lifetimeMinutes = 15,
-  returnUrl = '',
+  returnUrl = "",
 }) {
-  const now = Date.now()
-  const opt = paymentOption(option)
-  const tranId = `${bookingRef || 'EVB'}-${rand(4)}`
+  const now = Date.now();
+  const opt = paymentOption(option);
+  const tranId = `${bookingRef || "EVB"}-${rand(4)}`;
   const txn = {
     merchant_id: MERCHANT_ID,
     tran_id: tranId,
     req_time: reqTime(new Date(now)),
     booking_id: String(bookingId),
     payment_option: opt.id,
-    view_type: 'popup', // PayWay's modal / bottom sheet — this flow uses no other
+    view_type: "popup", // PayWay's modal / bottom sheet — this flow uses no other
     currency: opt.currency,
     amount: amountUsdCents / 100,
     amount_usd_cents: amountUsdCents,
     hash: fakeHash(`${MERCHANT_ID}${tranId}${amountUsdCents}`),
     return_url: returnUrl,
-    status: 'PENDING',
+    status: "PENDING",
     status_code: 2,
     apv: null,
     lifetime: lifetimeMinutes,
     created_at: new Date(now).toISOString(),
     expires_at: new Date(now + lifetimeMinutes * 60000).toISOString(),
     resolved_at: null,
-  }
-  saveTransaction(txn)
-  return txn
+  };
+  saveTransaction(txn);
+  return txn;
 }
 
 export function saveTransaction(txn) {
   try {
-    sessionStorage.setItem(key(txn.booking_id), JSON.stringify(txn))
+    sessionStorage.setItem(key(txn.booking_id), JSON.stringify(txn));
   } catch {
     /* private mode — the attempt just will not survive a reload */
   }
-  return txn
+  return txn;
 }
 
 export function loadTransaction(bookingId) {
   try {
-    const raw = sessionStorage.getItem(key(bookingId))
-    if (!raw) return null
-    const txn = JSON.parse(raw)
+    const raw = sessionStorage.getItem(key(bookingId));
+    if (!raw) return null;
+    const txn = JSON.parse(raw);
     // A transaction past its lifetime is dead whichever way it was left.
-    if (txn.status === 'PENDING' && Date.parse(txn.expires_at) < Date.now()) {
-      return settleTransaction(bookingId, 'EXPIRED')
+    if (txn.status === "PENDING" && Date.parse(txn.expires_at) < Date.now()) {
+      return settleTransaction(bookingId, "EXPIRED");
     }
-    return txn
+    return txn;
   } catch {
-    return null
+    return null;
   }
 }
 
-const CODES = { APPROVED: 0, PENDING: 2, DECLINED: 3, CANCELLED: 4, EXPIRED: 5 }
+const CODES = {
+  APPROVED: 0,
+  PENDING: 2,
+  DECLINED: 3,
+  CANCELLED: 4,
+  EXPIRED: 5,
+};
 
 /** What the webhook / Check Transaction response would come back saying. */
 export function settleTransaction(bookingId, status) {
   const txn = (() => {
     try {
-      return JSON.parse(sessionStorage.getItem(key(bookingId)) || 'null')
+      return JSON.parse(sessionStorage.getItem(key(bookingId)) || "null");
     } catch {
-      return null
+      return null;
     }
-  })()
-  if (!txn) return null
+  })();
+  if (!txn) return null;
   const next = {
     ...txn,
     status,
     status_code: CODES[status] ?? 3,
-    apv: status === 'APPROVED' ? txn.apv || rand(6, '0123456789') : null,
+    apv: status === "APPROVED" ? txn.apv || rand(6, "0123456789") : null,
     resolved_at: new Date().toISOString(),
-  }
-  return saveTransaction(next)
+  };
+  return saveTransaction(next);
 }
 
 export function clearTransaction(bookingId) {
   try {
-    sessionStorage.removeItem(key(bookingId))
+    sessionStorage.removeItem(key(bookingId));
   } catch {
     /* ignore */
   }
 }
 
-export const isOpen = (txn) => txn?.status === 'PENDING'
+export const isOpen = (txn) => txn?.status === "PENDING";

@@ -45,9 +45,9 @@ const EMPTY = {
 
 const TOP_PROVINCES = [
   { name: "Phnom Penh", icon: "building" },
-  { name: "Siem Reap", icon: "mapPin" },
-  { name: "Kampot", icon: "music" },
-  { name: "Koh Kong", icon: "globe" },
+  { name: "Siem Reap", icon: "temple" },
+  { name: "Kampot", icon: "mountain" },
+  { name: "Koh Kong", icon: "palmtree" },
   { name: "Kep", icon: "sun" },
 ];
 

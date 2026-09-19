@@ -1,6 +1,6 @@
-import { useEffect, useRef } from 'react'
-import { createPortal } from 'react-dom'
-import { useLocale } from '../context/LocaleContext.jsx'
+import { useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
+import { useLocale } from "../context/LocaleContext.jsx";
 
 /**
  * A modal that holds a form, rather than a yes/no question.
@@ -34,10 +34,12 @@ export default function FormDialog({
   submitDisabled = false,
   onSubmit,
   onClose,
+  className = "",
+  style,
 }) {
-  const { locale } = useLocale()
-  const km = locale === 'km'
-  const formRef = useRef(null)
+  const { locale } = useLocale();
+  const km = locale === "km";
+  const formRef = useRef(null);
 
   /*
    * The same trap ConfirmDialog documents, and the same way out.
@@ -54,34 +56,34 @@ export default function FormDialog({
    * Refs sidestep it: the effect depends only on `open`, so it runs once per
    * open/close, while the keydown handler still reads the latest onClose/busy.
    */
-  const onCloseRef = useRef(onClose)
-  const busyRef = useRef(busy)
+  const onCloseRef = useRef(onClose);
+  const busyRef = useRef(busy);
   useEffect(() => {
-    onCloseRef.current = onClose
-    busyRef.current = busy
-  }, [onClose, busy])
+    onCloseRef.current = onClose;
+    busyRef.current = busy;
+  }, [onClose, busy]);
 
   useEffect(() => {
-    if (!open) return undefined
+    if (!open) return undefined;
     const onKey = (e) => {
-      if (e.key === 'Escape' && !busyRef.current) onCloseRef.current()
-    }
-    const previous = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    document.addEventListener('keydown', onKey)
+      if (e.key === "Escape" && !busyRef.current) onCloseRef.current();
+    };
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", onKey);
 
     // The first real control, not the dialog itself. An edit form that opens
     // with nothing focused makes the keyboard user tab in from the top every
     // time, past the close button, to reach the field they came for.
-    formRef.current?.querySelector('input, select, textarea')?.focus()
+    formRef.current?.querySelector("input, select, textarea")?.focus();
 
     return () => {
-      document.body.style.overflow = previous
-      document.removeEventListener('keydown', onKey)
-    }
-  }, [open])
+      document.body.style.overflow = previous;
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
 
-  if (!open) return null
+  if (!open) return null;
 
   return createPortal(
     <div
@@ -90,34 +92,63 @@ export default function FormDialog({
       aria-modal="true"
       aria-label={title}
       onClick={(e) => {
-        if (e.target === e.currentTarget && !busy) onClose()
+        if (e.target === e.currentTarget && !busy) onClose();
       }}
     >
       <form
         ref={formRef}
-        className="panel form-dialog"
+        className={`panel form-dialog ${className}`.trim()}
+        style={style}
         onSubmit={(e) => {
-          e.preventDefault()
-          if (!busy) onSubmit()
+          e.preventDefault();
+          if (!busy) onSubmit();
         }}
       >
-        <div className="form-dialog-head">
-          <h2>{title}</h2>
-          {subtitle && <p className="small muted">{subtitle}</p>}
+        <div
+          className="form-dialog-head spread"
+          style={{ alignItems: "flex-start" }}
+        >
+          <div>
+            <h2>{title}</h2>
+            {subtitle && <p className="small muted">{subtitle}</p>}
+          </div>
+          <button
+            type="button"
+            className="btn btn-sm btn-ghost"
+            onClick={onClose}
+            disabled={busy}
+            aria-label="Close"
+            style={{
+              padding: "0.2rem 0.5rem",
+              marginTop: "-0.2rem",
+              marginRight: "-0.2rem",
+            }}
+          >
+            <span style={{ fontSize: "1.25rem", lineHeight: 1 }}>&times;</span>
+          </button>
         </div>
 
         <div className="form-dialog-body">{children}</div>
 
         <div className="confirm-foot">
-          <button type="button" className="btn btn-ghost" onClick={onClose} disabled={busy}>
-            {cancelLabel ?? (km ? 'បោះបង់' : 'Cancel')}
+          <button
+            type="button"
+            className="btn btn-ghost"
+            onClick={onClose}
+            disabled={busy}
+          >
+            {cancelLabel ?? (km ? "បោះបង់" : "Cancel")}
           </button>
-          <button type="submit" className="btn btn-primary" disabled={busy || submitDisabled}>
-            {busy ? (km ? 'កំពុងរក្សាទុក…' : 'Saving…') : submitLabel}
+          <button
+            type="submit"
+            className="btn btn-primary"
+            disabled={busy || submitDisabled}
+          >
+            {busy ? (km ? "កំពុងរក្សាទុក…" : "Saving…") : submitLabel}
           </button>
         </div>
       </form>
     </div>,
     document.body,
-  )
+  );
 }

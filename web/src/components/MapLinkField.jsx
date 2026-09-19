@@ -1,8 +1,8 @@
-import { useState } from 'react'
-import Icon from './Icon.jsx'
-import { Field } from './ui.jsx'
-import { readMapLink, coordsFromMapsUrl, inCambodia } from '../lib/mapLink.js'
-import { resolveMapLink } from '../api/venues.js'
+import { useState, useEffect } from "react";
+import Icon from "./Icon.jsx";
+import { Field } from "./ui.jsx";
+import { readMapLink, coordsFromMapsUrl, inCambodia } from "../lib/mapLink.js";
+import { resolveMapLink } from "../api/venues.js";
 
 /**
  * How a venue gets its map pin.
@@ -24,74 +24,123 @@ import { resolveMapLink } from '../api/venues.js'
  *   Passed in rather than imported so this component stays independent of which
  *   mapping library the project settles on.
  */
-export default function MapLinkField({ value, onChange, preview = null, locale = 'en' }) {
-  const [link, setLink] = useState('')
-  const [status, setStatus] = useState(null) // { tone, text }
-  const [busy, setBusy] = useState(false)
-  const [manual, setManual] = useState(false)
+export default function MapLinkField({
+  value,
+  onChange,
+  preview = null,
+  locale = "en",
+}) {
+  const initialLink =
+    value.url ||
+    (value.lat && value.lng
+      ? `https://www.google.com/maps?q=${value.lat},${value.lng}`
+      : "");
+  const [link, setLink] = useState(initialLink);
+  const [status, setStatus] = useState(null); // { tone, text }
+  const [busy, setBusy] = useState(false);
+  const [manual, setManual] = useState(false);
 
-  const km = locale === 'km'
-  const hasPin = value.lat !== '' && value.lng !== ''
+  const km = locale === "km";
+  const hasPin =
+    value.lat !== "" &&
+    value.lat != null &&
+    value.lng !== "" &&
+    value.lng != null;
 
-  function apply(coords, note) {
-    onChange({ lat: String(coords.lat), lng: String(coords.lng) })
-    setStatus({ tone: 'ok', text: note })
+  // Keep link in sync when opening edit on a venue or switching venues
+  useEffect(() => {
+    if (value.url) {
+      setLink(value.url);
+    } else if (value.lat && value.lng && !link) {
+      setLink(`https://www.google.com/maps?q=${value.lat},${value.lng}`);
+    } else if (!value.lat && !value.lng && !value.url) {
+      setLink("");
+      setStatus(null);
+    }
+  }, [value.url, value.lat, value.lng]);
+
+  function apply(coords, note, sourceUrl) {
+    const finalUrl = sourceUrl || link;
+    onChange({
+      lat: String(coords.lat),
+      lng: String(coords.lng),
+      url: finalUrl,
+    });
+    setStatus({ tone: "ok", text: note });
   }
 
-  async function read() {
-    const text = link.trim()
-    if (!text) return
+  async function read(overrideText) {
+    const raw = (typeof overrideText === "string" ? overrideText : link).trim();
+    if (!raw) return;
 
-    setBusy(true)
-    setStatus(null)
+    setBusy(true);
+    setStatus(null);
     try {
-      // A full URL carries its own coordinates, so it never touches the
-      // network. Only the short share link needs the server, and only because
-      // a browser cannot read a cross-origin redirect's target.
-      let result = readMapLink(text)
+      let result = readMapLink(raw);
 
-      if (!result.ok && result.reason === 'short-link') {
-        const resolved = await resolveMapLink(text)
-        const coords = coordsFromMapsUrl(resolved)
+      if (!result.ok && result.reason === "short-link") {
+        const resolved = await resolveMapLink(result.url || raw);
+        const coords = coordsFromMapsUrl(resolved);
         if (!coords) {
-          setStatus({ tone: 'bad', text: unreadable(km) })
-          return
+          setStatus({ tone: "bad", text: unreadable(km) });
+          return;
         }
         if (!inCambodia(coords)) {
-          setStatus({ tone: 'bad', text: outside(km) })
-          return
+          setStatus({ tone: "bad", text: outside(km) });
+          return;
         }
-        apply(coords, found(km, coords))
-        return
+        apply(coords, found(km, coords), result.url || raw);
+        return;
       }
 
       if (result.ok) {
-        apply(result.coords, found(km, result.coords))
-        return
+        apply(result.coords, found(km, result.coords), result.url || raw);
+        return;
       }
 
       setStatus({
-        tone: 'bad',
-        text: result.reason === 'out-of-bounds' ? outside(km) : unreadable(km),
-      })
+        tone: "bad",
+        text: result.reason === "out-of-bounds" ? outside(km) : unreadable(km),
+      });
     } catch (err) {
-      // The server's own message is the useful one here - it already tells the
-      // organiser to use the Share button - so prefer it over a generic string.
-      const detail = err?.response?.data?.message || err?.response?.data?.detail
-      setStatus({ tone: 'bad', text: detail || unreadable(km) })
+      const detail =
+        err?.response?.data?.message || err?.response?.data?.detail;
+      setStatus({ tone: "bad", text: detail || unreadable(km) });
     } finally {
-      setBusy(false)
+      setBusy(false);
+    }
+  }
+
+  // Auto-read link when user pastes or finishes typing
+  function handleInputChange(e) {
+    const text = e.target.value;
+    setLink(text);
+    onChange({ lat: value.lat, lng: value.lng, url: text });
+
+    const trimmed = text.trim();
+    if (trimmed.length > 10) {
+      const result = readMapLink(trimmed);
+      if (result.ok || result.reason === "short-link") {
+        read(trimmed);
+      }
+    }
+  }
+
+  function handlePaste(e) {
+    const pasted = e.clipboardData?.getData("text");
+    if (pasted && pasted.trim()) {
+      setTimeout(() => read(pasted.trim()), 50);
     }
   }
 
   return (
     <div className="stack-sm">
       <Field
-        label={km ? 'តំណ Google Maps' : 'Google Maps link'}
+        label={km ? "តំណ Google Maps" : "Google Maps link"}
         hint={
           km
-            ? 'បើកទីកន្លែងក្នុង Google Maps ចុច Share រួចបិទភ្ជាប់តំណនៅទីនេះ'
-            : 'Open the venue in Google Maps, tap Share, and paste the link here'
+            ? "បើកទីកន្លែងក្នុង Google Maps ចុច Share រួចបិទភ្ជាប់តំណនៅទីនេះ"
+            : "Open the venue in Google Maps, tap Share, and paste the link here"
         }
       >
         <div className="row row-tight">
@@ -101,31 +150,31 @@ export default function MapLinkField({ value, onChange, preview = null, locale =
             inputMode="url"
             placeholder="https://maps.app.goo.gl/…"
             value={link}
-            onChange={(e) => setLink(e.target.value)}
-            // Enter inside a field belonging to a larger form would submit the
-            // venue, not read the link.
+            onChange={handleInputChange}
+            onPaste={handlePaste}
+            onBlur={() => link.trim() && !hasPin && read(link)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault()
-                read()
+              if (e.key === "Enter") {
+                e.preventDefault();
+                read();
               }
             }}
           />
           <button
             type="button"
             className="btn btn-outline"
-            onClick={read}
+            onClick={() => read()}
             disabled={busy || !link.trim()}
           >
-            <Icon name={busy ? 'refresh' : 'mapPin'} size={15} />
-            {busy ? (km ? 'កំពុងអាន…' : 'Reading…') : km ? 'អាន' : 'Read'}
+            <Icon name={busy ? "refresh" : "mapPin"} size={15} />
+            {busy ? (km ? "កំពុងអាន…" : "Reading…") : km ? "អាន" : "Read"}
           </button>
         </div>
       </Field>
 
       {status && (
-        <p className={status.tone === 'ok' ? 'hint' : 'err'}>
-          <Icon name={status.tone === 'ok' ? 'check' : 'xCircle'} size={13} />{' '}
+        <p className={status.tone === "ok" ? "hint" : "err"}>
+          <Icon name={status.tone === "ok" ? "check" : "xCircle"} size={13} />{" "}
           {status.text}
         </p>
       )}
@@ -145,13 +194,13 @@ export default function MapLinkField({ value, onChange, preview = null, locale =
           onClick={() => setManual((v) => !v)}
           aria-expanded={manual}
         >
-          <Icon name={manual ? 'chevronDown' : 'chevronRight'} size={14} />
-          {km ? 'បញ្ចូលកូអរដោនេដោយដៃ' : 'Enter coordinates manually'}
+          <Icon name={manual ? "chevronDown" : "chevronRight"} size={14} />
+          {km ? "បញ្ចូលកូអរដោនេដោយដៃ" : "Enter coordinates manually"}
         </button>
 
         {manual && (
           <div className="advanced-row">
-            <Field label={km ? 'រយៈទទឹង' : 'Latitude'}>
+            <Field label={km ? "រយៈទទឹង" : "Latitude"}>
               <input
                 className="input"
                 type="number"
@@ -160,7 +209,7 @@ export default function MapLinkField({ value, onChange, preview = null, locale =
                 onChange={(e) => onChange({ ...value, lat: e.target.value })}
               />
             </Field>
-            <Field label={km ? 'រយៈបណ្តោយ' : 'Longitude'}>
+            <Field label={km ? "រយៈបណ្តោយ" : "Longitude"}>
               <input
                 className="input"
                 type="number"
@@ -173,20 +222,20 @@ export default function MapLinkField({ value, onChange, preview = null, locale =
         )}
       </div>
     </div>
-  )
+  );
 }
 
 const found = (km, c) =>
   km
     ? `រកឃើញទីតាំង៖ ${c.lat.toFixed(6)}, ${c.lng.toFixed(6)}`
-    : `Pin found: ${c.lat.toFixed(6)}, ${c.lng.toFixed(6)}. Check it below`
+    : `Pin found: ${c.lat.toFixed(6)}, ${c.lng.toFixed(6)}. Check it below`;
 
 const unreadable = (km) =>
   km
-    ? 'មិនអាចអានតំណនេះបានទេ។ សូមប្រើប៊ូតុង Share ក្នុង Google Maps។'
-    : 'Could not read that link. Use the Share button in Google Maps, or enter the coordinates manually.'
+    ? "មិនអាចអានតំណនេះបានទេ។ សូមប្រើប៊ូតុង Share ក្នុង Google Maps។"
+    : "Could not read that link. Use the Share button in Google Maps, or enter the coordinates manually.";
 
 const outside = (km) =>
   km
-    ? 'ទីតាំងនេះនៅក្រៅប្រទេសកម្ពុជា។ សូមពិនិត្យតំណម្តងទៀត។'
-    : 'That location is outside Cambodia. Check the link is for the right place.'
+    ? "ទីតាំងនេះនៅក្រៅប្រទេសកម្ពុជា។ សូមពិនិត្យតំណម្តងទៀត។"
+    : "That location is outside Cambodia. Check the link is for the right place.";

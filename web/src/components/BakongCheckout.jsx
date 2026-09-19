@@ -1,38 +1,41 @@
-import { useEffect, useRef, useState } from 'react'
-import Icon from './Icon.jsx'
-import KhqrCard from './KhqrCard.jsx'
-import { useLocale } from '../context/LocaleContext.jsx'
-import { countdown } from '../lib/format.js'
-import { MERCHANT_NAME } from '../lib/payway.js'
+import { useEffect, useRef, useState } from "react";
+import Icon from "./Icon.jsx";
+import KhqrCard from "./KhqrCard.jsx";
+import { useLocale } from "../context/LocaleContext.jsx";
+import { countdown } from "../lib/format.js";
+import { MERCHANT_NAME } from "../lib/payway.js";
 
 export default function BakongCheckout({ txn, booking, onClose }) {
-  const { t } = useLocale()
-  const sheetRef = useRef(null)
-  const [now, setNow] = useState(() => Date.now())
+  const { t } = useLocale();
+  const sheetRef = useRef(null);
+  const [now, setNow] = useState(() => Date.now());
 
-  const left = txn ? Date.parse(txn.expiresAt ?? txn.expires_at) - now : 0
-  const expired = left <= 0
+  const left = txn ? Date.parse(txn.expiresAt ?? txn.expires_at) - now : 0;
+  const expired = left <= 0;
 
   // Ticks so the QR stops accepting input the moment its lifetime runs out.
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000)
-    return () => clearInterval(id)
-  }, [])
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
 
   // Esc closes the popup
   useEffect(() => {
     function onKey(e) {
-      if (e.key === 'Escape') onClose?.()
+      if (e.key === "Escape") onClose?.();
     }
-    window.addEventListener('keydown', onKey)
-    sheetRef.current?.focus()
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
+    window.addEventListener("keydown", onKey);
+    sheetRef.current?.focus();
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
 
-  if (!txn) return null
+  if (!txn) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center backdrop-blur-sm bg-gray-900/60 p-4" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center backdrop-blur-sm bg-gray-900/60 p-4"
+      onClick={onClose}
+    >
       <div
         className="sheet dialog bg-transparent shadow-none w-auto max-w-none p-0"
         ref={sheetRef}
@@ -44,10 +47,10 @@ export default function BakongCheckout({ txn, booking, onClose }) {
         <div className="relative">
           {/* Close Button above the card */}
           <div className="flex justify-end mb-3">
-            <button 
+            <button
               className="bg-white/10 hover:bg-white/20 text-white rounded-full p-2 transition-colors"
               onClick={onClose}
-              aria-label={t('close')}
+              aria-label={t("close")}
             >
               <Icon name="close" size={20} />
             </button>
@@ -56,11 +59,21 @@ export default function BakongCheckout({ txn, booking, onClose }) {
           <KhqrCard
             qrPayload={txn.qrPayload ?? txn.qr_payload}
             merchantName={MERCHANT_NAME}
-            amountUsdCents={txn.amountUsdCents ?? txn.amount_usd_cents ?? booking?.total_usd_cents}
+            amountUsdCents={
+              txn.amountUsdCents ??
+              txn.amount_usd_cents ??
+              booking?.total_usd_cents
+            }
             amountKhr={txn.amountKhr ?? txn.amount_khr ?? booking?.total_khr}
-            currency={txn.currencyCharged ?? txn.currency_charged ?? 'USD'}
+            currency={txn.currencyCharged ?? txn.currency_charged ?? "USD"}
             bookingRef={booking?.booking_ref}
-            bookingRef={booking?.booking_ref}
+            centerIcon={
+              <img
+                src="/logo/bakong.png"
+                alt="Bakong"
+                className="w-7 h-7 rounded-full object-cover"
+              />
+            }
           />
 
           <div className="mt-5 text-center px-4">
@@ -76,7 +89,8 @@ export default function BakongCheckout({ txn, booking, onClose }) {
                 <span className="text-red-400 font-bold">QR Expired</span>
               ) : (
                 <span className="flex items-center justify-center gap-1.5">
-                  <Icon name="clock" size={14} /> Complete within {countdown(left)}
+                  <Icon name="clock" size={14} /> Complete within{" "}
+                  {countdown(left)}
                 </span>
               )}
             </div>
@@ -84,5 +98,5 @@ export default function BakongCheckout({ txn, booking, onClose }) {
         </div>
       </div>
     </div>
-  )
+  );
 }

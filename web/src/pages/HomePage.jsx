@@ -28,14 +28,14 @@ const QUICK_SEARCHES = [
     q: "pp",
     en: "Phnom Penh",
     km: "ភ្នំពេញ",
-    icon: "mapPin",
+    icon: "building",
     params: { province: "12" },
   },
   {
     q: "sr",
     en: "Siem Reap",
     km: "សៀមរាប",
-    icon: "mapPin",
+    icon: "temple",
     params: { province: "17" },
   },
   {

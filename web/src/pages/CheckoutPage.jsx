@@ -1,127 +1,150 @@
-import { useDocumentTitle } from '../lib/useDocumentTitle.js'
-import { useEffect, useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import HoldBar from '../components/HoldBar.jsx'
-import Icon, { CATEGORY_ICON } from '../components/Icon.jsx'
-import { eventArt } from '../lib/eventArt.js'
-import { CheckoutSkeleton } from '../components/Skeleton.jsx'
-import PaymentModal from '../components/PaymentModal.jsx'
-import { Alert, Field, Steps } from '../components/ui.jsx'
-import { useAuth } from '../context/AuthContext.jsx'
-import { useLocale } from '../context/LocaleContext.jsx'
-import { useToast } from '../context/ToastContext.jsx'
-import { seatLabel, toLocalPhone, usd } from '../lib/format.js'
-import { getHold, announceHoldChange } from '../api/holds.js'
-import { getEvent } from '../api/events.js'
-import { createBooking } from '../api/bookings.js'
-import { mapHoldResponse, mapEvent } from '../api/adapters.js'
-import { DEFAULT_OPTION, PAYMENT_OPTIONS, optionSub, optionTitle } from '../lib/payway.js'
+import { useDocumentTitle } from "../lib/useDocumentTitle.js";
+import { useEffect, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import HoldBar from "../components/HoldBar.jsx";
+import Icon, { CATEGORY_ICON } from "../components/Icon.jsx";
+import { eventArt } from "../lib/eventArt.js";
+import { CheckoutSkeleton } from "../components/Skeleton.jsx";
+import PaymentModal from "../components/PaymentModal.jsx";
+import { Alert, Field, Steps } from "../components/ui.jsx";
+import { useAuth } from "../context/AuthContext.jsx";
+import { useLocale } from "../context/LocaleContext.jsx";
+import { useToast } from "../context/ToastContext.jsx";
+import { seatLabel, toLocalPhone, usd } from "../lib/format.js";
+import { getHold, announceHoldChange } from "../api/holds.js";
+import { getEvent } from "../api/events.js";
+import { createBooking } from "../api/bookings.js";
+import { mapHoldResponse, mapEvent } from "../api/adapters.js";
+import {
+  DEFAULT_OPTION,
+  PAYMENT_OPTIONS,
+  optionSub,
+  optionTitle,
+} from "../lib/payway.js";
 
 export default function CheckoutPage() {
-  const { t, locale, dateTime } = useLocale()
-  useDocumentTitle(t('checkout'))
-  const { user } = useAuth()
-  const toast = useToast()
-  const navigate = useNavigate()
-  const [params] = useSearchParams()
-  const holdId = params.get('hold')
-  const eventIdParam = params.get('event')
+  const { t, locale, dateTime } = useLocale();
+  useDocumentTitle(t("checkout"));
+  const { user } = useAuth();
+  const toast = useToast();
+  const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const holdId = params.get("hold");
+  const eventIdParam = params.get("event");
 
-  const [pendingPayment, setPendingPayment] = useState(null)
-  const [apiHoldData, setApiHoldData] = useState(null)
-  const [apiEvent, setApiEvent] = useState(null)
+  const [pendingPayment, setPendingPayment] = useState(null);
+  const [apiHoldData, setApiHoldData] = useState(null);
+  const [apiEvent, setApiEvent] = useState(null);
   // The hold and the event both arrive over the network. Until they do the page
   // has nothing to show but its shape — without this it would flash "no active
   // hold" at everyone who reaches checkout legitimately.
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let active = true
+    let active = true;
     if (!holdId || !user?.id) {
-      setLoading(false)
-      return
+      setLoading(false);
+      return;
     }
 
-    let foundEventId = eventIdParam
+    let foundEventId = eventIdParam;
 
     if (!foundEventId) {
       for (let i = 0; i < sessionStorage.length; i++) {
-        const key = sessionStorage.key(i)
-        if (key.startsWith('activeHoldId_') && sessionStorage.getItem(key) === holdId) {
-          foundEventId = key.split('_')[1]
-          break
+        const key = sessionStorage.key(i);
+        if (
+          key.startsWith("activeHoldId_") &&
+          sessionStorage.getItem(key) === holdId
+        ) {
+          foundEventId = key.split("_")[1];
+          break;
         }
       }
     }
 
     if (!foundEventId) {
-      setLoading(false)
-      return
+      setLoading(false);
+      return;
     }
 
-    setLoading(true)
+    setLoading(true);
     Promise.allSettled([
       getHold(foundEventId, holdId)
         .then((res) => {
-          if (active && res) setApiHoldData(mapHoldResponse(res))
+          if (active && res) setApiHoldData(mapHoldResponse(res));
         })
         .catch((e) => console.error(e)),
 
       getEvent(foundEventId)
         .then((res) => {
-          if (active && res) setApiEvent(mapEvent(res))
+          if (active && res) setApiEvent(mapEvent(res));
         })
         .catch((e) => console.error(e)),
     ]).finally(() => {
-      if (active) setLoading(false)
-    })
+      if (active) setLoading(false);
+    });
 
-    return () => { active = false }
-  }, [holdId, eventIdParam, user?.id])
+    return () => {
+      active = false;
+    };
+  }, [holdId, eventIdParam, user?.id]);
 
-  const hold = apiHoldData?.hold
-  const { seats = [], zoneLines = [], subtotalUsdCents = 0 } = apiHoldData || {}
+  const hold = apiHoldData?.hold;
+  const {
+    seats = [],
+    zoneLines = [],
+    subtotalUsdCents = 0,
+  } = apiHoldData || {};
 
   // PayWay's purchase call takes firstname/lastname/email/phone separately, so
   // the form collects them that way rather than as one display name.
-  const [firstName, setFirstName] = useState(() => (user?.display_name || '').split(' ')[0] || '')
-  const [lastName, setLastName] = useState(
-    () => (user?.display_name || '').split(' ').slice(1).join(' '),
-  )
-  const [phone, setPhone] = useState(user?.phone_e164 || '')
-  const [email, setEmail] = useState(user.email || '')
-  const [option, setOption] = useState(DEFAULT_OPTION)
-  const [errors, setErrors] = useState({})
-  const [submitting, setSubmitting] = useState(false)
+  const [firstName, setFirstName] = useState(
+    () => (user?.display_name || "").split(" ")[0] || "",
+  );
+  const [lastName, setLastName] = useState(() =>
+    (user?.display_name || "").split(" ").slice(1).join(" "),
+  );
+  const [phone, setPhone] = useState(user?.phone_e164 || "");
+  const [email, setEmail] = useState(user.email || "");
+  const [option, setOption] = useState(DEFAULT_OPTION);
+  const [errors, setErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
 
   if (loading) {
-    return <CheckoutSkeleton />
+    return <CheckoutSkeleton />;
   }
 
   // Checkout is only reachable with a live hold.
   if (!hold) {
     return (
       <div className="container container-narrow">
-        <Alert tone="warn" title={locale === 'km' ? 'គ្មានការកក់សកម្ម' : 'No active hold'}>
-          <p>{t('holdExpired')}</p>
-          <Link className="btn btn-sm btn-primary" to="/events" style={{ marginTop: '0.7rem' }}>
-            {t('browseEvents')}
+        <Alert
+          tone="warn"
+          title={locale === "km" ? "គ្មានការកក់សកម្ម" : "No active hold"}
+        >
+          <p>{t("holdExpired")}</p>
+          <Link
+            className="btn btn-sm btn-primary"
+            to="/events"
+            style={{ marginTop: "0.7rem" }}
+          >
+            {t("browseEvents")}
           </Link>
         </Alert>
       </div>
-    )
+    );
   }
 
-  const event = apiEvent
-  const venue = event?.venue
-  const art = eventArt(event, 'banner')
+  const event = apiEvent;
+  const venue = event?.venue;
+  const art = eventArt(event, "banner");
   const venueName =
-    (locale === 'km'
-      ? venue?.name_km ?? venue?.nameKm
-      : venue?.name_en ?? venue?.nameEn) ?? ''
+    (locale === "km"
+      ? (venue?.name_km ?? venue?.nameKm)
+      : (venue?.name_en ?? venue?.nameEn)) ?? "";
   // Seats are one ticket each; a zone line carries its own quantity.
   const ticketTotal =
-    seats.length + zoneLines.reduce((a, l) => a + (l.qty ?? 0), 0)
+    seats.length + zoneLines.reduce((a, l) => a + (l.qty ?? 0), 0);
 
   /**
    * Drop one field's error the moment it is edited.
@@ -134,40 +157,44 @@ export default function CheckoutPage() {
    */
   function clearError(field) {
     setErrors((prev) => {
-      if (!prev[field]) return prev
-      const next = { ...prev }
-      delete next[field]
-      return next
-    })
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
   }
 
   function validate() {
-    const next = {}
+    const next = {};
     if (!firstName.trim())
-      next.firstName = locale === 'km' ? 'ត្រូវការនាមខ្លួន' : 'First name is required'
+      next.firstName =
+        locale === "km" ? "ត្រូវការនាមខ្លួន" : "First name is required";
     if (!lastName.trim())
-      next.lastName = locale === 'km' ? 'ត្រូវការនាមត្រកូល' : 'Last name is required'
+      next.lastName =
+        locale === "km" ? "ត្រូវការនាមត្រកូល" : "Last name is required";
     if (!toLocalPhone(phone))
-      next.phone = locale === 'km' ? 'ឧទាហរណ៍៖ 012 345 678' : 'For example 012 345 678'
+      next.phone =
+        locale === "km" ? "ឧទាហរណ៍៖ 012 345 678" : "For example 012 345 678";
     // PayWay requires an email on purchase — it is where the receipt goes.
     if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
-      next.email = locale === 'km' ? 'អ៊ីមែលមិនត្រឹមត្រូវ' : 'Enter a valid email'
-    setErrors(next)
-    return Object.keys(next).length === 0
+      next.email =
+        locale === "km" ? "អ៊ីមែលមិនត្រឹមត្រូវ" : "Enter a valid email";
+    setErrors(next);
+    return Object.keys(next).length === 0;
   }
 
   function submit(e) {
-    e.preventDefault()
-    if (submitting) return
+    e.preventDefault();
+    if (submitting) return;
     if (!validate()) {
       // Move focus to the first problem so the error is announced and reachable.
       requestAnimationFrame(() => {
-        e.target.querySelector('[aria-invalid="true"]')?.focus()
-      })
-      return
+        e.target.querySelector('[aria-invalid="true"]')?.focus();
+      });
+      return;
     }
-    setSubmitting(true)
-    const buyerName = `${firstName.trim()} ${lastName.trim()}`.trim()
+    setSubmitting(true);
+    const buyerName = `${firstName.trim()} ${lastName.trim()}`.trim();
 
     // Using snake_case for the API request based on Jackson configuration
     createBooking({
@@ -181,20 +208,20 @@ export default function CheckoutPage() {
       buyerEmail: email.trim() || null,
     })
       .then((res) => {
-        sessionStorage.removeItem(`activeHoldId_${event.id}`) // Clear hold now that it's booked
+        sessionStorage.removeItem(`activeHoldId_${event.id}`); // Clear hold now that it's booked
         // The hold is spent. Tell the navbar, whose countdown would otherwise
         // keep running against seats that are now a booking.
-        announceHoldChange()
-        setPendingPayment({ bookingId: res.id, option })
+        announceHoldChange();
+        setPendingPayment({ bookingId: res.id, option });
       })
       .catch((err) => {
-        setSubmitting(false)
-        const error = err.response?.data?.message || err.message
-        toast(`Checkout failed: ${error}`, 'error')
-      })
+        setSubmitting(false);
+        const error = err.response?.data?.message || err.message;
+        toast(`Checkout failed: ${error}`, "error");
+      });
   }
 
-  if (!event || !venue) return <CheckoutSkeleton />
+  if (!event || !venue) return <CheckoutSkeleton />;
 
   return (
     <div className="container">
@@ -204,11 +231,14 @@ export default function CheckoutPage() {
       <div className="breadcrumb">
         <Link to={`/events/${event.id}`} className="with-icon">
           <Icon name="arrowLeft" size={14} />
-          {locale === 'km' ? event.title_km : event.title_en}
+          {locale === "km" ? event.title_km : event.title_en}
         </Link>
       </div>
 
-      <Steps current={1} labels={[t('pickSeats'), t('checkoutPay'), t('yourTickets')]} />
+      <Steps
+        current={1}
+        labels={[t("pickSeats"), t("checkoutPay"), t("yourTickets")]}
+      />
 
       {/* No onExtend: HoldBar renders an Extend button whenever the prop is
           present, and it was being handed `() => {}`. There is no extend
@@ -217,72 +247,84 @@ export default function CheckoutPage() {
           hides it, which is the truthful state until the endpoint exists. */}
       <HoldBar hold={hold} onRelease={() => navigate(`/events/${event?.id}`)} />
 
-      <div className="split" style={{ marginTop: '1.3rem' }}>
+      <div className="split" style={{ marginTop: "1.3rem" }}>
         <form className="stack" onSubmit={submit} noValidate>
           <div className="panel">
             <div className="panel-head">
-              <h2>{t('buyerDetails')}</h2>
+              <h2>{t("buyerDetails")}</h2>
             </div>
             <div className="panel-body">
               <div className="form-grid">
-                <Field label={t('firstName')} error={errors.firstName}>
+                <Field label={t("firstName")} error={errors.firstName}>
                   <input
                     className="input"
                     value={firstName}
-                    onChange={(e) => { setFirstName(e.target.value); clearError('firstName') }}
+                    onChange={(e) => {
+                      setFirstName(e.target.value);
+                      clearError("firstName");
+                    }}
                     aria-invalid={!!errors.firstName}
                     autoComplete="given-name"
                     maxLength={100}
                   />
                 </Field>
-                <Field label={t('lastName')} error={errors.lastName}>
+                <Field label={t("lastName")} error={errors.lastName}>
                   <input
                     className="input"
                     value={lastName}
-                    onChange={(e) => { setLastName(e.target.value); clearError('lastName') }}
+                    onChange={(e) => {
+                      setLastName(e.target.value);
+                      clearError("lastName");
+                    }}
                     aria-invalid={!!errors.lastName}
                     autoComplete="family-name"
                     maxLength={100}
                   />
                 </Field>
                 <Field
-                  label={t('phone')}
+                  label={t("phone")}
                   error={errors.phone}
                   hint="012 345 678"
                 >
                   <input
                     className="input"
                     value={phone}
-                    onChange={(e) => { setPhone(e.target.value); clearError('phone') }}
+                    onChange={(e) => {
+                      setPhone(e.target.value);
+                      clearError("phone");
+                    }}
                     aria-invalid={!!errors.phone}
                     inputMode="tel"
                     autoComplete="tel"
                     maxLength={20}
                   />
                 </Field>
-                <Field label={t('email')} error={errors.email}>
+                <Field label={t("email")} error={errors.email}>
                   <input
                     className="input"
                     type="email"
                     value={email}
-                    onChange={(e) => { setEmail(e.target.value); clearError('email') }}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      clearError("email");
+                    }}
                     aria-invalid={!!errors.email}
                     autoComplete="email"
                     maxLength={50}
                   />
                 </Field>
               </div>
-              <p className="hint" style={{ marginTop: '0.7rem' }}>
-                {locale === 'km'
-                  ? 'យើងផ្ញើសំបុត្រទៅលេខទូរស័ព្ទនេះ ហើយបង្កាន់ដៃ ABA PayWay ទៅអ៊ីមែលនេះ។'
-                  : 'Tickets go to this phone number; the ABA PayWay receipt goes to this email.'}
+              <p className="hint" style={{ marginTop: "0.7rem" }}>
+                {locale === "km"
+                  ? "យើងផ្ញើសំបុត្រទៅលេខទូរស័ព្ទនេះ ហើយបង្កាន់ដៃ ABA PayWay ទៅអ៊ីមែលនេះ។"
+                  : "Tickets go to this phone number; the ABA PayWay receipt goes to this email."}
               </p>
             </div>
           </div>
 
           <div className="panel">
             <div className="panel-head">
-              <h2>{t('paymentMethod')}</h2>
+              <h2>{t("paymentMethod")}</h2>
               <span className="pw-badge">
                 <Icon name="lock" size={13} />
                 ABA PayWay
@@ -293,7 +335,7 @@ export default function CheckoutPage() {
                 {PAYMENT_OPTIONS.map((o) => (
                   <label
                     key={o.id}
-                    className={`radio-card ${option === o.id ? 'selected' : ''}`}
+                    className={`radio-card ${option === o.id ? "selected" : ""}`}
                   >
                     <input
                       type="radio"
@@ -306,20 +348,32 @@ export default function CheckoutPage() {
                         logo chrome is dropped for it rather than drawn twice.
                         Was three conditional inline styles doing the same job. */}
                     <span
-                      className={`rc-logo${o.id === 'ABA_PAYWAY' ? ' rc-logo-bare' : ''}`}
+                      className={`rc-logo${o.id === "ABA_PAYWAY" || o.id === "BAKONG_KHQR" ? " rc-logo-bare" : ""}`}
                       aria-hidden="true"
                     >
-                      {o.id === 'ABA_PAYWAY' ? (
+                      {o.id === "ABA_PAYWAY" ? (
                         <div className="aba-khqr-logo-icon">
-                          <div className="aba-top">ABA<span className="aba-quote">'</span></div>
+                          <div className="aba-top">
+                            ABA<span className="aba-quote">'</span>
+                          </div>
                           <div className="aba-bot">PAY</div>
                         </div>
+                      ) : o.id === "BAKONG_KHQR" ? (
+                        <img
+                          src="/logo/bakong.png"
+                          alt="Bakong KHQR"
+                          className="size-[38px] rounded-[10px] object-cover"
+                          width={38}
+                          height={38}
+                        />
                       ) : (
                         <Icon name={o.icon} size={19} />
                       )}
                     </span>
                     <span className="flex-auto min-w-0">
-                      <span className="rc-title">{optionTitle(o.id, locale)}</span>
+                      <span className="rc-title">
+                        {optionTitle(o.id, locale)}
+                      </span>
                       <span className="rc-sub">{optionSub(o.id, locale)}</span>
                     </span>
                     <span className="badge badge-cool">{o.currency}</span>
@@ -329,12 +383,21 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          <button className="btn btn-accent btn-lg btn-block" type="submit" disabled={submitting}>
-            {submitting ? `${t('loading')}` : `${t('pay')} · ${usd(subtotalUsdCents)}`}
+          <button
+            className="btn btn-accent btn-lg btn-block"
+            type="submit"
+            disabled={submitting}
+          >
+            {submitting
+              ? `${t("loading")}`
+              : `${t("pay")} · ${usd(subtotalUsdCents)}`}
           </button>
-          <p className="hint text-center with-icon" style={{ justifyContent: 'center' }}>
+          <p
+            className="hint text-center with-icon"
+            style={{ justifyContent: "center" }}
+          >
             <Icon name="lock" size={13} />
-            {t('paywayHandoff')}
+            {t("paywayHandoff")}
           </p>
         </form>
 
@@ -342,25 +405,29 @@ export default function CheckoutPage() {
         <div className="summary">
           <div className="panel">
             <div className="panel-head">
-              <h3>{t('orderSummary')}</h3>
+              <h3>{t("orderSummary")}</h3>
             </div>
             <div className="panel-body">
               {/* The artwork carries over from the card and the event page, so
                   the last screen before paying still looks like the thing that
                   was picked rather than an anonymous invoice. */}
               <div className="co-event">
-                <span className={`co-art ${art.className}${art.hasImage ? ' has-photo' : ''}`}>
+                <span
+                  className={`co-art ${art.className}${art.hasImage ? " has-photo" : ""}`}
+                >
                   {art.hasImage ? (
                     <img
                       className="ev-photo"
                       src={art.url}
                       alt=""
                       decoding="async"
-                      onError={(e) => { e.currentTarget.remove() }}
+                      onError={(e) => {
+                        e.currentTarget.remove();
+                      }}
                     />
                   ) : (
                     <Icon
-                      name={CATEGORY_ICON[event.category] || 'ticket'}
+                      name={CATEGORY_ICON[event.category] || "ticket"}
                       size={20}
                       strokeWidth={1.5}
                       className="cat-icon"
@@ -368,7 +435,9 @@ export default function CheckoutPage() {
                   )}
                 </span>
                 <span className="co-event-main">
-                  <strong>{locale === 'km' ? event.title_km : event.title_en}</strong>
+                  <strong>
+                    {locale === "km" ? event.title_km : event.title_en}
+                  </strong>
                   <span className="meta-row">
                     <Icon name="calendar" size={14} />
                     <span>{dateTime(event.starts_at)}</span>
@@ -388,7 +457,9 @@ export default function CheckoutPage() {
                   <span>
                     <span className="line-title">{seatLabel(s)}</span>
                     <div className="line-sub">
-                      {locale === 'km' ? s.seat_class?.name_km : s.seat_class?.name_en}
+                      {locale === "km"
+                        ? s.seat_class?.name_km
+                        : s.seat_class?.name_en}
                     </div>
                   </span>
                   <span>{usd(s.seat_class?.price_usd_cents)}</span>
@@ -397,7 +468,9 @@ export default function CheckoutPage() {
               {zoneLines.map((l) => (
                 <div className="line" key={l.id}>
                   <span>
-                    <span className="line-title">{locale === 'km' ? l.zone.name_km : l.zone.name_en}</span>
+                    <span className="line-title">
+                      {locale === "km" ? l.zone.name_km : l.zone.name_en}
+                    </span>
                     <div className="line-sub">
                       {/* Was "2 × $15.00 · Qty 2" — the multiplier already
                           states the quantity, so the trailing repeat was
@@ -412,34 +485,37 @@ export default function CheckoutPage() {
               <div className="totals">
                 <div className="total-row">
                   <span>
-                    {t('subtotal')}
-                    <span className="muted"> · {ticketTotal}{' '}
-                      {locale === 'km'
-                        ? 'ឯកតា'
-                        : ticketTotal === 1 ? 'ticket' : 'tickets'}
+                    {t("subtotal")}
+                    <span className="muted">
+                      {" "}
+                      · {ticketTotal}{" "}
+                      {locale === "km"
+                        ? "ឯកតា"
+                        : ticketTotal === 1
+                          ? "ticket"
+                          : "tickets"}
                     </span>
                   </span>
                   <span>{usd(subtotalUsdCents)}</span>
                 </div>
                 <div className="total-row big">
-                  <span>{t('total')}</span>
+                  <span>{t("total")}</span>
                   <b>{usd(subtotalUsdCents)}</b>
                 </div>
-                <p className="hint">{t('chargedInUsd')}</p>
+                <p className="hint">{t("chargedInUsd")}</p>
               </div>
             </div>
           </div>
 
-          <div style={{ marginTop: '1rem' }}>
-            <Alert tone="warn" title={t('notYoursYet')}>
+          <div style={{ marginTop: "1rem" }}>
+            <Alert tone="warn" title={t("notYoursYet")}>
               <span className="small">
-                {locale === 'km'
-                  ? 'កៅអីនឹងលែងវិញដោយស្វ័យប្រវត្តិ ប្រសិនបើពេលកក់ផុតកំណត់មុនពេលបង់ប្រាក់។'
-                  : 'If the hold runs out before payment clears, the seats go back on sale automatically.'}
+                {locale === "km"
+                  ? "កៅអីនឹងលែងវិញដោយស្វ័យប្រវត្តិ ប្រសិនបើពេលកក់ផុតកំណត់មុនពេលបង់ប្រាក់។"
+                  : "If the hold runs out before payment clears, the seats go back on sale automatically."}
               </span>
             </Alert>
           </div>
-
         </div>
       </div>
       {pendingPayment && (
@@ -451,5 +527,5 @@ export default function CheckoutPage() {
         />
       )}
     </div>
-  )
+  );
 }
