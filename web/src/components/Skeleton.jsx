@@ -244,20 +244,24 @@ export function TableRowsSkeleton({
   );
 }
 
-/** The four MiniStat tiles on the organizer dashboard's right rail. */
+/** The four KPI tiles on the organizer dashboard's right rail. */
 function StatTilesSkeleton({ count = 4 }) {
   return (
     <div className="grid grid-cols-2 grid-rows-2 gap-4 h-full">
       {Array.from({ length: count }, (_, i) => (
         <div
           key={i}
-          className="flex flex-col justify-between gap-4 rounded-card border border-line bg-surface p-4 shadow-card h-full"
+          className="flex flex-col justify-between p-3.5 sm:p-4 rounded-card border border-line bg-surface shadow-card h-full"
           aria-hidden="true"
         >
-          <Skeleton className="h-6 w-20" />
-          <div className="flex items-end justify-between gap-2">
-            <Skeleton className="skel-line w-16" />
-            <Skeleton className="h-8 w-8 shrink-0 rounded-full" />
+          <div className="flex items-center justify-between gap-2">
+            <Skeleton className="skel-line w-20" />
+            <Skeleton className="h-7 w-7 rounded-lg shrink-0" />
+          </div>
+          <Skeleton className="h-7 w-24 my-auto py-1" />
+          <div className="flex items-center justify-between gap-2 pt-0.5">
+            <Skeleton className="h-5 w-16 rounded-full" />
+            <Skeleton className="skel-line w-12" />
           </div>
         </div>
       ))}

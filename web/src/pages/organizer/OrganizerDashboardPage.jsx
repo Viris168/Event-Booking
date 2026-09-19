@@ -32,7 +32,10 @@ import {
   withdrawEventFromReview,
 } from "../../api/events.js";
 import { getMonthlyRevenue } from "../../api/bookings.js";
+import { getPayableEvents } from "../../api/payouts.js";
+import { getTelegramStatus } from "../../api/organizerTelegram.js";
 import { RevenueChart } from "../../components/RevenueChart.jsx";
+import TelegramModal from "../../components/TelegramModal.jsx";
 
 /**
  * Confirmed booking value per month, for the twelve months ending this one.
@@ -74,6 +77,9 @@ export default function OrganizerDashboardPage() {
 
   const [events, setEvents] = useState([]);
   const [months, setMonths] = useState([]);
+  const [payableEvents, setPayableEvents] = useState([]);
+  const [telegramConnected, setTelegramConnected] = useState(false);
+  const [telegramModalOpen, setTelegramModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -142,11 +148,18 @@ export default function OrganizerDashboardPage() {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    Promise.all([getOrganizerEvents(), getMonthlyRevenue(12)])
-      .then(([evts, revenue]) => {
+    Promise.all([
+      getOrganizerEvents(),
+      getMonthlyRevenue(12),
+      getPayableEvents().catch(() => []),
+      getTelegramStatus().catch(() => ({ connected: false })),
+    ])
+      .then(([evts, revenue, payable, tg]) => {
         if (cancelled) return;
         setEvents(evts || []);
         setMonths(revenue || []);
+        setPayableEvents(payable || []);
+        setTelegramConnected(Boolean(tg?.connected));
         setError(null);
       })
       .catch((e) => {
@@ -154,6 +167,8 @@ export default function OrganizerDashboardPage() {
         setError(e?.response?.status === 403 ? "forbidden" : "unreachable");
         setEvents([]);
         setMonths([]);
+        setPayableEvents([]);
+        setTelegramConnected(false);
       })
       .finally(() => !cancelled && setLoading(false));
     return () => {
@@ -174,9 +189,55 @@ export default function OrganizerDashboardPage() {
     { revenue: 0, sold: 0, capacity: 0, held: 0 },
   );
 
+  // Calculations for executive KPI cards:
+  const thisMonth = months[months.length - 1];
+  const lastMonth = months[months.length - 2];
+  const thisMonthCents = thisMonth?.cents || 0;
+  const lastMonthCents = lastMonth?.cents || 0;
+  let momTrend = null;
+  if (lastMonthCents > 0) {
+    const diff = Math.round(
+      ((thisMonthCents - lastMonthCents) / lastMonthCents) * 100,
+    );
+    momTrend = { pct: Math.abs(diff), up: diff >= 0 };
+  } else if (thisMonthCents > 0) {
+    momTrend = { pct: 100, up: true };
+  }
+
+  const payableTotalCents = (payableEvents || []).reduce(
+    (sum, p) => sum + (p.net_usd_cents || 0),
+    0,
+  );
+
+  const fillRate =
+    totals.capacity > 0 ? Math.round((totals.sold / totals.capacity) * 100) : 0;
+
+  const now = new Date();
+  const liveEvents = events.filter((e) => e.status === "PUBLISHED");
+  const upcomingLive = liveEvents
+    .filter((e) => e.starts_at && new Date(e.starts_at) >= now)
+    .sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at));
+  const nextEvent = upcomingLive[0];
+  const nextDays = nextEvent
+    ? Math.max(
+        0,
+        Math.ceil(
+          (new Date(nextEvent.starts_at) - now) / (1000 * 60 * 60 * 24),
+        ),
+      )
+    : null;
+
+  function scrollToEvents(e, filterScope) {
+    e?.preventDefault();
+    if (filterScope) setScope(filterScope);
+    const el = document.getElementById("my-events");
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth" });
+    }
+  }
+
   const booked12 = months.reduce((a, m) => a + m.cents, 0);
   const totalBookings12 = months.reduce((a, m) => a + (m.bookings || 0), 0);
-  const avgTicket = totals.sold ? Math.round(totals.revenue / totals.sold) : 0;
 
   // Ranked by money, not ticket count. Those orders disagree whenever prices
   // differ: a fun run selling 260 cheap tickets outranks a summit selling 84
@@ -212,6 +273,29 @@ export default function OrganizerDashboardPage() {
           </p>
         </div>
         <div className="row row-tight">
+          <button
+            type="button"
+            className="btn btn-outline inline-flex items-center gap-2"
+            onClick={() => setTelegramModalOpen(true)}
+            title={
+              telegramConnected
+                ? km
+                  ? "Telegram: បានភ្ជាប់រួចរាល់"
+                  : "Telegram: Connected"
+                : km
+                  ? "ភ្ជាប់ Telegram ដើម្បីទទួលដំណឹង"
+                  : "Connect Telegram notifications"
+            }
+          >
+            <Icon name="telegram" size={16} className="text-[#24A1DE]" />
+            <span>{km ? "Telegram" : "Telegram"}</span>
+            {telegramConnected && (
+              <span
+                className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 inline-block ml-0.5"
+                title={km ? "បានភ្ជាប់រួចរាល់" : "Connected"}
+              />
+            )}
+          </button>
           <Link className="btn btn-outline" to="/organizer/venues">
             <Icon name="building" size={16} />
             {t("venues")}
@@ -315,36 +399,106 @@ export default function OrganizerDashboardPage() {
           )}
         </section>
 
-        {/* ------------------------------------------------ Row 1: Right (4 Stats) */}
+        {/* ------------------------------------------------ Row 1: Right (4 High-Impact KPI Cards) */}
         <div className="lg:col-span-1 grid grid-cols-2 grid-rows-2 gap-4 h-full">
-          <MiniStat
+          <KpiCard
+            to="/organizer/transactions"
+            theme="emerald"
             icon="wallet"
+            label={km ? "ចំណូលសរុប" : "Total revenue"}
             value={usd(totals.revenue)}
-            label={km ? "ចំណូលសរុប" : "Lifetime revenue"}
+            pill={
+              momTrend ? (
+                <span>
+                  {momTrend.up ? "↑" : "↓"} {momTrend.pct}%{" "}
+                  {km ? "ធៀបខែមុន" : "MoM"}
+                </span>
+              ) : thisMonthCents > 0 ? (
+                <span>
+                  +{usd(thisMonthCents)} {km ? "ខែនេះ" : "this mo"}
+                </span>
+              ) : (
+                <span>{km ? "គ្រប់ពេល" : "All time"}</span>
+              )
+            }
+            actionLabel={km ? "ប្រវត្តិ" : "History"}
           />
-          <MiniStat
+
+          <KpiCard
+            to="/organizer/payouts"
+            theme={payableEvents.length > 0 ? "blue" : "neutral"}
+            icon="bank"
+            label={km ? "អាចដកប្រាក់" : "Ready to payout"}
+            value={usd(payableTotalCents)}
+            pill={
+              payableEvents.length > 0 ? (
+                <span>
+                  {payableEvents.length}{" "}
+                  {km
+                    ? "ព្រឹត្តិការណ៍"
+                    : payableEvents.length === 1
+                      ? "claimable"
+                      : "claimable"}
+                </span>
+              ) : (
+                <span>{km ? "រួចរាល់" : "Up to date"}</span>
+              )
+            }
+            actionLabel={km ? "ដកប្រាក់" : "Payouts"}
+          />
+
+          <KpiCard
+            href="#my-events"
+            onClick={scrollToEvents}
+            theme="indigo"
             icon="ticket"
-            value={usd(avgTicket)}
-            label={km ? "តម្លៃមធ្យម" : "Avg ticket"}
-          />
-          <MiniStat
-            icon="calendar"
-            value={totals.sold.toLocaleString()}
             label={km ? "សំបុត្រលក់រួច" : "Tickets sold"}
+            value={totals.sold.toLocaleString()}
+            pill={
+              totals.capacity > 0 ? (
+                <span>
+                  {fillRate}% {km ? "កៅអីសរុប" : "sell-out"}
+                </span>
+              ) : (
+                <span>{km ? "គ្មានកៅអី" : "General"}</span>
+              )
+            }
+            actionLabel={km ? "ការលក់" : "Sales"}
           />
-          {/* Was "Checked in". Ticket scans live on the ticket tables and no
-              endpoint exposes them yet, and a tile reading 0 would look like a
-              quiet night rather than a missing feature. Held seats are real,
-              come from the same payload, and are worth watching. */}
-          <MiniStat
-            icon="clock"
-            value={totals.held.toLocaleString()}
-            label={km ? "កំពុងកក់ទុក" : "Held now"}
+
+          <KpiCard
+            href="#my-events"
+            onClick={(e) => scrollToEvents(e, "upcoming")}
+            theme="amber"
+            icon="calendar"
+            label={km ? "ព្រឹត្តិការណ៍សកម្ម" : "Active events"}
+            value={`${liveEvents.length} ${km ? "ផ្សាយ" : "Live"}`}
+            pill={
+              nextDays !== null ? (
+                <span>
+                  {nextDays === 0
+                    ? km
+                      ? "បន្ទាប់: ថ្ងៃនេះ"
+                      : "Next: Today"
+                    : km
+                      ? `បន្ទាប់: ${nextDays} ថ្ងៃ`
+                      : `Next in ${nextDays}d`}
+                </span>
+              ) : (
+                <span>
+                  {events.length} {km ? "សរុប" : "total"}
+                </span>
+              )
+            }
+            actionLabel={km ? "មើលទាំងអស់" : "View all"}
           />
         </div>
 
         {/* ------------------------------------------------ Row 2: Left (My Events) */}
-        <section className="lg:col-span-2 bg-surface border border-line rounded-card shadow-card p-5 self-start">
+        <section
+          id="my-events"
+          className="lg:col-span-2 bg-surface border border-line rounded-card shadow-card p-5 self-start scroll-mt-6"
+        >
           <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
             <h2 className="text-base font-bold text-ink m-0">
               {t("myEvents")}
@@ -567,6 +721,12 @@ export default function OrganizerDashboardPage() {
           )}
         </section>
       </div>
+
+      <TelegramModal
+        open={telegramModalOpen}
+        onClose={() => setTelegramModalOpen(false)}
+        onStatusChange={(connected) => setTelegramConnected(connected)}
+      />
     </div>
   );
 }
@@ -828,21 +988,116 @@ function RowMenu({ event, onChanged }) {
   );
 }
 
-/** Number first, label under it, icon quiet in the corner. */
-function MiniStat({ icon, value, label }) {
-  return (
-    <div className="bg-surface border border-line rounded-card shadow-card p-4 flex flex-col justify-between gap-4 h-full">
-      <div className="text-xl font-bold tracking-tight text-ink tabular-nums">
-        {value}
-      </div>
-      <div className="flex items-end justify-between gap-2">
-        <span className="text-tiny text-muted font-medium leading-tight">
+/**
+ * Executive KPI Tile:
+ * - Color-accented icon badge (emerald, blue, indigo, amber)
+ * - Prominent tabular metric value
+ * - Contextual status pill / trend badge (e.g. +14% MoM, 2 claimable, 82% capacity)
+ * - Direct navigation hint (linking to transactions, payouts, or jumping to events)
+ */
+function KpiCard({
+  to,
+  href,
+  onClick,
+  theme = "emerald",
+  icon,
+  label,
+  value,
+  pill,
+  actionLabel,
+}) {
+  const themeStyles = {
+    emerald: {
+      iconBg: "bg-success-soft text-success border border-success/20",
+      pillBg: "bg-success-soft text-success border border-success/25",
+      hoverAction: "group-hover:text-success",
+    },
+    blue: {
+      iconBg: "bg-info-soft text-info border border-info/20",
+      pillBg: "bg-info-soft text-info border border-info/25",
+      hoverAction: "group-hover:text-info",
+    },
+    indigo: {
+      iconBg: "bg-tint text-link border border-link/20",
+      pillBg: "bg-tint text-link border border-link/25",
+      hoverAction: "group-hover:text-link",
+    },
+    amber: {
+      iconBg: "bg-warning-soft text-warning border border-warning/20",
+      pillBg: "bg-warning-soft text-warning border border-warning/25",
+      hoverAction: "group-hover:text-warning",
+    },
+    neutral: {
+      iconBg: "bg-surface-2 text-muted border border-line-2",
+      pillBg: "bg-surface-2 text-muted border border-line-2",
+      hoverAction: "group-hover:text-ink",
+    },
+  };
+
+  const currentTheme = themeStyles[theme] || themeStyles.neutral;
+
+  const content = (
+    <>
+      {/* Top row: Upper label + Accented Icon */}
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[11px] font-bold text-muted tracking-wider uppercase truncate">
           {label}
         </span>
-        <span className="w-8 h-8 rounded-full bg-surface-2 border border-line-2 flex items-center justify-center text-muted shrink-0">
-          <Icon name={icon} size={15} />
+        <span
+          className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-110 ${currentTheme.iconBg}`}
+        >
+          <Icon name={icon} size={14} />
         </span>
       </div>
-    </div>
+
+      {/* Middle: Prominent Value */}
+      <div className="my-auto py-1">
+        <div className="text-xl sm:text-2xl font-extrabold tracking-tight text-ink tabular-nums leading-none">
+          {value}
+        </div>
+      </div>
+
+      {/* Bottom row: Pill Badge + Navigation Hint */}
+      <div className="flex items-center justify-between gap-2 pt-0.5">
+        {pill ? (
+          <span
+            className={`inline-flex items-center text-[11px] font-semibold px-2 py-0.5 rounded-full leading-tight ${currentTheme.pillBg}`}
+          >
+            {pill}
+          </span>
+        ) : (
+          <span />
+        )}
+        {actionLabel && (
+          <span
+            className={`text-tiny font-medium text-muted flex items-center gap-0.5 transition-colors shrink-0 ml-auto ${currentTheme.hoverAction}`}
+          >
+            {actionLabel}
+            <Icon
+              name="chevronRight"
+              size={12}
+              className="transition-transform duration-150 group-hover:translate-x-0.5"
+            />
+          </span>
+        )}
+      </div>
+    </>
+  );
+
+  const baseClasses =
+    "group flex flex-col justify-between p-3.5 sm:p-4 rounded-card border border-line bg-surface shadow-card transition-all duration-200 hover:border-line-hover hover:shadow-md h-full text-inherit no-underline cursor-pointer";
+
+  if (to) {
+    return (
+      <Link to={to} className={baseClasses}>
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <a href={href || "#"} onClick={onClick} className={baseClasses}>
+      {content}
+    </a>
   );
 }
