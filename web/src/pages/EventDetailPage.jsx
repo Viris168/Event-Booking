@@ -13,7 +13,7 @@ import { useLocale } from '../context/LocaleContext.jsx'
 import { useToast } from '../context/ToastContext.jsx'
 import { seatLabel, usd } from '../lib/format.js'
 import { useProvinces } from '../lib/useProvinces.js'
-import { eventArt, artUrl } from '../lib/eventArt.js'
+import { eventArt, artUrl, sized, sizedSrcSet } from '../lib/eventArt.js'
 import { getEvent } from '../api/events.js'
 import { getSeatMap, getZoneAvailability } from '../api/availability.js'
 import { createHold, releaseHold, getHold, extendHold } from '../api/holds.js'
@@ -396,7 +396,11 @@ export default function EventDetailPage() {
         {heroArt.hasImage ? (
           <img
             className="hero-photo"
-            src={heroArt.url}
+            /* The hero runs the width of the shell, so it gets a real width -
+               but still f_auto/q_auto, which is most of the saving anyway. */
+            src={sized(heroArt.url, 1400)}
+            srcSet={sizedSrcSet(heroArt.url, 1400)}
+            sizes="100vw"
             alt=""
             decoding="async"
             onError={(e) => {

@@ -66,6 +66,47 @@ export function coverClass(event) {
 }
 
 /**
+ * A Cloudinary URL asked for at the size it will actually be drawn.
+ *
+ * Uploads come back as the original file and were being used untouched, so a
+ * card 338px wide was fetching whatever the organiser happened to have: one
+ * production event ships a 1600x900 desktop wallpaper at 821kB into a box of
+ * 338x190. Eight of those is most of a phone's patience on a Cambodian
+ * connection, and none of the detail survives the downscale.
+ *
+ * `f_auto` lets Cloudinary answer in whatever the browser accepts - AVIF or
+ * WebP for anything current - and `q_auto` picks a quality per image rather
+ * than a fixed number. `w_` is the only part that needs a decision here.
+ *
+ * Anything that is not a Cloudinary delivery URL is returned untouched, as is
+ * one that already carries a transform, so this cannot double-apply.
+ */
+const CLOUDINARY_UPLOAD = /^(https?:\/\/res\.cloudinary\.com\/[^/]+\/image\/upload\/)(.*)$/
+
+export function sized(url, width) {
+  if (!url) return url
+  const m = String(url).match(CLOUDINARY_UPLOAD)
+  if (!m) return url
+  const [, base, rest] = m
+  // A transform segment is already there - leave it alone rather than stacking
+  // a second one in front of it.
+  if (/^[a-z]{1,3}_[^/]+\//.test(rest)) return url
+  return `${base}f_auto,q_auto,w_${width}/${rest}`
+}
+
+/**
+ * The `srcset` pair for a box of `width` CSS pixels.
+ *
+ * Two entries, not five: the cards are one of two fixed widths and a retina
+ * phone is the only case that genuinely needs more pixels than the layout
+ * says.
+ */
+export function sizedSrcSet(url, width) {
+  if (!url || !CLOUDINARY_UPLOAD.test(String(url))) return undefined
+  return `${sized(url, width)} 1x, ${sized(url, width * 2)} 2x`
+}
+
+/**
  * The uploaded artwork for a slot, or null.
  *
  * `which` is 'banner' for the event's actual photograph - used everywhere a

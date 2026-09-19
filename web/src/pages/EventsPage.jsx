@@ -1,7 +1,10 @@
 import { useDocumentTitle } from '../lib/useDocumentTitle.js'
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import EventCard from '../components/EventCard.jsx'
+import { plottable } from '../lib/eventGeo.js'
+import { minPriceUsd } from '../lib/eventPrice.js'
+import PriceRange from '../components/PriceRange.jsx'
 import Icon from '../components/Icon.jsx'
 import { EventGridSkeleton, Skeleton } from '../components/Skeleton.jsx'
 import {
@@ -10,7 +13,6 @@ import {
   Field,
   IconSelect,
   Pager,
-  RangeSlider,
   SearchInput,
 } from '../components/ui.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
@@ -18,8 +20,28 @@ import { useProvinces } from '../lib/useProvinces.js'
 import { getEvents } from '../api/events.js'
 import { mapEvent } from '../api/adapters.js'
 
+/*
+ * Leaflet is ~45kB gzipped and the map is one half of one page, so it is split
+ * out rather than carried in the bundle every visitor downloads. Mobile never
+ * opens it at all unless the visitor asks for it.
+ */
+const EventsMap = lazy(() => import('../components/EventsMap.jsx'))
+
+/*
+ * Eight fills a four-across grid twice over. In the split layout the list is
+ * narrower and runs two across, so the same eight is four rows - still one
+ * screenful of scrolling beside a map that has to plot all of them.
+ */
 const PAGE_SIZE = 8
 const EMPTY = { q: '', province: '', from: '', to: '', minUsd: '', maxUsd: '', sort: 'soonest' }
+
+const TOP_PROVINCES = [
+  { name: 'Phnom Penh', icon: 'building' },
+  { name: 'Siem Reap', icon: 'mapPin' },
+  { name: 'Kampot', icon: 'music' },
+  { name: 'Koh Kong', icon: 'globe' },
+  { name: 'Kep', icon: 'sun' }
+]
 
 /*
  * The price slider's ends, in whole dollars.
@@ -59,12 +81,47 @@ export default function EventsPage() {
   const { provinces, provinceName } = useProvinces()
   useDocumentTitle(t('events'))
   const [params, setParams] = useSearchParams()
-  const [page, setPage] = useState(1)
+  /*
+   * The page number lives in the URL like every other filter.
+   *
+   * It used to be component state, which made it the one part of the result
+   * set a link could not carry: reloading on page 3, or coming back to it,
+   * silently landed on page 1. The split layout makes that worse rather than
+   * better - what the map is showing IS the page, so a shared link that drops
+   * it shows a different map.
+   */
+  const page = Math.max(1, Number(params.get('page')) || 1)
+  const setPage = (n) => {
+    const next = new URLSearchParams(params)
+    if (n <= 1) next.delete('page')
+    else next.set('page', String(n))
+    setParams(next)
+    /*
+     * The new page begins above where the pager sits, so staying put would
+     * land the reader at the bottom of results they have not seen.
+     *
+     * On desktop the list is its own scroll container - the document barely
+     * moves - so scrolling the window would do nothing at all. Scroll the
+     * column when it is the thing that scrolls, and fall back to the document
+     * on a phone, where the list is simply part of the page.
+     */
+    const list = listRef.current
+    if (list && list.scrollHeight > list.clientHeight) {
+      list.scrollTo({ top: 0, behavior: 'smooth' })
+    } else {
+      document.getElementById('events-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }
+  // The scrolling half of the split, so turning the page can send it back up.
+  const listRef = useRef(null)
+  // Which card the map is pointing at, and vice versa. Not in the URL: it is
+  // a pointer within the page, not part of what the page is showing.
+  const [activeId, setActiveId] = useState(null)
+  const [showMapOnMobile, setShowMapOnMobile] = useState(false)
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [apiResults, setApiResults] = useState([])
-  // Straight from the server's Page, so the count and the pager describe the
-  // whole catalogue rather than the slice that happens to be loaded.
-  const [totalCount, setTotalCount] = useState(0)
+  // Straight from the server's Page, so the pager describes the whole
+  // catalogue rather than the slice that happens to be loaded.
   const [totalPages, setTotalPages] = useState(1)
   const [failed, setFailed] = useState(false)
   // Bumped by Retry. Re-setting identical search params would not change the
@@ -149,19 +206,30 @@ export default function EventsPage() {
         // camel names silently pins the pager to a single page.
         const pages = Math.max(1, data?.total_pages ?? data?.totalPages ?? 1)
         setApiResults(list.map(mapEvent))
-        setTotalCount(data?.total_elements ?? data?.totalElements ?? list.length)
         setTotalPages(pages)
         // The catalogue shrank under a page that no longer exists - Retry after
         // events were taken down. Without this the grid is empty and the pager
         // has already hidden itself, leaving no way back but Reset.
-        if (page > pages) setPage(pages)
+        //
+        // Writes the parameter rather than calling setPage: this is a
+        // correction the visitor did not ask for, so it should not scroll them
+        // anywhere, and it replaces the impossible URL instead of pushing a
+        // second entry the back button would return them to.
+        if (page > pages) {
+          const fixed = new URLSearchParams(params)
+          if (pages <= 1) fixed.delete('page')
+          else fixed.set('page', String(pages))
+          setParams(fixed, { replace: true })
+        }
+        // A result set the visitor did not choose should not keep an old card
+        // lit up on a map that no longer shows it.
+        setActiveId(null)
       })
       .catch(() => {
         // No mock fallback: seeded events standing in for a failed read looked
         // like a working catalogue and hid the outage completely.
         if (!active) return
         setApiResults([])
-        setTotalCount(0)
         setTotalPages(1)
         setFailed(true)
       })
@@ -169,7 +237,28 @@ export default function EventsPage() {
         if (active) setLoading(false)
       })
     return () => { active = false }
-  }, [params, page, reload]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [params, reload]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Keyed on every filter except the price pair, so dragging the handles does
+  // not refetch the shape they are being dragged over.
+  const shapeKey = ['q', 'province', 'from', 'to'].map((k) => filters[k]).join('|')
+  useEffect(() => {
+    let active = true
+    const query = { page: 0, size: 200 }
+    for (const key of ['q', 'province', 'from', 'to']) {
+      if (filters[key] !== '' && filters[key] != null) query[key] = filters[key]
+    }
+    getEvents(query)
+      .then((data) => {
+        if (!active) return
+        const list = Array.isArray(data?.content) ? data.content : (Array.isArray(data) ? data : [])
+        setPriceShape(list.map(minPriceUsd).filter((n) => n != null))
+      })
+      // A histogram is an adornment on a control that works without it, so a
+      // failed read leaves the slider bare rather than surfacing an error.
+      .catch(() => active && setPriceShape([]))
+    return () => { active = false }
+  }, [shapeKey, reload]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function update(patch) {
     const next = new URLSearchParams(params)
@@ -177,8 +266,10 @@ export default function EventsPage() {
       if (value === '' || value == null) next.delete(key)
       else next.set(key, value)
     }
+    // Any change to the filters invalidates the page number: result three
+    // pages deep into the old query has no counterpart in the new one.
+    next.delete('page')
     setParams(next, { replace: true })
-    setPage(1)
   }
 
   // Everything narrowing the result set, as removable chips.
@@ -222,185 +313,240 @@ export default function EventsPage() {
     })
   }
 
+  /*
+   * The price distribution the slider draws behind itself.
+   *
+   * Its own read, and deliberately not the paged one above: the histogram
+   * describes the whole matching catalogue, so a page of eight would draw a
+   * shape that changes every time you turn the page.
+   *
+   * The price bounds are left OUT of its query - narrowing the range must not
+   * carve away the bars that show what narrowing would cost. Everything else
+   * applies, so the shape is of what the visitor is actually looking at.
+   */
+  const [priceShape, setPriceShape] = useState([])
+
+  // What the map can actually draw. Computed here as well as inside the map
+  // so the page can say when the two disagree - and so the map chunk is not
+  // fetched at all for a page with nothing to plot.
+  const mappable = plottable(apiResults)
+
   const advancedActive = !!(filters.from || filters.to || filters.minUsd || filters.maxUsd)
 
   return (
-    <div className="container">
-      <div className="page-head">
-        <div>
-          <h1>{t('events')}</h1>
-          {loading ? (
-            <Skeleton className="skel-line mt-2 w-52" />
-          ) : (
-            <p>
-              {totalCount}{' '}
-              {locale === 'km'
-                ? 'ព្រឹត្តិការណ៍កំពុងលក់សំបុត្រ'
-                : `${totalCount === 1 ? 'event' : 'events'} currently on sale`}
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* -------------------------------------------------------- search bar */}
-      <div className="panel searchpanel">
-        <div className="panel-body">
-          <div className="search-row">
-            <SearchInput
-              value={qDraft}
-              onChange={setQDraft}
-              placeholder={
-                locale === 'km'
-                  ? 'ស្វែងរកព្រឹត្តិការណ៍ ឬទីកន្លែង'
-                  : 'Search events, artists or venues'
-              }
-              ariaLabel={t('search')}
-              className="search-main"
-            />
-            <IconSelect
-              icon="mapPin"
-              value={filters.province}
-              onChange={(v) => update({ province: v })}
-              ariaLabel={t('province')}
-              className="search-province"
-            >
-              <option value="">{t('allProvinces')}</option>
-              {provinces.map((p) => (
-                <option key={p.code} value={p.code}>
-                  {locale === 'km' ? p.name_km : p.name_en}
-                </option>
-              ))}
-            </IconSelect>
-            <IconSelect
-              icon="filter"
-              value={filters.sort}
-              onChange={(v) => update({ sort: v })}
-              ariaLabel={t('sort')}
-              className="search-sort"
-            >
-              <option value="soonest">{t('soonest')}</option>
-              <option value="priceLow">{t('priceLow')}</option>
-              <option value="priceHigh">{t('priceHigh')}</option>
-            </IconSelect>
-            <button
-              type="button"
-              className={`btn ${showAdvanced || advancedActive ? 'btn-primary' : 'btn-outline'}`}
-              onClick={() => setShowAdvanced((v) => !v)}
-              aria-expanded={showAdvanced}
-            >
-              <Icon name="filter" size={16} />
-              {t('filters')}
-              {advancedActive && <span className="dot-badge" aria-hidden="true" />}
-            </button>
+    <div className="container events-page">
+      {/*
+       * Title and filters hold the top of the workspace; only the results
+       * beneath them move. Grouped so the shell can pin this block and hand
+       * everything left over to the list and the map.
+       */}
+      <div className="events-chrome">
+        <div className="page-head justify-center">
+          <div className="text-center flex flex-col items-center">
+            <h1>{t('events')}</h1>
           </div>
+        </div>
 
-          {showAdvanced && (
-            <div className="advanced-row">
-              <Field label={t('from')}>
-                <input
-                  className="input"
-                  type="date"
-                  value={filters.from}
-                  onChange={(e) => update({ from: e.target.value })}
-                />
-              </Field>
-              <Field label={t('to')}>
-                <input
-                  className="input"
-                  type="date"
-                  value={filters.to}
-                  onChange={(e) => update({ to: e.target.value })}
-                />
-              </Field>
-              {/*
-                The value rides on the label row and the track gets the input's
-                own shell, so this reads as a control of the same family as the
-                two date fields beside it. Loose text over a hairline did not:
-                against two bordered boxes it looked like a caption that had
-                come adrift rather than a third field.
-              */}
-              <Field
-                className="range-field"
-                label={
-                  <span className="range-label">
-                    {t('priceRange')}
-                    <b>
-                      ${priceDraft[0]} –{' '}
-                      {priceDraft[1] >= PRICE_MAX ? `$${PRICE_MAX}+` : `$${priceDraft[1]}`}
-                    </b>
-                  </span>
+        {/* -------------------------------------------------------- search bar */}
+        <div className="panel searchpanel">
+          <div className="panel-body">
+            <div className="province-pills-row">
+              {TOP_PROVINCES.map((tp) => {
+                const p = provinces.find((x) => x.name_en === tp.name || x.nameEn === tp.name)
+                const code = p ? (p.code || p.provinceCode) : ''
+                const label = p ? (locale === 'km' ? (p.name_km || p.nameKm) : (p.name_en || p.nameEn)) : tp.name
+                const isActive = filters.province === code && code !== ''
+                return (
+                  <button
+                    key={tp.name}
+                    className={`pill-btn ${isActive ? 'is-active' : ''}`}
+                    onClick={() => update({ province: isActive ? '' : code })}
+                  >
+                    <Icon name={tp.icon} size={18} />
+                    <span>{label}</span>
+                  </button>
+                )
+              })}
+            </div>
+            <div className="search-row">
+              <SearchInput
+                value={qDraft}
+                onChange={setQDraft}
+                placeholder={
+                  locale === 'km'
+                    ? 'ស្វែងរកព្រឹត្តិការណ៍ ឬទីកន្លែង'
+                    : 'Search events, artists or venues'
                 }
+                ariaLabel={t('search')}
+                className="search-main"
+              />
+              <IconSelect
+                icon="filter"
+                value={filters.sort}
+                onChange={(v) => update({ sort: v })}
+                ariaLabel={t('sort')}
+                className="search-sort"
               >
-                <div className="range-box">
-                  <RangeSlider
+                <option value="soonest">{t('soonest')}</option>
+                <option value="priceLow">{t('priceLow')}</option>
+                <option value="priceHigh">{t('priceHigh')}</option>
+              </IconSelect>
+              <button
+                type="button"
+                className={`btn ${showAdvanced || advancedActive ? 'btn-primary' : 'btn-outline'}`}
+                onClick={() => setShowAdvanced((v) => !v)}
+                aria-expanded={showAdvanced}
+              >
+                <Icon name="filter" size={16} />
+                {t('filters')}
+                {advancedActive && <span className="dot-badge" aria-hidden="true" />}
+              </button>
+            </div>
+
+            {showAdvanced && (
+              <div className="advanced-row">
+                <Field label={t('from')}>
+                  <input
+                    className="input"
+                    type="date"
+                    value={filters.from}
+                    onChange={(e) => update({ from: e.target.value })}
+                  />
+                </Field>
+                <Field label={t('to')}>
+                  <input
+                    className="input"
+                    type="date"
+                    value={filters.to}
+                    onChange={(e) => update({ to: e.target.value })}
+                  />
+                </Field>
+                <Field className="range-field" label={t('priceRange')}>
+                  <PriceRange
                     min={PRICE_MIN}
                     max={PRICE_MAX}
                     step={1}
                     value={priceDraft}
                     onChange={setPriceDraft}
+                    prices={priceShape}
                     lowLabel={t('minPrice')}
                     highLabel={t('maxPrice')}
+                    locale={locale}
                   />
-                </div>
-              </Field>
-            </div>
-          )}
+                </Field>
+              </div>
+            )}
 
-          {chips.length > 0 && (
-            <div style={{ marginTop: '0.85rem' }}>
-              <ActiveFilters
-                items={chips}
-                onClearAll={() => setParams(new URLSearchParams())}
-                clearAllLabel={t('reset')}
-              />
-            </div>
-          )}
+            {chips.length > 0 && (
+              <div style={{ marginTop: '0.85rem' }}>
+                <ActiveFilters
+                  items={chips}
+                  onClearAll={() => setParams(new URLSearchParams())}
+                  clearAllLabel={t('reset')}
+                />
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      {loading ? (
-        <EventGridSkeleton count={PAGE_SIZE} style={{ marginTop: '1.4rem' }} />
-      ) : apiResults.length ? (
-        <>
-          <div className="grid grid-cards" style={{ marginTop: '1.4rem' }}>
-            {apiResults.map((e) => (
-              <EventCard key={e.id} event={e} />
-            ))}
+      <div className="events-body">
+        {loading ? (
+          <EventGridSkeleton count={PAGE_SIZE} style={{ marginTop: '1.4rem' }} />
+        ) : apiResults.length ? (
+          <div className="events-split" id="events-results">
+            <div
+              className={`events-list${showMapOnMobile ? ' is-map-open' : ''}`}
+              ref={listRef}
+            >
+              <div className="grid grid-cards grid-cards-split">
+                {apiResults.map((e) => (
+                  <div
+                    key={e.id}
+                    className={`ev-slot${String(activeId) === String(e.id) ? ' is-active' : ''}`}
+                    onMouseEnter={() => setActiveId(e.id)}
+                    onMouseLeave={() => setActiveId(null)}
+                  >
+                    <EventCard event={e} />
+                  </div>
+                ))}
+              </div>
+              <Pager page={page} pages={totalPages} onChange={setPage} />
+            </div>
+
+            <div className={`events-map-col${showMapOnMobile ? ' is-open' : ''}`}>
+              {mappable.length ? (
+                <Suspense fallback={<div className="events-map events-map-loading" />}>
+                  <EventsMap
+                    events={apiResults}
+                    activeId={activeId}
+                    onSelect={setActiveId}
+                    locale={locale}
+                  />
+                </Suspense>
+              ) : (
+                <div className="events-map events-map-empty">
+                  <Icon name="mapPin" size={22} />
+                  <p className="small muted">
+                    {locale === 'km'
+                      ? 'ព្រឹត្តិការណ៍ទាំងនេះមិនទាន់មានទីតាំងលើផែនទី'
+                      : 'None of these events has a venue pinned on the map yet.'}
+                  </p>
+                </div>
+              )}
+              {mappable.length > 0 && mappable.length < apiResults.length && (
+                <p className="hint events-map-note">
+                  {locale === 'km'
+                    ? `បង្ហាញ ${mappable.length} ក្នុងចំណោម ${apiResults.length} លើផែនទី`
+                    : `${mappable.length} of ${apiResults.length} shown on the map`}
+                </p>
+              )}
+
+              <button
+                type="button"
+                className="btn btn-primary events-map-toggle"
+                onClick={() => setShowMapOnMobile((v) => !v)}
+              >
+                <Icon name={showMapOnMobile ? 'close' : 'mapPin'} size={16} />
+                {showMapOnMobile
+                  ? locale === 'km' ? 'បញ្ជី' : 'List'
+                  : locale === 'km' ? 'ផែនទី' : 'Map'}
+              </button>
+            </div>
           </div>
-          <Pager page={page} pages={totalPages} onChange={setPage} />
-        </>
-      ) : failed ? (
-        <Empty
-          icon="xCircle"
-          title={locale === 'km' ? 'មិនអាចផ្ទុកព្រឹត្តិការណ៍' : 'Could not load events'}
-        >
-          {locale === 'km'
-            ? 'សូមព្យាយាមម្តងទៀត។'
-            : 'The catalogue is unavailable right now. Please try again.'}
-          <button
-            className="btn btn-sm btn-primary"
-            style={{ marginTop: '0.8rem' }}
-            onClick={() => setReload((n) => n + 1)}
+        ) : failed ? (
+          <Empty
+            icon="xCircle"
+            title={locale === 'km' ? 'មិនអាចផ្ទុកព្រឹត្តិការណ៍' : 'Could not load events'}
           >
-            <Icon name="refresh" size={14} />
-            {locale === 'km' ? 'ព្យាយាមម្តងទៀត' : 'Retry'}
-          </button>
-        </Empty>
-      ) : (
-        <Empty icon="search" title={t('noEvents')}>
-          {locale === 'km' ? 'សូមសម្រួលតម្រងរបស់អ្នក' : 'Try widening your filters.'}
-          {chips.length > 0 && (
+            {locale === 'km'
+              ? 'សូមព្យាយាមម្តងទៀត។'
+              : 'The catalogue is unavailable right now. Please try again.'}
             <button
               className="btn btn-sm btn-primary"
               style={{ marginTop: '0.8rem' }}
-              onClick={() => setParams(new URLSearchParams())}
+              onClick={() => setReload((n) => n + 1)}
             >
-              <Icon name="close" size={14} />
-              {t('reset')}
+              <Icon name="refresh" size={14} />
+              {locale === 'km' ? 'ព្យាយាមម្តងទៀត' : 'Retry'}
             </button>
-          )}
-        </Empty>
-      )}
+          </Empty>
+        ) : (
+          <Empty icon="search" title={t('noEvents')}>
+            {locale === 'km' ? 'សូមសម្រួលតម្រងរបស់អ្នក' : 'Try widening your filters.'}
+            {chips.length > 0 && (
+              <button
+                className="btn btn-sm btn-primary"
+                style={{ marginTop: '0.8rem' }}
+                onClick={() => setParams(new URLSearchParams())}
+              >
+                <Icon name="close" size={14} />
+                {t('reset')}
+              </button>
+            )}
+          </Empty>
+        )}
+      </div>
     </div>
   )
 }
