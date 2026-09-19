@@ -395,10 +395,14 @@
   }
 
   .page-head {
-    @apply mb-5 flex flex-wrap items-end justify-between gap-4;
+    @apply mb-3 flex flex-wrap items-end justify-between gap-4;
+  }
+  .page-head h1 {
+    @apply text-[3rem] font-extrabold leading-tight tracking-tighter;
+    color: var(--color-ink);
   }
   .page-head p {
-    @apply text-muted max-w-[60ch];
+    @apply mt-2 text-[1.1rem] font-medium text-muted max-w-[60ch];
   }
 
   /*
@@ -1779,9 +1783,41 @@
   .searchpanel {
     @apply sticky top-[54px] z-20;
   }
+  .province-pills-row {
+    display: flex;
+    gap: 0.8rem;
+    margin-bottom: 0.5rem;
+    overflow-x: auto;
+    padding-bottom: 0.2rem;
+  }
+  .province-pills-row::-webkit-scrollbar {
+    display: none;
+  }
+  .pill-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 1.2rem;
+    border-radius: 9999px;
+    border: 1px solid transparent;
+    white-space: nowrap;
+    transition: all 0.2s;
+    background: transparent;
+    color: var(--color-ink-2);
+    font-weight: 500;
+  }
+  .pill-btn:hover {
+    background: var(--color-surface-hover);
+  }
+  .pill-btn.is-active {
+    border-color: var(--color-brand-500);
+    background: var(--color-surface-2);
+    color: var(--color-ink);
+  }
+
   .search-row {
     @apply grid items-center gap-[0.6rem];
-    grid-template-columns: minmax(0, 1fr) 190px 190px auto;
+    grid-template-columns: minmax(0, 1fr) 190px auto;
   }
   .search-row .btn {
     @apply relative min-h-[42px];
@@ -6690,4 +6726,303 @@ html[lang='km'] .contact-card h2 {
   overflow-wrap: anywhere;
   line-height: 1.65;
   color: var(--color-ink);
+}
+
+/* --------------------------------------------------------- catalogue split */
+/*
+ * Results left, map right - laid out the way the big travel sites do it,
+ * because the shape is doing real work: the map is a fixed frame of reference
+ * that the list scrolls against, so a pin stays put while you read past the
+ * card it belongs to.
+ *
+ * The split breaks out of the page shell to reach the right edge. Anything
+ * short of that leaves a strip of page beside the map, which reads as a panel
+ * that failed to fill rather than a map.
+ */
+
+/*
+ * The catalogue runs wider than the rest of the site.
+ *
+ * Every other page is capped at the 1360px shell, which is a reading width -
+ * right for a form or an event's details. Here it was leaving a 273px void
+ * down the left of a 1905px screen while the map sat against the right edge,
+ * because a list and a map side by side want the window, not a column.
+ *
+ * Wide, but not unbounded: past ~2100px the cards stop gaining anything and
+ * the eye has too far to travel between a card and its pin. Even gutters
+ * rather than bleeding to the edge - which is what the big travel sites
+ * actually do, and it drops the negative-margin and overflow-clip workarounds
+ * that reaching the edge needed.
+ */
+.events-page {
+  max-width: min(2100px, 100%);
+  padding-inline: clamp(var(--spacing-page), 3vw, 2.75rem);
+}
+/* Two across. The list is sharing the shell with a map now, and the
+   four-across grid of the full-width page loses its titles to ellipsis. */
+.grid-cards-split {
+  @apply grid-cols-2;
+}
+
+.events-split {
+  @apply mt-[1.4rem] grid items-start;
+  grid-template-columns: minmax(0, 1fr) clamp(360px, 42vw, 820px);
+  gap: 1.5rem;
+}
+.events-list {
+  @apply min-w-0 pb-4;
+}
+
+.events-map-col {
+  /* sticky, not relative: a second .events-map-col rule further down once set
+     `relative` and won on order, which both killed the stickiness and pushed
+     the map down the page by its own `top` value. Sticky is itself a
+     positioned element, so the note below still anchors to it. */
+  @apply sticky self-start;
+  /* Clears the sticky navbar so the map's top edge is not tucked under it. */
+  top: 4.6rem;
+}
+.events-map {
+  @apply w-full overflow-hidden rounded-[14px] border border-line;
+  height: calc(100vh - 4.6rem);
+  z-index: 0;
+}
+.events-map-loading,
+.events-map-empty {
+  @apply bg-surface-2;
+}
+.events-map-empty {
+  @apply flex h-full flex-col items-center justify-center gap-2 px-6 text-center text-muted;
+}
+.events-map-note {
+  /* Over the map's bottom-left, clear of Leaflet's attribution on the right. */
+  @apply absolute bottom-3 left-3 z-[400] rounded-full border border-line px-3 py-1;
+  background: color-mix(in oklab, var(--color-surface) 92%, transparent);
+}
+/*
+ * The price pill.
+ *
+ * Leaflet anchors an icon by a fixed pixel offset, and this one is as wide as
+ * its own text - so the centring is done here with a translate instead, which
+ * does not need the width to be known in advance.
+ */
+.evmap-pin-wrap {
+  @apply !h-auto !w-auto;
+}
+.evmap-pin {
+  @apply inline-block -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full px-[0.55rem] py-[0.22rem] text-[0.76rem] font-bold;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  border: 1px solid var(--color-line);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.22);
+  transition: transform 0.15s, background 0.15s, color 0.15s;
+}
+.evmap-pin:hover {
+  transform: translate(-50%, -50%) scale(1.06);
+}
+/* Selected gets a brand highlight ring and accent color on a white surface
+   so it stands out cleanly without dark color bleeding into popups. */
+.evmap-pin.is-active {
+  background: var(--color-surface);
+  color: var(--color-brand-600);
+  border-color: var(--color-brand-500);
+  box-shadow: 0 0 0 2px var(--color-brand-500), 0 2px 6px rgba(0, 0, 0, 0.18);
+  transform: translate(-50%, -50%) scale(1.08);
+}
+
+/* The card whose pin is lit. A ring rather than a transform: the cards sit in
+   a grid and scaling one nudges its neighbours. */
+.ev-slot {
+  @apply min-w-0 rounded-[14px] transition-shadow;
+}
+.ev-slot.is-active {
+  box-shadow: 0 0 0 2px var(--color-brand-500);
+}
+
+/* Leaflet's chrome on this project's surfaces. Compound selector, not
+   descendant: Leaflet puts .leaflet-container on the host element itself. */
+.events-map.leaflet-container {
+  @apply bg-surface-2 font-sans;
+}
+.events-map.leaflet-container .leaflet-bar a,
+.events-map.leaflet-container .leaflet-control-attribution {
+  @apply border-line bg-surface text-ink-2;
+}
+.events-map.leaflet-container .leaflet-control-attribution a {
+  @apply text-muted;
+}
+.events-map.leaflet-container .leaflet-popup-content-wrapper,
+.events-map.leaflet-container .leaflet-popup-tip {
+  @apply border border-line bg-surface text-ink;
+}
+.evmap-pop-title {
+  @apply font-bold;
+}
+.evmap-pop-venue {
+  @apply text-muted text-[0.78rem];
+}
+.evmap-pop-price {
+  @apply mt-1 font-bold;
+}
+
+/*
+ * Above the phone breakpoint this page stops being a document and becomes a
+ * workspace: the chrome holds the top of the window, the list scrolls inside
+ * its own column, and the map gets every pixel that is left.
+ *
+ * It used to be one long scrolling page with a sticky map column, which meant
+ * the map only ever reached full height AFTER scrolling past the title and the
+ * filters - on a laptop you landed on the top third of it and had to go
+ * looking for the rest. Pinning the chrome instead puts the whole map on
+/*
+ * Airbnb-style split layout:
+ * The whole document scrolls naturally using the main right-hand scrollbar.
+ * The event cards list on the left flows with the page, while the map column
+ * stays sticky on the right for continuous visual reference.
+ */
+@media (min-width: 901px) {
+  .events-page {
+    padding-top: 1.1rem;
+  }
+  .events-chrome {
+    @apply mb-4;
+  }
+  .events-page .page-head {
+    @apply mb-2 items-baseline;
+  }
+  .events-page .page-head h1 {
+    @apply text-[2rem];
+  }
+  .events-split {
+    @apply mt-0 items-start;
+  }
+  .events-list {
+    @apply min-w-0 pb-6;
+  }
+  .events-map-col {
+    @apply sticky self-start;
+    top: calc(var(--nav-h, 61px) + 1.2rem);
+    height: calc(100vh - var(--nav-h, 61px) - 2.4rem);
+  }
+  .events-map {
+    @apply h-full;
+  }
+}
+
+/* The toggle is mobile-only; on desktop both columns are on screen at once. */
+.events-map-toggle {
+  @apply hidden;
+}
+
+@media (max-width: 1240px) {
+  .grid-cards-split {
+    @apply grid-cols-1;
+  }
+}
+
+/*
+ * Below this the map stops being a column and becomes a second view of the
+ * same results. Two panes do not fit on a phone, and a map stacked under eight
+ * cards is one nobody scrolls far enough to find.
+ */
+@media (max-width: 900px) {
+  .events-split {
+    @apply grid-cols-1;
+  }
+  .grid-cards-split {
+    @apply grid-cols-2;
+  }
+  .events-map-col {
+    @apply static hidden;
+  }
+  .events-map-col.is-open {
+    @apply block;
+  }
+  .events-list.is-map-open {
+    @apply hidden;
+  }
+  .events-map {
+    @apply rounded-[12px] border border-line;
+    height: calc(100vh - 12rem);
+  }
+  .events-map-toggle {
+    @apply fixed bottom-5 left-1/2 z-30 flex -translate-x-1/2 shadow-lg;
+  }
+}
+@media (max-width: 560px) {
+  .grid-cards-split {
+    @apply grid-cols-1;
+  }
+}
+
+/* ----------------------------------------------------------- price range */
+/*
+ * The price filter: the catalogue's own distribution, the two handles that cut
+ * into it, and the ends written out underneath.
+ *
+ * The chart and the slider are separate rows that read as one control - the
+ * bars sit directly on the track with no gap, so a handle visibly lands
+ * between two bars rather than floating above a picture of them.
+ */
+.pricerange {
+  @apply w-full;
+}
+.pricerange-chart {
+  @apply flex h-[54px] w-full items-end gap-[2px];
+  /* Sits on the track below. The handles overhang it by design: they are the
+     thing doing the cutting, so they belong over the bars, not beside them. */
+  margin-bottom: -2px;
+}
+.pricerange-bar {
+  @apply min-h-px flex-1 rounded-t-[2px];
+  background: var(--color-line-2, var(--color-line));
+  transition: background 0.12s;
+}
+/* In range. The same brand green as the fill below it, so the selection is one
+   shape rather than a coloured bar chart next to a coloured track. */
+.pricerange-bar.is-in {
+  background: color-mix(in oklab, var(--color-brand-600) 62%, transparent);
+}
+.pricerange-slider {
+  @apply h-[26px];
+}
+/* Bigger than the stock 16px thumb: this one has to be grabbable over a chart
+   and is the only affordance in the control. */
+.pricerange-slider input[type='range']::-webkit-slider-thumb {
+  height: 24px;
+  width: 24px;
+  border: 1px solid var(--color-line);
+  background: var(--color-surface);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.26);
+}
+.pricerange-slider input[type='range']::-moz-range-thumb {
+  height: 24px;
+  width: 24px;
+  border: 1px solid var(--color-line);
+  background: var(--color-surface);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.26);
+}
+
+.pricerange-ends {
+  @apply mt-[0.7rem] flex items-end gap-2;
+}
+/* items-start / items-end, not stretch: a flex column stretches its children
+   by default, which blew the "$0" pill across the whole left half while the
+   right one stayed compact. */
+.pricerange-end {
+  @apply flex flex-1 flex-col items-start gap-[0.25rem];
+}
+.pricerange-end:last-of-type {
+  @apply items-end;
+}
+/* A read-only pill, not an input: these mirror the handles rather than taking
+   typed values, and a box that looks editable but is not is worse than one
+   that plainly reports. */
+.pricerange-value {
+  @apply inline-block rounded-full border border-line px-[0.85rem] py-[0.35rem] text-[0.86rem] font-bold;
+  background: var(--color-surface);
+}
+.pricerange-dash {
+  @apply mb-[1.1rem] h-px w-3 shrink-0;
+  background: var(--color-line);
 }

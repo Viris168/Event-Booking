@@ -277,7 +277,7 @@ export function OrganizerDashboardSkeleton() {
             </div>
             <Skeleton className="h-[1.4rem] w-24 rounded-full" />
           </div>
-          <div className="flex h-32 items-end gap-1.5">
+          <div className="flex h-44 items-end gap-1.5">
             {bars.map((h, i) => (
               <Skeleton key={i} className="flex-1 rounded-t-tiny" style={{ height: `${h}%` }} />
             ))}
