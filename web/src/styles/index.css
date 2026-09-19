@@ -1438,108 +1438,47 @@
     );
   }
 
-  /* The headline runs as one unbroken gold script, so the accent word is no
-     longer a second colour - it just inherits the gradient. The rule survives
-     as the flat fallback for the no-background-clip path below. */
+  /* Modern bold headline matching platform-wide design language. */
   .hero-accent {
-    color: #f2c877;
+    background: linear-gradient(
+      135deg,
+      #ffe599 0%,
+      #f6c05d 40%,
+      #e59c2b 75%,
+      #ffd470 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 2px 14px rgba(230, 160, 50, 0.35));
   }
   /* Same box shape as .nav-inner / .container / .footer-inner: the max-width
      carries its own horizontal padding, so all four content edges are flush. */
   .hero-inner {
     @apply mx-auto max-w-shell px-page;
   }
-  /* Display script, gilded - the one place in the product that uses either.
-     Explicitly asked for rather than reached for: it is the whole point of the
-     hero, and it stays quarantined to this single line.
-
-     `color` is the real colour and the gradient is layered over it only where
-     background-clip: text actually works; without that guard an unsupported
-     browser gets transparent fill over no clip, which is an invisible
-     headline. */
   .hero h1 {
-    @apply max-w-[16ch];
-    font-family: var(--font-display);
-    font-weight: 400;
-    font-size: clamp(2.15rem, 1.15rem + 4vw, 4rem);
-    line-height: 1.1;
-    letter-spacing: 0.004em;
-    color: #f2c877;
-    text-shadow: 0 2px 14px rgba(2, 9, 14, 0.62);
+    @apply max-w-[18ch] font-extrabold tracking-tight text-white;
+    font-family: var(--font-sans);
+    font-size: clamp(2.35rem, 1.4rem + 3.2vw, 3.85rem);
+    line-height: 1.15;
+    letter-spacing: -0.03em;
+    text-shadow: 0 4px 20px rgba(2, 9, 14, 0.7);
   }
-  /* One line, at every width.
-
-     Set in Berkshire Swash, "Live events across Cambodia" is 11.97em wide, so
-     the size that exactly fills the column is its width over 11.97. The divisor
-     below is 12.4 - about 3.5% of headroom, because `nowrap` turns a bad guess
-     into a headline hanging off the side of the page rather than a second line.
-     cqw and not vw: the column is the viewport minus the 320px card, and vw
-     would overset by exactly that card.
-
-     Shrink-to-fit rather than wrap means a 320px phone gets this at ~23px. That
-     is the trade the single line costs, and it is only sound because the ratio
-     is measured from the real string - translate the headline and it has to be
-     measured again. */
-  @supports (container-type: inline-size) {
-    .hero h1 {
-      max-width: none;
-      white-space: nowrap;
-      font-size: min(4rem, 100cqw / 12.4);
-    }
-  }
-  @supports (background-clip: text) or (-webkit-background-clip: text) {
-    .hero h1 {
-      background: linear-gradient(
-        174deg,
-        #fdf3d8 4%,
-        #f4cd82 40%,
-        #dda253 74%,
-        #bd8236 100%
-      );
-      -webkit-background-clip: text;
-      background-clip: text;
-      -webkit-text-fill-color: transparent;
-      /* text-shadow paints under transparent fill, so the lift has to come from
-         a filter on the painted glyphs instead. */
-      text-shadow: none;
-      filter: drop-shadow(0 2px 10px rgba(2, 9, 14, 0.66))
-        drop-shadow(0 0 30px rgba(226, 165, 82, 0.26));
-    }
-  }
-  /* Moul is a display face in its own right, and a heavy one: Khmer needs less
-     size and far more leading than the Latin script at the same optical
-     weight, or the subscript forms collide with the line above. */
   html[lang="km"] .hero h1 {
-    font-family: var(--font-display-khmer);
-    /* One line here too, the same way the Latin rule does it.
-       
-       The headline wrapped before, and the comment here said why: the old
-       string was 19.4em wide in Moul, so a single line meant ~15px on a phone.
-       The string is shorter now - "ព្រឹត្តិការណ៍ផ្ទាល់ទូទាំង កម្ពុជា" rather
-       than a version naming the country twice - which is what makes the line
-       affordable at about 15em, and the divisor below carries headroom on top
-       of that because nowrap turns a bad guess into a headline hanging off the
-       page.
-
-       Re-measure if the copy changes. Same rule as the Latin line above, and
-       the reason both say so. */
-    max-width: none;
-    white-space: nowrap;
-    /* 19: the line carries the full ប្រទេសកម្ពុជា again, so it is back to
-       roughly the width the original wording had, less the នៅ that went. That
-       puts it near 17px on a 320px phone - the price of the single line at this
-       length, and the reason the earlier version wrapped instead. */
-    font-size: min(2.5rem, 100cqw / 19);
-    line-height: 1.5;
-    /* Moul sets tall ascenders and hangs subscript forms below the baseline,
-       and the gilded fill is clipped to the text box - so with no room above
-       and below, the tops and the tails come out shaved rather than gilded.
-       Padding rather than more leading: line-height moves a single line within
-       its box without giving the glyphs anywhere to go. */
-    padding-block: 0.3em;
+    font-family: var(--font-khmer);
+    font-weight: 800;
+    line-height: 1.35;
+    letter-spacing: normal;
+  }
+  html[lang="km"] .hero-accent {
+    background: linear-gradient(135deg, #ffe599 0%, #f6c05d 50%, #e59c2b 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
   }
   .hero p {
-    @apply mt-[0.7rem] max-w-[58ch] text-white/[0.82];
+    @apply mt-3 max-w-[56ch] text-[1.05rem] font-normal leading-relaxed text-white/80;
   }
   /* Copy on the left, the rotating rail on the right. Below 1080px the two
      stack, and the rail goes wide-and-short instead of disappearing.
@@ -1594,11 +1533,17 @@
      the grid's. The scrim is what keeps the type legible whatever the photo
      underneath happens to be. */
   .rail-card {
-    @apply relative isolate block overflow-hidden rounded-card border border-white/[0.16] shadow-pop;
+    @apply relative isolate block overflow-hidden rounded-card border border-white/[0.18] shadow-pop transition-all duration-300;
     aspect-ratio: 1 / 1;
   }
   .rail-card:hover {
-    @apply border-white/35 no-underline;
+    @apply border-brand-500/60 shadow-float -translate-y-1 no-underline;
+  }
+  .rail-card .ev-photo {
+    @apply transition-transform duration-500 ease-out;
+  }
+  .rail-card:hover .ev-photo {
+    transform: scale(1.06);
   }
   .rail-card::after {
     content: "";
@@ -1616,7 +1561,7 @@
   }
   .rail-date {
     @apply absolute left-[0.75rem] top-[0.75rem] z-[2] min-w-[42px] rounded-[10px] bg-white/[0.96]
-      px-2 py-[0.3rem] text-center text-[0.66rem] font-extrabold leading-[1.2] tracking-[0.04em] text-ink;
+      px-2 py-[0.3rem] text-center text-[0.66rem] font-extrabold leading-[1.2] tracking-[0.04em] text-ink shadow-card;
   }
   .rail-date b {
     @apply block text-[1.05rem] tracking-[-0.01em];
@@ -1625,29 +1570,39 @@
     @apply absolute inset-x-0 bottom-0 z-[2] flex flex-col gap-[0.28rem] px-[0.95rem] pb-[0.95rem] text-white;
   }
   .rail-body strong {
-    @apply line-clamp-2 text-[1.02rem] font-bold leading-[1.32];
+    @apply line-clamp-2 text-[1.05rem] font-bold leading-[1.32];
   }
   .rail-meta {
     @apply inline-flex items-center gap-[0.32rem] truncate text-[0.78rem] text-white/70;
   }
+  .rail-foot {
+    @apply mt-1 flex items-center justify-between;
+  }
   .rail-price {
-    @apply mt-[0.15rem] text-[0.72rem] uppercase tracking-[0.05em] text-white/60;
+    @apply text-[0.72rem] uppercase tracking-[0.05em] text-white/60;
   }
   .rail-price b {
     @apply ml-[0.25rem] text-[1.05rem] normal-case tracking-normal text-white;
   }
-  .hero-rail-head {
-    @apply mb-[0.6rem] flex items-center gap-3;
+  .rail-go {
+    @apply grid size-7 place-items-center rounded-full bg-brand-500 text-white shadow-card transition-all duration-200;
   }
-  .hero-rail-head .tiny {
-    @apply inline-flex items-center gap-[0.35rem] text-[0.68rem] font-bold uppercase
-      tracking-[0.07em] text-white/65;
+  .rail-card:hover .rail-go {
+    @apply bg-brand-600 scale-110;
+  }
+  .hero-rail-head {
+    @apply mb-[0.65rem] flex items-center gap-3;
+  }
+  .rail-pill-badge {
+    @apply inline-flex items-center gap-[0.4rem] rounded-full border border-white/[0.14]
+      bg-white/[0.08] backdrop-blur-md px-[0.75rem] py-[0.25rem] text-[0.72rem] font-bold uppercase
+      tracking-wider text-white/90;
   }
   .hero-dots {
-    @apply mt-[0.65rem] flex items-center justify-center gap-[0.3rem];
+    @apply mt-[0.75rem] flex items-center justify-center gap-[0.35rem];
   }
   .hero-dot {
-    @apply h-[5px] w-[5px] cursor-pointer rounded-full border-0 bg-white/30 p-0;
+    @apply h-[6px] w-[6px] cursor-pointer rounded-full border-0 bg-white/30 p-0;
     transition:
       width 0.25s ease,
       background-color 0.25s ease;
@@ -1656,7 +1611,7 @@
     @apply bg-white/60;
   }
   .hero-dot.on {
-    @apply w-[13px] bg-white/90;
+    @apply w-[16px] bg-white/90;
   }
   /* Respect a stated preference for less motion: the rail still advances, it
      just cuts rather than slides. */
@@ -1672,24 +1627,24 @@
   /* The spotlight card is taller than the copy column, so the grid row already
      leaves air under the quick links — the rule does not need much more. */
   .hero-base {
-    @apply mt-[1.75rem] border-t border-white/[0.12];
+    @apply mt-[2rem] border-t border-white/[0.12];
   }
   @media (max-width: 1080px) {
     .hero-base {
-      @apply mt-[2.4rem];
+      @apply mt-[2.5rem];
     }
   }
   .hero-base-inner {
-    @apply flex flex-wrap items-center gap-x-8 gap-y-3 py-[1.05rem];
+    @apply flex flex-wrap items-center gap-x-8 gap-y-3 py-[1.2rem];
   }
   .hero-stats {
     @apply flex flex-wrap gap-y-4;
   }
   .hero-stats div {
-    @apply pr-7 text-[0.8rem] text-white/70;
+    @apply pr-8 text-[0.82rem] font-medium text-white/60;
   }
   .hero-stats div + div {
-    @apply border-l border-white/15 pl-7;
+    @apply border-l border-white/15 pl-8;
   }
   /* Once the row wraps, a left divider lands at the start of a line with
      nothing to divide — fall back to plain spacing. */
@@ -1705,7 +1660,7 @@
     }
   }
   .hero-stats b {
-    @apply block text-[1.3rem] leading-[1.2] text-white;
+    @apply block text-[1.55rem] font-extrabold tracking-tight text-white leading-tight;
     font-variant-numeric: tabular-nums;
   }
 
@@ -1772,9 +1727,17 @@
   /* ------------------------------------------------------------ search bar */
   /* One pill: query · province · submit, split by hairlines rather than boxes. */
   .searchbar {
-    @apply mt-[1.7rem] grid max-w-[880px] items-center gap-0 rounded-full bg-surface p-[0.4rem] shadow-pop;
-    grid-template-columns: minmax(0, 1fr) 224px auto;
-    transition: box-shadow 0.15s ease;
+    @apply mt-[1.85rem] grid max-w-[840px] items-center gap-0 rounded-full bg-surface p-[0.45rem] shadow-pop border border-white/20;
+    grid-template-columns: minmax(0, 1fr) 220px auto;
+    transition:
+      box-shadow 0.2s ease,
+      border-color 0.2s ease;
+  }
+  .searchbar:focus-within {
+    box-shadow:
+      0 0 0 3px rgba(255, 255, 255, 0.22),
+      0 24px 60px -18px rgba(0, 0, 0, 0.4);
+    border-color: rgba(255, 255, 255, 0.45);
   }
   .searchbar .sb-cell {
     @apply relative flex min-w-0 items-center;
@@ -1803,7 +1766,10 @@
     @apply bg-transparent shadow-none;
   }
   .searchbar .btn {
-    @apply min-h-[46px] whitespace-nowrap rounded-full px-[1.4rem];
+    @apply min-h-[46px] whitespace-nowrap rounded-full px-[1.5rem] font-bold transition-all duration-200;
+  }
+  .searchbar .btn:hover {
+    @apply shadow-float -translate-y-px;
   }
   @media (max-width: 760px) {
     .searchbar {
@@ -1818,17 +1784,18 @@
   }
 
   .quick-links {
-    @apply mt-[0.9rem] flex flex-wrap items-center gap-[0.4rem];
+    @apply mt-4 flex flex-wrap items-center gap-[0.45rem];
   }
   .quick-links .tiny {
-    @apply mr-[0.1rem] text-white/55;
+    @apply mr-1 text-[0.72rem] font-bold uppercase tracking-wider text-white/50;
   }
   .quick-chip {
-    @apply inline-flex items-center gap-[0.35rem] rounded-full border border-white/[0.16]
-      bg-white/10 px-[0.7rem] py-[0.28rem] text-[0.8rem] font-semibold text-white/[0.92];
+    @apply inline-flex items-center gap-[0.4rem] rounded-full border border-white/[0.14]
+      bg-white/[0.08] backdrop-blur-md px-[0.8rem] py-[0.32rem] text-[0.82rem] font-semibold text-white/90;
+    transition: all 0.2s ease;
   }
   .quick-chip:hover {
-    @apply border-white/30 bg-white/20 no-underline;
+    @apply border-white/40 bg-white/[0.18] text-white -translate-y-0.5 no-underline;
   }
 
   /* Input/select with a leading icon and an optional trailing clear button. */

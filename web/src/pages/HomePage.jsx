@@ -1,13 +1,16 @@
-import { useCallback, useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import EventCard from '../components/EventCard.jsx'
-import Icon, { CATEGORY_ICON } from '../components/Icon.jsx'
-import { EventGridSkeleton, SpotlightSkeleton } from '../components/Skeleton.jsx'
-import { Empty, IconSelect, Money, SearchInput } from '../components/ui.jsx'
-import { useLocale } from '../context/LocaleContext.jsx'
-import { useProvinces } from '../lib/useProvinces.js'
-import { eventArt } from '../lib/eventArt.js'
-import { getEvents } from '../api/events.js'
+import { useCallback, useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import EventCard from "../components/EventCard.jsx";
+import Icon, { CATEGORY_ICON } from "../components/Icon.jsx";
+import {
+  EventGridSkeleton,
+  SpotlightSkeleton,
+} from "../components/Skeleton.jsx";
+import { Empty, IconSelect, Money, SearchInput } from "../components/ui.jsx";
+import { useLocale } from "../context/LocaleContext.jsx";
+import { useProvinces } from "../lib/useProvinces.js";
+import { eventArt } from "../lib/eventArt.js";
+import { getEvents } from "../api/events.js";
 
 // One tap into the searches people actually run.
 //
@@ -18,29 +21,59 @@ import { getEvents } from '../api/events.js'
 /* Hero backdrop, served from web/public. If the file is missing the banner
    falls back to its gradient rather than breaking, so swapping the art is just
    a change to this one constant. */
-const HERO_IMAGE = '/event.jpeg'
+const HERO_IMAGE = "/event.jpeg";
 
 const QUICK_SEARCHES = [
-  { q: 'pp', en: 'Phnom Penh', km: 'ភ្នំពេញ', icon: 'mapPin', params: { province: '12' } },
-  { q: 'sr', en: 'Siem Reap', km: 'សៀមរាប', icon: 'mapPin', params: { province: '17' } },
-  { q: 'concert', en: 'Concerts', km: 'ការប្រគំតន្ត្រី', icon: 'music', params: { q: 'concert' } },
-  { q: 'festival', en: 'Festivals', km: 'មហោស្រព', icon: 'festival', params: { q: 'festival' } },
-  { q: 'cheap', en: 'Under $20', km: 'ក្រោម $20', icon: 'wallet', params: { maxUsd: '20' } },
-]
+  {
+    q: "pp",
+    en: "Phnom Penh",
+    km: "ភ្នំពេញ",
+    icon: "mapPin",
+    params: { province: "12" },
+  },
+  {
+    q: "sr",
+    en: "Siem Reap",
+    km: "សៀមរាប",
+    icon: "mapPin",
+    params: { province: "17" },
+  },
+  {
+    q: "concert",
+    en: "Concerts",
+    km: "ការប្រគំតន្ត្រី",
+    icon: "music",
+    params: { q: "concert" },
+  },
+  {
+    q: "festival",
+    en: "Festivals",
+    km: "មហោស្រព",
+    icon: "festival",
+    params: { q: "festival" },
+  },
+  {
+    q: "cheap",
+    en: "Under $20",
+    km: "ក្រោម $20",
+    icon: "wallet",
+    params: { maxUsd: "20" },
+  },
+];
 
 /** How often the hero rail advances, in ms. */
-const ROTATE_MS = 5000
+const ROTATE_MS = 5000;
 /** Cards in the rail. More than this and the dots stop being scannable. */
-const RAIL_SIZE = 5
+const RAIL_SIZE = 5;
 
 /** Tickets sold, across both field spellings the API and the mapper produce. */
 function soldCount(e) {
-  return e.totalSold ?? e.total_sold ?? 0
+  return e.totalSold ?? e.total_sold ?? 0;
 }
 
 function startMs(e) {
-  const v = e.startsAt ?? e.starts_at
-  return v ? new Date(v).getTime() : Infinity
+  const v = e.startsAt ?? e.starts_at;
+  return v ? new Date(v).getTime() : Infinity;
 }
 
 /**
@@ -57,22 +90,26 @@ function startMs(e) {
  * today onward, so they never reach this page.
  */
 function isOnSale(e) {
-  const now = Date.now()
-  const at = (v) => (v ? new Date(v).getTime() : null)
-  const opens = at(e.salesOpenAt ?? e.sales_open_at)
-  const closes = at(e.salesCloseAt ?? e.sales_close_at)
-  if (opens && opens > now) return false
-  if (closes && closes < now) return false
-  return true
+  const now = Date.now();
+  const at = (v) => (v ? new Date(v).getTime() : null);
+  const opens = at(e.salesOpenAt ?? e.sales_open_at);
+  const closes = at(e.salesCloseAt ?? e.sales_close_at);
+  if (opens && opens > now) return false;
+  if (closes && closes < now) return false;
+  return true;
 }
 
 function getMinPriceCents(event) {
-  let min = Infinity
-  const classes = event.seatClasses ?? event.seat_classes ?? []
-  classes.forEach((c) => (min = Math.min(min, c.priceUsdCents ?? c.price_usd_cents ?? 0)))
-  const zones = event.zones ?? []
-  zones.forEach((z) => (min = Math.min(min, z.priceUsdCents ?? z.price_usd_cents ?? 0)))
-  return min === Infinity ? 0 : min
+  let min = Infinity;
+  const classes = event.seatClasses ?? event.seat_classes ?? [];
+  classes.forEach(
+    (c) => (min = Math.min(min, c.priceUsdCents ?? c.price_usd_cents ?? 0)),
+  );
+  const zones = event.zones ?? [];
+  zones.forEach(
+    (z) => (min = Math.min(min, z.priceUsdCents ?? z.price_usd_cents ?? 0)),
+  );
+  return min === Infinity ? 0 : min;
 }
 
 /**
@@ -82,28 +119,46 @@ function getMinPriceCents(event) {
  * shorter, which is what lets it sit beside the headline without crowding.
  */
 function RailCard({ event }) {
-  const { t, locale } = useLocale()
-  const art = eventArt(event, 'banner')
-  const venue = event.venue
-  const price = getMinPriceCents(event)
-  const start = new Date(event.startsAt ?? event.starts_at)
-  const title = locale === 'km' ? (event.titleKm ?? event.title_km) : (event.titleEn ?? event.title_en)
-  const venueName = locale === 'km' ? (venue?.nameKm ?? venue?.name_km) : (venue?.nameEn ?? venue?.name_en)
+  const { t, locale } = useLocale();
+  const art = eventArt(event, "banner");
+  const venue = event.venue;
+  const price = getMinPriceCents(event);
+  const start = new Date(event.startsAt ?? event.starts_at);
+  const title =
+    locale === "km"
+      ? (event.titleKm ?? event.title_km)
+      : (event.titleEn ?? event.title_en);
+  const venueName =
+    locale === "km"
+      ? (venue?.nameKm ?? venue?.name_km)
+      : (venue?.nameEn ?? venue?.name_en);
 
   return (
     <Link
       to={`/events/${event.id}`}
-      className={`rail-card ${art.className}${art.hasImage ? ' has-photo' : ''}`}
+      className={`rail-card ${art.className}${art.hasImage ? " has-photo" : ""}`}
     >
       {art.hasImage ? (
-        <img className="ev-photo" src={art.url} alt="" decoding="async"
-          onError={(e) => { e.currentTarget.remove() }} />
+        <img
+          className="ev-photo"
+          src={art.url}
+          alt=""
+          decoding="async"
+          onError={(e) => {
+            e.currentTarget.remove();
+          }}
+        />
       ) : (
-        <Icon name={CATEGORY_ICON[event.category] || 'ticket'} size={44} strokeWidth={1.3} className="rail-icon" />
+        <Icon
+          name={CATEGORY_ICON[event.category] || "ticket"}
+          size={44}
+          strokeWidth={1.3}
+          className="rail-icon"
+        />
       )}
 
       <span className="rail-date">
-        {start.toLocaleDateString('en-GB', { month: 'short' }).toUpperCase()}
+        {start.toLocaleDateString("en-GB", { month: "short" }).toUpperCase()}
         <b>{start.getDate()}</b>
       </span>
 
@@ -115,12 +170,20 @@ function RailCard({ event }) {
             {venueName}
           </span>
         )}
-        <span className="rail-price">
-          {t('from_price')} <b><Money cents={price} /></b>
-        </span>
+        <div className="rail-foot">
+          <span className="rail-price">
+            {t("from_price")}{" "}
+            <b>
+              <Money cents={price} />
+            </b>
+          </span>
+          <span className="rail-go" aria-hidden="true">
+            <Icon name="arrowRight" size={13} strokeWidth={2.5} />
+          </span>
+        </div>
       </div>
     </Link>
-  )
+  );
 }
 
 /**
@@ -132,28 +195,28 @@ function RailCard({ event }) {
  * real buttons, so there is a manual way through regardless.
  */
 function HeroRail({ events }) {
-  const { locale } = useLocale()
-  const [index, setIndex] = useState(0)
-  const [paused, setPaused] = useState(false)
-  const count = events.length
+  const { locale } = useLocale();
+  const [index, setIndex] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const count = events.length;
 
   // Derived, not stored: if the list shrinks, a stale index would otherwise
   // translate the track into empty space. Wrapping here beats correcting it in
   // an effect, which would cost an extra render every time.
-  const active = count ? index % count : 0
+  const active = count ? index % count : 0;
 
   // Re-keyed on `active` too, so choosing a dot restarts the full interval
   // instead of inheriting whatever was left of the previous one.
   useEffect(() => {
-    if (paused || count < 2) return undefined
-    const id = setTimeout(() => setIndex((i) => (i + 1) % count), ROTATE_MS)
-    return () => clearTimeout(id)
-  }, [active, paused, count])
+    if (paused || count < 2) return undefined;
+    const id = setTimeout(() => setIndex((i) => (i + 1) % count), ROTATE_MS);
+    return () => clearTimeout(id);
+  }, [active, paused, count]);
 
-  const hold = useCallback(() => setPaused(true), [])
-  const release = useCallback(() => setPaused(false), [])
+  const hold = useCallback(() => setPaused(true), []);
+  const release = useCallback(() => setPaused(false), []);
 
-  if (!count) return null
+  if (!count) return null;
 
   return (
     <div
@@ -163,21 +226,31 @@ function HeroRail({ events }) {
       onFocusCapture={hold}
       onBlurCapture={release}
       aria-roledescription="carousel"
-      aria-label={locale === 'km' ? 'ព្រឹត្តិការណ៍លក់ដាច់បំផុត' : 'Top selling events'}
+      aria-label={
+        locale === "km" ? "ព្រឹត្តិការណ៍លក់ដាច់បំផុត" : "Top selling events"
+      }
     >
       <div className="hero-rail-head">
-        <span className="tiny">
-          <Icon name="trending" size={13} /> {locale === 'km' ? 'លក់ដាច់បំផុត' : 'Top selling'}
+        <span className="rail-pill-badge">
+          <Icon name="trending" size={12} />{" "}
+          {locale === "km" ? "លក់ដាច់បំផុត" : "Top selling"}
         </span>
       </div>
 
       <div className="hero-viewport">
-        <div className="hero-track" style={{ transform: `translateX(-${active * 100}%)` }}>
+        <div
+          className="hero-track"
+          style={{ transform: `translateX(-${active * 100}%)` }}
+        >
           {events.map((e, i) => (
             /* Off-screen slides keep their links in the tab order unless they
                are inerted — the classic carousel focus trap, where tabbing
                walks into cards nobody can see. */
-            <div className="hero-slide" key={e.id} inert={i !== active ? '' : undefined}>
+            <div
+              className="hero-slide"
+              key={e.id}
+              inert={i !== active ? "" : undefined}
+            >
               <RailCard event={e} />
             </div>
           ))}
@@ -190,39 +263,43 @@ function HeroRail({ events }) {
             <button
               key={e.id}
               type="button"
-              className={`hero-dot${i === active ? ' on' : ''}`}
+              className={`hero-dot${i === active ? " on" : ""}`}
               aria-current={i === active}
-              aria-label={`${locale === 'km' ? 'ព្រឹត្តិការណ៍' : 'Event'} ${i + 1}`}
+              aria-label={`${locale === "km" ? "ព្រឹត្តិការណ៍" : "Event"} ${i + 1}`}
               onClick={() => setIndex(i)}
             />
           ))}
         </div>
       )}
     </div>
-  )
+  );
 }
 
 export default function HomePage() {
-  const { t, locale } = useLocale()
-  const { provinces } = useProvinces()
-  const navigate = useNavigate()
-  const [q, setQ] = useState('')
-  const [province, setProvince] = useState('')
+  const { t, locale } = useLocale();
+  const { provinces } = useProvinces();
+  const navigate = useNavigate();
+  const [q, setQ] = useState("");
+  const [province, setProvince] = useState("");
 
-  const [published, setPublished] = useState([])
+  const [published, setPublished] = useState([]);
   // The catalogue-wide count, which the loaded page of 12 cannot give on its own.
-  const [totalLive, setTotalLive] = useState(0)
-  const [loading, setLoading] = useState(true)
+  const [totalLive, setTotalLive] = useState(0);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getEvents({ size: 12, sort: 'startsAt,asc' })
+    getEvents({ size: 12, sort: "startsAt,asc" })
       .then((page) => {
-        setPublished(page.content || [])
-        setTotalLive(page.total_elements ?? page.totalElements ?? (page.content || []).length)
+        setPublished(page.content || []);
+        setTotalLive(
+          page.total_elements ??
+            page.totalElements ??
+            (page.content || []).length,
+        );
       })
       .catch((e) => console.error(e))
-      .finally(() => setLoading(false))
-  }, [])
+      .finally(() => setLoading(false));
+  }, []);
 
   /*
    * Best sellers first.
@@ -241,9 +318,9 @@ export default function HomePage() {
   const rail = published
     .filter(isOnSale)
     .sort((a, b) => soldCount(b) - soldCount(a) || startMs(a) - startMs(b))
-    .slice(0, RAIL_SIZE)
-  const featured = published.slice(0, 4)
-  const upcoming = published.slice(4, 12)
+    .slice(0, RAIL_SIZE);
+  const featured = published.slice(0, 4);
+  const upcoming = published.slice(4, 12);
 
   /**
    * Hero counters, from the API instead of the retired mock store.
@@ -257,14 +334,14 @@ export default function HomePage() {
   const ticketsSold = published.reduce(
     (sum, e) => sum + (e.total_sold ?? e.totalSold ?? 0),
     0,
-  )
+  );
 
   function submit(e) {
-    e.preventDefault()
-    const params = new URLSearchParams()
-    if (q) params.set('q', q)
-    if (province) params.set('province', province)
-    navigate(`/events?${params.toString()}`)
+    e.preventDefault();
+    const params = new URLSearchParams();
+    if (q) params.set("q", q);
+    if (province) params.set("province", province);
+    navigate(`/events?${params.toString()}`);
   }
 
   return (
@@ -281,61 +358,67 @@ export default function HomePage() {
           fetchPriority="high"
           decoding="async"
           onError={(e) => {
-            e.currentTarget.remove()
+            e.currentTarget.remove();
           }}
         />
         <div className="hero-inner hero-grid">
           <div className="hero-copy">
-          <h1>
-            {t('heroTitleLead')} <span className="hero-accent">{t('heroTitleAccent')}</span>
-          </h1>
-          <p>{t('heroSub')}</p>
+            <h1>
+              {t("heroTitleLead")}{" "}
+              <span className="hero-accent">{t("heroTitleAccent")}</span>
+            </h1>
+            <p>{t("heroSub")}</p>
 
-          <form className="searchbar" onSubmit={submit} role="search">
-            <span className="sb-cell">
-              <SearchInput
-                value={q}
-                onChange={setQ}
-                placeholder={
-                  locale === 'km'
-                    ? 'ស្វែងរកព្រឹត្តិការណ៍ សិល្បករ ឬទីកន្លែង'
-                    : 'Search events, artists or venues'
-                }
-                ariaLabel={t('search')}
-              />
-            </span>
-            <span className="sb-cell">
-              <IconSelect
-                icon="mapPin"
-                value={province}
-                onChange={setProvince}
-                ariaLabel={t('province')}
-              >
-                <option value="">{t('allProvinces')}</option>
-                {provinces.map((p) => (
-                  <option key={p.code} value={p.code}>
-                    {locale === 'km' ? p.name_km : p.name_en}
-                  </option>
-                ))}
-              </IconSelect>
-            </span>
-            <button className="btn btn-primary" type="submit">
-              <Icon name="search" size={16} />
-              {t('searchLabel')}
-            </button>
-          </form>
+            <form className="searchbar" onSubmit={submit} role="search">
+              <span className="sb-cell">
+                <SearchInput
+                  value={q}
+                  onChange={setQ}
+                  placeholder={
+                    locale === "km"
+                      ? "ស្វែងរកព្រឹត្តិការណ៍ សិល្បករ ឬទីកន្លែង"
+                      : "Search events, artists or venues"
+                  }
+                  ariaLabel={t("search")}
+                />
+              </span>
+              <span className="sb-cell">
+                <IconSelect
+                  icon="mapPin"
+                  value={province}
+                  onChange={setProvince}
+                  ariaLabel={t("province")}
+                >
+                  <option value="">{t("allProvinces")}</option>
+                  {provinces.map((p) => (
+                    <option key={p.code} value={p.code}>
+                      {locale === "km" ? p.name_km : p.name_en}
+                    </option>
+                  ))}
+                </IconSelect>
+              </span>
+              <button className="btn btn-primary" type="submit">
+                <Icon name="search" size={16} />
+                {t("searchLabel")}
+              </button>
+            </form>
 
-          {/* Straight into the most common intents, no typing required. */}
-          <div className="quick-links">
-            <span className="tiny">{locale === 'km' ? 'ពេញនិយម' : 'Popular'}</span>
-            {QUICK_SEARCHES.map((s) => (
-              <Link key={s.q} className="quick-chip" to={`/events?${new URLSearchParams(s.params)}`}>
-                <Icon name={s.icon} size={13} />
-                {locale === 'km' ? s.km : s.en}
-              </Link>
-            ))}
-          </div>
-
+            {/* Straight into the most common intents, no typing required. */}
+            <div className="quick-links">
+              <span className="tiny">
+                {locale === "km" ? "ពេញនិយម" : "Popular"}
+              </span>
+              {QUICK_SEARCHES.map((s) => (
+                <Link
+                  key={s.q}
+                  className="quick-chip"
+                  to={`/events?${new URLSearchParams(s.params)}`}
+                >
+                  <Icon name={s.icon} size={13} />
+                  {locale === "km" ? s.km : s.en}
+                </Link>
+              ))}
+            </div>
           </div>
 
           {loading ? <SpotlightSkeleton /> : <HeroRail events={rail} />}
@@ -349,15 +432,15 @@ export default function HomePage() {
             <div className="hero-stats">
               <div>
                 <b>{totalLive}</b>
-                {locale === 'km' ? 'ព្រឹត្តិការណ៍ផ្សាយ' : 'live events'}
+                {locale === "km" ? "ព្រឹត្តិការណ៍ផ្សាយ" : "live events"}
               </div>
               <div>
                 <b>{ticketsSold.toLocaleString()}</b>
-                {locale === 'km' ? 'សំបុត្រលក់រួច' : 'tickets sold'}
+                {locale === "km" ? "សំបុត្រលក់រួច" : "tickets sold"}
               </div>
               <div>
                 <b>{provinces.length}</b>
-                {locale === 'km' ? 'ខេត្ត/ក្រុង' : 'provinces covered'}
+                {locale === "km" ? "ខេត្ត/ក្រុង" : "provinces covered"}
               </div>
             </div>
           </div>
@@ -367,9 +450,9 @@ export default function HomePage() {
       <div className="container">
         <section>
           <div className="section-head">
-            <h2>{t('featured')}</h2>
+            <h2>{t("featured")}</h2>
             <Link to="/events" className="with-icon">
-              {t('viewAll')}
+              {t("viewAll")}
               <Icon name="arrowRight" size={15} />
             </Link>
           </div>
@@ -382,15 +465,15 @@ export default function HomePage() {
               ))}
             </div>
           ) : (
-            <Empty title={t('noEvents')} />
+            <Empty title={t("noEvents")} />
           )}
         </section>
 
-        <section style={{ marginTop: '2.5rem' }}>
+        <section style={{ marginTop: "2.5rem" }}>
           <div className="section-head">
-            <h2>{t('upcoming')}</h2>
+            <h2>{t("upcoming")}</h2>
             <Link to="/events" className="with-icon">
-              {t('viewAll')}
+              {t("viewAll")}
               <Icon name="arrowRight" size={15} />
             </Link>
           </div>
@@ -404,8 +487,7 @@ export default function HomePage() {
             </div>
           )}
         </section>
-
       </div>
     </>
-  )
+  );
 }
