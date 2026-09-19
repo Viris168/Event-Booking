@@ -276,128 +276,140 @@ function HeroRail({ events }) {
 }
 
 /*
- * What the product actually does, between the last event card and the footer.
+ * What the product does, split by who is reading.
  *
- * Every line here is a claim about CamboBook that the code backs: KHQR through
- * PayWay, a scannable code per booking, SEATED/ZONED/MIXED inventory, and the
- * Telegram connection an organiser makes on /become-an-organizer. Nothing about
- * wallets, native apps or settlement speed - a storefront that promises what
- * the gate cannot do is a support ticket waiting at the door.
+ * Every line is a claim the code backs: KHQR through PayWay, a scannable code
+ * per booking, SEATED/ZONED/MIXED inventory with SeatMap, the hold that keeps
+ * seats while a payment settles, the seat-map editor, venue pinning, the
+ * browser check-in page, and the sales/payout/invoice trail. Nothing about
+ * wallets, native apps or settlement speed - payouts wait on an admin, and a
+ * storefront promising what the gate cannot do is a support ticket at the door.
+ *
+ * Two audiences rather than one list, because a buyer reading about payout
+ * invoices is reading somebody else's mail. Each group uses .section-head and
+ * the same card grid as Featured and Upcoming above, so the page stays one
+ * page instead of turning into a landing page halfway down.
  */
-const HOW_IT_WORKS = [
+const FOR_BUYERS = [
   {
     icon: "qr",
-    en: "KHQR and ABA PayWay",
-    km: "KHQR និង ABA PayWay",
+    en: "Pay with KHQR",
+    km: "ទូទាត់ដោយ KHQR",
     bodyEn:
-      "Pay from ABA Mobile, Wing, ACLEDA or any Bakong app. The booking confirms itself once the payment settles.",
+      "Scan from ABA Mobile, Wing, ACLEDA or any Bakong app. The booking confirms itself once the payment settles.",
     bodyKm:
-      "ទូទាត់ពី ABA Mobile, Wing, ACLEDA ឬកម្មវិធី Bakong ណាមួយ។ ការកក់បញ្ជាក់ដោយខ្លួនឯងពេលការទូទាត់ជោគជ័យ។",
+      "ស្កេនពី ABA Mobile, Wing, ACLEDA ឬកម្មវិធី Bakong ណាមួយ។ ការកក់បញ្ជាក់ដោយខ្លួនឯងពេលទូទាត់ជោគជ័យ។",
   },
   {
     icon: "ticket",
-    en: "A QR ticket at the door",
-    km: "សំបុត្រ QR នៅទ្វារចូល",
+    en: "One code at the door",
+    km: "កូដមួយនៅទ្វារចូល",
     bodyEn:
-      "Every booking carries its own code. Gate staff scan it and it checks in on the spot.",
+      "Every booking carries its own QR. Staff scan it at the gate and it checks in on the spot.",
     bodyKm:
-      "រាល់ការកក់មានកូដរៀងៗខ្លួន។ បុគ្គលិកនៅទ្វារស្កេន ហើយចូលបានភ្លាម។",
+      "រាល់ការកក់មាន QR រៀងៗខ្លួន។ បុគ្គលិកស្កេននៅទ្វារ ហើយចូលបានភ្លាម។",
   },
   {
     icon: "seat",
-    en: "Reserved seats or zoned entry",
-    km: "កៅអីកក់ទុក ឬចូលតាមតំបន់",
+    en: "Pick your exact seat",
+    km: "ជ្រើសកៅអីពិតប្រាកដ",
     bodyEn:
-      "Pick an exact seat from the map, or buy into a zone. Each event decides which it sells.",
+      "Choose a seat from the map, or buy into a zone. Each event decides which it sells.",
     bodyKm:
-      "ជ្រើសកៅអីពិតប្រាកដពីផែនទី ឬទិញតាមតំបន់។ ព្រឹត្តិការណ៍នីមួយៗសម្រេចដោយខ្លួនឯង។",
+      "ជ្រើសកៅអីពីផែនទី ឬទិញតាមតំបន់។ ព្រឹត្តិការណ៍នីមួយៗសម្រេចដោយខ្លួនឯង។",
   },
   {
-    icon: "telegram",
-    en: "Told on Telegram",
-    km: "ដំណឹងតាម Telegram",
+    icon: "clock",
+    en: "Your seats are held",
+    km: "កៅអីត្រូវបានទុកឱ្យ",
     bodyEn:
-      "Organisers connect a Telegram account and hear about each sale there as well as in the inbox here.",
+      "What you picked is held while you pay, with the time left on screen, so nobody takes it mid-checkout.",
     bodyKm:
-      "អ្នករៀបចំភ្ជាប់គណនី Telegram ហើយទទួលដំណឹងរាល់ការលក់នៅទីនោះផងដែរ។",
+      "អ្វីដែលអ្នកជ្រើសត្រូវទុកឱ្យពេលអ្នកទូទាត់ ដោយបង្ហាញពេលវេលានៅសល់។",
   },
 ];
 
-function HowItWorks({ locale }) {
-  return (
-    /* The heading sits BESIDE the items, not on top of them.
-     *
-     * Heading, then a lede, then four equal cards in a row is the shape of
-     * every template on the internet, and it is that way because it needs no
-     * decisions - which is also why it reads as though none were made. Four
-     * boxes of identical weight give the eye nowhere to land first, so the
-     * section has no entry point and every item competes with the other three.
-     *
-     * Splitting it asymmetrically fixes both. The heading becomes a column of
-     * its own with real size, which is the thing you read first; the items sit
-     * beside it as a plain two-by-two list. They carry no borders of their own
-     * because the band already is the container - boxing them inside it would
-     * be a second edge drawn around things that are already enclosed.
-     */
-    <section className="home-band">
-      <div className="home-band-inner home-how">
-        <div className="home-how-lede">
-          <h2>
-            {locale === "km"
-              ? "សំបុត្ររបស់អ្នក ពីការទូទាត់ដល់ទ្វារចូល"
-              : "Your ticket, from payment to the gate"}
-          </h2>
-          <p>
-            {locale === "km"
-              ? "ទូទាត់ដោយកម្មវិធីធនាគារដែលអ្នកមានស្រាប់ ហើយកូដ QR សម្រាប់ចូលមកដល់ពេលការទូទាត់ជោគជ័យ។"
-              : "Pay with the banking app you already have, and the code that gets you in arrives as soon as the payment clears."}
-          </p>
-        </div>
+const FOR_ORGANIZERS = [
+  {
+    icon: "calendar",
+    en: "List an event",
+    km: "ចុះបញ្ជីព្រឹត្តិការណ៍",
+    bodyEn:
+      "Create it, set your zones or seats and your prices, then send it for review.",
+    bodyKm:
+      "បង្កើត កំណត់តំបន់ ឬកៅអី និងតម្លៃ រួចផ្ញើសម្រាប់ពិនិត្យ។",
+  },
+  {
+    icon: "grid",
+    en: "Draw your own seat map",
+    km: "គូសផែនទីកៅអីរបស់អ្នក",
+    bodyEn:
+      "Lay out rows and seats in the editor and sell them one by one, or keep it to standing zones.",
+    bodyKm:
+      "រៀបជួរ និងកៅអីក្នុងកម្មវិធីកែ ហើយលក់ម្តងមួយៗ ឬទុកជាតំបន់ឈរ។",
+  },
+  {
+    icon: "scan",
+    en: "Check people in",
+    km: "ពិនិត្យអ្នកចូល",
+    bodyEn:
+      "Open the scanner on a phone at the gate. It runs in the browser, so there is nothing to install.",
+    bodyKm:
+      "បើកម៉ាស៊ីនស្កេននៅទ្វារ។ ដំណើរការក្នុងកម្មវិធីរុករក មិនចាំបាច់ដំឡើងទេ។",
+  },
+  {
+    icon: "bank",
+    en: "Follow the money",
+    km: "តាមដានប្រាក់",
+    bodyEn:
+      "Watch sales as they land, request a payout when the event is done, and keep the invoice.",
+    bodyKm:
+      "មើលការលក់ពេលកើតឡើង ស្នើសុំការទូទាត់ពេលព្រឹត្តិការណ៍ចប់ និងរក្សាវិក្កយបត្រ។",
+  },
+];
 
-        <ul className="home-how-list">
-          {HOW_IT_WORKS.map((f) => (
-            <li key={f.icon}>
-              <Icon name={f.icon} size={17} />
-              <h3>{locale === "km" ? f.km : f.en}</h3>
-              <p>{locale === "km" ? f.bodyKm : f.bodyEn}</p>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </section>
+function FactGrid({ items, locale }) {
+  return (
+    <ul className="home-facts">
+      {items.map((f) => (
+        <li key={f.icon}>
+          <Icon name={f.icon} size={17} />
+          <h3>{locale === "km" ? f.km : f.en}</h3>
+          <p>{locale === "km" ? f.bodyKm : f.bodyEn}</p>
+        </li>
+      ))}
+    </ul>
   );
 }
 
 function OrganizerCta({ locale }) {
   return (
-    <section className="home-strip">
-      <div className="card home-cta">
-        <div className="card-body">
-          <div>
-            <h2>
-              {locale === "km"
-                ? "រៀបចំព្រឹត្តិការណ៍នៅកម្ពុជាមែនទេ?"
-                : "Running an event in Cambodia?"}
-            </h2>
-            <p>
-              {locale === "km"
-                ? "ចុះបញ្ជីកម្មវិធីរបស់អ្នក លក់កៅអីកក់ទុក ឬសំបុត្រទូទៅ ហើយពិនិត្យអ្នកចូលនៅទ្វារពីកម្មវិធីរុករកលើទូរស័ព្ទណាក៏បាន។"
-                : "List your show, sell reserved seats or general admission, and check people in at the door from any phone browser."}
-            </p>
-          </div>
+    <div className="card home-cta">
+      <div className="card-body">
+        <div>
+          <h2>
+            {locale === "km"
+              ? "រៀបចំព្រឹត្តិការណ៍នៅកម្ពុជាមែនទេ?"
+              : "Running an event in Cambodia?"}
+          </h2>
+          <p>
+            {locale === "km"
+              ? "ចុះបញ្ជីកម្មវិធីរបស់អ្នក លក់កៅអីកក់ទុក ឬសំបុត្រទូទៅ ហើយពិនិត្យអ្នកចូលនៅទ្វារពីកម្មវិធីរុករកលើទូរស័ព្ទណាក៏បាន។"
+              : "List your show, sell reserved seats or general admission, and check people in at the door from any phone browser."}
+          </p>
+        </div>
 
-          <div className="home-cta-actions">
-            <Link className="btn btn-primary" to="/become-an-organizer">
-              {locale === "km" ? "ក្លាយជាអ្នករៀបចំ" : "Become an organizer"}
-              <Icon name="arrowRight" size={15} />
-            </Link>
-            <Link className="btn btn-outline" to="/about">
-              {locale === "km" ? "មើលរបៀបដំណើរការ" : "See how it works"}
-            </Link>
-          </div>
+        <div className="home-cta-actions">
+          <Link className="btn btn-primary" to="/become-an-organizer">
+            {locale === "km" ? "ក្លាយជាអ្នករៀបចំ" : "Become an organizer"}
+            <Icon name="arrowRight" size={15} />
+          </Link>
+          <Link className="btn btn-outline" to="/about">
+            {locale === "km" ? "មើលរបៀបដំណើរការ" : "See how it works"}
+          </Link>
         </div>
       </div>
-    </section>
+    </div>
   );
 }
 
@@ -614,16 +626,27 @@ export default function HomePage() {
           )}
         </section>
 
-      </div>
 
-      <HowItWorks locale={locale} />
+        <section className="home-strip">
+          <div className="section-head">
+            <h2>{locale === "km" ? "ការទិញសំបុត្រ" : "Buying a ticket"}</h2>
+            <Link to="/events" className="with-icon">
+              {t("viewAll")}
+              <Icon name="arrowRight" size={15} />
+            </Link>
+          </div>
+          <FactGrid items={FOR_BUYERS} locale={locale} />
+        </section>
 
-      {/* The CTA stays on the page's own ground. The footer below it is
-          already a band, and a second one butted against it leaves two
-          coloured strips with a muddy seam between them - this way the CTA
-          is the breather that separates them. */}
-      <div className="container">
-        <OrganizerCta locale={locale} />
+        <section className="home-strip">
+          <div className="section-head">
+            <h2>
+              {locale === "km" ? "ការរៀបចំព្រឹត្តិការណ៍" : "Running an event"}
+            </h2>
+          </div>
+          <FactGrid items={FOR_ORGANIZERS} locale={locale} />
+          <OrganizerCta locale={locale} />
+        </section>
       </div>
     </>
   );
