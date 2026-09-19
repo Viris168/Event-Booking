@@ -510,8 +510,14 @@
   /* The asymmetric split. 0.85fr against 1.5fr rather than two equal halves:
      equal columns read as a comparison of two things, and this is one thing
      introducing four others. Spacing is on an 8px scale, as the rest is. */
+  /* items-start, not items-center. Centred, the heading floats against a
+     taller right column and shares an edge with nothing - measured 72px below
+     the first card's top, which is close enough to alignment to look like a
+     mistake and far enough to be one. Started, the heading's top and the first
+     card's top are the same line, which is the only thing holding the two
+     columns together. */
   .home-how {
-    @apply grid items-center gap-x-12 gap-y-8;
+    @apply grid items-start gap-x-12 gap-y-8;
     grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.5fr);
   }
   .home-how-lede h2 {
