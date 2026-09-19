@@ -376,13 +376,13 @@ export default function OrganizerDashboardPage() {
                   ].map(([key, label, n]) => (
                     <button
                       key={key}
+                      type="button"
                       role="tab"
                       aria-selected={scope === key}
-                      className={scope === key ? "active" : ""}
+                      className={`scope-tab${scope === key ? " on" : ""}`}
                       onClick={() => setScope(key)}
                     >
-                      {label}
-                      <span className="count-pill">{n}</span>
+                      {label} <span className="scope-tab-n">{n}</span>
                     </button>
                   ))}
                 </div>
