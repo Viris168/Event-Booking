@@ -471,6 +471,17 @@
   .home-strip {
     @apply mt-10;
   }
+
+  /* The band. Full width with its own ground, content centred on the same
+     shell everything else uses - the shape .footer and .hero-base are built
+     from. It carries its own vertical padding rather than .home-strip's top
+     margin, because a band's space belongs inside it. */
+  .home-band {
+    @apply border-y border-line bg-surface-2 py-11;
+  }
+  .home-band-inner {
+    @apply mx-auto max-w-shell px-page;
+  }
   .home-strip-lede {
     @apply mb-[1.1rem] max-w-[62ch] text-[1rem] leading-relaxed text-muted;
   }
@@ -536,10 +547,21 @@
      The outline is why these are not simply filled circles: --color-page and
      --color-surface are two shades apart in light mode, and with no arc the
      notch all but vanishes there. */
+  /* --notch-bg is what the card is sitting ON, and the hole shows it through.
+     Declared here and overridden by any ground the ticket is placed on: inside
+     .home-band the page colour would be a shade nobody can see from there, and
+     the holes would stop being holes and go back to being dots. */
+  .home-feature {
+    --notch-bg: var(--color-page);
+  }
+  .home-band .home-feature {
+    --notch-bg: var(--color-surface-2);
+  }
   .home-feature::before,
   .home-feature::after {
     content: '';
-    @apply pointer-events-none absolute size-4 rounded-full border border-line bg-page;
+    @apply pointer-events-none absolute size-4 rounded-full border border-line;
+    background: var(--notch-bg);
     top: calc(3.1rem - 8px);
   }
   .home-feature::before {

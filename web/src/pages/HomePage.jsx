@@ -329,7 +329,12 @@ const HOW_IT_WORKS = [
 
 function HowItWorks({ locale }) {
   return (
-    <section className="home-strip">
+    /* A band rather than another block in the column: this section is the one
+       place the page explains itself, and changing the ground under it says so
+       once, at the size of the whole section, instead of four times over on
+       four cards. Outer/inner is the split .footer and .hero-base already use. */
+    <section className="home-band">
+      <div className="home-band-inner">
       <div className="section-head">
         <h2>
           {locale === "km"
@@ -359,6 +364,7 @@ function HowItWorks({ locale }) {
             </div>
           </article>
         ))}
+      </div>
       </div>
     </section>
   );
@@ -610,7 +616,15 @@ export default function HomePage() {
           )}
         </section>
 
-        <HowItWorks locale={locale} />
+      </div>
+
+      <HowItWorks locale={locale} />
+
+      {/* The CTA stays on the page's own ground. The footer below it is
+          already a band, and a second one butted against it leaves two
+          coloured strips with a muddy seam between them - this way the CTA
+          is the breather that separates them. */}
+      <div className="container">
         <OrganizerCta locale={locale} />
       </div>
     </>
