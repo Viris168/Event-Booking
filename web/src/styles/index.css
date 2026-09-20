@@ -2037,7 +2037,6 @@
     @apply mt-7;
   }
 
-
   /* ------------------------------------------------------------ search bar */
   /* One pill: query · province · submit, split by hairlines rather than boxes. */
   .searchbar {
@@ -2455,10 +2454,33 @@
     @apply flex h-full flex-col overflow-hidden rounded-card border border-line bg-surface shadow-card;
     transition:
       transform 0.16s ease,
-      box-shadow 0.16s ease;
+      box-shadow 0.16s ease,
+      border-color 0.16s ease;
   }
   .ev-card:hover {
     @apply -translate-y-[3px] no-underline shadow-float;
+  }
+  .ev-card.is-pinned {
+    border-color: var(--color-brand-500);
+    box-shadow:
+      0 0 0 1.5px var(--color-brand-500),
+      var(--shadow-card);
+  }
+  .ev-card.is-pinned:hover {
+    box-shadow:
+      0 0 0 2px var(--color-brand-500),
+      var(--shadow-float);
+  }
+  [data-theme="dark"] .ev-card.is-pinned {
+    border-color: var(--color-brand-500);
+    box-shadow:
+      0 0 0 1.5px var(--color-brand-500),
+      0 4px 20px rgba(0, 0, 0, 0.45);
+  }
+  [data-theme="dark"] .ev-card.is-pinned:hover {
+    box-shadow:
+      0 0 0 2px var(--color-brand-500),
+      0 8px 24px rgba(0, 0, 0, 0.55);
   }
   .ev-media {
     @apply relative isolate grid aspect-video place-items-center overflow-hidden text-white/95;
@@ -2656,16 +2678,28 @@
     @apply border-brand-500 text-brand-600;
   }
   .ev-pin.is-pinned {
-    @apply border-orange-500 bg-orange-500 text-white;
+    @apply border-brand-600 bg-brand-600 text-white shadow-sm;
     animation: ev-pin-pop 0.25s ease-out;
   }
   .ev-pin.is-pinned:hover {
-    @apply text-white;
+    @apply border-brand-700 bg-brand-700 text-white;
+  }
+  [data-theme="dark"] .ev-pin.is-pinned {
+    @apply border-brand-500 bg-brand-500 text-white;
+  }
+  [data-theme="dark"] .ev-pin.is-pinned:hover {
+    @apply border-brand-600 bg-brand-600 text-white;
   }
   @keyframes ev-pin-pop {
-    0%   { transform: scale(1); }
-    50%  { transform: scale(1.22); }
-    100% { transform: scale(1); }
+    0% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.22);
+    }
+    100% {
+      transform: scale(1);
+    }
   }
   /* Sold out stays legible and clickable (the page still explains itself),
      just visibly spent next to cards you can still buy. */
@@ -7893,7 +7927,7 @@ html[lang="km"] .contact-card h2 {
 }
 /* The SVG pin needle that appears when a marker is pinned (clicked). */
 .evmap-needle {
-  color: #f97316;
+  color: var(--color-brand-600);
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.32));
   flex-shrink: 0;
 }
@@ -7922,22 +7956,44 @@ html[lang="km"] .contact-card h2 {
     0 2px 6px rgba(0, 0, 0, 0.18);
   transform: scale(1.08);
 }
-/* Pinned (clicked) marker: solid orange fill so the user knows it's locked.
+/* Pinned (clicked) marker: solid brand fill so the user knows it's locked.
    Overrides is-active when both apply (hover on top of pinned). */
 .evmap-pin.is-pinned {
-  background: #f97316;
+  background: var(--color-brand-600);
   color: #fff;
-  border-color: #ea580c;
+  border-color: var(--color-brand-700);
   box-shadow:
-    0 0 0 3px rgba(249, 115, 22, 0.3),
+    0 0 0 3px rgba(22, 116, 74, 0.32),
     0 3px 8px rgba(0, 0, 0, 0.28);
   transform: scale(1.12);
   animation: evmap-pin-pulse 0.3s ease-out;
 }
 @keyframes evmap-pin-pulse {
-  0%   { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.4), 0 3px 8px rgba(0,0,0,0.28); }
-  60%  { box-shadow: 0 0 0 8px rgba(249, 115, 22, 0), 0 3px 8px rgba(0,0,0,0.28); }
-  100% { box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.3), 0 3px 8px rgba(0,0,0,0.28); }
+  0% {
+    box-shadow:
+      0 0 0 0 rgba(22, 116, 74, 0.5),
+      0 3px 8px rgba(0, 0, 0, 0.28);
+  }
+  60% {
+    box-shadow:
+      0 0 0 8px rgba(22, 116, 74, 0),
+      0 3px 8px rgba(0, 0, 0, 0.28);
+  }
+  100% {
+    box-shadow:
+      0 0 0 3px rgba(22, 116, 74, 0.32),
+      0 3px 8px rgba(0, 0, 0, 0.28);
+  }
+}
+[data-theme="dark"] .evmap-needle {
+  color: #4ade80;
+}
+[data-theme="dark"] .evmap-pin.is-pinned {
+  background: var(--color-brand-600);
+  border-color: var(--color-brand-500);
+  box-shadow:
+    0 0 0 3px rgba(74, 222, 128, 0.3),
+    0 3px 8px rgba(0, 0, 0, 0.4);
 }
 
 /* Leaflet's chrome on this project's surfaces. Compound selector, not
@@ -7973,7 +8029,11 @@ html[lang="km"] .contact-card h2 {
 .evmap-pop-detail {
   @apply inline-flex items-center justify-center gap-[0.35rem] rounded-full px-[0.85rem] py-[0.3rem]
     text-[0.75rem] font-semibold no-underline overflow-hidden relative cursor-pointer select-none;
-  background: linear-gradient(135deg, var(--color-brand-600), var(--color-brand-700)) !important;
+  background: linear-gradient(
+    135deg,
+    var(--color-brand-600),
+    var(--color-brand-700)
+  ) !important;
   color: #ffffff !important;
   box-shadow: 0 2px 6px -1px rgba(18, 97, 60, 0.4);
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
@@ -7983,18 +8043,29 @@ html[lang="km"] .contact-card h2 {
 
 .leaflet-popup-content a.evmap-pop-detail::before,
 .evmap-pop-detail::before {
-  content: '';
+  content: "";
   position: absolute;
-  top: 0; left: -100%;
-  width: 100%; height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.25),
+    transparent
+  );
   transition: left 0.5s ease-out;
 }
 
 .leaflet-popup-content a.evmap-pop-detail:hover,
 .events-map .evmap-pop-detail:hover,
 .evmap-pop-detail:hover {
-  background: linear-gradient(135deg, var(--color-brand-500), var(--color-brand-600)) !important;
+  background: linear-gradient(
+    135deg,
+    var(--color-brand-500),
+    var(--color-brand-600)
+  ) !important;
   color: #ffffff !important;
   box-shadow: 0 5px 14px -2px rgba(18, 97, 60, 0.5);
   transform: translateY(-1.5px) scale(1.03);

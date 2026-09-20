@@ -205,6 +205,17 @@ export default function EventsPage() {
     return () => clearTimeout(timer);
   }, [priceDraft]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // When an event is pinned (from map or button), smoothly scroll the card into view
+  useEffect(() => {
+    if (!pinnedId) return;
+    const card = listRef.current?.querySelector(
+      `[data-event-id="${pinnedId}"]`,
+    );
+    if (card) {
+      card.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }, [pinnedId]);
+
   useEffect(() => {
     let active = true;
     setLoading(true);
@@ -549,7 +560,11 @@ export default function EventsPage() {
                     event={e}
                     data-event-id={e.id}
                     pinned={String(pinnedId) === String(e.id)}
-                    onPin={() => setPinnedId((prev) => (String(prev) === String(e.id) ? null : e.id))}
+                    onPin={() =>
+                      setPinnedId((prev) =>
+                        String(prev) === String(e.id) ? null : e.id,
+                      )
+                    }
                     onMouseEnter={() => setHoveredId(e.id)}
                     onMouseLeave={() => setHoveredId(null)}
                   />
@@ -569,7 +584,9 @@ export default function EventsPage() {
                     events={apiResults}
                     hoveredId={hoveredId}
                     pinnedId={pinnedId}
-                    onSelect={(id) => setPinnedId((prev) => (prev === id ? null : id))}
+                    onSelect={(id) =>
+                      setPinnedId((prev) => (prev === id ? null : id))
+                    }
                     locale={locale}
                   />
                 </Suspense>
