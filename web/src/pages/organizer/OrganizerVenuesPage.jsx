@@ -188,8 +188,7 @@ export default function OrganizerVenuesPage() {
   // Venues the catalogue map could not plot.
   const unpinned = venues.filter((v) => v.lat == null || v.lng == null).length;
 
-  async function save(e) {
-    e.preventDefault();
+  async function save() {
     if (busy) return;
     const next = {};
     if (!form.name_en.trim()) next.name_en = "Required";
