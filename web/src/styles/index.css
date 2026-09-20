@@ -8217,6 +8217,16 @@ html[lang="km"] .contact-card h2 {
     0 3px 8px rgba(0, 0, 0, 0.4);
 }
 
+/*
+ * Map Dark Theme: automatically switches with the web theme ([data-theme="dark"]).
+ * Inverts and hue-rotates the raster tile pane so land surfaces turn to deep midnight slate
+ * and water to night blue, while the emerald pins and price badges stay 100% vibrant.
+ */
+[data-theme="dark"] .events-map .leaflet-tile-pane,
+[data-theme="dark"] .evloc-map-canvas .leaflet-tile-pane {
+  filter: invert(95%) hue-rotate(180deg) brightness(1.18) contrast(78%);
+}
+
 /* Leaflet's chrome on this project's surfaces. Compound selector, not
    descendant: Leaflet puts .leaflet-container on the host element itself. */
 .events-map.leaflet-container {
@@ -8232,6 +8242,43 @@ html[lang="km"] .contact-card h2 {
 .events-map.leaflet-container .leaflet-popup-content-wrapper,
 .events-map.leaflet-container .leaflet-popup-tip {
   @apply border border-line bg-surface text-ink;
+}
+
+[data-theme="dark"] .events-map.leaflet-container,
+[data-theme="dark"] .evloc-map-canvas.leaflet-container {
+  background: #23272f;
+}
+[data-theme="dark"] .events-map.leaflet-container .leaflet-bar a,
+[data-theme="dark"] .events-map.leaflet-container .leaflet-control-attribution,
+[data-theme="dark"] .evloc-map-canvas.leaflet-container .leaflet-bar a,
+[data-theme="dark"]
+  .evloc-map-canvas.leaflet-container
+  .leaflet-control-attribution {
+  background: #2d323b;
+  color: #f3f4f6;
+  border-color: rgba(255, 255, 255, 0.18);
+}
+[data-theme="dark"]
+  .events-map.leaflet-container
+  .leaflet-control-attribution
+  a,
+[data-theme="dark"]
+  .evloc-map-canvas.leaflet-container
+  .leaflet-control-attribution
+  a {
+  color: #a0aec0;
+}
+[data-theme="dark"]
+  .events-map.leaflet-container
+  .leaflet-popup-content-wrapper,
+[data-theme="dark"] .events-map.leaflet-container .leaflet-popup-tip,
+[data-theme="dark"]
+  .evloc-map-canvas.leaflet-container
+  .leaflet-popup-content-wrapper,
+[data-theme="dark"] .evloc-map-canvas.leaflet-container .leaflet-popup-tip {
+  background: #23272f;
+  color: #f9fafb;
+  border-color: rgba(255, 255, 255, 0.18);
 }
 .evmap-pop-title {
   @apply font-bold;
