@@ -2927,15 +2927,18 @@
   .bk-pay {
     @apply mt-[0.15rem];
   }
-  /* Closed bookings stay readable — they are the receipt archive — but drain
+  /* Closed and used bookings stay readable — they are the receipt archive — but drain
      of colour so a live booking is never lost among them. */
-  .bk-row.is-closed {
-    @apply bg-transparent;
+  .bk-row.is-closed,
+  .bk-row.is-used {
+    @apply bg-transparent opacity-80;
   }
-  .bk-row.is-closed .bk-art {
-    filter: saturate(0.3) opacity(0.75);
+  .bk-row.is-closed .bk-art,
+  .bk-row.is-used .bk-art {
+    filter: saturate(0.25) opacity(0.75);
   }
-  .bk-row.is-closed .bk-title {
+  .bk-row.is-closed .bk-title,
+  .bk-row.is-used .bk-title {
     @apply font-semibold text-muted;
   }
   /* The one state that costs the buyer money if ignored gets a live edge.
@@ -2943,10 +2946,6 @@
   .bk-row.is-payable {
     @apply border-warning/60;
     box-shadow: inset 3px 0 0 0 var(--color-warning);
-  }
-  .bk-row.is-used {
-    @apply border-emerald-500/35;
-    box-shadow: inset 3px 0 0 0 var(--color-success);
   }
 
   .bk-group + .bk-group {
@@ -2990,25 +2989,36 @@
 
   /* --------------------------------------------------------- booking grid card */
   .bk-card {
-    @apply relative flex flex-col overflow-hidden rounded-card border border-line bg-surface text-inherit shadow-card transition-all duration-200;
+    @apply relative flex flex-col overflow-hidden rounded-2xl border border-line bg-surface text-inherit shadow-card transition-all duration-200;
   }
   .bk-card:hover {
     @apply -translate-y-1.5 border-brand-500 no-underline shadow-float;
   }
-  .bk-card.is-closed {
-    @apply bg-surface/60 opacity-80;
+  .bk-card.is-closed,
+  .bk-card.is-used {
+    @apply bg-surface/75 opacity-80 border-line;
   }
-  .bk-card.is-closed .bk-card-media {
-    filter: saturate(0.25) opacity(0.8);
+  .bk-card.is-closed:hover,
+  .bk-card.is-used:hover {
+    @apply border-line-2 opacity-95;
+  }
+  .bk-card.is-closed .bk-card-media,
+  .bk-card.is-used .bk-card-media {
+    filter: saturate(0.25) opacity(0.85);
+  }
+  .bk-card.is-closed .bk-card-date span,
+  .bk-card.is-used .bk-card-date span {
+    @apply bg-cancelled text-white;
+  }
+  .bk-card.is-closed:hover .bk-notch path,
+  .bk-card.is-used:hover .bk-notch path {
+    stroke: var(--color-line-2);
   }
   .bk-card.is-payable {
     @apply border-warning;
     box-shadow:
       0 0 0 1px var(--color-warning),
       var(--shadow-card);
-  }
-  .bk-card.is-used {
-    @apply border-emerald-500/35;
   }
   .bk-card-media {
     @apply relative isolate flex aspect-[16/10] w-full items-center justify-center overflow-hidden bg-surface-2 text-white/95;
@@ -3017,15 +3027,15 @@
     @apply absolute inset-0 h-full w-full object-cover transition-transform duration-500 ease-out;
   }
   .bk-card:hover .bk-card-media .ev-photo {
-    @apply scale-108;
+    @apply scale-105;
   }
   .bk-card-media-scrim {
     @apply pointer-events-none absolute inset-0 z-[1];
     background: linear-gradient(
       180deg,
-      rgba(0, 0, 0, 0.5) 0%,
-      rgba(0, 0, 0, 0) 45%,
-      rgba(0, 0, 0, 0.6) 100%
+      rgba(0, 0, 0, 0.55) 0%,
+      rgba(0, 0, 0, 0.05) 45%,
+      rgba(0, 0, 0, 0.65) 100%
     );
   }
   .bk-card-badges {
@@ -3035,56 +3045,93 @@
     @apply flex items-center gap-1.5 min-w-0;
   }
   .bk-card-ref {
-    @apply rounded-full bg-black/65 px-2 py-0.5 font-mono text-[0.68rem] font-bold text-white shadow-sm backdrop-blur-md;
+    @apply inline-flex items-center gap-1 rounded-full bg-black/75 px-2 py-0.5 font-mono text-[0.68rem] font-bold text-white shadow-sm border border-white/10;
   }
   .bk-card-date {
-    @apply absolute bottom-2.5 left-2.5 z-[2] flex min-w-[38px] flex-col items-center rounded-[8px] bg-white/[0.96]
-      px-1.5 py-0.5 text-center text-[0.65rem] font-extrabold leading-[1.15] tracking-[0.04em] text-ink shadow-card;
+    @apply absolute bottom-2.5 left-2.5 z-[2] flex min-w-[40px] flex-col items-center rounded-lg bg-surface overflow-hidden
+      text-center text-ink shadow-card border border-line/40;
+  }
+  .bk-card-date span {
+    @apply w-full bg-brand-600 text-white px-1.5 py-0.5 text-[0.62rem] font-bold uppercase tracking-wider;
   }
   .bk-card-date b {
-    @apply text-[0.98rem] tracking-[-0.01em];
+    @apply px-1.5 py-0.5 text-[0.98rem] font-black text-ink tracking-tight;
   }
   [data-theme="dark"] .bk-card-date {
     @apply border border-line-2 bg-surface text-ink;
   }
+  [data-theme="dark"] .bk-card-date span {
+    @apply bg-brand-700 text-white;
+  }
   .bk-card-body {
-    @apply flex flex-1 flex-col gap-2 p-3.5 pb-2;
+    @apply flex flex-1 flex-col gap-2 p-4 pb-2.5;
   }
   .bk-card-title {
-    @apply line-clamp-2 text-[0.95rem] font-bold leading-snug text-ink;
-    min-height: 2.6em;
+    @apply line-clamp-2 text-[1.02rem] font-bold leading-snug text-ink m-0;
+    min-height: 2.5em;
   }
   .bk-card-meta {
-    @apply mt-auto flex flex-col gap-1 text-[0.8rem] text-muted;
+    @apply mt-auto flex flex-col gap-1.5 text-[0.82rem] text-muted pt-1;
   }
+  .bk-card-meta .meta-row {
+    @apply flex items-center gap-1.5;
+  }
+
+  /* Perforated ticket tear line with SVG cutouts */
   .bk-card-divider {
-    @apply relative my-0.5 flex h-4 items-center overflow-hidden;
-    margin-left: -1px;
-    margin-right: -1px;
+    @apply relative flex h-6 w-full items-center my-0 select-none overflow-visible;
   }
   .bk-dashed-line {
-    @apply mx-3.5 flex-1 border-b border-dashed border-line-2;
+    @apply mx-3.5 flex-1 border-b-2 border-dashed border-line-2;
   }
   .bk-notch {
-    @apply absolute top-1/2 size-3.5 -translate-y-1/2 rounded-full border border-line bg-page;
+    @apply absolute top-1/2 -translate-y-1/2 z-10 pointer-events-none;
+  }
+  .bk-notch path {
+    fill: var(--color-page);
+    stroke: var(--color-line);
+    stroke-width: 1;
+    transition: stroke 0.2s ease;
+  }
+  .bk-card:hover .bk-notch path {
+    stroke: var(--color-brand-500);
   }
   .bk-notch-left {
-    left: -8px;
+    left: -0.5px;
   }
   .bk-notch-right {
-    right: -8px;
+    right: -0.5px;
   }
+
+  /* Stub footer */
   .bk-card-foot {
-    @apply flex items-end justify-between p-3.5 pt-1;
+    @apply flex items-end justify-between p-4 pt-1.5 bg-surface-2/35;
+  }
+  .bk-card-foot-price {
+    @apply min-w-0;
   }
   .bk-card-booked {
     @apply mt-0.5 block text-[0.72rem] text-muted;
   }
-  .bk-card-action {
-    @apply inline-flex items-center gap-1 text-[0.82rem] font-bold text-brand-500 transition-colors;
+  .bk-ticket-btn {
+    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-link bg-brand-500/10 border border-brand-500/20 transition-all duration-150;
   }
-  .bk-card:hover .bk-card-action {
-    @apply text-link;
+  .bk-ticket-btn-arrow {
+    @apply transition-transform duration-150;
+  }
+  .bk-card:hover .bk-ticket-btn:not(.is-used) {
+    @apply bg-brand-600 text-white border-brand-600 shadow-sm;
+  }
+  .bk-card:hover .bk-ticket-btn:not(.is-used) .bk-ticket-btn-arrow {
+    @apply translate-x-0.5;
+  }
+  .bk-ticket-btn.is-used,
+  .bk-card.is-closed .bk-ticket-btn {
+    @apply text-muted bg-surface-2 border-line;
+  }
+  .bk-card:hover .bk-ticket-btn.is-used,
+  .bk-card.is-closed:hover .bk-ticket-btn {
+    @apply bg-surface-2 text-ink border-line-2 shadow-none;
   }
 
   /* The ABA mark is already a bordered lozenge; the generic slot chrome would
@@ -3233,7 +3280,7 @@
     @apply bg-cancelled-soft text-cancelled;
   }
   .badge-used {
-    @apply inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[0.7rem] font-semibold text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border dark:border-emerald-800/60;
+    @apply inline-flex items-center gap-1 rounded-full bg-cancelled-soft text-cancelled px-2 py-0.5 text-[0.7rem] font-semibold border border-cancelled/25;
   }
   .badge-partial {
     @apply inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[0.7rem] font-semibold text-amber-800 dark:bg-amber-950/70 dark:text-amber-300 dark:border dark:border-amber-800/60;

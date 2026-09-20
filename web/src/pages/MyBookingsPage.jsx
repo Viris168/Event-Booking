@@ -91,18 +91,22 @@ function Row({ booking, event, ticketCount }) {
 
       <span className="bk-main">
         <span className="row row-tight">
-          <Badge status={booking.state} />
           {allUsed ? (
             <span className="badge badge-used">
               <Icon name="checkCircle" size={11} />
               {locale === "km" ? "បានប្រើរួច" : "Used"}
             </span>
-          ) : used > 0 ? (
-            <span className="badge badge-partial">
-              <Icon name="checkCircle" size={11} />
-              {used}/{total} {locale === "km" ? "បានប្រើ" : "used"}
-            </span>
-          ) : null}
+          ) : (
+            <>
+              <Badge status={booking.state} />
+              {used > 0 ? (
+                <span className="badge badge-partial">
+                  <Icon name="checkCircle" size={11} />
+                  {used}/{total} {locale === "km" ? "បានប្រើ" : "used"}
+                </span>
+              ) : null}
+            </>
+          )}
           <span className="mono small muted">{booking.booking_ref}</span>
         </span>
 
@@ -121,7 +125,7 @@ function Row({ booking, event, ticketCount }) {
             <Icon
               name={allUsed ? "checkCircle" : "ticket"}
               size={14}
-              className={allUsed ? "text-success" : ""}
+              className={allUsed ? "text-muted" : ""}
             />
             <span>
               {units}{" "}
@@ -129,7 +133,7 @@ function Row({ booking, event, ticketCount }) {
               {allUsed ? (
                 <>
                   {" · "}
-                  <span className="font-semibold text-success">
+                  <span className="font-semibold text-muted">
                     {locale === "km" ? "បានប្រើទាំងអស់" : "All used"}
                   </span>
                 </>
@@ -190,6 +194,12 @@ function GridCard({ booking, event, ticketCount }) {
     : null;
   const day = startDate ? startDate.getDate() : null;
 
+  const venue = event?.venue;
+  const venueName =
+    locale === "km"
+      ? (venue?.nameKm ?? venue?.name_km)
+      : (venue?.nameEn ?? venue?.name_en);
+
   return (
     <Link
       to={`/bookings/${booking.id}`}
@@ -220,20 +230,27 @@ function GridCard({ booking, event, ticketCount }) {
         <div className="bk-card-media-scrim" />
         <div className="bk-card-badges">
           <div className="bk-card-badges-left">
-            <Badge status={booking.state} />
             {allUsed ? (
               <span className="badge badge-used">
                 <Icon name="checkCircle" size={11} />
                 {locale === "km" ? "បានប្រើរួច" : "Used"}
               </span>
-            ) : used > 0 ? (
-              <span className="badge badge-partial">
-                <Icon name="checkCircle" size={11} />
-                {used}/{total} {locale === "km" ? "បានប្រើ" : "used"}
-              </span>
-            ) : null}
+            ) : (
+              <>
+                <Badge status={booking.state} />
+                {used > 0 ? (
+                  <span className="badge badge-partial">
+                    <Icon name="checkCircle" size={11} />
+                    {used}/{total} {locale === "km" ? "បានប្រើ" : "used"}
+                  </span>
+                ) : null}
+              </>
+            )}
           </div>
-          <span className="bk-card-ref">{booking.booking_ref}</span>
+          <span className="bk-card-ref">
+            <Icon name="ticket" size={11} />
+            <span>{booking.booking_ref}</span>
+          </span>
         </div>
 
         {startDate && (
@@ -251,14 +268,20 @@ function GridCard({ booking, event, ticketCount }) {
 
         <div className="bk-card-meta">
           <span className="meta-row">
-            <Icon name="clock" size={13} />
+            <Icon name="calendar" size={13} />
             <span>{event?.starts_at ? dateTime(event.starts_at) : "—"}</span>
           </span>
+          {venueName && (
+            <span className="meta-row">
+              <Icon name="mapPin" size={13} />
+              <span className="truncate">{venueName}</span>
+            </span>
+          )}
           <span className="meta-row">
             <Icon
               name={allUsed ? "checkCircle" : "ticket"}
               size={13}
-              className={allUsed ? "text-success" : ""}
+              className={allUsed ? "text-muted" : ""}
             />
             <span>
               {units}{" "}
@@ -266,7 +289,7 @@ function GridCard({ booking, event, ticketCount }) {
               {allUsed ? (
                 <>
                   {" · "}
-                  <span className="font-semibold text-success">
+                  <span className="font-semibold text-muted">
                     {locale === "km" ? "បានប្រើទាំងអស់" : "All used"}
                   </span>
                 </>
@@ -288,13 +311,29 @@ function GridCard({ booking, event, ticketCount }) {
       </div>
 
       <div className="bk-card-divider" aria-hidden="true">
-        <span className="bk-notch bk-notch-left" />
-        <span className="bk-dashed-line" />
-        <span className="bk-notch bk-notch-right" />
+        <svg
+          className="bk-notch bk-notch-left"
+          width="12"
+          height="24"
+          viewBox="0 0 12 24"
+          fill="none"
+        >
+          <path d="M 0,0 A 12,12 0 0,1 0,24 Z" />
+        </svg>
+        <div className="bk-dashed-line" />
+        <svg
+          className="bk-notch bk-notch-right"
+          width="12"
+          height="24"
+          viewBox="0 0 12 24"
+          fill="none"
+        >
+          <path d="M 12,0 A 12,12 0 0,0 12,24 Z" />
+        </svg>
       </div>
 
       <div className="bk-card-foot">
-        <div>
+        <div className="bk-card-foot-price">
           <Money cents={booking.total_usd_cents} stacked />
           <span className="bk-card-booked">
             {locale === "km" ? "កក់ថ្ងៃ" : "booked"} {date(booking.created_at)}
@@ -306,9 +345,10 @@ function GridCard({ booking, event, ticketCount }) {
             <Icon name="arrowRight" size={13} />
           </span>
         ) : (
-          <span className="bk-card-action">
-            <span>{locale === "km" ? "មើល" : "View"}</span>
-            <Icon name="chevronRight" size={14} />
+          <span className={`bk-ticket-btn${allUsed ? " is-used" : ""}`}>
+            <Icon name="qr" size={13} />
+            <span>{locale === "km" ? "មើលសំបុត្រ" : "View ticket"}</span>
+            <Icon name="arrowRight" size={11} className="bk-ticket-btn-arrow" />
           </span>
         )}
       </div>
