@@ -1,6 +1,6 @@
 // Small shared presentational pieces used across all three role areas.
 
-import { useLayoutEffect, useRef } from "react";
+import { Children, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import Icon from "./Icon.jsx";
 import { useLocale } from "../context/LocaleContext.jsx";
@@ -202,7 +202,27 @@ export function SearchInput({
   );
 }
 
-/** Select with a leading icon; the chevron comes from the stylesheet. */
+function extractSelectOptions(children) {
+  const result = [];
+  const walk = (nodes) => {
+    Children.forEach(nodes, (node) => {
+      if (!node) return;
+      if (node.type === "option") {
+        result.push({
+          value: node.props?.value ?? "",
+          label: node.props?.children ?? node.props?.value ?? "",
+          disabled: Boolean(node.props?.disabled),
+        });
+      } else if (node.props?.children) {
+        walk(node.props.children);
+      }
+    });
+  };
+  walk(children);
+  return result;
+}
+
+/** Custom styled select with leading icon, smooth animated chevron, and rich popover menu. */
 export function IconSelect({
   value,
   onChange,
@@ -210,19 +230,108 @@ export function IconSelect({
   ariaLabel,
   children,
   className = "",
+  placeholder = "",
 }) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef(null);
+
+  const options = extractSelectOptions(children);
+  const selectedOption = options.find((o) => String(o.value) === String(value));
+  const currentLabel = selectedOption
+    ? selectedOption.label
+    : options[0]?.label || placeholder || "";
+
+  useEffect(() => {
+    if (!open) return undefined;
+    function handleClickOutside(e) {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    }
+    function handleKeyDown(e) {
+      if (e.key === "Escape") {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
+
   return (
-    <span className={`field-icon ${className}`}>
-      {icon && <Icon name={icon} size={16} />}
-      <select
-        className="select"
-        value={value}
+    <div
+      ref={containerRef}
+      className={`field-icon custom-select-wrap ${className} ${open ? "is-open" : ""}`}
+    >
+      {icon && (
+        <span className="custom-select-icon" aria-hidden="true">
+          <Icon name={icon} size={16} />
+        </span>
+      )}
+      <button
+        type="button"
+        className={`select custom-select-trigger ${open ? "is-active" : ""}`}
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
         aria-label={ariaLabel}
-        onChange={(e) => onChange(e.target.value)}
+      >
+        <span className="custom-select-label">{currentLabel}</span>
+        <span
+          className={`custom-select-chevron ${open ? "is-flipped" : ""}`}
+          aria-hidden="true"
+        >
+          <Icon name="chevronDown" size={14} />
+        </span>
+      </button>
+
+      {/* Visually-hidden native select for accessibility and form integration */}
+      <select
+        className="custom-select-hidden"
+        value={value}
+        aria-hidden="true"
+        tabIndex={-1}
+        onChange={(e) => onChange?.(e.target.value)}
       >
         {children}
       </select>
-    </span>
+
+      {open && (
+        <div
+          className="custom-select-menu"
+          role="listbox"
+          aria-label={ariaLabel}
+        >
+          {options.map((opt, index) => {
+            const isSelected = String(opt.value) === String(value);
+            return (
+              <button
+                type="button"
+                key={`${opt.value}-${index}`}
+                className={`custom-select-option ${isSelected ? "is-selected" : ""}`}
+                role="option"
+                aria-selected={isSelected}
+                disabled={opt.disabled}
+                onClick={() => {
+                  onChange?.(opt.value);
+                  setOpen(false);
+                }}
+              >
+                <span className="custom-select-option-text">{opt.label}</span>
+                {isSelected && (
+                  <span className="custom-select-check" aria-hidden="true">
+                    <Icon name="check" size={14} />
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 

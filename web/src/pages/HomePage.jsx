@@ -2,7 +2,10 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import EventCard from "../components/EventCard.jsx";
 import Icon, { CATEGORY_ICON } from "../components/Icon.jsx";
-import { EventGridSkeleton, SpotlightSkeleton } from "../components/Skeleton.jsx";
+import {
+  EventGridSkeleton,
+  SpotlightSkeleton,
+} from "../components/Skeleton.jsx";
 import { Empty, IconSelect, Money, SearchInput } from "../components/ui.jsx";
 import { useLocale } from "../context/LocaleContext.jsx";
 import { useProvinces } from "../lib/useProvinces.js";
@@ -301,7 +304,8 @@ const HOW_STEPS = [
     titleEn: "Pay with KHQR",
     titleKm: "ទូទាត់ដោយ KHQR",
     bodyEn: "Scan from any Bakong-linked banking app. No new account needed.",
-    bodyKm: "ស្កេនពីកម្មវិធីធនាគារណាមួយដែលភ្ជាប់ Bakong។ មិនចាំបាច់បង្កើតគណនីថ្មីទេ។",
+    bodyKm:
+      "ស្កេនពីកម្មវិធីធនាគារណាមួយដែលភ្ជាប់ Bakong។ មិនចាំបាច់បង្កើតគណនីថ្មីទេ។",
   },
   {
     icon: "ticket",
@@ -627,9 +631,12 @@ export default function HomePage() {
             The wireframe has no events grid - it was built for a practice
             with one thing to sell, not a catalogue. Inserted here so a
             first-time visitor sees actual tickets before anything else. */}
-        <section>
+        <section className="home-events-section">
           <div className="section-head">
-            <h2>{t("featured")}</h2>
+            <div>
+              <h2>{t("upcoming")}</h2>
+              <p className="section-sub">{t("upcomingSub")}</p>
+            </div>
             <Link to="/events" className="with-icon">
               {t("viewAll")}
               <Icon name="arrowRight" size={15} />
@@ -655,6 +662,12 @@ export default function HomePage() {
             the rest of the product already uses instead of introducing one. */}
         <section className="home-split">
           <div className="home-split-text">
+            <span className="home-kicker">
+              <Icon name="shield" size={13} />
+              <span>
+                {locale === "km" ? "ទំនុកចិត្ត និងសុវត្ថិភាព" : "Why Choose Us"}
+              </span>
+            </span>
             <h2>
               {locale === "km"
                 ? "ហេតុអ្វីត្រូវកក់សំបុត្រជាមួយ CamboBook"
@@ -668,8 +681,12 @@ export default function HomePage() {
             <ul className="home-bullets">
               {WHY_BOOK.map((item) => (
                 <li key={item.icon}>
-                  <Icon name="checkCircle" size={17} />
-                  <span>{locale === "km" ? item.km : item.en}</span>
+                  <span className="home-bullet-icon">
+                    <Icon name={item.icon} size={16} />
+                  </span>
+                  <span className="home-bullet-text">
+                    {locale === "km" ? item.km : item.en}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -691,30 +708,35 @@ export default function HomePage() {
             than an unordered feature grid. */}
         <section className="home-steps-section">
           <div className="home-steps-head">
+            <span className="home-kicker">
+              <Icon name="ticket" size={13} />
+              <span>{locale === "km" ? "ដំណើរការងាយៗ" : "Simple Process"}</span>
+            </span>
             <h2>
-              {locale === "km"
-                ? "របៀបទិញសំបុត្រ"
-                : "How buying a ticket works"}
+              {locale === "km" ? "របៀបទិញសំបុត្រ" : "How buying a ticket works"}
             </h2>
+            <p className="section-sub">
+              {locale === "km"
+                ? "៣ ជំហានងាយៗ ចាប់ពីការជ្រើសរើសកៅអី រហូតដល់ការចូលរួម"
+                : "Three simple steps from selecting your tickets to entering the venue"}
+            </p>
           </div>
           <ol className="home-steps">
             {HOW_STEPS.map((s, i) => (
-              <li key={s.icon}>
-                <span className="home-step-num">
-                  {String(i + 1).padStart(2, "0")}
-                </span>
-                <Icon name={s.icon} size={22} />
+              <li key={s.icon} className="home-step-card">
+                <div className="home-step-top">
+                  <div className="home-step-icon">
+                    <Icon name={s.icon} size={22} />
+                  </div>
+                  <span className="home-step-num">
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                </div>
                 <h3>{locale === "km" ? s.titleKm : s.titleEn}</h3>
                 <p>{locale === "km" ? s.bodyKm : s.bodyEn}</p>
               </li>
             ))}
           </ol>
-          <div className="home-steps-cta">
-            <Link className="btn btn-primary" to="/events">
-              {locale === "km" ? "រកមើលព្រឹត្តិការណ៍" : "Browse events"}
-              <Icon name="arrowRight" size={15} />
-            </Link>
-          </div>
         </section>
 
         {/* --------------------------------------------- for organizers ---
@@ -724,6 +746,12 @@ export default function HomePage() {
             its primary CTAs and this one. */}
         <section className="home-split">
           <div className="home-split-text">
+            <span className="home-kicker">
+              <Icon name="building" size={13} />
+              <span>
+                {locale === "km" ? "សម្រាប់អ្នករៀបចំ" : "For Organizers"}
+              </span>
+            </span>
             <h2>
               {locale === "km"
                 ? "រៀបចំព្រឹត្តិការណ៍នៅកម្ពុជាមែនទេ?"
@@ -736,6 +764,7 @@ export default function HomePage() {
             </p>
             <Link className="btn btn-outline" to="/become-an-organizer">
               {locale === "km" ? "ស្វែងយល់បន្ថែម" : "Learn more"}
+              <Icon name="arrowRight" size={14} />
             </Link>
           </div>
           <FeatureSlider photos={ORGANIZER_PHOTOS} />
@@ -747,22 +776,33 @@ export default function HomePage() {
             the page already computes instead of an invented quote - real
             social proof rather than placeholder praise. */}
         <section className="home-proof">
-          <h2>
-            {locale === "km" ? "CamboBook ជាលេខ" : "CamboBook, in numbers"}
-          </h2>
+          <div className="home-proof-head">
+            <h2>
+              {locale === "km" ? "CamboBook ជាលេខ" : "CamboBook in numbers"}
+            </h2>
+            <p className="section-sub">
+              {locale === "km"
+                ? "ទិន្នន័យផ្សាយផ្ទាល់នៃសហគមន៍ព្រឹត្តិការណ៍នៅកម្ពុជា"
+                : "Live platform metrics from across Cambodia"}
+            </p>
+          </div>
           <div className="home-proof-stats">
-            <div>
+            <div className="home-proof-stat-card">
               <b>{totalLive}</b>
-              <span>{locale === "km" ? "ព្រឹត្តិការណ៍ផ្សាយ" : "live events"}</span>
+              <span>
+                {locale === "km" ? "ព្រឹត្តិការណ៍ផ្សាយ" : "Live events"}
+              </span>
             </div>
-            <div>
+            <div className="home-proof-stat-card">
               <b>{ticketsSold.toLocaleString()}</b>
-              <span>{locale === "km" ? "សំបុត្រលក់រួច" : "tickets sold"}</span>
+              <span>{locale === "km" ? "សំបុត្រលក់រួច" : "Tickets sold"}</span>
             </div>
-            <div>
+            <div className="home-proof-stat-card">
               <b>{provinces.length}</b>
               <span>
-                {locale === "km" ? "ខេត្ត/ក្រុងគ្របដណ្តប់" : "provinces covered"}
+                {locale === "km"
+                  ? "ខេត្ត/ក្រុងគ្របដណ្តប់"
+                  : "Provinces covered"}
               </span>
             </div>
           </div>
@@ -775,6 +815,10 @@ export default function HomePage() {
         <section className="home-split home-split-reverse">
           <FeatureSlider photos={FAQ_PHOTOS} />
           <div className="home-split-text">
+            <span className="home-kicker">
+              <Icon name="info" size={13} />
+              <span>{locale === "km" ? "ជំនួយ និងសំណួរ" : "FAQ & Help"}</span>
+            </span>
             <h2>
               {locale === "km" ? "សំណួរដែលសួរញឹកញាប់" : "Common questions"}
             </h2>
@@ -782,43 +826,34 @@ export default function HomePage() {
               {FAQ_ITEMS.map((item) => (
                 <details className="home-faq-item" key={item.qEn}>
                   <summary>
-                    {locale === "km" ? item.qKm : item.qEn}
+                    <span>{locale === "km" ? item.qKm : item.qEn}</span>
                     <Icon name="chevronDown" size={16} />
                   </summary>
                   <p>{locale === "km" ? item.aKm : item.aEn}</p>
                 </details>
               ))}
             </div>
-            <Link className="btn btn-primary" to="/contact">
+            <Link className="btn btn-outline" to="/contact">
               {locale === "km" ? "ទាក់ទងមកយើង" : "Contact us"}
+              <Icon name="arrowRight" size={14} />
             </Link>
           </div>
         </section>
       </div>
 
-      {/* --------------------------------------------------- final band ---
-          The wireframe closes on a second banner-and-card, mirroring the
-          hero - the same treatment bookends the page. One button, as the
-          wireframe has, pointed at the single most useful next step. */}
-      <section className="home-final">
-        <div className="hero-inner">
-          <div className="home-final-card">
-            <h2>
-              {locale === "km"
-                ? "ត្រៀមរួចរាល់ស្វែងរកព្រឹត្តិការណ៍បន្ទាប់របស់អ្នកហើយឬនៅ?"
-                : "Ready to find your next event?"}
-            </h2>
-            <p>
-              {locale === "km"
-                ? "រុករកមើលអ្វីដែលកំពុងលក់ទូទាំងប្រទេស ហើយកក់ក្នុងប៉ុន្មានចុចប៉ុណ្ណោះ។"
-                : "Browse what's on across the country and book in a few taps."}
-            </p>
-            <Link className="btn btn-primary" to="/events">
-              {locale === "km" ? "មើលអ្វីកំពុងលក់" : "See what's on"}
-              <Icon name="arrowRight" size={15} />
-            </Link>
-          </div>
-        </div>
+      {/* --------------------------------------------------- final strip ---
+          Full-width CTA strip directly above footer with downward pointer notch. */}
+      <section className="home-final-strip">
+        <Link to="/events" className="home-final-strip-link">
+          <span className="home-final-strip-text">
+            {locale === "km"
+              ? "ត្រៀមរួចរាល់ស្វែងរកព្រឹត្តិការណ៍បន្ទាប់របស់អ្នកហើយឬនៅ?"
+              : "Ready to find your next event?"}
+          </span>
+          <span className="home-final-strip-arrow">
+            <Icon name="arrowRight" size={16} />
+          </span>
+        </Link>
       </section>
     </>
   );
