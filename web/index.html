@@ -19,11 +19,7 @@
       sizes="192x192"
       href="/logo/CB-icon-192.png"
     />
-    <link
-      rel="apple-touch-icon"
-      sizes="180x180"
-      href="/logo/CB-icon-180.png"
-    />
+    <link rel="apple-touch-icon" sizes="180x180" href="/logo/CB-icon-180.png" />
     <link rel="manifest" href="/site.webmanifest" />
 
     <!-- The browser chrome follows the site's own light/dark palette. -->
@@ -42,19 +38,47 @@
     <title>CamboBook</title>
     <meta
       name="description"
-      content="Ticketing for events across the Kingdom of Cambodia — reserved seats or general admission, priced in USD and KHR, with a QR ticket at the door."
+      content="Discover and book tickets for concerts, festivals, sports, and cultural events across Cambodia. Reserved seating and general admission with instant Bakong KHQR & ABA PayWay payments, and digital QR ticket admission."
     />
+    <meta
+      name="keywords"
+      content="Cambodia events, event ticketing Cambodia, Phnom Penh concerts, Siem Reap festivals, Bakong KHQR, ABA PayWay, CamboBook, buy tickets Cambodia, live entertainment"
+    />
+    <meta name="author" content="CamboBook" />
+    <meta name="robots" content="index, follow" />
+    <meta name="application-name" content="CamboBook" />
+    <meta name="apple-mobile-web-app-title" content="CamboBook" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+
+    <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="CamboBook" />
-    <meta property="og:title" content="CamboBook" />
+    <meta
+      property="og:title"
+      content="CamboBook — Event Ticketing in Cambodia"
+    />
     <meta
       property="og:description"
-      content="Reserved seats or general admission across all 8 provinces — pay with Bakong KHQR or ABA PayWay."
+      content="Discover, book, and experience events across all 25 provinces in Cambodia — reserved seating or general admission with instant Bakong KHQR and ABA PayWay checkout."
     />
     <meta property="og:image" content="/logo/CB-og.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:locale:alternate" content="km_KH" />
+
+    <!-- Twitter / X -->
     <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:title"
+      content="CamboBook — Event Ticketing in Cambodia"
+    />
+    <meta
+      name="twitter:description"
+      content="Discover, book, and experience events across Cambodia — reserved seating, instant Bakong KHQR & ABA PayWay checkout, and digital QR tickets."
+    />
+    <meta name="twitter:image" content="/logo/CB-og.png" />
     <!-- Latin + Khmer faces: Khmer script needs its own family, not a fallback.
          Berkshire Swash and Moul are the hero headline only - one weight each,
          Latin and Khmer, loaded because a script face has no system fallback
@@ -71,7 +95,10 @@
          page. Nothing runs it at load - PaywayCheckout.jsx reaches for it only
          once a user starts a payment - so it has no reason to hold up first
          paint. -->
-    <script defer src="https://checkout.payway.com.kh/plugins/checkout2-0.js"></script>
+    <script
+      defer
+      src="https://checkout.payway.com.kh/plugins/checkout2-0.js"
+    ></script>
   </head>
   <body>
     <div id="root"></div>
