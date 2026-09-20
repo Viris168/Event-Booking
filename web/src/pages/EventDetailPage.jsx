@@ -640,6 +640,7 @@ export default function EventDetailPage() {
       {hold && (
         <ReserveModal
           hold={hold}
+          event={event}
           seats={apiHoldData?.seats}
           zoneLines={apiHoldData?.zoneLines}
           subtotalUsdCents={apiHoldData?.subtotalUsdCents}
