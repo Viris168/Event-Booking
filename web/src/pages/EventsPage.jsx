@@ -1,5 +1,6 @@
 import { useDocumentTitle } from "../lib/useDocumentTitle.js";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useSearchParams } from "react-router-dom";
 import EventCard from "../components/EventCard.jsx";
 import { plottable } from "../lib/eventGeo.js";
@@ -128,7 +129,7 @@ export default function EventsPage() {
   // hovered event is the only card interaction that moves the map camera.
   const [pinnedId, setPinnedId] = useState(null);
   const [hoveredId, setHoveredId] = useState(null);
-  const [showMapOnMobile, setShowMapOnMobile] = useState(false);
+  const [showMapModal, setShowMapModal] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [apiResults, setApiResults] = useState([]);
   const [totalPages, setTotalPages] = useState(1);
@@ -139,6 +140,21 @@ export default function EventsPage() {
   const [reload, setReload] = useState(0);
   // Placeholders until the read settles, so the grid never jumps.
   const [loading, setLoading] = useState(true);
+
+  // Lock body scroll and listen for Escape when map modal is open on small/medium screens
+  useEffect(() => {
+    if (!showMapModal) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") setShowMapModal(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [showMapModal]);
 
   const filters = { ...EMPTY };
   for (const key of Object.keys(EMPTY))
@@ -549,10 +565,7 @@ export default function EventsPage() {
           </div>
         ) : apiResults.length ? (
           <div className="events-split" id="events-results">
-            <div
-              className={`events-list${showMapOnMobile ? " is-map-open" : ""}`}
-              ref={listRef}
-            >
+            <div className="events-list" ref={listRef}>
               <div className="grid grid-cards grid-cards-split">
                 {apiResults.map((e) => (
                   <EventCard
@@ -560,11 +573,18 @@ export default function EventsPage() {
                     event={e}
                     data-event-id={e.id}
                     pinned={String(pinnedId) === String(e.id)}
-                    onPin={() =>
-                      setPinnedId((prev) =>
-                        String(prev) === String(e.id) ? null : e.id,
-                      )
-                    }
+                    onPin={() => {
+                      const isPinned = String(pinnedId) === String(e.id);
+                      const nextId = isPinned ? null : e.id;
+                      setPinnedId(nextId);
+                      if (
+                        typeof window !== "undefined" &&
+                        window.innerWidth <= 900 &&
+                        nextId
+                      ) {
+                        setShowMapModal(true);
+                      }
+                    }}
                     onMouseEnter={() => setHoveredId(e.id)}
                     onMouseLeave={() => setHoveredId(null)}
                   />
@@ -573,9 +593,7 @@ export default function EventsPage() {
               <Pager page={page} pages={totalPages} onChange={setPage} />
             </div>
 
-            <div
-              className={`events-map-col${showMapOnMobile ? " is-open" : ""}`}
-            >
+            <div className="events-map-col">
               {mappable.length ? (
                 <Suspense
                   fallback={<div className="events-map events-map-loading" />}
@@ -607,21 +625,6 @@ export default function EventsPage() {
                     : `${mappable.length} of ${apiResults.length} shown on the map`}
                 </p>
               )}
-
-              <button
-                type="button"
-                className="btn btn-primary events-map-toggle"
-                onClick={() => setShowMapOnMobile((v) => !v)}
-              >
-                <Icon name={showMapOnMobile ? "close" : "mapPin"} size={16} />
-                {showMapOnMobile
-                  ? locale === "km"
-                    ? "បញ្ជី"
-                    : "List"
-                  : locale === "km"
-                    ? "ផែនទី"
-                    : "Map"}
-              </button>
             </div>
           </div>
         ) : failed ? (
@@ -672,6 +675,93 @@ export default function EventsPage() {
           </>
         )}
       </div>
+
+      {/* Floating Map Toggle for Mobile & Tablet (<= 900px) */}
+      {mappable.length > 0 && (
+        <div className="events-map-floating-bar">
+          <button
+            type="button"
+            className="events-map-floating-btn"
+            onClick={() => setShowMapModal(true)}
+            aria-label={locale === "km" ? "មើលផែនទី" : "View Map"}
+          >
+            <Icon name="mapPin" size={16} />
+            <span>{locale === "km" ? "ផែនទី" : "Map"}</span>
+            <span className="events-map-floating-badge">{mappable.length}</span>
+          </button>
+        </div>
+      )}
+
+      {/* Map Popup Modal for Mobile & Tablet */}
+      {showMapModal &&
+        createPortal(
+          <div
+            className="events-map-modal-backdrop"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setShowMapModal(false);
+            }}
+            role="dialog"
+            aria-modal="true"
+            aria-label={locale === "km" ? "ផែនទីព្រឹត្តិការណ៍" : "Events Map"}
+          >
+            <div className="events-map-modal-dialog">
+              <div className="events-map-modal-header">
+                <div className="events-map-modal-title-group">
+                  <span className="events-map-modal-icon-chip">
+                    <Icon name="mapPin" size={18} />
+                  </span>
+                  <div>
+                    <h3 className="events-map-modal-title">
+                      {locale === "km" ? "ផែនទីព្រឹត្តិការណ៍" : "Events Map"}
+                    </h3>
+                    <p className="events-map-modal-sub">
+                      {locale === "km"
+                        ? `${mappable.length} ក្នុងចំណោម ${apiResults.length} ព្រឹត្តិការណ៍មានទីតាំង`
+                        : `${mappable.length} of ${apiResults.length} events mapped`}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className="events-map-modal-close"
+                  onClick={() => setShowMapModal(false)}
+                  aria-label={locale === "km" ? "បិទ" : "Close"}
+                >
+                  <Icon name="close" size={18} />
+                </button>
+              </div>
+
+              <div className="events-map-modal-body">
+                {mappable.length ? (
+                  <Suspense
+                    fallback={<div className="events-map events-map-loading" />}
+                  >
+                    <EventsMap
+                      events={apiResults}
+                      hoveredId={hoveredId}
+                      pinnedId={pinnedId}
+                      onSelect={(id) =>
+                        setPinnedId((prev) => (prev === id ? null : id))
+                      }
+                      locale={locale}
+                    />
+                  </Suspense>
+                ) : (
+                  <div className="events-map events-map-empty">
+                    <Icon name="mapPin" size={26} />
+                    <p className="small muted">
+                      {locale === "km"
+                        ? "ព្រឹត្តិការណ៍ទាំងនេះមិនទាន់មានទីតាំងលើផែនទី"
+                        : "None of these events has a venue pinned on the map yet."}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
