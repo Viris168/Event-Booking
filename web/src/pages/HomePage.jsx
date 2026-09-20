@@ -2,7 +2,10 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import EventCard from "../components/EventCard.jsx";
 import Icon, { CATEGORY_ICON } from "../components/Icon.jsx";
-import { EventGridSkeleton, SpotlightSkeleton } from "../components/Skeleton.jsx";
+import {
+  EventGridSkeleton,
+  SpotlightSkeleton,
+} from "../components/Skeleton.jsx";
 import { Empty, IconSelect, Money, SearchInput } from "../components/ui.jsx";
 import { useLocale } from "../context/LocaleContext.jsx";
 import { useProvinces } from "../lib/useProvinces.js";
@@ -301,7 +304,8 @@ const HOW_STEPS = [
     titleEn: "Pay with KHQR",
     titleKm: "ទូទាត់ដោយ KHQR",
     bodyEn: "Scan from any Bakong-linked banking app. No new account needed.",
-    bodyKm: "ស្កេនពីកម្មវិធីធនាគារណាមួយដែលភ្ជាប់ Bakong។ មិនចាំបាច់បង្កើតគណនីថ្មីទេ។",
+    bodyKm:
+      "ស្កេនពីកម្មវិធីធនាគារណាមួយដែលភ្ជាប់ Bakong។ មិនចាំបាច់បង្កើតគណនីថ្មីទេ។",
   },
   {
     icon: "ticket",
@@ -627,9 +631,12 @@ export default function HomePage() {
             The wireframe has no events grid - it was built for a practice
             with one thing to sell, not a catalogue. Inserted here so a
             first-time visitor sees actual tickets before anything else. */}
-        <section>
+        <section className="home-events-section">
           <div className="section-head">
-            <h2>{t("featured")}</h2>
+            <div>
+              <h2>{t("upcoming")}</h2>
+              <p className="section-sub">{t("upcomingSub")}</p>
+            </div>
             <Link to="/events" className="with-icon">
               {t("viewAll")}
               <Icon name="arrowRight" size={15} />
@@ -692,9 +699,7 @@ export default function HomePage() {
         <section className="home-steps-section">
           <div className="home-steps-head">
             <h2>
-              {locale === "km"
-                ? "របៀបទិញសំបុត្រ"
-                : "How buying a ticket works"}
+              {locale === "km" ? "របៀបទិញសំបុត្រ" : "How buying a ticket works"}
             </h2>
           </div>
           <ol className="home-steps">
@@ -753,7 +758,9 @@ export default function HomePage() {
           <div className="home-proof-stats">
             <div>
               <b>{totalLive}</b>
-              <span>{locale === "km" ? "ព្រឹត្តិការណ៍ផ្សាយ" : "live events"}</span>
+              <span>
+                {locale === "km" ? "ព្រឹត្តិការណ៍ផ្សាយ" : "live events"}
+              </span>
             </div>
             <div>
               <b>{ticketsSold.toLocaleString()}</b>
@@ -762,7 +769,9 @@ export default function HomePage() {
             <div>
               <b>{provinces.length}</b>
               <span>
-                {locale === "km" ? "ខេត្ត/ក្រុងគ្របដណ្តប់" : "provinces covered"}
+                {locale === "km"
+                  ? "ខេត្ត/ក្រុងគ្របដណ្តប់"
+                  : "provinces covered"}
               </span>
             </div>
           </div>

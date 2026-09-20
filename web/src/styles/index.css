@@ -454,13 +454,16 @@
    * which it can absorb because it wraps on word boundaries.
    */
   .section-head {
-    @apply mb-[0.9rem] flex items-baseline justify-between gap-3;
+    @apply mb-[1.1rem] flex items-end justify-between gap-3;
   }
   .section-head > :first-child {
     @apply min-w-0;
   }
   .section-head > a {
     @apply flex-none whitespace-nowrap;
+  }
+  .section-sub {
+    @apply mt-1 text-[0.95rem] font-medium text-muted;
   }
 
   .breadcrumb {
@@ -1833,8 +1836,11 @@
      The wireframe's "Outcome" and "Your Name" sections, and its accordion
      section reversed. One layout serves all three - which side carries the
      text is the only thing that changes between them. */
+  .home-events-section {
+    @apply mb-12;
+  }
   .home-split {
-    @apply mb-8 grid items-center gap-10 border-t border-line pt-8;
+    @apply mb-10 mt-12 grid items-center gap-10 border-t border-line pt-10;
     grid-template-columns: minmax(0, 1fr) minmax(0, 0.85fr);
   }
   /* Column widths only - no `order` override. The panel is written FIRST in

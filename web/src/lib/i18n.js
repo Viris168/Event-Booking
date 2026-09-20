@@ -82,7 +82,26 @@ const dict = {
     en: "Featured this month",
     km: "ព្រឹត្តិការណ៍លេចធ្លោប្រចាំខែនេះ",
   },
-  upcoming: { en: "Upcoming events", km: "ព្រឹត្តិការណ៍នាពេលខាងមុខ" },
+  featuredSub: {
+    en: "Top picks and popular events happening this month",
+    km: "ព្រឹត្តិការណ៍ពេញនិយម និងលេចធ្លោបំផុតប្រចាំខែនេះ",
+  },
+  nextEvents: {
+    en: "Upcoming events",
+    km: "ព្រឹត្តិការណ៍នាពេលខាងមុខ",
+  },
+  nextEventsSub: {
+    en: "Explore concerts, festivals, and live experiences happening soon",
+    km: "ស្វែងរកការប្រគំតន្ត្រី ពិធីបុណ្យ និងព្រឹត្តិការណ៍ផ្ទាល់ដែលនឹងមកដល់ឆាប់ៗនេះ",
+  },
+  upcoming: {
+    en: "Upcoming events",
+    km: "ព្រឹត្តិការណ៍នាពេលខាងមុខ",
+  },
+  upcomingSub: {
+    en: "Explore concerts, festivals, and live experiences happening soon",
+    km: "ស្វែងរកការប្រគំតន្ត្រី ពិធីបុណ្យ និងព្រឹត្តិការណ៍ផ្ទាល់ដែលនឹងមកដល់ឆាប់ៗនេះ",
+  },
   viewAll: { en: "View all", km: "មើលទាំងអស់" },
   filters: { en: "Filters", km: "តម្រង" },
   reset: { en: "Reset", km: "កំណត់ឡើងវិញ" },
