@@ -1,26 +1,11 @@
 import { useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { useTheme } from "../context/ThemeContext.jsx";
 
 const ZOOM = 15;
-
-const TILES = {
-  light: {
-    base: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-    labels: null,
-    maxNativeZoom: 19,
-  },
-  dark: {
-    base: "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
-    labels:
-      "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}",
-    maxNativeZoom: 16,
-  },
-};
-
+const TILE_URL = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
 const TILE_ATTRIBUTION =
-  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
+  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 
 function escapeHtml(str) {
   if (!str) return "";
@@ -68,7 +53,6 @@ export default function EventLocationMap({
 }) {
   const hostRef = useRef(null);
   const mapRef = useRef(null);
-  const { isDark } = useTheme();
 
   // Initialize Map
   useEffect(() => {
@@ -79,6 +63,14 @@ export default function EventLocationMap({
       zoomControl: true,
       attributionControl: true,
     }).setView([lat, lng], ZOOM);
+
+    // OpenStreetMap base tiles. Dark theme is applied seamlessly via CSS filter on .leaflet-tile-pane,
+    // preserving full road networks, Khmer script, rivers, and landmarks with high legibility.
+    L.tileLayer(TILE_URL, {
+      maxZoom: 19,
+      maxNativeZoom: 19,
+      attribution: TILE_ATTRIBUTION,
+    }).addTo(map);
 
     const marker = L.marker([lat, lng], {
       icon: createVenuePinIcon(venueName),
@@ -115,26 +107,6 @@ export default function EventLocationMap({
       mapRef.current = null;
     };
   }, [lat, lng, venueName, addressLine, locale]);
-
-  // Handle Light / Dark Tiles
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-    const tiles = isDark ? TILES.dark : TILES.light;
-    const shared = { maxZoom: 19, maxNativeZoom: tiles.maxNativeZoom };
-    const layers = [
-      L.tileLayer(tiles.base, {
-        ...shared,
-        attribution: TILE_ATTRIBUTION,
-        zIndex: 1,
-      }),
-    ];
-    if (tiles.labels) {
-      layers.push(L.tileLayer(tiles.labels, { ...shared, zIndex: 2 }));
-    }
-    layers.forEach((layer) => layer.addTo(map));
-    return () => layers.forEach((layer) => layer.remove());
-  }, [isDark]);
 
   return <div ref={hostRef} className="evloc-map-canvas" />;
 }

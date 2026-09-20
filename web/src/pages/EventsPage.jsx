@@ -676,22 +676,6 @@ export default function EventsPage() {
         )}
       </div>
 
-      {/* Floating Map Toggle for Mobile & Tablet (<= 900px) */}
-      {mappable.length > 0 && (
-        <div className="events-map-floating-bar">
-          <button
-            type="button"
-            className="events-map-floating-btn"
-            onClick={() => setShowMapModal(true)}
-            aria-label={locale === "km" ? "មើលផែនទី" : "View Map"}
-          >
-            <Icon name="mapPin" size={16} />
-            <span>{locale === "km" ? "ផែនទី" : "Map"}</span>
-            <span className="events-map-floating-badge">{mappable.length}</span>
-          </button>
-        </div>
-      )}
-
       {/* Map Popup Modal for Mobile & Tablet */}
       {showMapModal &&
         createPortal(
