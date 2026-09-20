@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { usd } from "../lib/format.js";
-import { plottable } from "../lib/eventGeo.js";
+import { plottable, getVenueCoords } from "../lib/eventGeo.js";
 import { minPriceCents } from "../lib/eventPrice.js";
 import { useProvinces } from "../lib/useProvinces.js";
 import { useTheme } from "../context/ThemeContext.jsx";
@@ -180,6 +180,11 @@ export default function EventsMap({
   }, [points]);
   const framedRef = useRef(false);
 
+  const pinnedIdRef = useRef(pinnedId);
+  useEffect(() => {
+    pinnedIdRef.current = pinnedId;
+  }, [pinnedId]);
+
   // Track the current active destination so we don't interrupt a flight in progress to restart an identical one.
   const flightDestRef = useRef(null);
 
@@ -196,8 +201,23 @@ export default function EventsMap({
     (center, targetZoom = ARRIVAL_ZOOM, { smooth = false } = {}) => {
       const map = mapRef.current;
       if (!map) return;
-      const to = L.latLng(center);
-      const from = map.getCenter();
+      const size = map.getSize();
+      if (!size.x || !size.y) return;
+
+      let to;
+      try {
+        to = L.latLng(center);
+      } catch {
+        return;
+      }
+      if (!to || !Number.isFinite(to.lat) || !Number.isFinite(to.lng)) return;
+
+      let from;
+      try {
+        from = map.getCenter();
+      } catch {
+        return;
+      }
 
       /*
        * A map that has never had a size has no centre worth interpolating from -
@@ -206,8 +226,12 @@ export default function EventsMap({
        * took the whole page down with it. Land directly instead; the observer
        * below re-frames once a real size arrives.
        */
-      if (!Number.isFinite(from.lat) || !Number.isFinite(from.lng)) {
-        map.setView(to, targetZoom, { animate: false });
+      if (!from || !Number.isFinite(from.lat) || !Number.isFinite(from.lng)) {
+        try {
+          map.setView(to, targetZoom, { animate: false });
+        } catch (err) {
+          void err;
+        }
         return;
       }
 
@@ -353,22 +377,28 @@ export default function EventsMap({
     (list) => {
       const map = mapRef.current;
       if (!map || !list?.length) return false;
-      // Same reason as the guard in flyTo: framing against a container that has
-      // not been measured yet produces a NaN view rather than a wrong one.
       const size = map.getSize();
       if (!size.x || !size.y) return false;
-      if (list.length > 1) {
-        map.fitBounds(
-          L.latLngBounds(list.map((e) => [+e.venue.lat, +e.venue.lng])),
-          {
+
+      const validPoints = list
+        .map((e) => getVenueCoords(e.venue))
+        .filter(Boolean);
+
+      if (!validPoints.length) return false;
+
+      try {
+        if (validPoints.length > 1) {
+          map.fitBounds(L.latLngBounds(validPoints), {
             padding: [40, 40],
             maxZoom: 16,
-          },
-        );
-      } else {
-        flyTo([+list[0].venue.lat, +list[0].venue.lng], 16);
+          });
+        } else {
+          flyTo(validPoints[0], 16);
+        }
+        return true;
+      } catch {
+        return false;
       }
-      return true;
     },
     [flyTo],
   );
@@ -400,25 +430,21 @@ export default function EventsMap({
      */
     const ro = new ResizeObserver(([entry]) => {
       if (entry.contentRect.width <= 0 || entry.contentRect.height <= 0) return;
-      map.invalidateSize();
-      /*
-       * Re-frame the first time a real size arrives.
-       *
-       * invalidateSize alone is not enough: markers added while the container
-       * measured zero were framed against that, so the map pane ends up
-       * translated by half the container and the content sits in a corner with
-       * blank space beside it. Only the FIRST valid measurement re-frames -
-       * doing it on every resize would yank the map back from wherever the
-       * visitor had panned to.
-       */
-      /*
-       * Marked done only if it framed. Setting the flag regardless meant a
-       * size arriving before the first result set burned the one re-frame on
-       * an empty list, and the map then sat wherever the zero-size layout had
-       * left it - Cambodia shoved off the right-hand edge - for good.
-       */
-      if (!framedRef.current && frame(pointsRef.current))
-        framedRef.current = true;
+      try {
+        map.invalidateSize();
+        const curPin = pinnedIdRef.current
+          ? markersRef.current[pinnedIdRef.current]
+          : null;
+        if (curPin) {
+          curPin.openPopup();
+          flyTo(curPin.getLatLng(), ARRIVAL_ZOOM, { smooth: false });
+          framedRef.current = true;
+        } else if (!framedRef.current && frame(pointsRef.current)) {
+          framedRef.current = true;
+        }
+      } catch (err) {
+        void err;
+      }
     });
     ro.observe(hostRef.current);
 
@@ -505,7 +531,10 @@ export default function EventsMap({
       const detailLabel =
         locale === "km" ? "\u179b\u1798\u17d2\u17a2\u17b7\u178f" : "Detail";
 
-      const marker = L.marker([+venue.lat, +venue.lng], {
+      const coords = getVenueCoords(venue);
+      if (!coords) return;
+
+      const marker = L.marker(coords, {
         icon: priceIcon({ label, active: false }),
       })
         .addTo(map)
@@ -573,24 +602,38 @@ export default function EventsMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
+    const size = map.getSize();
+    if (!size.x || !size.y) return;
 
     // Pinning is not itself a camera command, but once the visitor has hovered
     // away from the pin, leaving that hover should settle the map back on it.
     if (!hoveredId) {
       const pinned = markersRef.current[pinnedId];
       if (pinned) {
-        pinned.openPopup();
-        flyTo(pinned.getLatLng(), ARRIVAL_ZOOM, { smooth: true });
-        lastActiveRef.current = pinnedId;
+        try {
+          pinned.openPopup();
+          flyTo(pinned.getLatLng(), ARRIVAL_ZOOM, { smooth: true });
+          lastActiveRef.current = pinnedId;
+        } catch (err) {
+          void err;
+        }
         return;
       }
-      map.closePopup();
+      try {
+        map.closePopup();
+      } catch (err) {
+        void err;
+      }
       return;
     }
 
     const chosen = markersRef.current[hoveredId];
     if (!chosen) {
-      map.closePopup();
+      try {
+        map.closePopup();
+      } catch (err) {
+        void err;
+      }
       return;
     }
 

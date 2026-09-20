@@ -20,6 +20,7 @@ import { useLocale } from "../context/LocaleContext.jsx";
 import { useProvinces } from "../lib/useProvinces.js";
 import { getEvents } from "../api/events.js";
 import { mapEvent } from "../api/adapters.js";
+import MapErrorBoundary from "../components/MapErrorBoundary.jsx";
 
 /*
  * Leaflet is ~45kB gzipped and the map is one half of one page, so it is split
@@ -138,6 +139,18 @@ export default function EventsPage() {
   // Bumped by Retry. Re-setting identical search params would not change the
   // effect's dependency, so a failed read had no way to be re-run.
   const [reload, setReload] = useState(0);
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth <= 900 : false,
+  );
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(max-width: 900px)");
+    const handler = (e) => setIsMobile(e.matches);
+    setIsMobile(mq.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+
   // Placeholders until the read settles, so the grid never jumps.
   const [loading, setLoading] = useState(true);
 
@@ -496,6 +509,20 @@ export default function EventsPage() {
                   <span className="dot-badge" aria-hidden="true" />
                 )}
               </button>
+              {isMobile && (
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  onClick={() => {
+                    setPinnedId(null);
+                    setShowMapModal(true);
+                  }}
+                  aria-label={locale === "km" ? "ផែនទី" : "Map"}
+                >
+                  <Icon name="mapPin" size={16} />
+                  <span>{locale === "km" ? "ផែនទី" : "Map"}</span>
+                </button>
+              )}
             </div>
 
             {showAdvanced && (
@@ -574,15 +601,13 @@ export default function EventsPage() {
                     data-event-id={e.id}
                     pinned={String(pinnedId) === String(e.id)}
                     onPin={() => {
-                      const isPinned = String(pinnedId) === String(e.id);
-                      const nextId = isPinned ? null : e.id;
-                      setPinnedId(nextId);
-                      if (
-                        typeof window !== "undefined" &&
-                        window.innerWidth <= 900 &&
-                        nextId
-                      ) {
+                      if (isMobile) {
+                        setPinnedId(e.id);
                         setShowMapModal(true);
+                      } else {
+                        setPinnedId((prev) =>
+                          String(prev) === String(e.id) ? null : e.id,
+                        );
                       }
                     }}
                     onMouseEnter={() => setHoveredId(e.id)}
@@ -594,21 +619,28 @@ export default function EventsPage() {
             </div>
 
             <div className="events-map-col">
-              {mappable.length ? (
+              {!isMobile && mappable.length > 0 && (
                 <Suspense
                   fallback={<div className="events-map events-map-loading" />}
                 >
-                  <EventsMap
-                    events={apiResults}
-                    hoveredId={hoveredId}
-                    pinnedId={pinnedId}
-                    onSelect={(id) =>
-                      setPinnedId((prev) => (prev === id ? null : id))
-                    }
+                  <MapErrorBoundary
                     locale={locale}
-                  />
+                    events={apiResults}
+                    pinnedId={pinnedId}
+                  >
+                    <EventsMap
+                      events={apiResults}
+                      hoveredId={hoveredId}
+                      pinnedId={pinnedId}
+                      onSelect={(id) =>
+                        setPinnedId((prev) => (prev === id ? null : id))
+                      }
+                      locale={locale}
+                    />
+                  </MapErrorBoundary>
                 </Suspense>
-              ) : (
+              )}
+              {!isMobile && !mappable.length && (
                 <div className="events-map events-map-empty">
                   <Icon name="mapPin" size={22} />
                   <p className="small muted">
@@ -618,13 +650,15 @@ export default function EventsPage() {
                   </p>
                 </div>
               )}
-              {mappable.length > 0 && mappable.length < apiResults.length && (
-                <p className="hint events-map-note">
-                  {locale === "km"
-                    ? `បង្ហាញ ${mappable.length} ក្នុងចំណោម ${apiResults.length} លើផែនទី`
-                    : `${mappable.length} of ${apiResults.length} shown on the map`}
-                </p>
-              )}
+              {!isMobile &&
+                mappable.length > 0 &&
+                mappable.length < apiResults.length && (
+                  <p className="hint events-map-note">
+                    {locale === "km"
+                      ? `បង្ហាញ ${mappable.length} ក្នុងចំណោម ${apiResults.length} លើផែនទី`
+                      : `${mappable.length} of ${apiResults.length} shown on the map`}
+                  </p>
+                )}
             </div>
           </div>
         ) : failed ? (
@@ -721,15 +755,21 @@ export default function EventsPage() {
                   <Suspense
                     fallback={<div className="events-map events-map-loading" />}
                   >
-                    <EventsMap
-                      events={apiResults}
-                      hoveredId={hoveredId}
-                      pinnedId={pinnedId}
-                      onSelect={(id) =>
-                        setPinnedId((prev) => (prev === id ? null : id))
-                      }
+                    <MapErrorBoundary
                       locale={locale}
-                    />
+                      events={apiResults}
+                      pinnedId={pinnedId}
+                    >
+                      <EventsMap
+                        events={apiResults}
+                        hoveredId={hoveredId}
+                        pinnedId={pinnedId}
+                        onSelect={(id) =>
+                          setPinnedId((prev) => (prev === id ? null : id))
+                        }
+                        locale={locale}
+                      />
+                    </MapErrorBoundary>
                   </Suspense>
                 ) : (
                   <div className="events-map events-map-empty">

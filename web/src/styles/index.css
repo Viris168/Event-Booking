@@ -8657,9 +8657,7 @@ html[lang="km"] .contact-card h2 {
 /* Events Map Popup Modal (Mobile & Tablet) */
 .events-map-modal-backdrop {
   @apply fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-5;
-  background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(0, 0, 0, 0.72);
   animation: eventsMapFadeIn 0.2s ease-out;
 }
 .events-map-modal-dialog {

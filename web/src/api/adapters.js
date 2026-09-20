@@ -64,7 +64,7 @@ export function mapEvent(e) {
     // seat map, and told the organiser "No seats in this venue" about a venue
     // with fifty of them.
     venue_id: e.venue_id ?? e.venueId ?? e.venue?.id ?? null,
-    venue: e.venue, // Keep the venue object!
+    venue: e.venue ? mapVenue(e.venue) : null,
     inventory_mode: e.inventory_mode ?? e.inventoryMode,
     slug: e.slug,
     title_en: e.title_en ?? e.titleEn,
@@ -398,8 +398,16 @@ export function eventImages(e) {
 
 export function mapVenue(v) {
   if (!v) return null;
-  const lat = v.lat != null && v.lat !== "" ? Number(v.lat) : null;
-  const lng = v.lng != null && v.lng !== "" ? Number(v.lng) : null;
+  const rawLat = v.lat ?? v.latitude;
+  const rawLng = v.lng ?? v.longitude;
+  const lat =
+    rawLat != null && rawLat !== "" && Number.isFinite(Number(rawLat))
+      ? Number(rawLat)
+      : null;
+  const lng =
+    rawLng != null && rawLng !== "" && Number.isFinite(Number(rawLng))
+      ? Number(rawLng)
+      : null;
   return {
     id: v.id,
     organizer_id: v.organizerId ?? v.organizer_id,
