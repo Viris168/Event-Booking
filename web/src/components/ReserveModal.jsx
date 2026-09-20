@@ -2,7 +2,15 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import Icon from "./Icon.jsx";
 import { useLocale } from "../context/LocaleContext.jsx";
-import { usd, countdown } from "../lib/format.js";
+import { usd, formatDate, countdown } from "../lib/format.js";
+
+function formatSeatTitle(s) {
+  const parts = [];
+  if (s.section_label) parts.push(s.section_label);
+  if (s.row_label) parts.push(`Row ${s.row_label}`);
+  parts.push(`Seat ${s.seat_number}`);
+  return parts.join(" · ");
+}
 
 export default function ReserveModal({
   hold,
@@ -58,6 +66,12 @@ export default function ReserveModal({
       : event.title_en || event.title
     : null;
 
+  const venueName = event?.venue
+    ? locale === "km"
+      ? event.venue.name_km || event.venue.name
+      : event.venue.name_en || event.venue.name
+    : null;
+
   return (
     <div
       className="modal-overlay"
@@ -69,6 +83,11 @@ export default function ReserveModal({
       aria-labelledby="reserve-modal-title"
     >
       <div className="modal-container reserve-modal">
+        {/* Mobile touch sheet handle */}
+        <div className="reserve-modal-handle-wrap" aria-hidden="true">
+          <span className="reserve-modal-handle" />
+        </div>
+
         {/* Header */}
         <div className="reserve-head">
           <div className="reserve-head-left">
@@ -76,11 +95,32 @@ export default function ReserveModal({
               <Icon name="ticket" size={20} />
             </div>
             <div className="reserve-head-meta">
-              <h3 id="reserve-modal-title" className="reserve-title">
-                {locale === "km" ? "សង្ខេបការកក់" : "Order summary"}
-              </h3>
+              <div className="reserve-head-title-row">
+                <h3 id="reserve-modal-title" className="reserve-title">
+                  {locale === "km" ? "សេចក្តីសង្ខេបការកក់" : "Order summary"}
+                </h3>
+                <span className="reserve-count-badge">{ticketLabel}</span>
+              </div>
               {eventTitle && (
-                <div className="reserve-event-name">{eventTitle}</div>
+                <div className="reserve-event-name" title={eventTitle}>
+                  {eventTitle}
+                </div>
+              )}
+              {(event?.starts_at || venueName) && (
+                <div className="reserve-event-subline">
+                  {event.starts_at && (
+                    <span className="reserve-subline-item">
+                      <Icon name="calendar" size={12} />
+                      <span>{formatDate(event.starts_at, locale)}</span>
+                    </span>
+                  )}
+                  {venueName && (
+                    <span className="reserve-subline-item">
+                      <Icon name="mapPin" size={12} />
+                      <span>{venueName}</span>
+                    </span>
+                  )}
+                </div>
               )}
             </div>
           </div>
@@ -91,7 +131,7 @@ export default function ReserveModal({
             onClick={() => setDismissedHoldId(hold.id)}
             aria-label={locale === "km" ? "បិទផ្ទាំងនេះ" : "Close"}
           >
-            <Icon name="close" size={17} />
+            <Icon name="close" size={16} />
           </button>
         </div>
 
@@ -99,15 +139,15 @@ export default function ReserveModal({
         <div className={`reserve-status-banner ${warn ? "warn" : ""}`}>
           <div className="reserve-status-left">
             <span className="reserve-status-dot" />
-            <Icon name="clock" size={14} />
-            <span className="reserve-status-text">
-              {t("holdActive")} · {t("holdExpiresIn")}{" "}
-              <strong className="reserve-status-clock">
-                {countdown(msLeft)}
-              </strong>
-            </span>
+            <span className="reserve-status-text">{t("holdActive")}</span>
           </div>
-          <span className="reserve-status-pill">{ticketLabel}</span>
+          <div className="reserve-timer-pill">
+            <Icon name="clock" size={13} />
+            <span className="reserve-timer-label">{t("holdExpiresIn")}</span>
+            <strong className="reserve-status-clock">
+              {countdown(msLeft)}
+            </strong>
+          </div>
         </div>
 
         {/* Order Details Body */}
@@ -122,9 +162,7 @@ export default function ReserveModal({
                   <Icon name="seat" size={16} />
                 </div>
                 <div className="reserve-item-info">
-                  <div className="reserve-item-title">
-                    {s.section_label || "Seat"} · {s.seat_number}
-                  </div>
+                  <div className="reserve-item-title">{formatSeatTitle(s)}</div>
                   <div className="reserve-item-sub">
                     {locale === "km"
                       ? s.seat_class?.name_km
@@ -142,6 +180,7 @@ export default function ReserveModal({
                       onClick={() =>
                         onRemoveItem("seat", s.id || s.event_seat_id)
                       }
+                      title={locale === "km" ? "ដកកៅអីចេញ" : "Remove seat"}
                       aria-label={locale === "km" ? "ដកកៅអីចេញ" : "Remove seat"}
                     >
                       <Icon name="close" size={13} />
@@ -184,6 +223,7 @@ export default function ReserveModal({
                       onClick={() =>
                         onRemoveItem("zone", l.event_zone_id || l.zone?.id)
                       }
+                      title={locale === "km" ? "ដកតំបន់ចេញ" : "Remove zone"}
                       aria-label={
                         locale === "km" ? "ដកតំបន់ចេញ" : "Remove zone"
                       }
@@ -200,7 +240,7 @@ export default function ReserveModal({
           <div className="reserve-breakdown">
             <div className="reserve-breakdown-row">
               <span className="reserve-breakdown-label">
-                {locale === "km" ? "តម្លៃសំបុត្រ" : "Subtotal"} ({ticketLabel})
+                {t("subtotal")} ({ticketLabel})
               </span>
               <span className="reserve-breakdown-val">
                 {usd(subtotalUsdCents)}
@@ -218,8 +258,13 @@ export default function ReserveModal({
         <div className="modal-footer reserve-modal-footer">
           {checkoutTo && (
             <Link className="btn-checkout-primary" to={checkoutTo}>
-              <span>{t("goToCheckout")}</span>
-              <Icon name="arrowRight" size={16} />
+              <span className="btn-checkout-label">{t("goToCheckout")}</span>
+              <div className="btn-checkout-end">
+                <span className="btn-checkout-badge">
+                  {usd(subtotalUsdCents)}
+                </span>
+                <Icon name="arrowRight" size={16} />
+              </div>
             </Link>
           )}
 
@@ -235,7 +280,7 @@ export default function ReserveModal({
               </button>
             )}
             <span className="reserve-guarantee-note">
-              <Icon name="lock" size={12} />
+              <Icon name="shield" size={13} />
               <span>{t("notYoursYet")}</span>
             </span>
           </div>

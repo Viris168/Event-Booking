@@ -8572,7 +8572,7 @@ html[lang="km"] .contact-card h2 {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.54);
+  background: rgba(12, 14, 18, 0.62);
   /* Explicitly NO backdrop-filter blur */
   display: grid;
   place-items: center;
@@ -8581,37 +8581,38 @@ html[lang="km"] .contact-card h2 {
 }
 
 [data-theme="dark"] .modal-overlay {
-  background: rgba(0, 0, 0, 0.74);
+  background: rgba(0, 0, 0, 0.82);
 }
 
 .modal-container.reserve-modal {
   background: var(--color-surface);
   border: 1px solid var(--color-line);
-  border-radius: 20px;
+  border-radius: 24px;
   width: 100%;
-  max-width: 460px;
+  max-width: 468px;
   max-height: calc(100dvh - 2.5rem);
   box-shadow:
-    0 24px 60px -12px rgba(0, 0, 0, 0.28),
-    0 2px 6px rgba(0, 0, 0, 0.05);
+    0 24px 60px -12px rgba(15, 23, 42, 0.22),
+    0 4px 16px -2px rgba(15, 23, 42, 0.06),
+    0 0 0 1px rgba(15, 23, 42, 0.04);
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  animation: reserve-pop-in 0.24s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: reserve-pop-in 0.26s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 [data-theme="dark"] .modal-container.reserve-modal {
-  background: #1c1915;
-  border-color: rgba(255, 255, 255, 0.12);
+  background: #181714;
+  border-color: rgba(255, 255, 255, 0.1);
   box-shadow:
-    0 28px 70px -15px rgba(0, 0, 0, 0.8),
-    0 0 0 1px rgba(255, 255, 255, 0.05);
+    0 32px 72px -16px rgba(0, 0, 0, 0.85),
+    0 0 0 1px rgba(255, 255, 255, 0.06);
 }
 
 @keyframes reserve-pop-in {
   from {
     opacity: 0;
-    transform: translateY(14px) scale(0.96);
+    transform: translateY(16px) scale(0.96);
   }
   to {
     opacity: 1;
@@ -8619,30 +8620,46 @@ html[lang="km"] .contact-card h2 {
   }
 }
 
+/* Mobile Sheet Pull Handle */
+.reserve-modal-handle-wrap {
+  display: none;
+  justify-content: center;
+  padding: 0.6rem 0 0.15rem;
+  background: var(--color-surface);
+}
+
+.reserve-modal-handle {
+  width: 38px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--color-line);
+}
+
 /* Header */
 .reserve-head {
-  padding: 1.15rem 1.25rem 1rem;
+  padding: 1.25rem 1.35rem 1rem;
   background: var(--color-surface);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: 0.85rem;
 }
 
 .reserve-head-left {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.85rem;
   min-width: 0;
+  flex: 1 1 auto;
 }
 
 .reserve-head-icon {
   display: grid;
   place-items: center;
   flex: none;
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
   color: var(--color-brand-600);
   background: var(--color-tint);
   border: 1px solid color-mix(in srgb, var(--color-brand-500) 25%, transparent);
@@ -8654,24 +8671,65 @@ html[lang="km"] .contact-card h2 {
 
 .reserve-head-meta {
   min-width: 0;
+  flex: 1 1 auto;
+}
+
+.reserve-head-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
 }
 
 .reserve-title {
   margin: 0;
-  font-size: 1.15rem;
-  font-weight: 750;
+  font-size: 1.18rem;
+  font-weight: 780;
   color: var(--color-ink);
   line-height: 1.25;
+  letter-spacing: -0.015em;
+}
+
+.reserve-count-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-line-2);
+  color: var(--color-muted);
 }
 
 .reserve-event-name {
-  margin-top: 0.15rem;
-  font-size: 0.8rem;
-  color: var(--color-muted);
-  font-weight: 500;
+  margin-top: 0.25rem;
+  font-size: 0.88rem;
+  color: var(--color-ink);
+  font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: 1.35;
+}
+
+.reserve-event-subline {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--color-muted);
+  font-weight: 500;
+  flex-wrap: wrap;
+}
+
+.reserve-subline-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
 }
 
 .reserve-quit {
@@ -8686,6 +8744,7 @@ html[lang="km"] .contact-card h2 {
   color: var(--color-muted);
   cursor: pointer;
   transition: all 0.15s ease;
+  margin-top: 0.15rem;
 }
 .reserve-quit:hover {
   background: var(--color-line-2);
@@ -8701,16 +8760,16 @@ html[lang="km"] .contact-card h2 {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.6rem 1.25rem;
+  padding: 0.65rem 1.35rem;
   background: color-mix(
     in srgb,
-    var(--color-brand-500) 8%,
+    var(--color-brand-500) 7%,
     var(--color-surface)
   );
   border-top: 1px solid var(--color-line-2);
   border-bottom: 1px solid var(--color-line-2);
   gap: 0.75rem;
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   color: var(--color-ink);
 }
 
@@ -8734,13 +8793,13 @@ html[lang="km"] .contact-card h2 {
 .reserve-status-left {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.5rem;
   min-width: 0;
 }
 
 .reserve-status-dot {
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: #10b981;
   box-shadow: 0 0 0 2.5px rgba(16, 185, 129, 0.25);
@@ -8754,16 +8813,42 @@ html[lang="km"] .contact-card h2 {
 }
 
 .reserve-status-text {
-  font-weight: 500;
+  font-weight: 600;
+  font-size: 0.8rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.reserve-timer-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-line-2);
+  color: var(--color-ink);
+  font-size: 0.78rem;
+  flex: none;
+}
+
+[data-theme="dark"] .reserve-timer-pill {
+  background: rgba(0, 0, 0, 0.25);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.reserve-timer-label {
+  font-size: 0.74rem;
+  color: var(--color-muted);
+  font-weight: 500;
 }
 
 .reserve-status-clock {
   font-variant-numeric: tabular-nums;
   font-weight: 750;
   color: var(--color-brand-600);
+  letter-spacing: 0.02em;
 }
 
 .reserve-status-banner.warn .reserve-status-clock {
@@ -8774,35 +8859,24 @@ html[lang="km"] .contact-card h2 {
   color: var(--color-brand-400);
 }
 
-.reserve-status-pill {
-  flex: none;
-  font-size: 0.72rem;
-  font-weight: 700;
-  padding: 0.18rem 0.55rem;
-  border-radius: 999px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-line-2);
-  color: var(--color-muted);
-}
-
 /* Modal Body */
 .reserve-modal-body {
-  padding: 1.1rem 1.25rem 0.75rem;
+  padding: 1.15rem 1.35rem 0.85rem;
   overflow-y: auto;
 }
 
 .reserve-items {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  margin-bottom: 0.75rem;
+  gap: 0.55rem;
+  margin-bottom: 0.85rem;
 }
 
 .reserve-item-row {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 0.9rem;
+  gap: 0.85rem;
+  padding: 0.8rem 0.95rem;
   border-radius: 14px;
   background: var(--color-surface-2);
   border: 1px solid var(--color-line-2);
@@ -8816,8 +8890,8 @@ html[lang="km"] .contact-card h2 {
 .reserve-item-mark {
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   border-radius: 10px;
   color: var(--color-brand-600);
   background: var(--color-surface);
@@ -8836,9 +8910,9 @@ html[lang="km"] .contact-card h2 {
 
 .reserve-item-title {
   color: var(--color-ink);
-  font-size: 0.92rem;
+  font-size: 0.93rem;
   font-weight: 700;
-  line-height: 1.25;
+  line-height: 1.3;
 }
 
 .reserve-item-sub {
@@ -8851,14 +8925,14 @@ html[lang="km"] .contact-card h2 {
 .reserve-item-actions {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: 0.65rem;
   flex: none;
 }
 
 .reserve-item-price {
   color: var(--color-ink);
   font-weight: 750;
-  font-size: 0.96rem;
+  font-size: 0.98rem;
   font-variant-numeric: tabular-nums;
 }
 
@@ -8893,14 +8967,15 @@ html[lang="km"] .contact-card h2 {
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
-  padding: 0.65rem 0.35rem 0.2rem;
+  padding: 0.85rem 0.5rem 0.2rem;
+  border-top: 1px dashed var(--color-line);
 }
 
 .reserve-breakdown-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 0.86rem;
+  font-size: 0.88rem;
   color: var(--color-muted);
 }
 
@@ -8913,28 +8988,30 @@ html[lang="km"] .contact-card h2 {
 .reserve-breakdown-divider {
   height: 1px;
   background: var(--color-line-2);
-  margin: 0.15rem 0;
+  margin: 0.2rem 0;
 }
 
 .reserve-breakdown-total {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   padding-top: 0.15rem;
 }
 
 .reserve-breakdown-total .reserve-total-label {
-  font-size: 0.98rem;
-  font-weight: 700;
+  font-size: 1.05rem;
+  font-weight: 780;
   color: var(--color-ink);
+  letter-spacing: -0.01em;
 }
 
 .reserve-breakdown-total .reserve-total-val {
-  font-size: 1.45rem;
+  font-size: 1.55rem;
   font-weight: 800;
   color: var(--color-brand-600);
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
 }
 
 [data-theme="dark"] .reserve-breakdown-total .reserve-total-val {
@@ -8943,21 +9020,21 @@ html[lang="km"] .contact-card h2 {
 
 /* Modal Footer & Actions */
 .reserve-modal-footer {
-  padding: 1rem 1.25rem 1.2rem;
+  padding: 1.1rem 1.35rem 1.35rem;
   background: var(--color-surface);
   border-top: 1px solid var(--color-line-2);
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.85rem;
 }
 
 .btn-checkout-primary {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 0.55rem;
+  justify-content: space-between;
   width: 100%;
-  min-height: 48px;
+  min-height: 50px;
+  padding: 0 1.25rem;
   border-radius: 14px;
   background: linear-gradient(
     135deg,
@@ -8969,7 +9046,9 @@ html[lang="km"] .contact-card h2 {
   font-weight: 750;
   text-decoration: none !important;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(18, 97, 60, 0.35);
+  box-shadow:
+    0 4px 14px rgba(18, 97, 60, 0.32),
+    0 1px 2px rgba(18, 97, 60, 0.2);
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -8979,12 +9058,30 @@ html[lang="km"] .contact-card h2 {
     var(--color-brand-500),
     var(--color-brand-600)
   );
-  box-shadow: 0 8px 24px rgba(18, 97, 60, 0.45);
+  box-shadow:
+    0 8px 24px rgba(18, 97, 60, 0.42),
+    0 2px 4px rgba(18, 97, 60, 0.2);
   transform: translateY(-1.5px);
 }
 
 .btn-checkout-primary:active {
   transform: translateY(0.5px);
+}
+
+.btn-checkout-end {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-checkout-badge {
+  padding: 0.2rem 0.55rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.2);
+  font-size: 0.85rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
 }
 
 .reserve-footer-meta {
@@ -8997,14 +9094,14 @@ html[lang="km"] .contact-card h2 {
 .btn-release-link {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.4rem;
   background: transparent;
   border: none;
   color: var(--color-muted);
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
-  padding: 0.2rem 0;
+  padding: 0.25rem 0;
   transition: color 0.15s ease;
 }
 
@@ -9036,17 +9133,35 @@ html[lang="km"] .contact-card h2 {
   }
 }
 
-@media (max-width: 460px) {
+@media (max-width: 480px) {
   .modal-overlay {
     align-items: end;
-    padding: 0.6rem;
+    padding: 0;
   }
   .modal-container.reserve-modal {
-    border-radius: 20px 20px 0 0;
-    max-height: calc(100dvh - 1.5rem);
+    border-radius: 24px 24px 0 0;
+    max-height: 88dvh;
+    border-bottom: none;
+    border-left: none;
+    border-right: none;
+  }
+  .reserve-modal-handle-wrap {
+    display: flex;
+  }
+  .reserve-head {
+    padding: 0.85rem 1.15rem 0.85rem;
+  }
+  .reserve-status-banner {
+    padding: 0.55rem 1.15rem;
+  }
+  .reserve-modal-body {
+    padding: 0.95rem 1.15rem 0.65rem;
+  }
+  .reserve-modal-footer {
+    padding: 0.95rem 1.15rem 1.25rem;
   }
   .reserve-head-meta .reserve-event-name {
-    max-width: 170px;
+    max-width: 220px;
   }
 }
 
