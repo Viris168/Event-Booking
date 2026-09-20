@@ -1419,6 +1419,7 @@
   /* ----------------------------------------------------------------- cards */
   .card {
     @apply overflow-hidden rounded-card border border-line bg-surface shadow-card;
+    isolation: isolate;
   }
   .card-body {
     @apply p-[1.1rem];
@@ -4748,6 +4749,213 @@
   }
   .about-event-desc p + p {
     margin-top: 0.55rem;
+  }
+
+  /* ----------------------------------------- event location section */
+  .event-location-card {
+    @apply flex flex-col;
+    gap: 1rem;
+  }
+  .event-location-head {
+    @apply flex items-start justify-between gap-3 flex-wrap;
+  }
+  .event-location-heading {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: var(--color-ink);
+    margin: 0;
+  }
+  .event-location-sub {
+    font-size: 0.85rem;
+    color: var(--color-muted);
+    margin: 0.25rem 0 0;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+  }
+  .event-location-map-box {
+    position: relative;
+    width: 100%;
+    height: 320px;
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid var(--color-line);
+    background: var(--color-surface-2);
+    /* Strict clipping and stacking isolation for hardware-accelerated Leaflet map */
+    isolation: isolate;
+    z-index: 0;
+    contain: paint;
+    transform: translateZ(0);
+    -webkit-mask-image: -webkit-radial-gradient(white, black);
+    mask-image: radial-gradient(white, black);
+  }
+  @media (max-width: 640px) {
+    .event-location-map-box {
+      height: 250px;
+    }
+  }
+  .evloc-map-canvas {
+    width: 100%;
+    height: 100%;
+    border-radius: inherit;
+    overflow: hidden;
+    position: relative;
+    z-index: 0;
+  }
+  .evloc-map-canvas.leaflet-container {
+    width: 100%;
+    height: 100%;
+    border-radius: inherit;
+    overflow: hidden;
+    position: relative;
+    z-index: 0;
+    @apply bg-surface-2 font-sans;
+  }
+  .evloc-map-canvas.leaflet-container .leaflet-bar a,
+  .evloc-map-canvas.leaflet-container .leaflet-control-attribution {
+    @apply border-line bg-surface text-ink-2;
+  }
+  .evloc-map-canvas.leaflet-container .leaflet-control-attribution a {
+    @apply text-muted;
+  }
+  .evloc-map-canvas.leaflet-container .leaflet-popup-content-wrapper,
+  .evloc-map-canvas.leaflet-container .leaflet-popup-tip {
+    @apply border border-line bg-surface text-ink shadow-lg;
+  }
+
+  /* Keep Leaflet's internal controls & panes strictly bounded inside the map box */
+  .evloc-map-canvas .leaflet-pane {
+    z-index: 10;
+  }
+  .evloc-map-canvas .leaflet-tile-pane {
+    z-index: 10;
+  }
+  .evloc-map-canvas .leaflet-overlay-pane {
+    z-index: 20;
+  }
+  .evloc-map-canvas .leaflet-marker-pane {
+    z-index: 30;
+  }
+  .evloc-map-canvas .leaflet-tooltip-pane {
+    z-index: 40;
+  }
+  .evloc-map-canvas .leaflet-popup-pane {
+    z-index: 50;
+  }
+  .evloc-map-canvas .leaflet-top,
+  .evloc-map-canvas .leaflet-bottom {
+    z-index: 60;
+  }
+  .evloc-map-canvas .leaflet-control {
+    z-index: 70;
+  }
+
+  .event-location-map-skeleton {
+    width: 100%;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--color-surface-2);
+    animation: pulse 1.5s infinite;
+  }
+  .event-location-empty {
+    @apply flex flex-col items-center justify-center p-8 text-center text-muted gap-2 rounded-[14px] border border-line bg-surface-2;
+  }
+
+  /* Leaflet Map pin marker matching screenshot */
+  .evloc-marker-container {
+    background: transparent !important;
+    border: none !important;
+    overflow: visible !important;
+  }
+  .evloc-pin-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    pointer-events: auto;
+    cursor: pointer;
+  }
+  .evloc-pin-tag {
+    display: inline-flex;
+    align-items: center;
+    background: #0f172a;
+    color: #ffffff;
+    padding: 0.32rem 0.75rem;
+    border-radius: 8px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    white-space: nowrap;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    position: relative;
+    margin-bottom: 6px;
+    transition: transform 0.18s ease;
+  }
+  [data-theme="dark"] .evloc-pin-tag {
+    background: #1e293b;
+    border-color: rgba(255, 255, 255, 0.25);
+  }
+  .evloc-pin-wrap:hover .evloc-pin-tag {
+    transform: translateY(-2px);
+  }
+  .evloc-pin-tag-arrow {
+    position: absolute;
+    bottom: -5px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 5px solid #0f172a;
+  }
+  [data-theme="dark"] .evloc-pin-tag-arrow {
+    border-top-color: #1e293b;
+  }
+  .evloc-pin-badge {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 14px rgba(220, 38, 38, 0.5);
+    border: 2.5px solid #ffffff;
+    position: relative;
+    z-index: 2;
+  }
+  .evloc-pin-point {
+    width: 8px;
+    height: 4px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.35);
+    margin-top: 2px;
+  }
+  .evloc-popup-title {
+    font-weight: 700;
+    font-size: 0.92rem;
+    color: var(--color-ink);
+    margin-bottom: 0.2rem;
+  }
+  .evloc-popup-addr {
+    font-size: 0.78rem;
+    color: var(--color-muted);
+    line-height: 1.35;
+    margin-bottom: 0.45rem;
+  }
+  .evloc-popup-btn {
+    display: inline-block;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--color-brand-600);
+    text-decoration: none;
+  }
+  .evloc-popup-btn:hover {
+    text-decoration: underline;
   }
 
   /* ------------------------------------------------------------------ icons */

@@ -1,8 +1,12 @@
 import { useDocumentTitle } from "../lib/useDocumentTitle.js";
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import ReserveModal from "../components/ReserveModal.jsx";
 import Icon, { CATEGORY_ICON } from "../components/Icon.jsx";
+
+const EventLocationMap = lazy(
+  () => import("../components/EventLocationMap.jsx"),
+);
 import SeatMap from "../components/SeatMap.jsx";
 import VenueLayoutPanel from "../components/VenueLayoutPanel.jsx";
 import ZonePicker from "../components/ZonePicker.jsx";
@@ -697,6 +701,66 @@ export default function EventDetailPage() {
               </div>
             </div>
           </div>
+
+          {/* Location Section */}
+          {venue && (
+            <div className="card">
+              <div className="card-body event-location-card">
+                <div className="event-location-head">
+                  <div>
+                    <h2 className="event-location-heading">{t("location")}</h2>
+                    {addressLine && (
+                      <p className="event-location-sub">
+                        <Icon
+                          name="mapPin"
+                          size={14}
+                          className="shrink-0 text-brand-500"
+                        />
+                        <span>
+                          <b>{venueName}</b> · {addressLine}
+                        </span>
+                      </p>
+                    )}
+                  </div>
+                  {venue.lat && venue.lng && (
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${venue.lat},${venue.lng}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn btn-sm btn-outline inline-flex items-center gap-1.5 shrink-0"
+                    >
+                      <Icon name="externalLink" size={13} />
+                      <span>{t("openInMaps")}</span>
+                    </a>
+                  )}
+                </div>
+
+                {venue.lat && venue.lng ? (
+                  <div className="event-location-map-box">
+                    <Suspense
+                      fallback={<div className="event-location-map-skeleton" />}
+                    >
+                      <EventLocationMap
+                        lat={+venue.lat}
+                        lng={+venue.lng}
+                        venueName={venueName}
+                        addressLine={addressLine}
+                        locale={locale}
+                      />
+                    </Suspense>
+                  </div>
+                ) : (
+                  <div className="event-location-empty">
+                    <Icon name="mapPin" size={26} />
+                    <div className="font-semibold text-ink">{venueName}</div>
+                    {addressLine && (
+                      <div className="text-small text-muted">{addressLine}</div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Now rendered if there is a map OR if there are seating zones to display as a legend */}
           {(mapUrl || unifiedZones.length > 0) && (

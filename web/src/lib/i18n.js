@@ -113,6 +113,8 @@ const dict = {
   starts: { en: "Starts", km: "ម៉ោងចាប់ផ្តើម" },
   salesClose: { en: "Sales close", km: "បិទលក់សំបុត្រ" },
   about: { en: "About this event", km: "អំពីព្រឹត្តិការណ៍នេះ" },
+  location: { en: "Location", km: "ទីតាំង" },
+  openInMaps: { en: "Open in Maps", km: "បើកក្នុងផែនទី" },
   pickSeats: { en: "Choose your seats", km: "ជ្រើសរើសកៅអីរបស់អ្នក" },
   pickZones: { en: "General admission", km: "សំបុត្រចូលទូទៅ" },
   seatHint: {
