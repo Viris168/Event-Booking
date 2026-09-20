@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
-import Icon from './Icon.jsx'
-import NotificationItem from './NotificationItem.jsx'
-import { useLocale } from '../context/LocaleContext.jsx'
-import { useNotifications } from '../context/NotificationContext.jsx'
+import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
+import Icon from "./Icon.jsx";
+import NotificationGroup from "./NotificationGroup.jsx";
+import { useLocale } from "../context/LocaleContext.jsx";
+import { useNotifications } from "../context/NotificationContext.jsx";
+import { groupByType } from "../lib/notifications.js";
 
 /**
  * The bell, and the panel behind it.
@@ -14,44 +15,46 @@ import { useNotifications } from '../context/NotificationContext.jsx'
  * minute to render nothing.
  */
 export default function NotificationBell() {
-  const { t } = useLocale()
-  const { unread, items, loading, loadInbox, markRead, markAllRead } = useNotifications()
+  const { t } = useLocale();
+  const { unread, items, loading, loadInbox, markRead, markAllRead } =
+    useNotifications();
 
-  const [open, setOpen] = useState(false)
-  const [unreadOnly, setUnreadOnly] = useState(false)
-  const wrapRef = useRef(null)
+  const [open, setOpen] = useState(false);
+  const [filter, setFilter] = useState("ALL");
+  const wrapRef = useRef(null);
 
   useEffect(() => {
-    if (open) loadInbox(unreadOnly)
-  }, [open, unreadOnly, loadInbox])
+    if (open) loadInbox(filter);
+  }, [open, filter, loadInbox]);
 
   // Click-away and Escape. Both, because a panel that only closes on click
   // traps keyboard users in it.
   useEffect(() => {
-    if (!open) return
+    if (!open) return;
 
     const onPointer = (e) => {
-      if (!wrapRef.current?.contains(e.target)) setOpen(false)
-    }
+      if (!wrapRef.current?.contains(e.target)) setOpen(false);
+    };
     const onKey = (e) => {
-      if (e.key === 'Escape') setOpen(false)
-    }
+      if (e.key === "Escape") setOpen(false);
+    };
 
-    document.addEventListener('mousedown', onPointer)
-    document.addEventListener('keydown', onKey)
+    document.addEventListener("mousedown", onPointer);
+    document.addEventListener("keydown", onKey);
     return () => {
-      document.removeEventListener('mousedown', onPointer)
-      document.removeEventListener('keydown', onKey)
-    }
-  }, [open])
+      document.removeEventListener("mousedown", onPointer);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
 
-  const label = unread > 0 ? `${t('notifications')} (${unread})` : t('notifications')
+  const label =
+    unread > 0 ? `${t("notifications")} (${unread})` : t("notifications");
 
   return (
     <div className="notif-wrap" ref={wrapRef}>
       <button
         type="button"
-        className={`nav-icon-btn notif-btn ${open ? 'on' : ''}`}
+        className={`nav-icon-btn notif-btn ${open ? "on" : ""}`}
         onClick={() => setOpen((v) => !v)}
         aria-label={label}
         aria-expanded={open}
@@ -62,17 +65,27 @@ export default function NotificationBell() {
           // Capped, because the badge is 18px wide and a genuinely busy admin
           // can reach three digits, at which point the number stops being
           // information and starts being a layout problem.
-          <span className="notif-count" aria-hidden="true">{unread > 99 ? '99+' : unread}</span>
+          <span className="notif-count" aria-hidden="true">
+            {unread > 99 ? "99+" : unread}
+          </span>
         )}
       </button>
 
       {open && (
-        <div className="notif-panel" role="dialog" aria-label={t('notifications')}>
+        <div
+          className="notif-panel"
+          role="dialog"
+          aria-label={t("notifications")}
+        >
           <div className="notif-head">
-            <strong>{t('notifications')}</strong>
+            <strong>{t("notifications")}</strong>
             {unread > 0 && (
-              <button type="button" className="notif-clear" onClick={markAllRead}>
-                {t('markAllRead')}
+              <button
+                type="button"
+                className="notif-clear"
+                onClick={markAllRead}
+              >
+                {t("markAllRead")}
               </button>
             )}
           </div>
@@ -81,50 +94,64 @@ export default function NotificationBell() {
             <button
               type="button"
               role="tab"
-              aria-selected={!unreadOnly}
-              onClick={() => setUnreadOnly(false)}
+              aria-selected={filter === "ALL"}
+              onClick={() => setFilter("ALL")}
             >
-              {t('notificationsAll')}
+              {t("notificationsAll")}
             </button>
             <button
               type="button"
               role="tab"
-              aria-selected={unreadOnly}
-              onClick={() => setUnreadOnly(true)}
+              aria-selected={filter === "UNREAD"}
+              onClick={() => setFilter("UNREAD")}
             >
-              {t('notificationsUnread')}
+              {t("notificationsUnread")}
               {unread > 0 && <span className="notif-tab-count">{unread}</span>}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={filter === "READ"}
+              onClick={() => setFilter("READ")}
+            >
+              {t("notificationsRead")}
             </button>
           </div>
 
           <div className="notif-list">
-            {loading && <p className="notif-empty">{t('loading')}</p>}
+            {loading && <p className="notif-empty">{t("loading")}</p>}
 
             {!loading && items.length === 0 && (
               <p className="notif-empty">
-                {unreadOnly ? t('noUnreadNotifications') : t('noNotifications')}
+                {filter === "UNREAD" && t("noUnreadNotifications")}
+                {filter === "READ" && t("noReadNotifications")}
+                {filter === "ALL" && t("noNotifications")}
               </p>
             )}
 
             {!loading &&
-              items.map((n) => (
-                <NotificationItem
-                  key={n.id}
-                  notification={n}
+              groupByType(items).map((group) => (
+                <NotificationGroup
+                  key={group.type}
+                  group={group}
                   onOpen={(item) => {
-                    if (!item.read_at) markRead(item.id)
-                    setOpen(false)
+                    if (!item.read_at) markRead(item.id);
+                    setOpen(false);
                   }}
                 />
               ))}
           </div>
 
-          <Link className="notif-foot" to="/notifications" onClick={() => setOpen(false)}>
-            {t('viewAllNotifications')}
+          <Link
+            className="notif-foot"
+            to="/notifications"
+            onClick={() => setOpen(false)}
+          >
+            {t("viewAllNotifications")}
             <Icon name="chevronRight" size={14} />
           </Link>
         </div>
       )}
     </div>
-  )
+  );
 }

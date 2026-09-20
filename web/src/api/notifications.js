@@ -7,6 +7,11 @@ import client from './client.js'
  * Rows carry a `type` and a `params` object, never a finished sentence - see
  * notificationText() in lib/i18n.js, which is what turns the pair into words in
  * whichever language the viewer has selected.
+ *
+ * `filter` is 'ALL' | 'UNREAD' | 'READ'. One parameter rather than the
+ * `unreadOnly` boolean it replaced, because a second boolean beside it would
+ * have made "unread and read" a request the server had to have an opinion
+ * about.
  */
 export const getNotifications = (params) =>
   client.get('/notifications', { params }).then((r) => r.data)

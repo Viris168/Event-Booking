@@ -1,18 +1,28 @@
-import { useEffect, useState } from 'react'
-import { useDocumentTitle } from '../../lib/useDocumentTitle.js'
-import { Link, useNavigate } from 'react-router-dom'
-import ActionMenu from '../../components/ActionMenu.jsx'
-import ConfirmDialog from '../../components/ConfirmDialog.jsx'
-import Icon from '../../components/Icon.jsx'
-import TelegramConnectCard from '../../components/TelegramConnectCard.jsx'
-import { useToast } from '../../context/ToastContext.jsx'
-import { Badge, Empty, Progress, ResponsiveTable, TablePager } from '../../components/ui.jsx'
-import { OrganizerDashboardSkeleton } from '../../components/Skeleton.jsx'
-import { useAuth } from '../../context/AuthContext.jsx'
-import { useLocale } from '../../context/LocaleContext.jsx'
-import { usd } from '../../lib/format.js'
-import { usePaging } from '../../lib/usePaging.js'
-import { SALES_UI, displayStatus, isPast, salesState } from '../../lib/salesState.js'
+import { useEffect, useState } from "react";
+import { useDocumentTitle } from "../../lib/useDocumentTitle.js";
+import { Link, useNavigate } from "react-router-dom";
+import ActionMenu from "../../components/ActionMenu.jsx";
+import ConfirmDialog from "../../components/ConfirmDialog.jsx";
+import Icon from "../../components/Icon.jsx";
+import { useToast } from "../../context/ToastContext.jsx";
+import {
+  Badge,
+  Empty,
+  Progress,
+  ResponsiveTable,
+  TablePager,
+} from "../../components/ui.jsx";
+import { OrganizerDashboardSkeleton } from "../../components/Skeleton.jsx";
+import { useAuth } from "../../context/AuthContext.jsx";
+import { useLocale } from "../../context/LocaleContext.jsx";
+import { usd } from "../../lib/format.js";
+import { usePaging } from "../../lib/usePaging.js";
+import {
+  SALES_UI,
+  displayStatus,
+  isPast,
+  salesState,
+} from "../../lib/salesState.js";
 import {
   deleteOwnEvent,
   getOrganizerEvents,
@@ -20,10 +30,12 @@ import {
   submitEventForReview,
   takeDownOwnEvent,
   withdrawEventFromReview,
-} from '../../api/events.js'
-import { getMonthlyRevenue } from '../../api/bookings.js'
-
-const MONTH_LABEL = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+} from "../../api/events.js";
+import { getMonthlyRevenue } from "../../api/bookings.js";
+import { getPayableEvents } from "../../api/payouts.js";
+import { getTelegramStatus } from "../../api/organizerTelegram.js";
+import { RevenueChart } from "../../components/RevenueChart.jsx";
+import TelegramModal from "../../components/TelegramModal.jsx";
 
 /**
  * Confirmed booking value per month, for the twelve months ending this one.
@@ -48,29 +60,36 @@ const MONTH_LABEL = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Se
  */
 function revenueOf(event) {
   const fromSeats = (event.seat_classes || []).reduce(
-    (a, c) => a + (c.sold_count || 0) * (c.price_usd_cents || 0), 0)
+    (a, c) => a + (c.sold_count || 0) * (c.price_usd_cents || 0),
+    0,
+  );
   const fromZones = (event.zones || []).reduce(
-    (a, z) => a + (z.sold_qty || 0) * (z.price_usd_cents || 0), 0)
-  return fromSeats + fromZones
+    (a, z) => a + (z.sold_qty || 0) * (z.price_usd_cents || 0),
+    0,
+  );
+  return fromSeats + fromZones;
 }
 
 export default function OrganizerDashboardPage() {
-  const { t, locale, date } = useLocale()
-  useDocumentTitle(t('organizerDashboard'))
-  const { organizerProfile } = useAuth()
+  const { t, locale, date } = useLocale();
+  useDocumentTitle(t("organizerDashboard"));
+  const { organizerProfile } = useAuth();
 
-  const [events, setEvents] = useState([])
-  const [months, setMonths] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const [events, setEvents] = useState([]);
+  const [months, setMonths] = useState([]);
+  const [payableEvents, setPayableEvents] = useState([]);
+  const [telegramConnected, setTelegramConnected] = useState(false);
+  const [telegramModalOpen, setTelegramModalOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   // Named so the row menu can re-run it after a transition: the status, the
   // available actions and the totals all change together, and refetching is
   // cheaper to reason about than patching one row in place.
-  const [reloadKey, setReloadKey] = useState(0)
-  const reload = () => setReloadKey((k) => k + 1)
+  const [reloadKey, setReloadKey] = useState(0);
+  const reload = () => setReloadKey((k) => k + 1);
 
-  const navigate = useNavigate()
+  const navigate = useNavigate();
 
   /*
    * Which slice of the list to show. Upcoming by default.
@@ -86,7 +105,8 @@ export default function OrganizerDashboardPage() {
    * A filter, not a deletion - the count below says how many are hidden, and
    * one click brings them back.
    */
-  const [scope, setScope] = useState('upcoming')
+  const [scope, setScope] = useState("upcoming");
+  const [chartMetric, setChartMetric] = useState("revenue");
 
   /*
    * "Past" means the event has happened, not that its sales window shut.
@@ -96,9 +116,11 @@ export default function OrganizerDashboardPage() {
    * on starts_at is the same line salesState draws, and the same one the seed
    * draws, so all three agree on what "over" means.
    */
-  const pastCount = events.filter(isPast).length
+  const pastCount = events.filter(isPast).length;
   const shown =
-    scope === 'all' ? events : events.filter((e) => (scope === 'past' ? isPast(e) : !isPast(e)))
+    scope === "all"
+      ? events
+      : events.filter((e) => (scope === "past" ? isPast(e) : !isPast(e)));
 
   /*
    * Ten to a page rather than the twenty-five the admin tables use. These rows
@@ -109,7 +131,7 @@ export default function OrganizerDashboardPage() {
    * Keyed on the scope tab: Upcoming, Past and All are three different lists,
    * so switching starts at the first page of the new one.
    */
-  const paged = usePaging(shown, scope, 10)
+  const paged = usePaging(shown, scope, 10);
 
   /**
    * Open a row, unless the click was aimed at something inside it.
@@ -119,31 +141,40 @@ export default function OrganizerDashboardPage() {
    * link would fire twice.
    */
   function openEvent(ev, eventId) {
-    if (ev.target.closest('a, button, [role="menu"]')) return
-    navigate(`/organizer/events/${eventId}/sales`)
+    if (ev.target.closest('a, button, [role="menu"]')) return;
+    navigate(`/organizer/events/${eventId}/sales`);
   }
 
   useEffect(() => {
-    let cancelled = false
-    setLoading(true)
-    Promise.all([getOrganizerEvents(), getMonthlyRevenue(12)])
-      .then(([evts, revenue]) => {
-        if (cancelled) return
-        setEvents(evts || [])
-        setMonths(revenue || [])
-        setError(null)
+    let cancelled = false;
+    setLoading(true);
+    Promise.all([
+      getOrganizerEvents(),
+      getMonthlyRevenue(12),
+      getPayableEvents().catch(() => []),
+      getTelegramStatus().catch(() => ({ connected: false })),
+    ])
+      .then(([evts, revenue, payable, tg]) => {
+        if (cancelled) return;
+        setEvents(evts || []);
+        setMonths(revenue || []);
+        setPayableEvents(payable || []);
+        setTelegramConnected(Boolean(tg?.connected));
+        setError(null);
       })
       .catch((e) => {
-        if (cancelled) return
-        setError(e?.response?.status === 403 ? 'forbidden' : 'unreachable')
-        setEvents([])
-        setMonths([])
+        if (cancelled) return;
+        setError(e?.response?.status === 403 ? "forbidden" : "unreachable");
+        setEvents([]);
+        setMonths([]);
+        setPayableEvents([]);
+        setTelegramConnected(false);
       })
-      .finally(() => !cancelled && setLoading(false))
+      .finally(() => !cancelled && setLoading(false));
     return () => {
-      cancelled = true
-    }
-  }, [reloadKey])
+      cancelled = true;
+    };
+  }, [reloadKey]);
 
   // capacity / sold / held come straight off EventResponse - the server already
   // sums seat classes and zones, so the old inventorySummary() lookup against
@@ -156,11 +187,57 @@ export default function OrganizerDashboardPage() {
       held: acc.held + (e.total_held || 0),
     }),
     { revenue: 0, sold: 0, capacity: 0, held: 0 },
-  )
+  );
 
-  const peak = Math.max(...months.map((m) => m.cents), 1)
-  const booked12 = months.reduce((a, m) => a + m.cents, 0)
-  const avgTicket = totals.sold ? Math.round(totals.revenue / totals.sold) : 0
+  // Calculations for executive KPI cards:
+  const thisMonth = months[months.length - 1];
+  const lastMonth = months[months.length - 2];
+  const thisMonthCents = thisMonth?.cents || 0;
+  const lastMonthCents = lastMonth?.cents || 0;
+  let momTrend = null;
+  if (lastMonthCents > 0) {
+    const diff = Math.round(
+      ((thisMonthCents - lastMonthCents) / lastMonthCents) * 100,
+    );
+    momTrend = { pct: Math.abs(diff), up: diff >= 0 };
+  } else if (thisMonthCents > 0) {
+    momTrend = { pct: 100, up: true };
+  }
+
+  const payableTotalCents = (payableEvents || []).reduce(
+    (sum, p) => sum + (p.net_usd_cents || 0),
+    0,
+  );
+
+  const fillRate =
+    totals.capacity > 0 ? Math.round((totals.sold / totals.capacity) * 100) : 0;
+
+  const now = new Date();
+  const liveEvents = events.filter((e) => e.status === "PUBLISHED");
+  const upcomingLive = liveEvents
+    .filter((e) => e.starts_at && new Date(e.starts_at) >= now)
+    .sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at));
+  const nextEvent = upcomingLive[0];
+  const nextDays = nextEvent
+    ? Math.max(
+        0,
+        Math.ceil(
+          (new Date(nextEvent.starts_at) - now) / (1000 * 60 * 60 * 24),
+        ),
+      )
+    : null;
+
+  function scrollToEvents(e, filterScope) {
+    e?.preventDefault();
+    if (filterScope) setScope(filterScope);
+    const el = document.getElementById("my-events");
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth" });
+    }
+  }
+
+  const booked12 = months.reduce((a, m) => a + m.cents, 0);
+  const totalBookings12 = months.reduce((a, m) => a + (m.bookings || 0), 0);
 
   // Ranked by money, not ticket count. Those orders disagree whenever prices
   // differ: a fun run selling 260 cheap tickets outranks a summit selling 84
@@ -175,34 +252,62 @@ export default function OrganizerDashboardPage() {
     }))
     .filter((r) => r.revenue > 0)
     .sort((a, b) => b.revenue - a.revenue)
-    .slice(0, 5)
-  const revenuePeak = Math.max(...byRevenue.map((r) => r.revenue), 1)
+    .slice(0, 5);
+  const revenuePeak = Math.max(...byRevenue.map((r) => r.revenue), 1);
 
-  const km = locale === 'km'
+  const km = locale === "km";
 
   return (
     <div className="container container-wide">
       <div className="page-head">
         <div>
-          <h1>{t('organizerDashboard')}</h1>
+          <div className="page-title-lockup">
+            <span className="icon-chip green lg">
+              <Icon name="calendar" size={22} />
+            </span>
+            <h1>{t("organizerDashboard")}</h1>
+          </div>
           <p>
             {organizerProfile
               ? km
                 ? organizerProfile.org_name_km
                 : organizerProfile.org_name_en
               : km
-                ? 'ព្រឹត្តិការណ៍ទាំងអស់'
-                : 'All organizers'}
+                ? "ព្រឹត្តិការណ៍ទាំងអស់"
+                : "All organizers"}
           </p>
         </div>
         <div className="row row-tight">
+          <button
+            type="button"
+            className="btn btn-outline inline-flex items-center gap-2"
+            onClick={() => setTelegramModalOpen(true)}
+            title={
+              telegramConnected
+                ? km
+                  ? "Telegram Bot: បានភ្ជាប់រួចរាល់"
+                  : "Telegram Bot: Connected"
+                : km
+                  ? "ភ្ជាប់ Telegram Bot ដើម្បីទទួលដំណឹង"
+                  : "Connect Telegram Bot notifications"
+            }
+          >
+            <Icon name="telegram" size={16} className="text-[#24A1DE]" />
+            <span>{km ? "Telegram Bot" : "Telegram Bot"}</span>
+            {telegramConnected && (
+              <span
+                className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 inline-block ml-0.5"
+                title={km ? "បានភ្ជាប់រួចរាល់" : "Connected"}
+              />
+            )}
+          </button>
           <Link className="btn btn-outline" to="/organizer/venues">
             <Icon name="building" size={16} />
-            {t('venues')}
+            {t("venues")}
           </Link>
           <Link className="btn btn-primary" to="/organizer/events/new">
             <Icon name="plus" size={16} />
-            {t('createEvent')}
+            {t("createEvent")}
           </Link>
         </div>
       </div>
@@ -211,297 +316,445 @@ export default function OrganizerDashboardPage() {
         <div className="bg-surface border border-danger/30 rounded-card shadow-card p-6 text-center mb-4">
           <Icon name="alert" size={26} className="text-danger" />
           <p className="text-ink font-semibold mt-2 mb-1">
-            {error === 'forbidden'
-              ? km ? 'គណនីនេះមិនមែនជាអ្នករៀបចំ' : 'Not an organizer account'
-              : km ? 'មិនអាចទាក់ទងម៉ាស៊ីនបម្រើ' : 'Could not reach the server'}
+            {error === "forbidden"
+              ? km
+                ? "គណនីនេះមិនមែនជាអ្នករៀបចំ"
+                : "Not an organizer account"
+              : km
+                ? "មិនអាចទាក់ទងម៉ាស៊ីនបម្រើ"
+                : "Could not reach the server"}
           </p>
           <p className="text-small text-muted m-0">
-            {error === 'forbidden'
-              ? km ? 'គណនីនេះគ្មានទម្រង់អ្នករៀបចំ' : 'This account has no organizer profile.'
-              : km ? 'ពិនិត្យថា API កំពុងដំណើរការ' : 'Check that the API is running, then reload.'}
+            {error === "forbidden"
+              ? km
+                ? "គណនីនេះគ្មានទម្រង់អ្នករៀបចំ"
+                : "This account has no organizer profile."
+              : km
+                ? "ពិនិត្យថា API កំពុងដំណើរការ"
+                : "Check that the API is running, then reload."}
           </p>
         </div>
       )}
 
       {loading && !error && <OrganizerDashboardSkeleton />}
 
-      {!loading && !error && (
-        <div className="mb-4">
-          <TelegramConnectCard />
-        </div>
-      )}
-
-      <div className={`grid gap-4 lg:grid-cols-3 items-start ${loading || error ? 'hidden' : ''}`}>
-        {/* ------------------------------------------------ left, two columns */}
-        <div className="lg:col-span-2 flex flex-col gap-4">
-          {/* revenue over the year */}
-          <section className="bg-surface border border-line rounded-card shadow-card p-5">
-            <div className="flex items-start justify-between gap-4 mb-6">
-              <div>
-                <h2 className="text-muted text-small font-semibold m-0">
-                  {km ? 'ការកក់បានបញ្ជាក់' : 'Confirmed bookings'}
-                </h2>
-                <div className="text-3xl font-black tracking-tight text-ink mt-1">{usd(booked12)}</div>
+      <div
+        className={`grid gap-4 lg:grid-cols-3 ${loading || error ? "hidden" : ""}`}
+      >
+        {/* ------------------------------------------------ Row 1: Left (Chart) */}
+        <section className="lg:col-span-2 bg-surface border border-line rounded-card shadow-card p-5 flex flex-col justify-between h-full">
+          <div className="flex items-start justify-between gap-4 mb-4 flex-wrap">
+            <div>
+              <h2 className="text-muted text-small font-semibold m-0">
+                {chartMetric === "revenue"
+                  ? km
+                    ? "ចំណូលបានបញ្ជាក់"
+                    : "Confirmed bookings"
+                  : km
+                    ? "ចំនួនការកក់សរុប"
+                    : "Total bookings"}
+              </h2>
+              <div className="text-3xl font-black tracking-tight text-ink mt-1">
+                {chartMetric === "revenue"
+                  ? usd(booked12)
+                  : `${totalBookings12.toLocaleString()} ${km ? "ការកក់" : "bookings"}`}
               </div>
-              <span className="badge badge-mode">{km ? '១២ ខែចុងក្រោយ' : 'last 12 months'}</span>
             </div>
 
-            {booked12 ? (
-              <>
-                {/* Each column is min-w-0 and the hover figure is taken out of
-                    flow. Left in flow it is still laid out while invisible, and
-                    its nowrap "$0.00" became a ~30px floor under every one of
-                    the twelve columns - 426px of bars inside a 296px card on a
-                    phone, spilling over the card edge. */}
-                <div className="flex items-end gap-1.5 h-32">
-                  {months.map((m, i) => (
-                    <div key={i} className="flex-1 min-w-0 flex flex-col justify-end h-full group">
-                      <div
-                        className="relative w-full bar-month rounded-t-tiny transition-all"
-                        style={{ height: `${Math.max((m.cents / peak) * 100, m.cents ? 4 : 1)}%` }}
-                        title={`${MONTH_LABEL[m.month - 1]} ${m.year} · ${usd(m.cents)}`}
-                      >
-                        <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1 text-tiny text-muted opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                          {usd(m.cents)}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                {/* Twelve three-letter labels need ~25px each and a phone gives
-                    them 24 - they touch, and the last one runs past the card. So
-                    below sm only every other month is named, counted back from
-                    the newest so the current month always keeps its label. The
-                    blank spans stay, to keep each label centred over its bar. */}
-                <div className="flex text-tiny text-muted font-medium mt-3">
-                  {months.map((m, i) => (
-                    <span key={i} className="flex-1 min-w-0 text-center">
-                      <span className={(months.length - 1 - i) % 2 ? 'hidden sm:inline' : ''}>
-                        {MONTH_LABEL[m.month - 1]}
-                      </span>
-                    </span>
-                  ))}
-                </div>
-              </>
-            ) : (
-              <p className="text-small text-muted m-0 py-8 text-center">
-                {km ? 'មិនទាន់មានការកក់ក្នុង១២ខែចុងក្រោយ' : 'No confirmed bookings in the last 12 months.'}
-              </p>
-            )}
-          </section>
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <div className="inline-flex p-0.5 bg-surface-2 border border-line rounded-lg text-tiny font-semibold">
+                <button
+                  type="button"
+                  onClick={() => setChartMetric("revenue")}
+                  className={`px-3 py-1 rounded-md transition-all cursor-pointer ${
+                    chartMetric === "revenue"
+                      ? "bg-brand-600 text-white shadow-xs font-bold"
+                      : "text-muted hover:text-ink"
+                  }`}
+                >
+                  {km ? "ចំណូល" : "Revenue"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setChartMetric("bookings")}
+                  className={`px-3 py-1 rounded-md transition-all cursor-pointer ${
+                    chartMetric === "bookings"
+                      ? "bg-brand-600 text-white shadow-xs font-bold"
+                      : "text-muted hover:text-ink"
+                  }`}
+                >
+                  {km ? "ការកក់" : "Bookings"}
+                </button>
+              </div>
 
-          {/* the events themselves */}
-          <section className="bg-surface border border-line rounded-card shadow-card p-5">
-            <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
-              <h2 className="text-base font-bold text-ink m-0">{t('myEvents')}</h2>
+              <span className="badge badge-mode">
+                {km ? "១២ ខែចុងក្រោយ" : "last 12 months"}
+              </span>
+            </div>
+          </div>
 
-              <div className="flex items-center gap-3 flex-wrap">
-                <span className="text-small text-muted">
-                  {events.filter((e) => e.status === 'PUBLISHED').length} {km ? 'កំពុងផ្សាយ' : 'live'} ·{' '}
-                  {events.length} {km ? 'សរុប' : 'total'}
+          {booked12 || totalBookings12 ? (
+            <RevenueChart months={months} km={km} metric={chartMetric} />
+          ) : (
+            <p className="text-small text-muted m-0 py-8 text-center">
+              {km
+                ? "មិនទាន់មានការកក់ក្នុង១២ខែចុងក្រោយ"
+                : "No confirmed bookings in the last 12 months."}
+            </p>
+          )}
+        </section>
+
+        {/* ------------------------------------------------ Row 1: Right (4 High-Impact KPI Cards) */}
+        <div className="lg:col-span-1 grid grid-cols-2 grid-rows-2 gap-4 h-full">
+          <KpiCard
+            to="/organizer/transactions"
+            theme="emerald"
+            icon="wallet"
+            label={km ? "ចំណូលសរុប" : "Total revenue"}
+            value={usd(totals.revenue)}
+            pill={
+              momTrend ? (
+                <span>
+                  {momTrend.up ? "↑" : "↓"} {momTrend.pct}%{" "}
+                  {km ? "ធៀបខែមុន" : "MoM"}
                 </span>
+              ) : thisMonthCents > 0 ? (
+                <span>
+                  +{usd(thisMonthCents)} {km ? "ខែនេះ" : "this mo"}
+                </span>
+              ) : (
+                <span>{km ? "គ្រប់ពេល" : "All time"}</span>
+              )
+            }
+            actionLabel={km ? "ប្រវត្តិ" : "History"}
+          />
 
-                {/* Only offered once there is something to hide. A toggle that
-                    does nothing on a new organiser's first event is furniture. */}
-                {pastCount > 0 && (
-                  <div className="scope-tabs" role="tablist" aria-label={km ? 'ចន្លោះពេល' : 'Time range'}>
-                    {[
-                      ['upcoming', km ? 'នាពេលខាងមុខ' : 'Upcoming', events.length - pastCount],
-                      ['past', km ? 'កន្លងផុត' : 'Past', pastCount],
-                      ['all', km ? 'ទាំងអស់' : 'All', events.length],
-                    ].map(([key, label, n]) => (
-                      <button
-                        key={key}
-                        type="button"
-                        role="tab"
-                        aria-selected={scope === key}
-                        className={`scope-tab${scope === key ? ' on' : ''}`}
-                        onClick={() => setScope(key)}
-                      >
-                        {label} <span className="scope-tab-n">{n}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
+          <KpiCard
+            to="/organizer/payouts"
+            theme={payableEvents.length > 0 ? "blue" : "neutral"}
+            icon="bank"
+            label={km ? "អាចដកប្រាក់" : "Ready to payout"}
+            value={usd(payableTotalCents)}
+            pill={
+              payableEvents.length > 0 ? (
+                <span>
+                  {payableEvents.length}{" "}
+                  {km
+                    ? "ព្រឹត្តិការណ៍"
+                    : payableEvents.length === 1
+                      ? "claimable"
+                      : "claimable"}
+                </span>
+              ) : (
+                <span>{km ? "រួចរាល់" : "Up to date"}</span>
+              )
+            }
+            actionLabel={km ? "ដកប្រាក់" : "Payouts"}
+          />
 
-            {shown.length ? (
-              <ResponsiveTable>
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th>{km ? 'ព្រឹត្តិការណ៍' : 'Event'}</th>
-                      <th>{t('status')}</th>
-                      <th>{km ? 'កាលបរិច្ឆេទ' : 'Date'}</th>
-                      <th style={{ minWidth: 160 }}>{t('ticketsSold')}</th>
-                      <th className="num">{t('revenue')}</th>
-                      <th />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {paged.visible.map((e) => {
-                      const venue = e.venue
-                      return (
-                        /*
-                          * The whole row opens the event, not just the title.
-                          * A five-column row whose only target was one line of
-                          * text meant aiming at a link to reach a page the rest
-                          * of the row is already describing.
-                          *
-                          * onRowClick ignores clicks that started on a control -
-                          * the title link and the actions menu keep their own
-                          * behaviour rather than being swallowed by the row.
-                          */
-                        <tr
-                          key={e.id}
-                          className="row-clickable"
-                          tabIndex={0}
-                          onClick={(ev) => openEvent(ev, e.id)}
-                          onKeyDown={(ev) => {
-                            if (ev.key === 'Enter' || ev.key === ' ') {
-                              ev.preventDefault()
-                              navigate(`/organizer/events/${e.id}/sales`)
-                            }
-                          }}
-                        >
-                          <td>
-                            {/* Points at the organiser's own view of the event,
-                                not the public page - that one 404s for a draft,
-                                which is exactly the row an organiser is most
-                                likely to click. */}
-                            <Link to={`/organizer/events/${e.id}/sales`} className="font-bold">
-                              {km ? e.title_km : e.title_en}
-                            </Link>
-                            <div className="small muted">
-                              {km ? venue?.name_km : venue?.name_en} · {e.inventory_mode}
-                            </div>
-                          </td>
-                          <td>
-                            <Badge status={displayStatus(e)} />
-                            {/* The second half of the answer. The lifecycle
-                                badge says what the organiser decided; this says
-                                what is happening now. Stacked rather than
-                                side-by-side so a narrow column does not push
-                                the date out of line. */}
-                            {(() => {
-                              const state = salesState(e)
-                              // The badge says "Finished" already.
-                              if (!state || state === 'over') return null
-                              const ui = SALES_UI[state]
-                              return (
-                                <div className={`sales-pill ${ui.tone}`}>
-                                  {km ? ui.km : ui.en}
-                                </div>
-                              )
-                            })()}
-                          </td>
-                          <td className="small">{date(e.starts_at)}</td>
-                          <td>
-                            <div className="small font-bold">
-                              {e.total_sold} / {e.total_capacity}
-                              {e.total_held ? <span className="muted"> · {e.total_held} held</span> : null}
-                            </div>
-                            <Progress sold={e.total_sold} held={e.total_held} capacity={e.total_capacity} />
-                          </td>
-                          <td className="num font-bold">{usd(revenueOf(e))}</td>
-                          <td className="text-right">
-                            <RowMenu event={e} onChanged={reload} />
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </ResponsiveTable>
-            ) : (
-              <Empty icon="calendar" title={km ? 'គ្មានព្រឹត្តិការណ៍' : 'No events yet'}>
-                <Link className="btn btn-sm btn-primary" to="/organizer/events/new">
-                  {t('createEvent')}
-                </Link>
-              </Empty>
-            )}
+          <KpiCard
+            href="#my-events"
+            onClick={scrollToEvents}
+            theme="indigo"
+            icon="ticket"
+            label={km ? "សំបុត្រលក់រួច" : "Tickets sold"}
+            value={totals.sold.toLocaleString()}
+            pill={
+              totals.capacity > 0 ? (
+                <span>
+                  {fillRate}% {km ? "កៅអីសរុប" : "sell-out"}
+                </span>
+              ) : (
+                <span>{km ? "គ្មានកៅអី" : "General"}</span>
+              )
+            }
+            actionLabel={km ? "ការលក់" : "Sales"}
+          />
 
-            {/* Ten per page: these rows are two lines tall with a progress bar
-                each, so ten already fill a laptop screen. */}
-            {shown.length > 0 && (
-              <TablePager
-                page={paged.page}
-                pages={paged.pageCount}
-                pageSize={paged.pageSize}
-                onPage={paged.setPage}
-                onPageSize={paged.setPageSize}
-                sizes={[10, 20, 30]}
-              />
-            )}
-          </section>
+          <KpiCard
+            href="#my-events"
+            onClick={(e) => scrollToEvents(e, "upcoming")}
+            theme="amber"
+            icon="calendar"
+            label={km ? "ព្រឹត្តិការណ៍សកម្ម" : "Active events"}
+            value={`${liveEvents.length} ${km ? "ផ្សាយ" : "Live"}`}
+            pill={
+              nextDays !== null ? (
+                <span>
+                  {nextDays === 0
+                    ? km
+                      ? "បន្ទាប់: ថ្ងៃនេះ"
+                      : "Next: Today"
+                    : km
+                      ? `បន្ទាប់: ${nextDays} ថ្ងៃ`
+                      : `Next in ${nextDays}d`}
+                </span>
+              ) : (
+                <span>
+                  {events.length} {km ? "សរុប" : "total"}
+                </span>
+              )
+            }
+            actionLabel={km ? "មើលទាំងអស់" : "View all"}
+          />
         </div>
 
-        {/* ----------------------------------------------- right, one column */}
-        <div className="flex flex-col gap-4">
-          <section className="bg-surface border border-line rounded-card shadow-card p-5">
-            <h2 className="text-base font-bold text-ink m-0 mb-4">
-              {km ? 'ចំណូលតាមព្រឹត្តិការណ៍' : 'Revenue by event'}
+        {/* ------------------------------------------------ Row 2: Left (My Events) */}
+        <section
+          id="my-events"
+          className="lg:col-span-2 bg-surface border border-line rounded-card shadow-card p-5 self-start scroll-mt-6"
+        >
+          <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
+            <h2 className="text-base font-bold text-ink m-0">
+              {t("myEvents")}
             </h2>
-            {byRevenue.length ? (
-              <div className="flex flex-col gap-3.5">
-                {byRevenue.map(({ event, sold, capacity, revenue }, i) => (
-                  <div key={event.id}>
+
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="text-small text-muted">
+                {events.filter((e) => e.status === "PUBLISHED").length}{" "}
+                {km ? "កំពុងផ្សាយ" : "live"} · {events.length}{" "}
+                {km ? "សរុប" : "total"}
+              </span>
+
+              {/* Only offered once there is something to hide. A toggle that
+                  does nothing on a new organiser's first event is furniture. */}
+              {pastCount > 0 && (
+                <div
+                  className="scope-tabs"
+                  role="tablist"
+                  aria-label={km ? "ចន្លោះពេល" : "Time range"}
+                >
+                  {[
+                    [
+                      "upcoming",
+                      km ? "នាពេលខាងមុខ" : "Upcoming",
+                      events.length - pastCount,
+                    ],
+                    ["past", km ? "កន្លងផុត" : "Past", pastCount],
+                    ["all", km ? "ទាំងអស់" : "All", events.length],
+                  ].map(([key, label, n]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      role="tab"
+                      aria-selected={scope === key}
+                      className={`scope-tab${scope === key ? " on" : ""}`}
+                      onClick={() => setScope(key)}
+                    >
+                      {label} <span className="scope-tab-n">{n}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {events.length ? (
+            <ResponsiveTable>
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>{t("eventTitle")}</th>
+                    <th>{t("status")}</th>
+                    <th>{t("date")}</th>
+                    <th>{t("ticketsSold")}</th>
+                    <th>{t("revenue")}</th>
+                    <th className="text-right">{t("actions")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paged.visible.map((e) => {
+                    const venue = e.venue;
+                    return (
+                      /*
+                       * The whole row opens the event, not just the title.
+                       * A five-column row whose only target was one line of
+                       * text meant aiming at a link to reach a page the rest
+                       * of the row is already describing.
+                       *
+                       * onRowClick ignores clicks that started on a control -
+                       * the title link and the actions menu keep their own
+                       * behaviour rather than being swallowed by the row.
+                       */
+                      <tr
+                        key={e.id}
+                        className="row-clickable"
+                        tabIndex={0}
+                        onClick={(ev) => openEvent(ev, e.id)}
+                        onKeyDown={(ev) => {
+                          if (ev.key === "Enter" || ev.key === " ") {
+                            ev.preventDefault();
+                            navigate(`/organizer/events/${e.id}/sales`);
+                          }
+                        }}
+                      >
+                        <td>
+                          {/* Points at the organiser's own view of the event,
+                              not the public page - that one 404s for a draft,
+                              which is exactly the row an organiser is most
+                              likely to click. */}
+                          <Link
+                            to={`/organizer/events/${e.id}/sales`}
+                            className="font-bold"
+                          >
+                            {km ? e.title_km : e.title_en}
+                          </Link>
+                          <div className="small muted">
+                            {km ? venue?.name_km : venue?.name_en} ·{" "}
+                            {e.inventory_mode}
+                          </div>
+                        </td>
+                        <td>
+                          <Badge status={displayStatus(e)} />
+                          {/* The second half of the answer. The lifecycle
+                              badge says what the organiser decided; this says
+                              what is happening now. Stacked rather than
+                              side-by-side so a narrow column does not push
+                              the date out of line. */}
+                          {(() => {
+                            const state = salesState(e);
+                            // The badge says "Finished" already.
+                            if (!state || state === "over") return null;
+                            const ui = SALES_UI[state];
+                            return (
+                              <div className={`sales-pill ${ui.tone}`}>
+                                {km ? ui.km : ui.en}
+                              </div>
+                            );
+                          })()}
+                        </td>
+                        <td className="small">{date(e.starts_at)}</td>
+                        <td>
+                          <div className="small font-bold">
+                            {e.total_sold} / {e.total_capacity}
+                            {e.total_held ? (
+                              <span className="muted">
+                                {" "}
+                                · {e.total_held} held
+                              </span>
+                            ) : null}
+                          </div>
+                          <Progress
+                            sold={e.total_sold}
+                            held={e.total_held}
+                            capacity={e.total_capacity}
+                          />
+                        </td>
+                        <td className="num font-bold">{usd(revenueOf(e))}</td>
+                        <td className="text-right">
+                          <RowMenu event={e} onChanged={reload} />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </ResponsiveTable>
+          ) : (
+            <Empty
+              icon="calendar"
+              title={km ? "គ្មានព្រឹត្តិការណ៍" : "No events yet"}
+            >
+              <Link
+                className="btn btn-sm btn-primary"
+                to="/organizer/events/new"
+              >
+                {t("createEvent")}
+              </Link>
+            </Empty>
+          )}
+
+          {/* Ten per page: these rows are two lines tall with a progress bar
+              each, so ten already fill a laptop screen. */}
+          {shown.length > 0 && (
+            <TablePager
+              page={paged.page}
+              pages={paged.pageCount}
+              pageSize={paged.pageSize}
+              onPage={paged.setPage}
+              onPageSize={paged.setPageSize}
+              sizes={[10, 20, 30]}
+            />
+          )}
+        </section>
+
+        {/* ------------------------------------------------ Row 2: Right (Revenue by event) */}
+        <section className="lg:col-span-1 bg-surface border border-line rounded-card shadow-card p-5 self-start">
+          <div className="flex items-center justify-between gap-2 mb-4">
+            <h2 className="text-base font-bold text-ink m-0">
+              {km ? "ចំណូលតាមព្រឹត្តិការណ៍" : "Revenue by event"}
+            </h2>
+            <span className="text-tiny font-medium text-muted">
+              {km ? "កំពូល ៥" : "Top 5"}
+            </span>
+          </div>
+          {byRevenue.length ? (
+            <div className="flex flex-col gap-2">
+              {byRevenue.map(({ event, sold, capacity, revenue }, i) => {
+                const pct =
+                  capacity > 0 ? Math.round((sold / capacity) * 100) : 0;
+                return (
+                  <div
+                    key={event.id}
+                    className="group -mx-2 px-2 py-1.5 rounded-lg transition-colors hover:bg-surface-2/60"
+                  >
                     <div className="flex items-baseline justify-between gap-2 mb-1">
-                      <Link to={`/organizer/events/${event.id}/sales`} className="text-small font-semibold truncate">
-                        {km ? event.title_km : event.title_en}
-                      </Link>
+                      <div className="flex items-baseline gap-1.5 min-w-0 flex-1">
+                        <span className="text-tiny font-bold text-muted tabular-nums shrink-0">
+                          #{i + 1}
+                        </span>
+                        <Link
+                          to={`/organizer/events/${event.id}/sales`}
+                          className="text-small font-semibold text-ink group-hover:text-brand-500 truncate transition-colors"
+                        >
+                          {km ? event.title_km : event.title_en}
+                        </Link>
+                      </div>
                       <span className="text-small font-bold text-ink whitespace-nowrap tabular-nums">
                         {usd(revenue)}
                       </span>
                     </div>
                     <div
                       className="h-2 rounded-full bg-surface-2 overflow-hidden"
-                      title={`${usd(revenue)} · ${sold}/${capacity} ${km ? 'សំបុត្រ' : 'tickets'}`}
+                      title={`${usd(revenue)} · ${sold}/${capacity} ${km ? "សំបុត្រ" : "tickets"} (${pct}%)`}
                     >
                       <div
                         /* Colour is the rank, not the event: position 1 is
                            always bar-1, so the eye can compare lengths without
                            first decoding a legend. */
-                        className={`h-full rounded-full bar-${i + 1}`}
+                        className={`h-full rounded-full bar-${i + 1} transition-all duration-500`}
                         style={{ width: `${(revenue / revenuePeak) * 100}%` }}
                       />
                     </div>
-                    {/* Volume stays visible underneath: it is what explains a
-                        short bar on a busy event, or a long one on a quiet one. */}
-                    <div className="text-tiny text-muted mt-1 tabular-nums">
-                      {sold.toLocaleString()} / {capacity.toLocaleString()} {km ? 'សំបុត្រ' : 'tickets'}
+                    {/* Volume stays visible underneath with sell-through % on right */}
+                    <div className="flex items-center justify-between text-tiny text-muted mt-1 tabular-nums">
+                      <span>
+                        {sold.toLocaleString()} / {capacity.toLocaleString()}{" "}
+                        {km ? "សំបុត្រ" : "tickets"}
+                      </span>
+                      <span className="font-semibold text-ink/75">
+                        {pct}% {km ? "បានលក់" : "sold"}
+                      </span>
                     </div>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-small text-muted m-0">{km ? 'មិនទាន់មានទិន្នន័យ' : 'Nothing sold yet.'}</p>
-            )}
-          </section>
-
-          <div className="grid grid-cols-2 gap-4">
-            <MiniStat icon="wallet" value={usd(totals.revenue)} label={km ? 'ចំណូលសរុប' : 'Lifetime revenue'} />
-            <MiniStat icon="ticket" value={usd(avgTicket)} label={km ? 'តម្លៃមធ្យម' : 'Avg ticket'} />
-            <MiniStat
-              icon="calendar"
-              value={totals.sold.toLocaleString()}
-              label={km ? 'សំបុត្រលក់រួច' : 'Tickets sold'}
-            />
-            {/* Was "Checked in". Ticket scans live on the ticket tables and no
-                endpoint exposes them yet, and a tile reading 0 would look like a
-                quiet night rather than a missing feature. Held seats are real,
-                come from the same payload, and are worth watching. */}
-            <MiniStat
-              icon="clock"
-              value={totals.held.toLocaleString()}
-              label={km ? 'កំពុងកក់ទុក' : 'Held now'}
-            />
-          </div>
-        </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-small text-muted m-0">
+              {km ? "មិនទាន់មានទិន្នន័យ" : "Nothing sold yet."}
+            </p>
+          )}
+        </section>
       </div>
+
+      <TelegramModal
+        open={telegramModalOpen}
+        onClose={() => setTelegramModalOpen(false)}
+        onStatusChange={(connected) => setTelegramConnected(connected)}
+      />
     </div>
-  )
+  );
 }
 
 /**
@@ -519,15 +772,21 @@ export default function OrganizerDashboardPage() {
  */
 const ACTION_UI = {
   SUBMIT: {
-    icon: 'arrowRight', en: 'Submit for review', km: 'ដាក់ស្នើត្រួតពិនិត្យ',
+    icon: "arrowRight",
+    en: "Submit for review",
+    km: "ដាក់ស្នើត្រួតពិនិត្យ",
     call: submitEventForReview,
   },
   WITHDRAW: {
-    icon: 'arrowLeft', en: 'Withdraw', km: 'ដកសំណើវិញ',
+    icon: "arrowLeft",
+    en: "Withdraw",
+    km: "ដកសំណើវិញ",
     call: withdrawEventFromReview,
   },
   PUBLISH: {
-    icon: 'check', en: 'Publish', km: 'ផ្សព្វផ្សាយ',
+    icon: "check",
+    en: "Publish",
+    km: "ផ្សព្វផ្សាយ",
     call: publishEvent,
   },
   /*
@@ -541,12 +800,14 @@ const ACTION_UI = {
    * an admin's moderation cannot be reversed by the person it was aimed at.
    */
   TAKE_DOWN: {
-    icon: 'alert', en: 'Take off sale', km: 'ដកចេញពីការលក់',
+    icon: "alert",
+    en: "Take off sale",
+    km: "ដកចេញពីការលក់",
     danger: true,
     confirm: true,
     call: takeDownOwnEvent,
   },
-}
+};
 
 /**
  * One gear per row instead of three buttons.
@@ -558,32 +819,32 @@ const ACTION_UI = {
  * undone from here.
  */
 function RowMenu({ event, onChanged }) {
-  const { t, locale } = useLocale()
-  const km = locale === 'km'
-  const toast = useToast()
+  const { t, locale } = useLocale();
+  const km = locale === "km";
+  const toast = useToast();
 
   /*
    * The action waiting on a yes. Holds the transition name for a confirmable
    * one, or 'DELETE' for the removal - which is not a transition at all and so
    * never appears in available_actions.
    */
-  const [confirming, setConfirming] = useState(null)
-  const [busy, setBusy] = useState(false)
+  const [confirming, setConfirming] = useState(null);
+  const [busy, setBusy] = useState(false);
 
   async function run(fn, done) {
-    setBusy(true)
+    setBusy(true);
     try {
-      await fn(event.id)
-      toast(done, 'success')
-      onChanged()
+      await fn(event.id);
+      toast(done, "success");
+      onChanged();
     } catch (e) {
       // The server refuses actions this menu should never have offered.
       // Surfacing its message rather than a generic one means a disagreement
       // between the two is visible instead of looking like a dead button.
-      toast(e?.response?.data?.detail || 'Action failed', 'error')
+      toast(e?.response?.data?.detail || "Action failed", "error");
     } finally {
-      setBusy(false)
-      setConfirming(null)
+      setBusy(false);
+      setConfirming(null);
     }
   }
 
@@ -596,13 +857,12 @@ function RowMenu({ event, onChanged }) {
    * and the refusal says why. The same "hint, not authorization" relationship
    * the admin table's deletable flag has.
    */
-  const canRemove = (event.total_sold ?? 0) === 0
-
+  const canRemove = (event.total_sold ?? 0) === 0;
 
   // The server sends only what this caller may do, so there is no permission
   // rule here - just a guard against an action that has no label yet, which
   // renders nothing rather than a raw enum name.
-  const actions = (event.available_actions || []).filter((a) => ACTION_UI[a])
+  const actions = (event.available_actions || []).filter((a) => ACTION_UI[a]);
 
   /*
    * The one action worth a button of its own on the row.
@@ -617,15 +877,17 @@ function RowMenu({ event, onChanged }) {
    * TAKE_DOWN and Remove are destructive - none of them should be one stray
    * click away in a table row, which is the reason the menu exists at all.
    */
-  const primary = actions.includes('PUBLISH') ? 'PUBLISH'
-    : actions.includes('SUBMIT') ? 'SUBMIT'
-    : null
+  const primary = actions.includes("PUBLISH")
+    ? "PUBLISH"
+    : actions.includes("SUBMIT")
+      ? "SUBMIT"
+      : null;
   // Short on the row, full in the toast that confirms it happened.
-  const PRIMARY_LABEL = { PUBLISH: t('publish'), SUBMIT: t('submitShort') }
+  const PRIMARY_LABEL = { PUBLISH: t("publish"), SUBMIT: t("submitShort") };
   const PRIMARY_DONE = {
-    PUBLISH: km ? 'ព្រឹត្តិការណ៍ត្រូវបានផ្សាយ' : 'Event published',
-    SUBMIT: km ? 'បានដាក់ស្នើត្រួតពិនិត្យ' : 'Submitted for review',
-  }
+    PUBLISH: km ? "ព្រឹត្តិការណ៍ត្រូវបានផ្សាយ" : "Event published",
+    SUBMIT: km ? "បានដាក់ស្នើត្រួតពិនិត្យ" : "Submitted for review",
+  };
 
   return (
     <div className="flex items-center justify-end gap-2">
@@ -643,24 +905,29 @@ function RowMenu({ event, onChanged }) {
 
       <ActionMenu
         disabled={busy}
-        label={km ? 'សកម្មភាព' : 'Actions'}
+        label={km ? "សកម្មភាព" : "Actions"}
         items={[
           // Edit goes once the event has happened: the API refuses the PATCH
           // from that point, so leaving it here only led to an error at the
           // end of a filled-in form. Sales and the public page stay - both
           // are still worth reading afterwards.
           {
-            key: 'edit',
-            icon: 'edit',
-            label: t('editEvent'),
+            key: "edit",
+            icon: "edit",
+            label: t("editEvent"),
             hidden: isPast(event),
             to: `/organizer/events/${event.id}/edit`,
           },
-          { key: 'sales', icon: 'chart', label: t('sales'), to: `/organizer/events/${event.id}/sales` },
           {
-            key: 'view',
-            icon: 'eye',
-            label: km ? 'មើលទំព័រសាធារណៈ' : 'View public page',
+            key: "sales",
+            icon: "chart",
+            label: t("sales"),
+            to: `/organizer/events/${event.id}/sales`,
+          },
+          {
+            key: "view",
+            icon: "eye",
+            label: km ? "មើលទំព័រសាធារណៈ" : "View public page",
             to: `/events/${event.id}`,
           },
           // Rendered from the server's own answer rather than guessed from the
@@ -669,32 +936,32 @@ function RowMenu({ event, onChanged }) {
           ...actions
             .filter((a) => a !== primary)
             .map((action) => {
-              const ui = ACTION_UI[action]
+              const ui = ACTION_UI[action];
               return {
                 key: action,
                 icon: ui.icon,
                 label: km ? ui.km : ui.en,
-                tone: ui.danger ? 'danger' : undefined,
+                tone: ui.danger ? "danger" : undefined,
                 onSelect: () => {
                   // Destructive ones ask first; the rest are one click, as
                   // they were - a submit or a publish is undone by
                   // withdrawing.
-                  if (ui.confirm) setConfirming(action)
-                  else run(ui.call, km ? 'រួចរាល់' : 'Done')
+                  if (ui.confirm) setConfirming(action);
+                  else run(ui.call, km ? "រួចរាល់" : "Done");
                 },
-              }
+              };
             }),
           // Not a transition, so it is not in available_actions and cannot
           // come from ACTION_UI. The server refuses it for anything ever
           // booked, which is what makes it the organiser's to do: what is
           // left is the draft, the rejection and the duplicate posted twice.
           {
-            key: 'remove',
-            icon: 'close',
-            label: km ? 'លុបចោល' : 'Remove',
-            tone: 'danger',
+            key: "remove",
+            icon: "close",
+            label: km ? "លុបចោល" : "Remove",
+            tone: "danger",
             hidden: !canRemove,
-            onSelect: () => setConfirming('DELETE'),
+            onSelect: () => setConfirming("DELETE"),
           },
         ]}
       />
@@ -704,49 +971,159 @@ function RowMenu({ event, onChanged }) {
         tone="danger"
         busy={busy}
         title={
-          confirming === 'DELETE'
-            ? km ? 'លុបព្រឹត្តិការណ៍នេះ?' : 'Remove this event?'
-            : km ? 'ដកចេញពីការលក់?' : 'Take this event off sale?'
+          confirming === "DELETE"
+            ? km
+              ? "លុបព្រឹត្តិការណ៍នេះ?"
+              : "Remove this event?"
+            : km
+              ? "ដកចេញពីការលក់?"
+              : "Take this event off sale?"
         }
         confirmLabel={
-          confirming === 'DELETE'
-            ? km ? 'លុបចោល' : 'Remove'
-            : km ? 'ដកចេញ' : 'Take off sale'
+          confirming === "DELETE"
+            ? km
+              ? "លុបចោល"
+              : "Remove"
+            : km
+              ? "ដកចេញ"
+              : "Take off sale"
         }
         onConfirm={() => {
-          if (confirming === 'DELETE') {
-            run(deleteOwnEvent, km ? 'បានលុបចោល' : 'Event removed')
+          if (confirming === "DELETE") {
+            run(deleteOwnEvent, km ? "បានលុបចោល" : "Event removed");
           } else {
-            run(ACTION_UI[confirming].call, km ? 'បានដកចេញពីការលក់' : 'Taken off sale')
+            run(
+              ACTION_UI[confirming].call,
+              km ? "បានដកចេញពីការលក់" : "Taken off sale",
+            );
           }
         }}
         onClose={() => setConfirming(null)}
       >
         <p className="small muted">
-          {confirming === 'DELETE'
+          {confirming === "DELETE"
             ? km
-              ? 'ព្រឹត្តិការណ៍នេះ និងតំបន់ ផែនទីកៅអី និងតម្លៃរបស់វា នឹងត្រូវលុបចោលជាអចិន្ត្រៃយ៍។'
-              : 'This event and its zones, seat map and pricing are deleted for good. This cannot be undone.'
+              ? "ព្រឹត្តិការណ៍នេះ និងតំបន់ ផែនទីកៅអី និងតម្លៃរបស់វា នឹងត្រូវលុបចោលជាអចិន្ត្រៃយ៍។"
+              : "This event and its zones, seat map and pricing are deleted for good. This cannot be undone."
             : km
-              ? 'ព្រឹត្តិការណ៍នេះនឹងបាត់ពីការស្វែងរក។ មានតែអ្នកគ្រប់គ្រងទេដែលអាចដាក់លក់វិញបាន។'
-              : 'It disappears from the catalogue and stops selling. Only a platform admin can put it back on sale, so ask one if you change your mind.'}
+              ? "ព្រឹត្តិការណ៍នេះនឹងបាត់ពីការស្វែងរក។ មានតែអ្នកគ្រប់គ្រងទេដែលអាចដាក់លក់វិញបាន។"
+              : "It disappears from the catalogue and stops selling. Only a platform admin can put it back on sale, so ask one if you change your mind."}
         </p>
       </ConfirmDialog>
     </div>
-  )
+  );
 }
 
-/** Number first, label under it, icon quiet in the corner. */
-function MiniStat({ icon, value, label }) {
-  return (
-    <div className="bg-surface border border-line rounded-card shadow-card p-4 flex flex-col justify-between gap-5">
-      <div className="text-xl font-bold tracking-tight text-ink tabular-nums">{value}</div>
-      <div className="flex items-end justify-between gap-2">
-        <span className="text-tiny text-muted font-medium leading-tight">{label}</span>
-        <span className="w-8 h-8 rounded-full bg-surface-2 border border-line-2 flex items-center justify-center text-muted shrink-0">
-          <Icon name={icon} size={15} />
+/**
+ * Executive KPI Tile:
+ * - Color-accented icon badge (emerald, blue, indigo, amber)
+ * - Prominent tabular metric value
+ * - Contextual status pill / trend badge (e.g. +14% MoM, 2 claimable, 82% capacity)
+ * - Direct navigation hint (linking to transactions, payouts, or jumping to events)
+ */
+function KpiCard({
+  to,
+  href,
+  onClick,
+  theme = "emerald",
+  icon,
+  label,
+  value,
+  pill,
+  actionLabel,
+}) {
+  const themeStyles = {
+    emerald: {
+      iconBg: "bg-success-soft text-success border border-success/20",
+      pillBg: "bg-success-soft text-success border border-success/25",
+      hoverAction: "group-hover:text-success",
+    },
+    blue: {
+      iconBg: "bg-info-soft text-info border border-info/20",
+      pillBg: "bg-info-soft text-info border border-info/25",
+      hoverAction: "group-hover:text-info",
+    },
+    indigo: {
+      iconBg: "bg-tint text-link border border-link/20",
+      pillBg: "bg-tint text-link border border-link/25",
+      hoverAction: "group-hover:text-link",
+    },
+    amber: {
+      iconBg: "bg-warning-soft text-warning border border-warning/20",
+      pillBg: "bg-warning-soft text-warning border border-warning/25",
+      hoverAction: "group-hover:text-warning",
+    },
+    neutral: {
+      iconBg: "bg-surface-2 text-muted border border-line-2",
+      pillBg: "bg-surface-2 text-muted border border-line-2",
+      hoverAction: "group-hover:text-ink",
+    },
+  };
+
+  const currentTheme = themeStyles[theme] || themeStyles.neutral;
+
+  const content = (
+    <>
+      {/* Top row: Upper label + Accented Icon */}
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[11px] font-bold text-muted tracking-wider uppercase truncate">
+          {label}
+        </span>
+        <span
+          className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-110 ${currentTheme.iconBg}`}
+        >
+          <Icon name={icon} size={14} />
         </span>
       </div>
-    </div>
-  )
+
+      {/* Middle: Prominent Value */}
+      <div className="my-auto py-1">
+        <div className="text-xl sm:text-2xl font-extrabold tracking-tight text-ink tabular-nums leading-none">
+          {value}
+        </div>
+      </div>
+
+      {/* Bottom row: Pill Badge + Navigation Hint */}
+      <div className="flex items-center justify-between gap-2 pt-0.5">
+        {pill ? (
+          <span
+            className={`inline-flex items-center text-[11px] font-semibold px-2 py-0.5 rounded-full leading-tight ${currentTheme.pillBg}`}
+          >
+            {pill}
+          </span>
+        ) : (
+          <span />
+        )}
+        {actionLabel && (
+          <span
+            className={`text-tiny font-medium text-muted flex items-center gap-0.5 transition-colors shrink-0 ml-auto ${currentTheme.hoverAction}`}
+          >
+            {actionLabel}
+            <Icon
+              name="chevronRight"
+              size={12}
+              className="transition-transform duration-150 group-hover:translate-x-0.5"
+            />
+          </span>
+        )}
+      </div>
+    </>
+  );
+
+  const baseClasses =
+    "group flex flex-col justify-between p-3.5 sm:p-4 rounded-card border border-line bg-surface shadow-card transition-all duration-200 hover:border-line-hover hover:shadow-md h-full text-inherit no-underline cursor-pointer";
+
+  if (to) {
+    return (
+      <Link to={to} className={baseClasses}>
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <a href={href || "#"} onClick={onClick} className={baseClasses}>
+      {content}
+    </a>
+  );
 }

@@ -1,14 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
-import { useNavigate } from 'react-router-dom'
-import Icon from './Icon.jsx'
-import Flag from './Flag.jsx'
-import ConfirmDialog from './ConfirmDialog.jsx'
-import { Alert, Field } from './ui.jsx'
-import { useAuth } from '../context/AuthContext.jsx'
-import { useLocale } from '../context/LocaleContext.jsx'
-import { useTheme } from '../context/ThemeContext.jsx'
-import { useToast } from '../context/ToastContext.jsx'
+import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { useNavigate } from "react-router-dom";
+import Icon from "./Icon.jsx";
+import Flag from "./Flag.jsx";
+import ConfirmDialog from "./ConfirmDialog.jsx";
+import { Alert, Field } from "./ui.jsx";
+import { useAuth } from "../context/AuthContext.jsx";
+import { useLocale } from "../context/LocaleContext.jsx";
+import { useTheme } from "../context/ThemeContext.jsx";
+import { useToast } from "../context/ToastContext.jsx";
 import {
   changePassword,
   linkGoogle,
@@ -16,13 +16,15 @@ import {
   setPhone,
   unlinkGoogle,
   updateProfile,
-} from '../api/auth.js'
-import { toLocalPhone } from '../lib/format.js'
-import { telegramUrl } from '../lib/contactLinks.js'
-import GoogleSignInButton from './GoogleSignInButton.jsx'
+} from "../api/auth.js";
+import { toLocalPhone } from "../lib/format.js";
+import { telegramUrl } from "../lib/contactLinks.js";
+import GoogleSignInButton from "./GoogleSignInButton.jsx";
+import TelegramConnectCard from "./TelegramConnectCard.jsx";
+import { getTelegramStatus } from "../api/organizerTelegram.js";
 
 /** Must match the .is-closing animation in ACCT_CSS below. */
-const CLOSE_MS = 180
+const CLOSE_MS = 180;
 
 /*
  * Your own account, as a panel over whatever you were doing.
@@ -41,20 +43,20 @@ const CLOSE_MS = 180
  */
 
 export default function AccountPanel({ open, onClose }) {
-  const { t, locale } = useLocale()
-  const km = locale === 'km'
-  const toast = useToast()
-  const { user, refreshUser, logout } = useAuth()
-  const navigate = useNavigate()
+  const { t, locale } = useLocale();
+  const km = locale === "km";
+  const toast = useToast();
+  const { user, refreshUser, logout } = useAuth();
+  const navigate = useNavigate();
 
   /* Which screen the panel is showing. The forms were all stacked on one
      scroll before; as a menu they are two taps from anywhere and the panel
      opens on something readable rather than on three sets of inputs. */
-  const [view, setView] = useState('menu')
-  const [confirmSignOut, setConfirmSignOut] = useState(false)
+  const [view, setView] = useState("menu");
+  const [confirmSignOut, setConfirmSignOut] = useState(false);
 
-  const closeRef = useRef(null)
-  const openerRef = useRef(null)
+  const closeRef = useRef(null);
+  const openerRef = useRef(null);
 
   /*
    * Exit animation needs the panel to outlive `open`, so closing is its own
@@ -70,68 +72,68 @@ export default function AccountPanel({ open, onClose }) {
    * of those leaves the panel wedged half-closed with no way back. The timer
    * fires whatever the CSS does.
    */
-  const [closing, setClosing] = useState(false)
-  const timerRef = useRef(null)
+  const [closing, setClosing] = useState(false);
+  const timerRef = useRef(null);
 
   const beginClose = useCallback(() => {
-    if (timerRef.current) return // already on the way out
-    setClosing(true)
+    if (timerRef.current) return; // already on the way out
+    setClosing(true);
     timerRef.current = setTimeout(() => {
-      timerRef.current = null
-      setClosing(false)
-      onClose()
+      timerRef.current = null;
+      setClosing(false);
+      onClose();
       // Restore focus after the panel is gone, or the browser moves it back to
       // an element that is about to be unmounted.
-      const opener = openerRef.current
-      if (opener && document.contains(opener)) opener.focus()
-    }, CLOSE_MS)
-  }, [onClose])
+      const opener = openerRef.current;
+      if (opener && document.contains(opener)) opener.focus();
+    }, CLOSE_MS);
+  }, [onClose]);
 
   // A panel unmounted mid-close (a route change, a sign-out) must not leave a
   // timer to fire onClose against a component that is gone.
   useEffect(
     () => () => {
-      if (timerRef.current) clearTimeout(timerRef.current)
+      if (timerRef.current) clearTimeout(timerRef.current);
     },
     [],
-  )
+  );
 
   useEffect(() => {
-    if (!open) return undefined
+    if (!open) return undefined;
     // Remember who opened us so focus can go back there. Without this, closing
     // dumps focus on <body> and a keyboard user restarts from the top of the page.
-    openerRef.current = document.activeElement
-    setClosing(false)
-    setView('menu')
-    setConfirmSignOut(false)
+    openerRef.current = document.activeElement;
+    setClosing(false);
+    setView("menu");
+    setConfirmSignOut(false);
 
     const onKey = (e) => {
-      if (e.key === 'Escape') beginClose()
-    }
-    const previous = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    document.addEventListener('keydown', onKey)
-    closeRef.current?.focus()
+      if (e.key === "Escape") beginClose();
+    };
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", onKey);
+    closeRef.current?.focus();
     return () => {
-      document.body.style.overflow = previous
-      document.removeEventListener('keydown', onKey)
-    }
-  }, [open, beginClose])
+      document.body.style.overflow = previous;
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open, beginClose]);
 
-  if (!open) return null
+  if (!open) return null;
 
   return createPortal(
     <div
-      className={`acct-overlay${closing ? ' is-closing' : ''}`}
+      className={`acct-overlay${closing ? " is-closing" : ""}`}
       onClick={(e) => {
-        if (e.target === e.currentTarget) beginClose()
+        if (e.target === e.currentTarget) beginClose();
       }}
     >
       <aside
-        className={`acct-panel${closing ? ' is-closing' : ''}`}
+        className={`acct-panel${closing ? " is-closing" : ""}`}
         role="dialog"
         aria-modal="true"
-        aria-label={km ? 'គណនីរបស់ខ្ញុំ' : 'My account'}
+        aria-label={km ? "គណនីរបស់ខ្ញុំ" : "My account"}
       >
         <style>{ACCT_CSS}</style>
 
@@ -139,12 +141,12 @@ export default function AccountPanel({ open, onClose }) {
           {/* One slot on each side keeps the title optically centred whether or
               not a back button is present. */}
           <div className="acct-head-slot">
-            {view !== 'menu' && (
+            {view !== "menu" && (
               <button
                 type="button"
                 className="acct-close"
-                onClick={() => setView('menu')}
-                aria-label={km ? 'ត្រឡប់ក្រោយ' : 'Back'}
+                onClick={() => setView("menu")}
+                aria-label={km ? "ត្រឡប់ក្រោយ" : "Back"}
               >
                 <Icon name="arrowLeft" size={18} />
               </button>
@@ -159,7 +161,7 @@ export default function AccountPanel({ open, onClose }) {
               type="button"
               className="acct-close"
               onClick={beginClose}
-              aria-label={km ? 'បិទ' : 'Close'}
+              aria-label={km ? "បិទ" : "Close"}
             >
               <Icon name="close" size={18} />
             </button>
@@ -168,20 +170,19 @@ export default function AccountPanel({ open, onClose }) {
 
         <div className="acct-body">
           {!user ? (
-            <p className="muted small">{km ? 'កំពុងផ្ទុក…' : 'Loading…'}</p>
-          ) : view === 'menu' ? (
+            <p className="muted small">{km ? "កំពុងផ្ទុក…" : "Loading…"}</p>
+          ) : view === "menu" ? (
             <AccountMenu
               user={user}
               km={km}
               t={t}
               onGo={setView}
-              onSignOut={() => setConfirmSignOut(true)}
               onLeave={(path) => {
-                onClose()
-                navigate(path)
+                onClose();
+                navigate(path);
               }}
             />
-          ) : view === 'details' ? (
+          ) : view === "details" ? (
             /*
              * Keyed on the SAVED values, so the form remounts - and its
              * useState initialisers re-run - whenever the server record
@@ -195,58 +196,90 @@ export default function AccountPanel({ open, onClose }) {
               t={t}
               toast={toast}
               refreshUser={refreshUser}
-              onSaved={() => setView('menu')}
+              onSaved={() => setView("menu")}
+              onCancel={() => setView("menu")}
             />
-          ) : view === 'signin' ? (
-            <GoogleLinkCard km={km} user={user} toast={toast} refreshUser={refreshUser} />
+          ) : view === "telegram" ? (
+            <TelegramConnectCard inAccount />
+          ) : view === "signin" ? (
+            <GoogleLinkCard
+              km={km}
+              user={user}
+              toast={toast}
+              refreshUser={refreshUser}
+            />
           ) : /*
-               * A Google account has no password_hash, so changePassword
-               * refuses it outright. Showing the form anyway means asking for a
-               * current password that never existed and answering "that is not
-               * your current password" - confusing, and untrue. Offer to create
-               * one instead: it is the only second way into the account, and
-               * there is no password reset here to fall back on.
-               */
+           * A Google account has no password_hash, so changePassword
+           * refuses it outright. Showing the form anyway means asking for a
+           * current password that never existed and answering "that is not
+           * your current password" - confusing, and untrue. Offer to create
+           * one instead: it is the only second way into the account, and
+           * there is no password reset here to fall back on.
+           */
           user.has_password ? (
-            <PasswordForm km={km} toast={toast} />
+            <PasswordForm
+              km={km}
+              toast={toast}
+              onCancel={() => setView("menu")}
+            />
           ) : (
-            <SetPasswordForm km={km} user={user} toast={toast} refreshUser={refreshUser} />
+            <SetPasswordForm
+              km={km}
+              user={user}
+              toast={toast}
+              refreshUser={refreshUser}
+              onCancel={() => setView("menu")}
+            />
           )}
         </div>
+
+        {view === "menu" && user && (
+          <footer className="acct-foot">
+            <button
+              type="button"
+              className="acct-btn acct-btn-signout"
+              onClick={() => setConfirmSignOut(true)}
+            >
+              <Icon name="logout" size={15} />
+              {km ? "ចេញពីគណនី" : "Sign out"}
+            </button>
+          </footer>
+        )}
       </aside>
 
       <ConfirmDialog
         open={confirmSignOut}
-        title={km ? 'ចេញពីគណនី?' : 'Sign out?'}
-        confirmLabel={km ? 'ចេញពីគណនី' : 'Sign out'}
-        cancelLabel={km ? 'បោះបង់' : 'Cancel'}
+        title={km ? "ចេញពីគណនី?" : "Sign out?"}
+        confirmLabel={km ? "ចេញពីគណនី" : "Sign out"}
+        cancelLabel={km ? "បោះបង់" : "Cancel"}
         tone="danger"
         onClose={() => setConfirmSignOut(false)}
         onConfirm={() => {
           // Close first: signing out unmounts the chip this panel would
           // otherwise try to hand focus back to, and re-renders the shell
           // underneath. No exit animation on a session change.
-          setConfirmSignOut(false)
-          onClose()
-          logout()
-          navigate('/')
+          setConfirmSignOut(false);
+          onClose();
+          logout();
+          navigate("/");
         }}
       >
         {km
-          ? 'អ្នកនឹងត្រូវចូលប្រើម្តងទៀតនៅលើឧបករណ៍នេះ។'
+          ? "អ្នកនឹងត្រូវចូលប្រើម្តងទៀតនៅលើឧបករណ៍នេះ។"
           : "You'll need to sign in again on this device."}
       </ConfirmDialog>
     </div>,
     document.body,
-  )
+  );
 }
 
 const TITLES = {
-  menu: (km) => (km ? 'គណនីរបស់ខ្ញុំ' : 'My account'),
-  details: (km) => (km ? 'ព័ត៌មានរបស់អ្នក' : 'Your details'),
-  password: (km) => (km ? 'ពាក្យសម្ងាត់' : 'Password'),
-  signin: (km) => (km ? 'ការចូលដោយ Google' : 'Google sign-in'),
-}
+  menu: (km) => (km ? "គណនីរបស់ខ្ញុំ" : "My account"),
+  details: (km) => (km ? "ព័ត៌មានរបស់អ្នក" : "Your details"),
+  password: (km) => (km ? "ពាក្យសម្ងាត់" : "Password"),
+  signin: (km) => (km ? "ការចូលដោយ Google" : "Google sign-in"),
+  telegram: (km) => (km ? "ការជូនដំណឹងតាម Telegram" : "Telegram notifications"),
+};
 
 /*
  * Every view must have a title, and a missing one used to take the whole panel
@@ -255,7 +288,7 @@ const TITLES = {
  * page rather than a missing heading. Falling back keeps a typo or a new view
  * added in a hurry to a cosmetic problem.
  */
-const titleFor = (view, km) => (TITLES[view] ?? TITLES.menu)(km)
+const titleFor = (view, km) => (TITLES[view] ?? TITLES.menu)(km);
 
 /**
  * One row of the settings list. Static rows show a value instead of a chevron.
@@ -281,13 +314,13 @@ function Row({ icon, title, sub, value, onClick }) {
         <Icon name="chevronRight" size={16} className="acct-row-chev" />
       ) : null}
     </>
-  )
-  if (!onClick) return <div className="acct-row is-static">{body}</div>
+  );
+  if (!onClick) return <div className="acct-row is-static">{body}</div>;
   return (
     <button type="button" className="acct-row" onClick={onClick}>
       {body}
     </button>
-  )
+  );
 }
 
 /**
@@ -314,7 +347,7 @@ function SegToggle({ options, value, onChange, ariaLabel }) {
         </button>
       ))}
     </span>
-  )
+  );
 }
 
 /**
@@ -324,20 +357,33 @@ function SegToggle({ options, value, onChange, ariaLabel }) {
  * identity and the token's subject - rendering it in a text input beside three
  * fields that do save is a promise the API does not keep.
  */
-function AccountMenu({ user, km, t, onGo, onSignOut, onLeave }) {
-  const roleLabel = t(user.role) !== user.role ? t(user.role) : user.role
+function AccountMenu({ user, km, t, onGo, onLeave }) {
+  const roleLabel = t(user.role) !== user.role ? t(user.role) : user.role;
 
-  const { locale, setLocale } = useLocale()
-  const { theme, setTheme } = useTheme()
+  const { locale, setLocale } = useLocale();
+  const { theme, setTheme } = useTheme();
 
   // Only a plain customer can apply. An organiser already has the area, and an
   // admin applying would overwrite their own role - OrganizerService refuses it
   // outright, so offering the row here would be an invitation to a 403.
-  const canApply = user.role === 'CUSTOMER'
+  const canApply = user.role === "CUSTOMER";
 
   // Stored bare, shown with the @ that people read a handle by.
-  const handle = user.telegram_username
-  const handleUrl = telegramUrl(handle)
+  const handle = user.telegram_username;
+  const handleUrl = telegramUrl(handle);
+
+  const isOrganizerUser = Boolean(
+    user?.organizer_profile_id || user?.role === "ORGANIZER",
+  );
+  const [telegramConnected, setTelegramConnected] = useState(null);
+
+  useEffect(() => {
+    if (isOrganizerUser) {
+      getTelegramStatus()
+        .then((s) => setTelegramConnected(Boolean(s?.connected)))
+        .catch(() => setTelegramConnected(false));
+    }
+  }, [isOrganizerUser]);
 
   return (
     <>
@@ -405,44 +451,72 @@ function AccountMenu({ user, km, t, onGo, onSignOut, onLeave }) {
           </span>
           <span className="acct-org-text">
             <span className="acct-org-name">{user.org_name_en}</span>
-            {user.org_name_km && <span className="acct-org-alt km">{user.org_name_km}</span>}
+            {user.org_name_km && (
+              <span className="acct-org-alt km">{user.org_name_km}</span>
+            )}
           </span>
         </div>
       )}
 
       <section className="acct-section">
-        <h2>{km ? 'គណនី' : 'Account'}</h2>
+        <h2>{km ? "គណនី" : "Account"}</h2>
         <div className="acct-rows">
           <Row
             icon="user"
-            title={km ? 'ព័ត៌មានផ្ទាល់ខ្លួន' : 'Personal details'}
-            sub={km ? 'ឈ្មោះ អ៊ីមែល និង Telegram' : 'Name, email and Telegram'}
-            onClick={() => onGo('details')}
+            title={km ? "ព័ត៌មានផ្ទាល់ខ្លួន" : "Personal details"}
+            sub={km ? "ឈ្មោះ អ៊ីមែល និង Telegram" : "Name, email and Telegram"}
+            onClick={() => onGo("details")}
           />
           <Row
             icon="lock"
             title={
               user.has_password
                 ? km
-                  ? 'ពាក្យសម្ងាត់'
-                  : 'Password'
+                  ? "ពាក្យសម្ងាត់"
+                  : "Password"
                 : km
-                  ? 'របៀបដែលអ្នកចូលប្រើ'
-                  : 'How you sign in'
+                  ? "របៀបដែលអ្នកចូលប្រើ"
+                  : "How you sign in"
             }
             sub={
               user.has_password
                 ? km
-                  ? 'ប្តូរពាក្យសម្ងាត់របស់អ្នក'
-                  : 'Change your password'
+                  ? "ប្តូរពាក្យសម្ងាត់របស់អ្នក"
+                  : "Change your password"
                 : km
-                  ? 'ចូលដោយ Google'
-                  : 'Google'
+                  ? "ចូលដោយ Google"
+                  : "Google"
             }
-            onClick={() => onGo('password')}
+            onClick={() => onGo("password")}
           />
         </div>
       </section>
+
+      {isOrganizerUser && (
+        <section className="acct-section">
+          <h2>{km ? "ការជូនដំណឹង" : "Notifications"}</h2>
+          <div className="acct-rows">
+            <Row
+              icon="bell"
+              title={km ? "ការជូនដំណឹងតាម Telegram" : "Telegram notifications"}
+              sub={
+                telegramConnected === true
+                  ? km
+                    ? "បានភ្ជាប់ · ទទួលសារពេលមានការទិញសំបុត្រ ឬអនុម័ត"
+                    : "Connected · Instant alerts on sales & approvals"
+                  : telegramConnected === false
+                    ? km
+                      ? "មិនទាន់ភ្ជាប់ · ភ្ជាប់ដើម្បីទទួលដំណឹងភ្លាមៗ"
+                      : "Not connected · Connect for instant alerts"
+                    : km
+                      ? "ទទួលសារភ្លាមៗពេលមានការទិញសំបុត្រ ឬអនុម័ត"
+                      : "Instant alerts when tickets sell or events are approved"
+              }
+              onClick={() => onGo("telegram")}
+            />
+          </div>
+        </section>
+      )}
 
       {/* Language and appearance used to sit in the navbar. They are settings
           you change once and then never look at again, and two permanent
@@ -450,7 +524,7 @@ function AccountMenu({ user, km, t, onGo, onSignOut, onLeave }) {
           stay in the bar for signed-out visitors, who have no panel to keep
           them in, and in the mobile drawer. */}
       <section className="acct-section">
-        <h2>{km ? 'ការបង្ហាញ' : 'Display'}</h2>
+        <h2>{km ? "ការបង្ហាញ" : "Display"}</h2>
         <div className="acct-rows">
           {/* The flags live in the toggle, where they label the choice you are
               about to make. The row's own mark stays a plain globe, in the same
@@ -459,13 +533,13 @@ function AccountMenu({ user, km, t, onGo, onSignOut, onLeave }) {
               repeat what the pressed side of the toggle already says. */}
           <Row
             icon="globe"
-            title={km ? 'ភាសា' : 'Language'}
+            title={km ? "ភាសា" : "Language"}
             value={
               <SegToggle
-                ariaLabel={km ? 'ភាសា' : 'Language'}
+                ariaLabel={km ? "ភាសា" : "Language"}
                 options={[
                   {
-                    value: 'en',
+                    value: "en",
                     label: (
                       <>
                         <Flag code="en" size={16} />
@@ -474,8 +548,8 @@ function AccountMenu({ user, km, t, onGo, onSignOut, onLeave }) {
                     ),
                   },
                   {
-                    value: 'km',
-                    className: 'km',
+                    value: "km",
+                    className: "km",
                     label: (
                       <>
                         <Flag code="km" size={16} />
@@ -492,27 +566,27 @@ function AccountMenu({ user, km, t, onGo, onSignOut, onLeave }) {
           {/* Sun or moon, following the theme in force - the same reason the
               language row carries the script you are reading. */}
           <Row
-            icon={theme === 'dark' ? 'moon' : 'sun'}
-            title={km ? 'រូបរាង' : 'Appearance'}
+            icon={theme === "dark" ? "moon" : "sun"}
+            title={km ? "រូបរាង" : "Appearance"}
             value={
               <SegToggle
-                ariaLabel={km ? 'រូបរាង' : 'Appearance'}
+                ariaLabel={km ? "រូបរាង" : "Appearance"}
                 options={[
                   {
-                    value: 'light',
+                    value: "light",
                     label: (
                       <>
                         <Icon name="sun" size={13} />
-                        {km ? 'ភ្លឺ' : 'Light'}
+                        {km ? "ភ្លឺ" : "Light"}
                       </>
                     ),
                   },
                   {
-                    value: 'dark',
+                    value: "dark",
                     label: (
                       <>
                         <Icon name="moon" size={13} />
-                        {km ? 'ងងឹត' : 'Dark'}
+                        {km ? "ងងឹត" : "Dark"}
                       </>
                     ),
                   },
@@ -527,25 +601,33 @@ function AccountMenu({ user, km, t, onGo, onSignOut, onLeave }) {
 
       {canApply && (
         <section className="acct-section">
-          <h2>{km ? 'អ្នករៀបចំកម្មវិធី' : 'Organizing'}</h2>
+          <h2>{km ? "អ្នករៀបចំកម្មវិធី" : "Organizing"}</h2>
           <div className="acct-rows">
             <Row
               icon="building"
-              title={t('becomeOrganizer')}
-              sub={km ? 'រៀបចំ និងលក់សំបុត្រព្រឹត្តិការណ៍ផ្ទាល់ខ្លួន' : 'Run your own events and sell tickets'}
-              onClick={() => onLeave('/become-an-organizer')}
+              title={t("becomeOrganizer")}
+              sub={
+                km
+                  ? "រៀបចំ និងលក់សំបុត្រព្រឹត្តិការណ៍ផ្ទាល់ខ្លួន"
+                  : "Run your own events and sell tickets"
+              }
+              onClick={() => onLeave("/become-an-organizer")}
             />
           </div>
         </section>
       )}
 
       <section className="acct-section">
-        <h2>{km ? 'ការចូលប្រើប្រាស់' : 'Sign-in'}</h2>
+        <h2>{km ? "ការចូលប្រើប្រាស់" : "Sign-in"}</h2>
         <div className="acct-rows">
           <Row
             icon="phone"
-            title={km ? 'លេខទូរស័ព្ទ' : 'Phone number'}
-            sub={km ? 'លេខសម្រាប់ចូលប្រើ មិនអាចប្តូរបានទេ' : 'How you sign in. Cannot be changed here.'}
+            title={km ? "លេខទូរស័ព្ទ" : "Phone number"}
+            sub={
+              km
+                ? "លេខសម្រាប់ចូលប្រើ មិនអាចប្តូរបានទេ"
+                : "How you sign in. Cannot be changed here."
+            }
             value={<span className="mono">{user.phone_e164}</span>}
           />
           {/* Under Sign-in, not buried in the password screen - linking Google
@@ -557,25 +639,18 @@ function AccountMenu({ user, km, t, onGo, onSignOut, onLeave }) {
             sub={
               user.google_linked
                 ? km
-                  ? 'ភ្ជាប់រួចហើយ'
-                  : 'Connected'
+                  ? "ភ្ជាប់រួចហើយ"
+                  : "Connected"
                 : km
-                  ? 'ភ្ជាប់ដើម្បីចូលដោយ Google'
-                  : 'Connect to sign in with Google'
+                  ? "ភ្ជាប់ដើម្បីចូលដោយ Google"
+                  : "Connect to sign in with Google"
             }
-            onClick={() => onGo('signin')}
+            onClick={() => onGo("signin")}
           />
         </div>
       </section>
-
-      <div className="acct-signout">
-        <button type="button" className="acct-btn acct-btn-signout" onClick={onSignOut}>
-          <Icon name="logout" size={15} />
-          {km ? 'ចេញពីគណនី' : 'Sign out'}
-        </button>
-      </div>
     </>
-  )
+  );
 }
 
 /**
@@ -588,61 +663,63 @@ function AccountMenu({ user, km, t, onGo, onSignOut, onLeave }) {
  * shows what was written: the name in the heading, the email under it, the
  * handle beside them. That is the confirmation.
  */
-function DetailsForm({ user, km, t, toast, refreshUser, onSaved }) {
-  const [displayName, setDisplayName] = useState(user.display_name ?? '')
-  const [email, setEmail] = useState(user.email ?? '')
-  const [telegram, setTelegram] = useState(user.telegram_username ?? '')
-  const [busy, setBusy] = useState(false)
-  const [emailError, setEmailError] = useState('')
-  const [telegramError, setTelegramError] = useState('')
+function DetailsForm({ user, km, t, toast, refreshUser, onSaved, onCancel }) {
+  const [displayName, setDisplayName] = useState(user.display_name ?? "");
+  const [email, setEmail] = useState(user.email ?? "");
+  const [telegram, setTelegram] = useState(user.telegram_username ?? "");
+  const [busy, setBusy] = useState(false);
+  const [emailError, setEmailError] = useState("");
+  const [telegramError, setTelegramError] = useState("");
 
   const dirty =
-    displayName !== (user.display_name ?? '') ||
-    email !== (user.email ?? '') ||
-    telegram !== (user.telegram_username ?? '')
+    displayName !== (user.display_name ?? "") ||
+    email !== (user.email ?? "") ||
+    telegram !== (user.telegram_username ?? "");
 
   async function save(e) {
-    e.preventDefault()
-    if (!displayName.trim()) return
-    setBusy(true)
-    setEmailError('')
-    setTelegramError('')
+    e.preventDefault();
+    if (!displayName.trim()) return;
+    setBusy(true);
+    setEmailError("");
+    setTelegramError("");
     try {
       await updateProfile({
         display_name: displayName.trim(),
         email: email.trim(),
         telegram_username: telegram.trim(),
-      })
+      });
       // The navbar renders the display name, so the context has to re-read or
       // the change is invisible until the next reload.
-      await refreshUser()
-      toast(km ? 'បានរក្សាទុក' : 'Saved', 'success')
+      await refreshUser();
+      toast(km ? "បានរក្សាទុក" : "Saved", "success");
       // After the refresh, so the menu this returns to is already showing the
       // saved record rather than the one from before the submit.
-      onSaved()
+      onSaved();
     } catch (err) {
-      const code = err?.response?.data?.errorCode
-      if (code === 'EMAIL_ALREADY_REGISTERED') {
-        setEmailError(km ? 'អ៊ីមែលនេះមានគណនីរួចហើយ។' : 'That email already has an account.')
-      } else if (code === 'INVALID_TELEGRAM_USERNAME') {
+      const code = err?.response?.data?.errorCode;
+      if (code === "EMAIL_ALREADY_REGISTERED") {
+        setEmailError(
+          km ? "អ៊ីមែលនេះមានគណនីរួចហើយ។" : "That email already has an account.",
+        );
+      } else if (code === "INVALID_TELEGRAM_USERNAME") {
         setTelegramError(
           km
-            ? 'ឈ្មោះអ្នកប្រើ Telegram មាន ៥ ដល់ ៣២ តួ៖ អក្សរ លេខ ឬ _ ។'
-            : 'A Telegram username is 5 to 32 letters, numbers or underscores.',
-        )
+            ? "ឈ្មោះអ្នកប្រើ Telegram មាន ៥ ដល់ ៣២ តួ៖ អក្សរ លេខ ឬ _ ។"
+            : "A Telegram username is 5 to 32 letters, numbers or underscores.",
+        );
       } else {
-        toast(km ? 'រក្សាទុកមិនបានសម្រេច' : 'Could not save', 'error')
+        toast(km ? "រក្សាទុកមិនបានសម្រេច" : "Could not save", "error");
       }
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
   }
 
   return (
     <form className="acct-card" onSubmit={save}>
-      <h2>{km ? 'ព័ត៌មានរបស់អ្នក' : 'Your details'}</h2>
+      <h2>{km ? "ព័ត៌មានរបស់អ្នក" : "Your details"}</h2>
 
-      <Field label={t('displayName')}>
+      <Field label={t("displayName")}>
         <input
           className="input"
           value={displayName}
@@ -660,8 +737,8 @@ function DetailsForm({ user, km, t, toast, refreshUser, onSaved }) {
           emailError
             ? undefined
             : km
-              ? 'ប្រើសម្រាប់បង្កាន់ដៃ។ ការចូលប្រើនៅតែប្រើលេខទូរស័ព្ទ។'
-              : 'Used for receipts. You still sign in with your phone number.'
+              ? "ប្រើសម្រាប់បង្កាន់ដៃ។ ការចូលប្រើនៅតែប្រើលេខទូរស័ព្ទ។"
+              : "Used for receipts. You still sign in with your phone number."
         }
       >
         <input
@@ -670,8 +747,8 @@ function DetailsForm({ user, km, t, toast, refreshUser, onSaved }) {
           value={email}
           maxLength={255}
           onChange={(e) => {
-            setEmail(e.target.value)
-            setEmailError('')
+            setEmail(e.target.value);
+            setEmailError("");
           }}
         />
       </Field>
@@ -698,8 +775,8 @@ function DetailsForm({ user, km, t, toast, refreshUser, onSaved }) {
           telegramError
             ? undefined
             : km
-              ? 'ដើម្បីឱ្យក្រុមការងារទាក់ទងអ្នកបាន។ មិនមែនជាវិធីចូលប្រើទេ។'
-              : 'So we can reach you about a booking. Not a way to sign in.'
+              ? "ដើម្បីឱ្យក្រុមការងារទាក់ទងអ្នកបាន។ មិនមែនជាវិធីចូលប្រើទេ។"
+              : "So we can reach you about a booking. Not a way to sign in."
         }
       >
         <span className="acct-prefixed">
@@ -714,23 +791,40 @@ function DetailsForm({ user, km, t, toast, refreshUser, onSaved }) {
             spellCheck={false}
             placeholder="yourhandle"
             onChange={(e) => {
-              setTelegram(e.target.value)
-              setTelegramError('')
+              setTelegram(e.target.value);
+              setTelegramError("");
             }}
           />
         </span>
       </Field>
 
       <div className="acct-actions">
-        {/* Disabled until something actually changed: a Save that is always
-            live invites the click that does nothing and teaches people the
-            button is decorative. */}
-        <button className="acct-btn acct-btn-primary" disabled={busy || !dirty}>
-          {busy ? (km ? 'កំពុងរក្សាទុក…' : 'Saving…') : km ? 'រក្សាទុក' : 'Save changes'}
+        {(onCancel || onSaved) && (
+          <button
+            type="button"
+            className="acct-btn acct-btn-quiet"
+            disabled={busy}
+            onClick={onCancel ?? onSaved}
+          >
+            {km ? "បោះបង់" : "Cancel"}
+          </button>
+        )}
+        <button
+          type="submit"
+          className="acct-btn acct-btn-primary"
+          disabled={busy || !dirty}
+        >
+          {busy
+            ? km
+              ? "កំពុងរក្សាទុក…"
+              : "Saving…"
+            : km
+              ? "រក្សាទុក"
+              : "Save changes"}
         </button>
       </div>
     </form>
-  )
+  );
 }
 
 /**
@@ -741,81 +835,92 @@ function DetailsForm({ user, km, t, toast, refreshUser, onSaved }) {
  * drops out within the access token's 15 minutes - that is the point of the
  * feature, and the form says so before it is submitted rather than after.
  */
-function PasswordForm({ km, toast }) {
-  const [current, setCurrent] = useState('')
-  const [next, setNext] = useState('')
-  const [confirm, setConfirm] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
+function PasswordForm({ km, toast, onCancel }) {
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
 
   // Checked here as well as on the server: the confirmation field never
   // crosses the wire, so a mismatch is only ever a client-side question.
-  const mismatch = confirm.length > 0 && next !== confirm
-  const tooShort = next.length > 0 && next.length < 8
-  const ready = current && next.length >= 8 && next === confirm
+  const mismatch = confirm.length > 0 && next !== confirm;
+  const tooShort = next.length > 0 && next.length < 8;
+  const ready = current && next.length >= 8 && next === confirm;
 
   async function submit(e) {
-    e.preventDefault()
-    if (!ready) return
-    setBusy(true)
-    setError('')
+    e.preventDefault();
+    if (!ready) return;
+    setBusy(true);
+    setError("");
     try {
-      await changePassword({ current_password: current, new_password: next })
-      setCurrent('')
-      setNext('')
-      setConfirm('')
+      await changePassword({ current_password: current, new_password: next });
+      setCurrent("");
+      setNext("");
+      setConfirm("");
       toast(
-        km ? 'បានប្តូរពាក្យសម្ងាត់។ ឧបករណ៍ផ្សេងត្រូវបានចេញ។' : 'Password changed. Other devices signed out.',
-        'success',
-      )
+        km
+          ? "បានប្តូរពាក្យសម្ងាត់។ ឧបករណ៍ផ្សេងត្រូវបានចេញ។"
+          : "Password changed. Other devices signed out.",
+        "success",
+      );
+      if (onCancel) onCancel();
     } catch (err) {
-      const code = err?.response?.data?.errorCode
+      const code = err?.response?.data?.errorCode;
       setError(
-        code === 'INVALID_CREDENTIALS'
+        code === "INVALID_CREDENTIALS"
           ? km
-            ? 'ពាក្យសម្ងាត់បច្ចុប្បន្នមិនត្រឹមត្រូវទេ។'
-            : 'That is not your current password.'
+            ? "ពាក្យសម្ងាត់បច្ចុប្បន្នមិនត្រឹមត្រូវទេ។"
+            : "That is not your current password."
           : km
-            ? 'ប្តូរមិនបានសម្រេច។'
-            : 'Could not change your password.',
-      )
+            ? "ប្តូរមិនបានសម្រេច។"
+            : "Could not change your password.",
+      );
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
   }
 
   return (
     <form className="acct-card" onSubmit={submit}>
-      <h2>{km ? 'ពាក្យសម្ងាត់' : 'Password'}</h2>
+      <h2>{km ? "ពាក្យសម្ងាត់" : "Password"}</h2>
       <p className="muted small acct-lede">
         {km
-          ? 'ការប្តូរពាក្យសម្ងាត់នឹងធ្វើឱ្យឧបករណ៍ផ្សេងទៀតទាំងអស់ចេញពីគណនី។ កម្មវិធីរុករកនេះនៅតែចូលដដែល។'
-          : 'Changing it signs out every other device. This browser stays signed in.'}
+          ? "ការប្តូរពាក្យសម្ងាត់នឹងធ្វើឱ្យឧបករណ៍ផ្សេងទៀតទាំងអស់ចេញពីគណនី។ កម្មវិធីរុករកនេះនៅតែចូលដដែល។"
+          : "Changing it signs out every other device. This browser stays signed in."}
       </p>
 
       {error && (
-        <Alert tone="danger" title={km ? 'មិនបានសម្រេច' : "That didn't work"}>
+        <Alert tone="danger" title={km ? "មិនបានសម្រេច" : "That didn't work"}>
           <span className="small">{error}</span>
         </Alert>
       )}
 
-      <Field label={km ? 'ពាក្យសម្ងាត់បច្ចុប្បន្ន' : 'Current password'}>
+      <Field label={km ? "ពាក្យសម្ងាត់បច្ចុប្បន្ន" : "Current password"}>
         <input
           className="input"
           type="password"
           autoComplete="current-password"
           value={current}
           onChange={(e) => {
-            setCurrent(e.target.value)
-            setError('')
+            setCurrent(e.target.value);
+            setError("");
           }}
         />
       </Field>
 
       <Field
-        label={km ? 'ពាក្យសម្ងាត់ថ្មី' : 'New password'}
-        error={tooShort ? (km ? 'យ៉ាងតិច ៨ តួអក្សរ។' : 'At least 8 characters.') : ''}
-        hint={tooShort ? undefined : km ? 'យ៉ាងតិច ៨ តួអក្សរ។' : 'At least 8 characters.'}
+        label={km ? "ពាក្យសម្ងាត់ថ្មី" : "New password"}
+        error={
+          tooShort ? (km ? "យ៉ាងតិច ៨ តួអក្សរ។" : "At least 8 characters.") : ""
+        }
+        hint={
+          tooShort
+            ? undefined
+            : km
+              ? "យ៉ាងតិច ៨ តួអក្សរ។"
+              : "At least 8 characters."
+        }
       >
         <input
           className="input"
@@ -827,8 +932,8 @@ function PasswordForm({ km, toast }) {
       </Field>
 
       <Field
-        label={km ? 'បញ្ជាក់ពាក្យសម្ងាត់ថ្មី' : 'Confirm new password'}
-        error={mismatch ? (km ? 'មិនដូចគ្នាទេ។' : 'These do not match.') : ''}
+        label={km ? "បញ្ជាក់ពាក្យសម្ងាត់ថ្មី" : "Confirm new password"}
+        error={mismatch ? (km ? "មិនដូចគ្នាទេ។" : "These do not match.") : ""}
       >
         <input
           className="input"
@@ -840,19 +945,33 @@ function PasswordForm({ km, toast }) {
       </Field>
 
       <div className="acct-actions">
-        <button className="acct-btn acct-btn-primary" disabled={busy || !ready}>
+        {onCancel && (
+          <button
+            type="button"
+            className="acct-btn acct-btn-quiet"
+            disabled={busy}
+            onClick={onCancel}
+          >
+            {km ? "បោះបង់" : "Cancel"}
+          </button>
+        )}
+        <button
+          type="submit"
+          className="acct-btn acct-btn-primary"
+          disabled={busy || !ready}
+        >
           <Icon name="lock" size={14} />
           {busy
             ? km
-              ? 'កំពុងប្តូរ…'
-              : 'Changing…'
+              ? "កំពុងប្តូរ…"
+              : "Changing…"
             : km
-              ? 'ប្តូរពាក្យសម្ងាត់'
-              : 'Change password'}
+              ? "ប្តូរពាក្យសម្ងាត់"
+              : "Change password"}
         </button>
       </div>
     </form>
-  )
+  );
 }
 
 /**
@@ -866,7 +985,7 @@ function PasswordForm({ km, toast }) {
 function NoPasswordCard({ km, user }) {
   return (
     <section className="acct-card">
-      <h2>{km ? 'របៀបដែលអ្នកចូលប្រើ' : 'How you sign in'}</h2>
+      <h2>{km ? "របៀបដែលអ្នកចូលប្រើ" : "How you sign in"}</h2>
 
       <div className="acct-signin">
         <span className="acct-signin-icon" aria-hidden="true">
@@ -874,7 +993,7 @@ function NoPasswordCard({ km, user }) {
         </span>
         <div>
           <div className="acct-signin-name">
-            {km ? 'ចូលដោយ Google' : 'Google'}
+            {km ? "ចូលដោយ Google" : "Google"}
           </div>
           {user.email && <div className="small muted">{user.email}</div>}
         </div>
@@ -882,11 +1001,11 @@ function NoPasswordCard({ km, user }) {
 
       <p className="muted small acct-note">
         {km
-          ? 'គណនីនេះគ្មានពាក្យសម្ងាត់នៅលើ CamboBook ទេ ដូច្នេះគ្មានអ្វីត្រូវប្តូរនៅទីនេះឡើយ។ ដើម្បីប្តូរពាក្យសម្ងាត់ ឬពិនិត្យសុវត្ថិភាព សូមធ្វើនៅក្នុងគណនី Google របស់អ្នក។'
-          : 'This account has no CamboBook password, so there is nothing to change here. Your password lives with Google — change it, or review which apps you have connected, in your Google account.'}
+          ? "គណនីនេះគ្មានពាក្យសម្ងាត់នៅលើ CamboBook ទេ ដូច្នេះគ្មានអ្វីត្រូវប្តូរនៅទីនេះឡើយ។ ដើម្បីប្តូរពាក្យសម្ងាត់ ឬពិនិត្យសុវត្ថិភាព សូមធ្វើនៅក្នុងគណនី Google របស់អ្នក។"
+          : "This account has no CamboBook password, so there is nothing to change here. Your password lives with Google — change it, or review which apps you have connected, in your Google account."}
       </p>
     </section>
-  )
+  );
 }
 
 /**
@@ -903,53 +1022,53 @@ function NoPasswordCard({ km, user }) {
  * clicked and rejected - a control that never works is worse than no control.
  */
 function GoogleLinkCard({ km, user, toast, refreshUser }) {
-  const [busy, setBusy] = useState(false)
-  const [confirmUnlink, setConfirmUnlink] = useState(false)
+  const [busy, setBusy] = useState(false);
+  const [confirmUnlink, setConfirmUnlink] = useState(false);
 
   // Google is the only door when there is no password behind it.
-  const canUnlink = user.has_password
+  const canUnlink = user.has_password;
 
   async function onToken(idToken) {
-    if (busy) return
-    setBusy(true)
+    if (busy) return;
+    setBusy(true);
     try {
-      await linkGoogle(idToken)
-      await refreshUser()
-      toast(km ? 'បានភ្ជាប់ Google' : 'Google connected', 'success')
+      await linkGoogle(idToken);
+      await refreshUser();
+      toast(km ? "បានភ្ជាប់ Google" : "Google connected", "success");
     } catch (e) {
-      const code = e?.response?.data?.errorCode
+      const code = e?.response?.data?.errorCode;
       toast(
-        code === 'GOOGLE_ALREADY_LINKED'
+        code === "GOOGLE_ALREADY_LINKED"
           ? km
-            ? 'គណនី Google នេះត្រូវបានភ្ជាប់រួចហើយ។'
-            : 'That Google account is already connected to an account here.'
+            ? "គណនី Google នេះត្រូវបានភ្ជាប់រួចហើយ។"
+            : "That Google account is already connected to an account here."
           : km
-            ? 'ភ្ជាប់មិនបានសម្រេច'
-            : 'Could not connect Google',
-        'error',
-      )
+            ? "ភ្ជាប់មិនបានសម្រេច"
+            : "Could not connect Google",
+        "error",
+      );
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
   }
 
   async function doUnlink() {
-    setBusy(true)
+    setBusy(true);
     try {
-      await unlinkGoogle()
-      await refreshUser()
-      setConfirmUnlink(false)
-      toast(km ? 'បានផ្តាច់ Google' : 'Google disconnected', 'success')
+      await unlinkGoogle();
+      await refreshUser();
+      setConfirmUnlink(false);
+      toast(km ? "បានផ្តាច់ Google" : "Google disconnected", "success");
     } catch {
-      toast(km ? 'ផ្តាច់មិនបានសម្រេច' : 'Could not disconnect Google', 'error')
+      toast(km ? "ផ្តាច់មិនបានសម្រេច" : "Could not disconnect Google", "error");
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
   }
 
   return (
     <section className="acct-card">
-      <h2>{km ? 'ការចូលដោយ Google' : 'Google sign-in'}</h2>
+      <h2>{km ? "ការចូលដោយ Google" : "Google sign-in"}</h2>
 
       {user.google_linked ? (
         <>
@@ -959,12 +1078,12 @@ function GoogleLinkCard({ km, user, toast, refreshUser }) {
             </span>
             <div>
               <div className="acct-signin-name">
-                {km ? 'បានភ្ជាប់' : 'Connected'}
+                {km ? "បានភ្ជាប់" : "Connected"}
               </div>
               <div className="small muted">
                 {km
-                  ? 'អ្នកអាចចូលដោយប្រើ Google បាន។'
-                  : 'You can sign in with Google.'}
+                  ? "អ្នកអាចចូលដោយប្រើ Google បាន។"
+                  : "You can sign in with Google."}
               </div>
             </div>
           </div>
@@ -977,14 +1096,14 @@ function GoogleLinkCard({ km, user, toast, refreshUser }) {
                 disabled={busy}
                 onClick={() => setConfirmUnlink(true)}
               >
-                {km ? 'ផ្តាច់' : 'Disconnect'}
+                {km ? "ផ្តាច់" : "Disconnect"}
               </button>
             </div>
           ) : (
             <p className="muted small acct-note">
               {km
-                ? 'នេះជាមធ្យោបាយតែមួយគត់ដើម្បីចូលគណនីនេះ ដូច្នេះមិនអាចផ្តាច់បានទេ។'
-                : 'This is the only way into this account, so it cannot be disconnected.'}
+                ? "នេះជាមធ្យោបាយតែមួយគត់ដើម្បីចូលគណនីនេះ ដូច្នេះមិនអាចផ្តាច់បានទេ។"
+                : "This is the only way into this account, so it cannot be disconnected."}
             </p>
           )}
         </>
@@ -992,8 +1111,8 @@ function GoogleLinkCard({ km, user, toast, refreshUser }) {
         <>
           <p className="muted small acct-note">
             {km
-              ? 'ភ្ជាប់គណនី Google របស់អ្នក ដើម្បីអាចចូលដោយវិធីណាមួយក៏បាន។ លេខទូរស័ព្ទ និងពាក្យសម្ងាត់របស់អ្នកនៅតែដំណើរការដដែល។'
-              : 'Connect your Google account to sign in either way. Your phone number and password keep working exactly as they do now.'}
+              ? "ភ្ជាប់គណនី Google របស់អ្នក ដើម្បីអាចចូលដោយវិធីណាមួយក៏បាន។ លេខទូរស័ព្ទ និងពាក្យសម្ងាត់របស់អ្នកនៅតែដំណើរការដដែល។"
+              : "Connect your Google account to sign in either way. Your phone number and password keep working exactly as they do now."}
           </p>
           <GoogleSignInButton disabled={busy} onToken={onToken} />
         </>
@@ -1003,19 +1122,19 @@ function GoogleLinkCard({ km, user, toast, refreshUser }) {
         open={confirmUnlink}
         tone="warn"
         busy={busy}
-        title={km ? 'ផ្តាច់ Google?' : 'Disconnect Google?'}
-        confirmLabel={km ? 'ផ្តាច់' : 'Disconnect'}
+        title={km ? "ផ្តាច់ Google?" : "Disconnect Google?"}
+        confirmLabel={km ? "ផ្តាច់" : "Disconnect"}
         onConfirm={doUnlink}
         onClose={() => setConfirmUnlink(false)}
       >
         <p className="small muted">
           {km
-            ? 'អ្នកនឹងនៅតែចូលបានដោយប្រើលេខទូរស័ព្ទ និងពាក្យសម្ងាត់របស់អ្នក។'
-            : 'You will still be able to sign in with your phone number and password.'}
+            ? "អ្នកនឹងនៅតែចូលបានដោយប្រើលេខទូរស័ព្ទ និងពាក្យសម្ងាត់របស់អ្នក។"
+            : "You will still be able to sign in with your phone number and password."}
         </p>
       </ConfirmDialog>
     </section>
-  )
+  );
 }
 
 /**
@@ -1032,24 +1151,26 @@ function GoogleLinkCard({ km, user, toast, refreshUser }) {
  * between a form and a dead end: PhoneGate only fires at checkout, so an
  * account that has never bought a ticket has no other way to add one.
  */
-function SetPasswordForm({ km, user, toast, refreshUser }) {
-  const needsPhone = !user.phone_e164
-  const [phone, setPhoneValue] = useState('')
-  const [next, setNext] = useState('')
-  const [confirm, setConfirm] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
+function SetPasswordForm({ km, user, toast, refreshUser, onCancel }) {
+  const needsPhone = !user.phone_e164;
+  const [phone, setPhoneValue] = useState("");
+  const [next, setNext] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
 
-  const mismatch = confirm.length > 0 && next !== confirm
-  const tooShort = next.length > 0 && next.length < 8
+  const mismatch = confirm.length > 0 && next !== confirm;
+  const tooShort = next.length > 0 && next.length < 8;
   const ready =
-    next.length >= 8 && next === confirm && (!needsPhone || Boolean(toLocalPhone(phone)))
+    next.length >= 8 &&
+    next === confirm &&
+    (!needsPhone || Boolean(toLocalPhone(phone)));
 
   async function submit(e) {
-    e.preventDefault()
-    if (!ready || busy) return
-    setBusy(true)
-    setError('')
+    e.preventDefault();
+    if (!ready || busy) return;
+    setBusy(true);
+    setError("");
     try {
       /*
        * The phone goes first because the password endpoint refuses without
@@ -1057,56 +1178,57 @@ function SetPasswordForm({ km, user, toast, refreshUser }) {
        * its own operation with its own rules - set once, never replaced - and
        * folding it into this form would duplicate them.
        */
-      if (needsPhone) await setPhone(toLocalPhone(phone))
-      await setPassword(next)
-      await refreshUser()
-      toast(km ? 'បានកំណត់ពាក្យសម្ងាត់' : 'Password set', 'success')
+      if (needsPhone) await setPhone(toLocalPhone(phone));
+      await setPassword(next);
+      await refreshUser();
+      toast(km ? "បានកំណត់ពាក្យសម្ងាត់" : "Password set", "success");
+      if (onCancel) onCancel();
     } catch (err) {
-      const code = err?.response?.data?.errorCode
+      const code = err?.response?.data?.errorCode;
       setError(
-        code === 'PHONE_ALREADY_REGISTERED'
+        code === "PHONE_ALREADY_REGISTERED"
           ? km
-            ? 'លេខនេះមានគណនីរួចហើយ។'
-            : 'That number already has an account.'
-          : code === 'PASSWORD_ALREADY_SET'
+            ? "លេខនេះមានគណនីរួចហើយ។"
+            : "That number already has an account."
+          : code === "PASSWORD_ALREADY_SET"
             ? km
-              ? 'គណនីនេះមានពាក្យសម្ងាត់រួចហើយ។'
-              : 'This account already has a password.'
+              ? "គណនីនេះមានពាក្យសម្ងាត់រួចហើយ។"
+              : "This account already has a password."
             : km
-              ? 'មិនអាចកំណត់ពាក្យសម្ងាត់បានទេ។'
-              : 'Could not set your password.',
-      )
+              ? "មិនអាចកំណត់ពាក្យសម្ងាត់បានទេ។"
+              : "Could not set your password.",
+      );
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
   }
 
   return (
     <form className="acct-card" onSubmit={submit}>
-      <h2>{km ? 'កំណត់ពាក្យសម្ងាត់' : 'Set a password'}</h2>
+      <h2>{km ? "កំណត់ពាក្យសម្ងាត់" : "Set a password"}</h2>
       <p className="muted small acct-lede">
         {km
-          ? 'បច្ចុប្បន្នអ្នកចូលដោយ Google តែមួយគត់។ ការកំណត់ពាក្យសម្ងាត់អនុញ្ញាតឱ្យអ្នកចូលដោយលេខទូរស័ព្ទផងដែរ ហើយអ្នកនឹងមិនជាប់ខាងក្រៅ ប្រសិនបើបាត់គណនី Google។'
-          : 'Right now Google is the only way into this account. A password lets you sign in with your phone number too, so losing your Google account does not lock you out.'}
+          ? "បច្ចុប្បន្នអ្នកចូលដោយ Google តែមួយគត់។ ការកំណត់ពាក្យសម្ងាត់អនុញ្ញាតឱ្យអ្នកចូលដោយលេខទូរស័ព្ទផងដែរ ហើយអ្នកនឹងមិនជាប់ខាងក្រៅ ប្រសិនបើបាត់គណនី Google។"
+          : "Right now Google is the only way into this account. A password lets you sign in with your phone number too, so losing your Google account does not lock you out."}
       </p>
 
       {error && (
-        <Alert tone="danger" title={km ? 'មិនបានសម្រេច' : "That didn't work"}>
+        <Alert tone="danger" title={km ? "មិនបានសម្រេច" : "That didn't work"}>
           <span className="small">{error}</span>
         </Alert>
       )}
 
       {needsPhone && (
         <Field
-          label={km ? 'លេខទូរស័ព្ទ' : 'Phone number'}
-          hint={km ? 'ឧទាហរណ៍ 012 345 678' : 'For example 012 345 678'}
+          label={km ? "លេខទូរស័ព្ទ" : "Phone number"}
+          hint={km ? "ឧទាហរណ៍ 012 345 678" : "For example 012 345 678"}
         >
           <input
             className="input"
             value={phone}
             onChange={(e) => {
-              setPhoneValue(e.target.value)
-              setError('')
+              setPhoneValue(e.target.value);
+              setError("");
             }}
             autoComplete="tel"
             inputMode="tel"
@@ -1116,9 +1238,17 @@ function SetPasswordForm({ km, user, toast, refreshUser }) {
       )}
 
       <Field
-        label={km ? 'ពាក្យសម្ងាត់' : 'Password'}
-        error={tooShort ? (km ? 'យ៉ាងតិច ៨ តួអក្សរ។' : 'At least 8 characters.') : ''}
-        hint={tooShort ? undefined : km ? 'យ៉ាងតិច ៨ តួអក្សរ។' : 'At least 8 characters.'}
+        label={km ? "ពាក្យសម្ងាត់" : "Password"}
+        error={
+          tooShort ? (km ? "យ៉ាងតិច ៨ តួអក្សរ។" : "At least 8 characters.") : ""
+        }
+        hint={
+          tooShort
+            ? undefined
+            : km
+              ? "យ៉ាងតិច ៨ តួអក្សរ។"
+              : "At least 8 characters."
+        }
       >
         <input
           className="input"
@@ -1130,8 +1260,8 @@ function SetPasswordForm({ km, user, toast, refreshUser }) {
       </Field>
 
       <Field
-        label={km ? 'បញ្ជាក់ពាក្យសម្ងាត់' : 'Confirm password'}
-        error={mismatch ? (km ? 'មិនដូចគ្នាទេ។' : 'These do not match.') : ''}
+        label={km ? "បញ្ជាក់ពាក្យសម្ងាត់" : "Confirm password"}
+        error={mismatch ? (km ? "មិនដូចគ្នាទេ។" : "These do not match.") : ""}
       >
         <input
           className="input"
@@ -1143,24 +1273,44 @@ function SetPasswordForm({ km, user, toast, refreshUser }) {
       </Field>
 
       <div className="acct-actions">
-        <button className="acct-btn acct-btn-primary" disabled={busy || !ready}>
+        {onCancel && (
+          <button
+            type="button"
+            className="acct-btn acct-btn-quiet"
+            disabled={busy}
+            onClick={onCancel}
+          >
+            {km ? "បោះបង់" : "Cancel"}
+          </button>
+        )}
+        <button
+          type="submit"
+          className="acct-btn acct-btn-primary"
+          disabled={busy || !ready}
+        >
           <Icon name="lock" size={14} />
-          {busy ? (km ? 'កំពុងរក្សាទុក…' : 'Saving…') : km ? 'កំណត់ពាក្យសម្ងាត់' : 'Set password'}
+          {busy
+            ? km
+              ? "កំពុងរក្សាទុក…"
+              : "Saving…"
+            : km
+              ? "កំណត់ពាក្យសម្ងាត់"
+              : "Set password"}
         </button>
       </div>
     </form>
-  )
+  );
 }
 
 /** First letters of the first two words, which is all an avatar needs. */
 function initials(name) {
-  if (!name) return '?'
+  if (!name) return "?";
   return name
     .trim()
     .split(/\s+/)
     .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? '')
-    .join('')
+    .map((w) => w[0]?.toUpperCase() ?? "")
+    .join("");
 }
 
 /*
@@ -1380,10 +1530,13 @@ button.acct-row:focus-visible .acct-row-chev { color: var(--color-ink-2);
 .acct-seg .flag { box-shadow: none; border-radius: 2px; }
 
 /* Signing out ends the session rather than configuring anything, so it is a
-   button, not one more row in a settings list. The auto margin drops it to the
-   foot of the panel on short accounts and simply follows the last section once
-   the body is tall enough to scroll. */
-.acct-signout { margin-top: auto; padding-top: var(--acct-2); }
+   button, not one more row in a settings list. Pinned cleanly to the foot of
+   the panel as a fixed footer so it stays accessible without having to scroll. */
+.acct-foot { flex: none;
+             padding: var(--acct-3) var(--acct-5) max(var(--acct-4), env(safe-area-inset-bottom, 0px));
+             border-top: 1px solid var(--color-line);
+             background: var(--color-page);
+             box-shadow: 0 -4px 16px rgb(0 0 0 / .04); }
 .acct-btn-signout { width: 100%; background: var(--color-surface);
                     border-color: var(--color-line); color: var(--color-danger); }
 .acct-btn-signout:hover { background: var(--color-danger-soft);
@@ -1416,7 +1569,8 @@ button.acct-row:focus-visible .acct-row-chev { color: var(--color-ink-2);
                color: var(--color-muted); font-size: .9rem; }
 .acct-prefixed .input { padding-inline-start: 1.6rem; }
 
-.acct-actions { display: flex; justify-content: flex-end;
+.acct-actions { display: flex; align-items: center; justify-content: flex-end;
+                gap: var(--acct-3);
                 padding-top: var(--acct-2);
                 border-top: 1px solid var(--color-line-2); }
 
@@ -1428,6 +1582,11 @@ button.acct-row:focus-visible .acct-row-chev { color: var(--color-ink-2);
 .acct-btn:disabled { opacity: .5; cursor: not-allowed; }
 .acct-btn-primary { background: var(--color-brand-600); color: #fff; }
 .acct-btn-primary:not(:disabled):hover { background: var(--color-brand-700); }
+.acct-btn-quiet { background: transparent; border-color: var(--color-line);
+                  color: var(--color-muted); }
+.acct-btn-quiet:not(:disabled):hover { background: var(--color-surface-2);
+                                       border-color: var(--color-line);
+                                       color: var(--color-ink); }
 
 /* ---------------------------------------------------------------- Khmer */
 /*
@@ -1445,4 +1604,4 @@ html[lang='km'] .acct-row-sub { line-height: 1.7; }
 html[lang='km'] .acct-hero-name { line-height: 1.45; }
 html[lang='km'] .acct-role { padding-block: 3px; }
 html[lang='km'] .acct-seg button { padding-block: .3rem; }
-`
+`;

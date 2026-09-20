@@ -65,8 +65,8 @@ public class VenueServiceimpl implements VenueService {
         if (request.khanDistrict() != null) v.setKhanDistrict(request.khanDistrict());
         if (request.sangkatCommune() != null) v.setSangkatCommune(request.sangkatCommune());
         if (request.streetAddress() != null) v.setStreetAddress(request.streetAddress());
-        if (request.lat() != null) v.setLat(request.lat());
-        if (request.lng() != null) v.setLng(request.lng());
+        v.setLat(request.lat());
+        v.setLng(request.lng());
         Venue saved = venueRepository.save(v);
         return VenueMapper.toVenueResponse(saved);
     }

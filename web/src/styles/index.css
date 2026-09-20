@@ -19,7 +19,7 @@
    and control heights are generous and nothing is locked to one line.
    ========================================================================== */
 
-@import 'tailwindcss';
+@import "tailwindcss";
 
 @source '../**/*.{js,jsx}';
 
@@ -85,20 +85,23 @@
   /* Shadows are cast in the warm ink, not a blue-black — a cool shadow on warm
      paper is the thing that reads as grey haze rather than depth. */
   --shadow-card: 0 1px 2px rgba(41, 34, 24, 0.05);
-  --shadow-float: 0 6px 20px -6px rgba(41, 34, 24, 0.16), 0 2px 6px -2px rgba(41, 34, 24, 0.07);
+  --shadow-float:
+    0 6px 20px -6px rgba(41, 34, 24, 0.16),
+    0 2px 6px -2px rgba(41, 34, 24, 0.07);
   --shadow-pop: 0 24px 60px -18px rgba(41, 34, 24, 0.3);
   --shadow-focus: 0 0 0 3px rgba(18, 97, 60, 0.26);
 
   /* type */
-  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-khmer: 'Noto Sans Khmer', 'Khmer OS Battambang', 'Hanuman', var(--font-sans);
-  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-khmer:
+    "Noto Sans Khmer", "Khmer OS Battambang", "Hanuman", var(--font-sans);
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
   /* The hero headline, and nothing else. A script face is unreadable at body
      sizes and has no system fallback that resembles it, so it is scoped to the
      one line it was chosen for. Khmer gets Moul rather than a Latin script,
      which cannot render the script at all. */
-  --font-display: 'Berkshire Swash', Georgia, 'Times New Roman', serif;
-  --font-display-khmer: 'Moul', var(--font-khmer);
+  --font-display: "Berkshire Swash", Georgia, "Times New Roman", serif;
+  --font-display-khmer: "Moul", var(--font-khmer);
 
   --text-small: 0.82rem;
   --text-tiny: 0.74rem;
@@ -124,7 +127,7 @@
    re-themes every @apply rule in the components layer at once. */
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 
-[data-theme='dark'] {
+[data-theme="dark"] {
   /* Dark is the same warm family turned down, not a separate blue-black one:
      the surfaces carry the paper's warmth so the two themes read as one product
      rather than two. */
@@ -187,7 +190,11 @@
     /* Faint brand wash under the navbar so inner pages are not a flat slab of
        paper. Anchored to the document, not the viewport: `fixed` would drag the
        tint down the screen as you scroll and read as a smudge. */
-    background-image: radial-gradient(1100px 460px at 50% 0%, rgba(18, 97, 60, 0.055), transparent 72%);
+    background-image: radial-gradient(
+      1100px 460px at 50% 0%,
+      rgba(18, 97, 60, 0.055),
+      transparent 72%
+    );
     background-repeat: no-repeat;
   }
 
@@ -221,7 +228,7 @@
   }
 
   /* Khmer needs more vertical room and a script-aware family. */
-  html[lang='km'] body {
+  html[lang="km"] body {
     @apply font-khmer;
     line-height: 1.9;
   }
@@ -234,7 +241,7 @@
     line-height: 1.3;
     letter-spacing: -0.01em;
   }
-  html[lang='km'] :is(h1, h2, h3) {
+  html[lang="km"] :is(h1, h2, h3) {
     line-height: 1.55;
     letter-spacing: 0;
   }
@@ -258,7 +265,7 @@
 
   /* Tailwind 4's preflight gives buttons `cursor: default`. */
   button:not(:disabled),
-  [role='button']:not(:disabled) {
+  [role="button"]:not(:disabled) {
     @apply cursor-pointer;
   }
 
@@ -384,6 +391,32 @@
     }
   }
 
+  /* Exactly one row, whatever the grid is currently doing.
+     Capping the array in JS cannot do this on its own: four items is one row
+     at 4-up and a row plus an orphan at 3-up, and the component has no idea
+     which is on screen. The breakpoints below are .grid-cards' own, so the two
+     stay in step - change a column count there and the matching rule here has
+     to move with it. The trimmed cards are still in the DOM and still fetched;
+     "View all" is one click away and this is a preview, not the catalogue. */
+  .grid-one-row > :nth-child(n + 5) {
+    @apply hidden;
+  }
+  @media (max-width: 1180px) {
+    .grid-one-row > :nth-child(n + 4) {
+      @apply hidden;
+    }
+  }
+  @media (max-width: 980px) {
+    .grid-one-row > :nth-child(n + 3) {
+      @apply hidden;
+    }
+  }
+  @media (max-width: 640px) {
+    .grid-one-row > :nth-child(n + 2) {
+      @apply hidden;
+    }
+  }
+
   .split {
     @apply grid items-start gap-[1.4rem];
     grid-template-columns: minmax(0, 1fr) 340px;
@@ -397,9 +430,15 @@
   .page-head {
     @apply mb-3 flex flex-wrap items-end justify-between gap-4;
   }
-  .page-head h1 {
-    @apply text-[3rem] font-extrabold leading-tight tracking-tighter;
-    color: var(--color-ink);
+  .page-head h1,
+  .rq-head h1,
+  .page-title-lockup h1,
+  .checkin-head h1,
+  .about-head h1,
+  .contact-head h1,
+  .org-apply-head h1 {
+    font-size: clamp(1.85rem, 1.4rem + 1.4vw, 2.25rem);
+    @apply font-extrabold leading-tight tracking-tight text-ink;
   }
   .page-head p {
     @apply mt-2 text-[1.1rem] font-medium text-muted max-w-[60ch];
@@ -415,13 +454,16 @@
    * which it can absorb because it wraps on word boundaries.
    */
   .section-head {
-    @apply mb-[0.9rem] flex items-baseline justify-between gap-3;
+    @apply mb-[1.1rem] flex items-end justify-between gap-3;
   }
   .section-head > :first-child {
     @apply min-w-0;
   }
   .section-head > a {
     @apply flex-none whitespace-nowrap;
+  }
+  .section-sub {
+    @apply mt-1 text-[0.95rem] font-medium text-muted;
   }
 
   .breadcrumb {
@@ -525,7 +567,7 @@
   /* The rule itself. Inset to the text rather than the padding box, so it
      underlines the word and not the hit area. */
   .nav-link::after {
-    content: '';
+    content: "";
     @apply pointer-events-none absolute inset-x-[0.75rem] bottom-[0.1rem] h-[2px] rounded-full bg-white/80;
     transform: scaleX(0);
     transition: transform 0.18s cubic-bezier(0.4, 0, 0.2, 1);
@@ -620,8 +662,10 @@
    * and knock the box out of line with the icon buttons beside it. The float
    * shadow is repeated because box-shadow does not merge across rules.
    */
-  [data-theme='dark'] .nav-search {
-    box-shadow: var(--shadow-float), inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+  [data-theme="dark"] .nav-search {
+    box-shadow:
+      var(--shadow-float),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.14);
   }
 
   /*
@@ -640,13 +684,15 @@
     box-shadow: none;
   }
   .nav-search:focus-within {
-    box-shadow: var(--shadow-float), 0 0 0 2px var(--color-gold-500);
+    box-shadow:
+      var(--shadow-float),
+      0 0 0 2px var(--color-brand-500);
   }
-  [data-theme='dark'] .nav-search:focus-within {
+  [data-theme="dark"] .nav-search:focus-within {
     box-shadow:
       var(--shadow-float),
       inset 0 0 0 1px rgba(255, 255, 255, 0.14),
-      0 0 0 2px var(--color-gold-500);
+      0 0 0 2px var(--color-brand-500);
   }
 
   /*
@@ -659,7 +705,9 @@
    */
   .nav-search-go {
     @apply grid size-[30px] flex-none cursor-pointer place-items-center rounded-full border-0 bg-transparent p-0 text-muted;
-    transition: background-color 0.15s ease, color 0.15s ease;
+    transition:
+      background-color 0.15s ease,
+      color 0.15s ease;
   }
   .nav-search-go:hover {
     @apply bg-tint text-on-tint;
@@ -684,7 +732,9 @@
 
   .nav-search-close {
     @apply grid size-[30px] flex-none cursor-pointer place-items-center rounded-full border-0 bg-transparent p-0 text-muted;
-    transition: background-color 0.15s ease, color 0.15s ease;
+    transition:
+      background-color 0.15s ease,
+      color 0.15s ease;
   }
   .nav-search-close:hover {
     @apply bg-surface-2 text-ink;
@@ -703,11 +753,11 @@
     grid-column: auto;
     animation: none;
   }
-  [data-theme='dark'] .nav-search.in-drawer {
+  [data-theme="dark"] .nav-search.in-drawer {
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
   }
   .nav-search.in-drawer:focus-within {
-    box-shadow: 0 0 0 2px var(--color-gold-500);
+    box-shadow: 0 0 0 2px var(--color-brand-500);
   }
 
   .nav-sep {
@@ -759,11 +809,11 @@
 
   .nav-hold {
     @apply inline-flex items-center gap-[0.3rem] font-bold tabular-nums;
-    background: rgba(224, 123, 57, 0.20);
+    background: rgba(224, 123, 57, 0.2);
     color: #f5d3ab !important;
   }
   .nav-hold:hover {
-    background: rgba(224, 123, 57, 0.30);
+    background: rgba(224, 123, 57, 0.3);
   }
 
   /* Icon-only navbar control. */
@@ -904,7 +954,7 @@
   /* Logical property, not `left`: the marker belongs on the side the language
      starts from, and this is the one rule here that would be wrong in RTL. */
   .drawer-link.active::before {
-    content: '';
+    content: "";
     @apply pointer-events-none absolute inset-y-[0.35rem] start-0 w-[3px] rounded-full bg-gold-500;
   }
   .drawer-link:focus-visible {
@@ -963,7 +1013,7 @@
   .notif-tabs button:hover {
     @apply bg-surface-2 text-ink-2;
   }
-  .notif-tabs button[aria-selected='true'] {
+  .notif-tabs button[aria-selected="true"] {
     @apply bg-tint text-on-tint;
   }
   .notif-tab-count {
@@ -976,49 +1026,64 @@
   }
 
   .notif-list {
-    @apply flex min-h-0 flex-col overflow-y-auto;
+    @apply flex min-h-0 flex-col gap-[0.4rem] overflow-y-auto p-[0.5rem];
     max-height: min(60vh, 430px);
   }
   .notif-empty {
     @apply px-[0.9rem] py-[1.6rem] text-center text-[0.85rem] text-muted;
   }
 
+  /* A card each, rather than one ruled column.
+     A shared divider reads as "more of the same thing" and the eye runs down
+     it; these are separate events that happened at separate times to separate
+     bookings, and a boundary on all four sides is what says so. The border is
+     --line, the same neutral every other surface in the app is drawn with. */
   .notif-row {
-    @apply flex items-start gap-[0.6rem] border-b border-line-2 px-[0.85rem] py-[0.65rem] text-ink;
-  }
-  .notif-row:last-child {
-    @apply border-b-0;
+    @apply flex items-start gap-[0.6rem] border border-line bg-surface px-[0.85rem] py-[0.7rem] text-ink;
+    border-radius: var(--radius-ui);
   }
   a.notif-row:hover {
-    @apply bg-surface-2 no-underline;
+    @apply border-line-2 bg-surface-2 no-underline;
   }
   /* The tint is the quiet half of the unread signal; .notif-dot is the half
      that survives being unable to tell the two backgrounds apart. */
   .notif-row.is-unread {
-    @apply bg-tint/40;
+    @apply bg-tint/70;
   }
 
+  /* The mark alone - no plate behind it.
+     The tone still comes through in the icon's own colour, which is the part
+     that carries the meaning; the filled disc was a second, louder copy of the
+     same signal, and against a card that already has an edge it read as a
+     badge stuck onto the row. The box keeps its size so titles stay aligned
+     whatever the glyph. */
   .notif-glyph {
-    @apply mt-[1px] grid size-[26px] flex-none place-items-center rounded-full;
+    @apply mt-[1px] grid size-[26px] flex-none place-items-center;
   }
   .notif-glyph.t-ok {
-    @apply bg-success-soft text-success;
+    @apply text-success;
   }
   .notif-glyph.t-bad {
-    @apply bg-danger-soft text-danger;
+    @apply text-danger;
   }
   .notif-glyph.t-warn {
-    @apply bg-warning-soft text-warning;
+    @apply text-warning;
   }
   .notif-glyph.t-info {
-    @apply bg-info-soft text-info;
+    @apply text-info;
   }
   .notif-glyph.t-quiet {
-    @apply bg-quiet-soft text-quiet;
+    @apply text-quiet;
   }
 
+  /* flex-1 so the dot below lands on the row's right edge rather than trailing
+     the last word. In the 370px dropdown the text fills the width anyway and
+     the two were indistinguishable; on the full page, where a row uses about a
+     third of its width, the dot was landing 396px from the edge on one row and
+     852px on the next - close enough to a stray speck that it read as a
+     rendering fault rather than a marker. */
   .notif-body {
-    @apply flex min-w-0 flex-col gap-[0.1rem];
+    @apply flex min-w-0 flex-1 flex-col gap-[0.1rem];
   }
   .notif-title {
     @apply text-[0.86rem] font-bold leading-[1.35];
@@ -1029,6 +1094,54 @@
   .notif-when {
     @apply mt-[0.1rem] text-[0.7rem] text-muted;
   }
+  /* ------------------------------------------------ collapsed groups ---
+     Several of one type shown as the newest of them, with the rest implied by
+     two shoulders behind it - the shape a phone's notification shade uses.
+     The shoulders are pseudo-elements, not the rows themselves rendered small:
+     what is behind is never read, and mounting twenty cards to show one is a
+     cost paid on every open of the bell. */
+  .notif-group {
+    @apply flex flex-col gap-[0.35rem];
+  }
+  .notif-stack {
+    @apply relative;
+  }
+  /* Drawn below the card, inset from each edge, so the stack tapers downwards.
+     z-index is not needed: both sit earlier in paint order than the row, which
+     has its own background. */
+  .notif-stack::before,
+  .notif-stack::after {
+    content: "";
+    @apply pointer-events-none absolute border border-line bg-surface-2;
+    border-radius: var(--radius-ui);
+  }
+  .notif-stack::before {
+    @apply inset-x-[0.45rem] -bottom-[0.3rem] h-[0.75rem];
+  }
+  .notif-stack::after {
+    @apply inset-x-[0.9rem] -bottom-[0.55rem] h-[0.75rem];
+  }
+  /* A group of two has one thing behind it, not two. */
+  .notif-group.is-pair .notif-stack::after {
+    @apply hidden;
+  }
+
+  .notif-group-toggle {
+    @apply inline-flex cursor-pointer items-center gap-[0.3rem] self-start border-0 bg-transparent
+           px-[0.25rem] py-[0.15rem] text-[0.72rem] font-semibold text-muted;
+  }
+  .notif-group-toggle:hover {
+    @apply text-ink-2 underline;
+  }
+  /* Closed, the toggle clears the shoulders below the card. */
+  .notif-group:not(.is-open) .notif-group-toggle {
+    @apply mt-[0.4rem];
+  }
+  /* One chevron for both directions - see NotificationGroup.jsx. */
+  .notif-group.is-open .notif-group-toggle svg {
+    @apply rotate-180;
+  }
+
   .notif-dot {
     @apply mt-[0.45rem] size-[7px] flex-none rounded-full bg-gold-500;
   }
@@ -1055,9 +1168,16 @@
     }
   }
 
-  /* The full page: same rows, given a card to sit in rather than a dropdown. */
+  /* The full page: the same cards, spaced rather than wrapped in a second one.
+     The rows carry their own border now, so an outer card around them would be
+     a box of boxes - an edge that means nothing, drawn around edges that do.
+     Capped, because the shell is 1228px here and a notification is one or two
+     lines: uncapped, a row drew its text across a third of the width and left
+     the rest empty, and the body ran to a 765px measure the eye has to track
+     back across. The cap is close to the width the rows were already using. */
   .notif-page-list {
-    @apply overflow-hidden rounded-card border border-line bg-surface shadow-card;
+    @apply flex flex-col gap-[0.5rem];
+    max-width: 46rem;
   }
 
   .role-switch {
@@ -1122,11 +1242,21 @@
     --scroll-hint-bg: var(--color-surface);
     @apply overflow-x-auto;
     background:
-      linear-gradient(to right, var(--scroll-hint-bg) 40%, transparent) left center / 2.5rem 100% no-repeat local,
-      linear-gradient(to left, var(--scroll-hint-bg) 40%, transparent) right center / 2.5rem 100% no-repeat local,
-      radial-gradient(farthest-side at 0 50%, color-mix(in oklab, var(--color-ink) 20%, transparent), transparent)
+      linear-gradient(to right, var(--scroll-hint-bg) 40%, transparent) left
+        center / 2.5rem 100% no-repeat local,
+      linear-gradient(to left, var(--scroll-hint-bg) 40%, transparent) right
+        center / 2.5rem 100% no-repeat local,
+      radial-gradient(
+          farthest-side at 0 50%,
+          color-mix(in oklab, var(--color-ink) 20%, transparent),
+          transparent
+        )
         left center / 0.9rem 100% no-repeat scroll,
-      radial-gradient(farthest-side at 100% 50%, color-mix(in oklab, var(--color-ink) 20%, transparent), transparent)
+      radial-gradient(
+          farthest-side at 100% 50%,
+          color-mix(in oklab, var(--color-ink) 20%, transparent),
+          transparent
+        )
         right center / 0.9rem 100% no-repeat scroll;
     /* A trough inside a 46px bar eats a third of the text. Touch, trackpad and
        keyboard scrolling are all unaffected; the shadow is the affordance. */
@@ -1187,7 +1317,10 @@
       rounded-[10px] border border-transparent bg-surface-2 px-4 py-[0.58rem]
       text-[0.9rem] leading-[1.35] text-ink no-underline;
     font-weight: 650;
-    transition: transform 0.06s ease, background 0.15s ease, box-shadow 0.15s ease;
+    transition:
+      transform 0.06s ease,
+      background 0.15s ease,
+      box-shadow 0.15s ease;
   }
   .btn:hover {
     @apply no-underline;
@@ -1196,7 +1329,7 @@
     @apply translate-y-px;
   }
   .btn:disabled,
-  .btn[aria-disabled='true'] {
+  .btn[aria-disabled="true"] {
     @apply translate-y-0 cursor-not-allowed opacity-50;
   }
 
@@ -1279,16 +1412,17 @@
   .contact-btn-facebook:hover {
     background: rgba(24, 119, 242, 0.18);
   }
-  [data-theme='dark'] .contact-btn-telegram {
+  [data-theme="dark"] .contact-btn-telegram {
     color: #7cd0f4;
   }
-  [data-theme='dark'] .contact-btn-facebook {
+  [data-theme="dark"] .contact-btn-facebook {
     color: #8fb4f7;
   }
 
   /* ----------------------------------------------------------------- cards */
   .card {
     @apply overflow-hidden rounded-card border border-line bg-surface shadow-card;
+    isolation: isolate;
   }
   .card-body {
     @apply p-[1.1rem];
@@ -1306,7 +1440,10 @@
   /* Cards that are themselves links (booking rows). */
   a.card {
     @apply block text-inherit;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+    transition:
+      border-color 0.15s ease,
+      box-shadow 0.15s ease,
+      transform 0.1s ease;
   }
   a.card:hover {
     @apply -translate-y-px border-brand-500 no-underline shadow-float;
@@ -1341,7 +1478,11 @@
   .hero {
     @apply relative isolate overflow-hidden pt-[4.4rem] pb-0 text-white;
     background:
-      radial-gradient(820px 500px at 74% 120%, rgba(8, 46, 29, 0.42), transparent 62%),
+      radial-gradient(
+        820px 500px at 74% 120%,
+        rgba(8, 46, 29, 0.42),
+        transparent 62%
+      ),
       linear-gradient(168deg, #02100a 0%, #03150f 52%, #051d14 100%);
     box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.12);
   }
@@ -1354,133 +1495,96 @@
     @apply pointer-events-none absolute inset-0 -z-20 h-full w-full object-cover;
   }
   .hero::before {
-    content: '';
+    content: "";
     @apply pointer-events-none absolute inset-0 -z-10;
     background:
       /* Warm bloom behind the headline. Gold type on a photograph needs
          something warm and dark directly under it or the strokes read as dirt
          on the picture rather than as lettering. */
-      radial-gradient(720px 420px at 22% 38%, rgba(190, 124, 44, 0.22), transparent 66%),
-      linear-gradient(100deg, rgba(2, 9, 14, 0.9) 0%, rgba(3, 13, 18, 0.79) 38%, rgba(4, 20, 22, 0.44) 72%, rgba(5, 26, 26, 0.24) 100%),
-      linear-gradient(180deg, rgba(2, 10, 14, 0.5) 0%, transparent 32%, rgba(2, 9, 12, 0.76) 100%);
+      radial-gradient(
+        720px 420px at 22% 38%,
+        rgba(190, 124, 44, 0.22),
+        transparent 66%
+      ),
+      linear-gradient(
+        100deg,
+        rgba(2, 9, 14, 0.9) 0%,
+        rgba(3, 13, 18, 0.79) 38%,
+        rgba(4, 20, 22, 0.44) 72%,
+        rgba(5, 26, 26, 0.24) 100%
+      ),
+      linear-gradient(
+        180deg,
+        rgba(2, 10, 14, 0.5) 0%,
+        transparent 32%,
+        rgba(2, 9, 12, 0.76) 100%
+      );
   }
   /* Fine dot grid for texture, faded out before it reaches the content. */
   .hero::after {
-    content: '';
+    content: "";
     @apply pointer-events-none absolute inset-0 -z-10;
-    background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+    background-image: radial-gradient(
+      rgba(255, 255, 255, 0.08) 1px,
+      transparent 1px
+    );
     background-size: 22px 22px;
-    mask-image: radial-gradient(120% 90% at 80% 0%, rgba(0, 0, 0, 0.95), transparent 62%);
-    -webkit-mask-image: radial-gradient(120% 90% at 80% 0%, rgba(0, 0, 0, 0.95), transparent 62%);
+    mask-image: radial-gradient(
+      120% 90% at 80% 0%,
+      rgba(0, 0, 0, 0.95),
+      transparent 62%
+    );
+    -webkit-mask-image: radial-gradient(
+      120% 90% at 80% 0%,
+      rgba(0, 0, 0, 0.95),
+      transparent 62%
+    );
   }
 
-  /* The headline runs as one unbroken gold script, so the accent word is no
-     longer a second colour - it just inherits the gradient. The rule survives
-     as the flat fallback for the no-background-clip path below. */
+  /* Modern bold headline matching platform-wide design language. */
   .hero-accent {
-    color: #f2c877;
+    background: linear-gradient(
+      135deg,
+      #ffe599 0%,
+      #f6c05d 40%,
+      #e59c2b 75%,
+      #ffd470 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 2px 14px rgba(230, 160, 50, 0.35));
   }
   /* Same box shape as .nav-inner / .container / .footer-inner: the max-width
      carries its own horizontal padding, so all four content edges are flush. */
   .hero-inner {
     @apply mx-auto max-w-shell px-page;
   }
-  /* Display script, gilded - the one place in the product that uses either.
-     Explicitly asked for rather than reached for: it is the whole point of the
-     hero, and it stays quarantined to this single line.
-
-     `color` is the real colour and the gradient is layered over it only where
-     background-clip: text actually works; without that guard an unsupported
-     browser gets transparent fill over no clip, which is an invisible
-     headline. */
   .hero h1 {
-    @apply max-w-[16ch];
-    font-family: var(--font-display);
-    font-weight: 400;
-    font-size: clamp(2.15rem, 1.15rem + 4vw, 4rem);
-    line-height: 1.1;
-    letter-spacing: 0.004em;
-    color: #f2c877;
-    text-shadow: 0 2px 14px rgba(2, 9, 14, 0.62);
+    @apply max-w-[18ch] font-extrabold tracking-tight text-white;
+    font-family: var(--font-sans);
+    font-size: clamp(2.35rem, 1.4rem + 3.2vw, 3.85rem);
+    line-height: 1.15;
+    letter-spacing: -0.03em;
+    text-shadow: 0 4px 20px rgba(2, 9, 14, 0.7);
   }
-  /* One line, at every width.
-
-     Set in Berkshire Swash, "Live events across Cambodia" is 11.97em wide, so
-     the size that exactly fills the column is its width over 11.97. The divisor
-     below is 12.4 - about 3.5% of headroom, because `nowrap` turns a bad guess
-     into a headline hanging off the side of the page rather than a second line.
-     cqw and not vw: the column is the viewport minus the 320px card, and vw
-     would overset by exactly that card.
-
-     Shrink-to-fit rather than wrap means a 320px phone gets this at ~23px. That
-     is the trade the single line costs, and it is only sound because the ratio
-     is measured from the real string - translate the headline and it has to be
-     measured again. */
-  @supports (container-type: inline-size) {
-    .hero h1 {
-      max-width: none;
-      white-space: nowrap;
-      font-size: min(4rem, 100cqw / 12.4);
-    }
+  html[lang="km"] .hero h1 {
+    font-family: var(--font-khmer);
+    font-weight: 800;
+    line-height: 1.35;
+    letter-spacing: normal;
   }
-  @supports (background-clip: text) or (-webkit-background-clip: text) {
-    .hero h1 {
-      background: linear-gradient(174deg, #fdf3d8 4%, #f4cd82 40%, #dda253 74%, #bd8236 100%);
-      -webkit-background-clip: text;
-      background-clip: text;
-      -webkit-text-fill-color: transparent;
-      /* text-shadow paints under transparent fill, so the lift has to come from
-         a filter on the painted glyphs instead. */
-      text-shadow: none;
-      filter:
-        drop-shadow(0 2px 10px rgba(2, 9, 14, 0.66))
-        drop-shadow(0 0 30px rgba(226, 165, 82, 0.26));
-    }
-  }
-  /* Moul is a display face in its own right, and a heavy one: Khmer needs less
-     size and far more leading than the Latin script at the same optical
-     weight, or the subscript forms collide with the line above. */
-  html[lang='km'] .hero h1 {
-    font-family: var(--font-display-khmer);
-    /* One line here too, the same way the Latin rule does it.
-       
-       The headline wrapped before, and the comment here said why: the old
-       string was 19.4em wide in Moul, so a single line meant ~15px on a phone.
-       The string is shorter now - "ព្រឹត្តិការណ៍ផ្ទាល់ទូទាំង កម្ពុជា" rather
-       than a version naming the country twice - which is what makes the line
-       affordable at about 15em, and the divisor below carries headroom on top
-       of that because nowrap turns a bad guess into a headline hanging off the
-       page.
-
-       Re-measure if the copy changes. Same rule as the Latin line above, and
-       the reason both say so. */
-    max-width: none;
-    white-space: nowrap;
-    /* 19: the line carries the full ប្រទេសកម្ពុជា again, so it is back to
-       roughly the width the original wording had, less the នៅ that went. That
-       puts it near 17px on a 320px phone - the price of the single line at this
-       length, and the reason the earlier version wrapped instead. */
-    font-size: min(2.5rem, 100cqw / 19);
-    line-height: 1.5;
-    /* Moul sets tall ascenders and hangs subscript forms below the baseline,
-       and the gilded fill is clipped to the text box - so with no room above
-       and below, the tops and the tails come out shaved rather than gilded.
-       Padding rather than more leading: line-height moves a single line within
-       its box without giving the glyphs anywhere to go. */
-    padding-block: 0.3em;
+  html[lang="km"] .hero-accent {
+    background: linear-gradient(135deg, #ffe599 0%, #f6c05d 50%, #e59c2b 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
   }
   .hero p {
-    @apply mt-[0.7rem] max-w-[58ch] text-white/[0.82];
+    @apply mt-3 max-w-[56ch] text-[1.05rem] font-normal leading-relaxed text-white/80;
   }
   /* Copy on the left, the rotating rail on the right. Below 1080px the two
-     stack, and the rail goes wide-and-short instead of disappearing.
-     It used to be hidden outright, on the reasoning that a 400px square card
-     above the fold is the wrong trade against the search box on a phone. The
-     square was the problem, not the card: at 16/10 it costs about 210px, sits
-     under the quick links where it interrupts nothing, and a phone is exactly
-     where one tap into the next event on sale is worth most. (The loading
-     skeleton never honoured the old rule anyway, so a phone flashed a
-     spotlight placeholder and then lost the card it promised.) */
+     stack, and the rail goes wide-and-short instead of disappearing. */
   .hero-grid {
     @apply grid items-center gap-10;
     grid-template-columns: minmax(0, 1fr) 320px;
@@ -1491,10 +1595,7 @@
     }
     .hero-rail,
     .hero-grid > .spotlight {
-      @apply mx-auto mt-8 max-w-[440px];
-    }
-    .hero-slide > .rail-card {
-      aspect-ratio: 16 / 10;
+      display: none !important;
     }
   }
   /* A container, so the headline can size itself against the column it sits in
@@ -1525,14 +1626,20 @@
      the grid's. The scrim is what keeps the type legible whatever the photo
      underneath happens to be. */
   .rail-card {
-    @apply relative isolate block overflow-hidden rounded-card border border-white/[0.16] shadow-pop;
+    @apply relative isolate block overflow-hidden rounded-card border border-white/[0.18] shadow-pop transition-all duration-300;
     aspect-ratio: 1 / 1;
   }
   .rail-card:hover {
-    @apply border-white/35 no-underline;
+    @apply border-brand-500/60 shadow-float -translate-y-1 no-underline;
+  }
+  .rail-card .ev-photo {
+    @apply transition-transform duration-500 ease-out;
+  }
+  .rail-card:hover .ev-photo {
+    transform: scale(1.06);
   }
   .rail-card::after {
-    content: '';
+    content: "";
     @apply absolute inset-0 z-[1];
     background: linear-gradient(
       180deg,
@@ -1547,7 +1654,7 @@
   }
   .rail-date {
     @apply absolute left-[0.75rem] top-[0.75rem] z-[2] min-w-[42px] rounded-[10px] bg-white/[0.96]
-      px-2 py-[0.3rem] text-center text-[0.66rem] font-extrabold leading-[1.2] tracking-[0.04em] text-ink;
+      px-2 py-[0.3rem] text-center text-[0.66rem] font-extrabold leading-[1.2] tracking-[0.04em] text-ink shadow-card;
   }
   .rail-date b {
     @apply block text-[1.05rem] tracking-[-0.01em];
@@ -1556,36 +1663,48 @@
     @apply absolute inset-x-0 bottom-0 z-[2] flex flex-col gap-[0.28rem] px-[0.95rem] pb-[0.95rem] text-white;
   }
   .rail-body strong {
-    @apply line-clamp-2 text-[1.02rem] font-bold leading-[1.32];
+    @apply line-clamp-2 text-[1.05rem] font-bold leading-[1.32];
   }
   .rail-meta {
     @apply inline-flex items-center gap-[0.32rem] truncate text-[0.78rem] text-white/70;
   }
+  .rail-foot {
+    @apply mt-1 flex items-center justify-between;
+  }
   .rail-price {
-    @apply mt-[0.15rem] text-[0.72rem] uppercase tracking-[0.05em] text-white/60;
+    @apply text-[0.72rem] uppercase tracking-[0.05em] text-white/60;
   }
   .rail-price b {
     @apply ml-[0.25rem] text-[1.05rem] normal-case tracking-normal text-white;
   }
-  .hero-rail-head {
-    @apply mb-[0.6rem] flex items-center gap-3;
+  .rail-go {
+    @apply grid size-7 place-items-center rounded-full bg-brand-500 text-white shadow-card transition-all duration-200;
   }
-  .hero-rail-head .tiny {
-    @apply inline-flex items-center gap-[0.35rem] text-[0.68rem] font-bold uppercase
-      tracking-[0.07em] text-white/65;
+  .rail-card:hover .rail-go {
+    @apply bg-brand-600 scale-110;
+  }
+  .hero-rail-head {
+    @apply mb-[0.65rem] flex items-center gap-3;
+  }
+  .rail-pill-badge {
+    @apply inline-flex items-center gap-[0.4rem] rounded-full border border-white/[0.14]
+      bg-white/[0.08] backdrop-blur-md px-[0.75rem] py-[0.25rem] text-[0.72rem] font-bold uppercase
+      tracking-wider text-white/90;
   }
   .hero-dots {
-    @apply mt-[0.65rem] flex items-center justify-center gap-[0.3rem];
+    @apply mt-[0.75rem] flex items-center justify-center gap-[0.35rem];
   }
   .hero-dot {
-    @apply h-[5px] w-[5px] cursor-pointer rounded-full border-0 bg-white/30 p-0;
-    transition: width 0.25s ease, background-color 0.25s ease;
+    @apply h-[6px] w-[6px] cursor-pointer rounded-full border-0 bg-white/30 p-0;
+    transition:
+      width 0.25s ease,
+      background-color 0.25s ease;
   }
   .hero-dot:hover {
     @apply bg-white/60;
   }
   .hero-dot.on {
-    @apply w-[13px] bg-white/90;
+    @apply w-[16px] bg-white/90;
   }
   /* Respect a stated preference for less motion: the rail still advances, it
      just cuts rather than slides. */
@@ -1601,24 +1720,24 @@
   /* The spotlight card is taller than the copy column, so the grid row already
      leaves air under the quick links — the rule does not need much more. */
   .hero-base {
-    @apply mt-[1.75rem] border-t border-white/[0.12];
+    @apply mt-[2rem] border-t border-white/[0.12];
   }
   @media (max-width: 1080px) {
     .hero-base {
-      @apply mt-[2.4rem];
+      @apply mt-[2.5rem];
     }
   }
   .hero-base-inner {
-    @apply flex flex-wrap items-center gap-x-8 gap-y-3 py-[1.05rem];
+    @apply flex flex-wrap items-center gap-x-8 gap-y-3 py-[1.2rem];
   }
   .hero-stats {
     @apply flex flex-wrap gap-y-4;
   }
   .hero-stats div {
-    @apply pr-7 text-[0.8rem] text-white/70;
+    @apply pr-8 text-[0.82rem] font-medium text-white/60;
   }
   .hero-stats div + div {
-    @apply border-l border-white/15 pl-7;
+    @apply border-l border-white/15 pl-8;
   }
   /* Once the row wraps, a left divider lands at the start of a line with
      nothing to divide — fall back to plain spacing. */
@@ -1634,14 +1753,18 @@
     }
   }
   .hero-stats b {
-    @apply block text-[1.3rem] leading-[1.2] text-white;
+    @apply block text-[1.55rem] font-extrabold tracking-tight text-white leading-tight;
     font-variant-numeric: tabular-nums;
   }
 
   /* ------------------------------------------------ hero "next up" card */
   .spotlight {
     @apply overflow-hidden rounded-card border border-white/[0.16] shadow-pop backdrop-blur-[6px];
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(4, 22, 13, 0.55));
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.12),
+      rgba(4, 22, 13, 0.55)
+    );
   }
   .spot-head {
     @apply flex items-center justify-between gap-2 px-[0.9rem] pt-[0.8rem] pb-[0.6rem];
@@ -1694,25 +1817,275 @@
     @apply text-white/55;
   }
 
+  .quick-links {
+    @apply mt-4 flex flex-wrap items-center gap-[0.45rem];
+  }
+  .quick-links .tiny {
+    @apply mr-1 text-[0.72rem] font-bold uppercase tracking-wider text-white/50;
+  }
+  .quick-chip {
+    @apply inline-flex items-center gap-[0.4rem] rounded-full border border-white/[0.14]
+      bg-white/[0.08] backdrop-blur-md px-[0.8rem] py-[0.32rem] text-[0.82rem] font-semibold text-white/90;
+    transition: all 0.2s ease;
+  }
+  .quick-chip:hover {
+    @apply border-white/40 bg-white/[0.18] text-white -translate-y-0.5 no-underline;
+  }
+
+  /* ---------------------------------------- split: text beside an image ---
+     The wireframe's "Outcome" and "Your Name" sections, and its accordion
+     section reversed. One layout serves all three - which side carries the
+     text is the only thing that changes between them. */
+  .home-events-section {
+    @apply mb-14;
+  }
+  .home-split {
+    @apply mb-16 mt-14 grid items-center gap-12 border-t border-line pt-14;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  }
+  /* Column widths only - no `order` override. The panel is written FIRST in
+     JSX for this variant, so plain grid auto-placement already lands it in
+     the first (narrower) column and the text in the second: exactly "image
+     left, text right" with nothing to reverse. */
+  .home-split-reverse {
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  }
+  @media (max-width: 860px) {
+    .home-split {
+      @apply grid-cols-1 gap-8 mb-12 mt-10 pt-10;
+    }
+  }
+
+  .home-kicker {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold tracking-wide uppercase text-link bg-brand-500/10 border border-brand-500/20 mb-3;
+  }
+
+  .home-split-text h2 {
+    @apply m-0 text-2xl md:text-3xl font-extrabold tracking-tight text-ink leading-tight max-w-[24ch];
+  }
+  .home-split-text > p {
+    @apply mb-0 mt-3 max-w-[54ch] text-[0.98rem] leading-relaxed text-muted;
+  }
+  .home-bullets {
+    @apply m-0 my-6 flex list-none flex-col gap-3.5 p-0;
+  }
+  .home-bullets li {
+    @apply flex items-start gap-3 text-[0.95rem] text-ink-2;
+  }
+  .home-bullet-icon {
+    @apply flex-none w-7 h-7 rounded-lg bg-emerald-500/10 text-success border border-emerald-500/20 flex items-center justify-center mt-0.5;
+  }
+  .home-bullet-text {
+    @apply leading-relaxed font-medium text-ink-2;
+  }
+
+  /* The decorative panel standing in for photography - see FeaturePanel in
+     HomePage.jsx. Square-ish rather than a photo's 16/9, so it reads as an
+     illustrated tile and not as a broken image waiting for real art. */
+  .home-panel {
+    @apply mx-auto grid aspect-[4/3] max-h-[340px] w-full place-items-center justify-self-center rounded-2xl text-white/90;
+  }
+  /* A real photo filling the same slot as the decorative gradient tile -
+     cover rather than contain, so a wide crop fills the frame instead of
+     letterboxing on a plain background. */
+  .home-shot {
+    @apply border border-line/60 object-cover;
+  }
+  /* The figure takes over the sizing .home-panel otherwise gives the img
+     directly, so the credit and dots can be pinned to a corner without
+     adding height that would knock the split out of alignment with its text
+     column. */
+  .home-photo {
+    @apply relative m-0 overflow-hidden rounded-2xl border border-line/60 shadow-card;
+  }
+  /* Every slide stacks in the same box; only the active one is opaque. A
+     cross-fade rather than a slide - these boxes are too small for a track
+     to read as motion rather than a jump cut. */
+  .home-photo .home-shot {
+    @apply absolute inset-0 h-full w-full opacity-0 transition-opacity duration-700 ease-in-out;
+  }
+  .home-photo .home-shot.is-active {
+    @apply opacity-100;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .home-photo .home-shot {
+      transition: none;
+    }
+  }
+  .home-photo figcaption {
+    @apply absolute bottom-3 right-3 z-[1] rounded-full bg-ink/80 px-3 py-1 text-xs text-white/90;
+  }
+  .home-photo figcaption a {
+    @apply text-white underline decoration-white/40 underline-offset-2;
+  }
+  .home-photo-dots {
+    @apply absolute bottom-3 left-3 z-[1] flex items-center gap-1.5;
+  }
+  .home-photo-dot {
+    @apply h-[7px] w-[7px] cursor-pointer rounded-full border-0 bg-white/40 p-0;
+    transition:
+      width 0.25s ease,
+      background-color 0.25s ease;
+  }
+  .home-photo-dot:hover {
+    @apply bg-white/70;
+  }
+  .home-photo-dot.on {
+    @apply w-4 bg-white;
+  }
+
+  /* --------------------------------------------------------- three steps ---
+     Numbered step cards with hover elevation and clear sequential structure. */
+  .home-steps-section {
+    @apply mb-14 border-t border-line pt-14;
+  }
+  .home-steps-head {
+    @apply mb-10 text-center;
+  }
+  .home-steps-head h2 {
+    @apply m-0 text-2xl md:text-3xl font-extrabold tracking-tight text-ink;
+  }
+  .home-steps-head .section-sub {
+    @apply mt-2 text-muted text-base max-w-[48ch] mx-auto;
+  }
+  .home-steps {
+    @apply relative m-0 grid list-none gap-6 p-0 md:grid-cols-3;
+  }
+  .home-step-card {
+    @apply relative flex flex-col p-6 rounded-2xl bg-surface border border-line shadow-card hover:shadow-pop hover:-translate-y-1 transition-all duration-200 text-left;
+  }
+  .home-step-top {
+    @apply flex items-center justify-between mb-4 w-full;
+  }
+  .home-step-icon {
+    @apply flex-none w-12 h-12 rounded-xl bg-brand-500/10 text-link border border-brand-500/20 flex items-center justify-center transition-colors;
+  }
+  .home-step-num {
+    @apply text-2xl font-black text-muted/30 tracking-tight font-mono;
+  }
+  .home-step-card h3 {
+    @apply m-0 mb-2 text-lg font-bold text-ink;
+  }
+  .home-step-card p {
+    @apply mb-0 text-sm leading-relaxed text-muted;
+  }
+
+  /* ------------------------------------------------------------- proof ---
+     Real metrics wrapped in clean elevated cards with tabular numbers. */
+  .home-proof {
+    @apply mb-16 border-t border-line pt-14 text-center;
+  }
+  .home-proof-head h2 {
+    @apply m-0 text-2xl md:text-3xl font-extrabold tracking-tight text-ink;
+  }
+  .home-proof-head .section-sub {
+    @apply mt-2 text-muted text-base max-w-[48ch] mx-auto;
+  }
+  .home-proof-stats {
+    @apply mx-auto mt-8 grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-[780px];
+  }
+  .home-proof-stat-card {
+    @apply p-6 rounded-2xl bg-surface border border-line shadow-card hover:shadow-pop hover:-translate-y-0.5 transition-all duration-200 flex flex-col items-center justify-center;
+  }
+  .home-proof-stat-card b {
+    @apply block text-3xl md:text-4xl font-black text-link tracking-tight tabular-nums mb-1;
+  }
+  .home-proof-stat-card span {
+    @apply text-xs md:text-sm font-semibold text-muted uppercase tracking-wider;
+  }
+
+  /* --------------------------------------------------------------- FAQ ---
+     Accordion details cards with hover states, smooth chevron indicators,
+     and dividing border. */
+  .home-faq {
+    @apply my-6 flex flex-col gap-3;
+  }
+  .home-faq-item {
+    @apply rounded-xl border border-line bg-surface p-4 transition-all duration-200 hover:border-brand-500/40 shadow-sm;
+  }
+  .home-faq-item[open] {
+    @apply border-brand-500/40 shadow-card;
+  }
+  .home-faq-item summary {
+    @apply flex cursor-pointer list-none items-center justify-between gap-3 text-[0.98rem] font-semibold text-ink select-none;
+  }
+  .home-faq-item summary::-webkit-details-marker {
+    display: none;
+  }
+  .home-faq-item summary svg {
+    @apply flex-none text-muted transition-transform duration-200;
+  }
+  .home-faq-item[open] summary svg {
+    @apply rotate-180 text-link;
+  }
+  .home-faq-item p {
+    @apply mb-0 mt-3 border-t border-line/60 pt-3 text-[0.92rem] leading-relaxed text-ink-2;
+  }
+
+  /* --------------------------------------------------------- final strip ---
+     Full-width banner directly above footer with downward pointer notch. */
+  .home-final-strip {
+    @apply relative w-full bg-brand-700 text-white overflow-visible transition-colors duration-200;
+  }
+  .home-final-strip:hover {
+    @apply bg-brand-600;
+  }
+  .home-final-strip::after {
+    content: "";
+    @apply absolute left-1/2 -bottom-[8px] -translate-x-1/2 z-10 pointer-events-none;
+    width: 0;
+    height: 0;
+    border-left: 9px solid transparent;
+    border-right: 9px solid transparent;
+    border-top: 8px solid var(--color-brand-700);
+    transition: border-top-color 0.2s ease;
+  }
+  .home-final-strip:hover::after {
+    border-top-color: var(--color-brand-600);
+  }
+  .home-final-strip-link {
+    @apply mx-auto flex max-w-shell items-center justify-center gap-2.5 px-page py-5 md:py-6 text-center text-white no-underline select-none;
+  }
+  .home-final-strip-link:hover {
+    @apply no-underline text-white;
+  }
+  .home-final-strip-text {
+    @apply text-base md:text-lg font-bold tracking-tight text-white;
+  }
+  .home-final-strip-arrow {
+    @apply flex-none text-white/80 transition-transform duration-200;
+  }
+  .home-final-strip:hover .home-final-strip-arrow {
+    @apply translate-x-1 text-white;
+  }
+
   /* ------------------------------------------------------------ search bar */
   /* One pill: query · province · submit, split by hairlines rather than boxes. */
   .searchbar {
-    @apply mt-[1.7rem] grid max-w-[880px] items-center gap-0 rounded-full bg-surface p-[0.4rem] shadow-pop;
-    grid-template-columns: minmax(0, 1fr) 224px auto;
-    transition: box-shadow 0.15s ease;
+    @apply mt-[1.85rem] grid max-w-[840px] items-center gap-0 rounded-full bg-surface p-[0.45rem] shadow-pop border border-white/20;
+    grid-template-columns: minmax(0, 1fr) 220px auto;
+    transition:
+      box-shadow 0.2s ease,
+      border-color 0.2s ease;
+  }
+  .searchbar:focus-within {
+    box-shadow:
+      0 0 0 3px rgba(255, 255, 255, 0.22),
+      0 24px 60px -18px rgba(0, 0, 0, 0.4);
+    border-color: rgba(255, 255, 255, 0.45);
   }
   .searchbar .sb-cell {
     @apply relative flex min-w-0 items-center;
   }
   .searchbar .sb-cell + .sb-cell::before {
-    content: '';
+    content: "";
     @apply absolute left-0 top-[20%] bottom-[20%] w-px bg-line;
   }
   .searchbar .input,
   .searchbar .select {
     @apply min-h-[46px] border-transparent bg-transparent text-[0.95rem] shadow-none;
   }
-  html[lang='km'] :is(.searchbar .input, .searchbar .select) {
+  html[lang="km"] :is(.searchbar .input, .searchbar .select) {
     @apply min-h-[52px];
   }
   .searchbar .input:focus,
@@ -1728,7 +2101,10 @@
     @apply bg-transparent shadow-none;
   }
   .searchbar .btn {
-    @apply min-h-[46px] whitespace-nowrap rounded-full px-[1.4rem];
+    @apply min-h-[46px] whitespace-nowrap rounded-full px-[1.5rem] font-bold transition-all duration-200;
+  }
+  .searchbar .btn:hover {
+    @apply shadow-float -translate-y-px;
   }
   @media (max-width: 760px) {
     .searchbar {
@@ -1740,20 +2116,6 @@
     .searchbar .btn {
       @apply rounded-[10px];
     }
-  }
-
-  .quick-links {
-    @apply mt-[0.9rem] flex flex-wrap items-center gap-[0.4rem];
-  }
-  .quick-links .tiny {
-    @apply mr-[0.1rem] text-white/55;
-  }
-  .quick-chip {
-    @apply inline-flex items-center gap-[0.35rem] rounded-full border border-white/[0.16]
-      bg-white/10 px-[0.7rem] py-[0.28rem] text-[0.8rem] font-semibold text-white/[0.92];
-  }
-  .quick-chip:hover {
-    @apply border-white/30 bg-white/20 no-underline;
   }
 
   /* Input/select with a leading icon and an optional trailing clear button. */
@@ -1778,46 +2140,217 @@
     @apply pr-[2.1rem];
   }
 
+  /* Custom Select Component (theme-aware, rich dropdown) */
+  .custom-select-wrap {
+    position: relative;
+  }
+  .custom-select-icon {
+    pointer-events: none;
+    position: absolute;
+    left: 0.72rem;
+    display: grid;
+    place-items: center;
+    color: color-mix(in oklab, var(--color-muted) 88%, transparent);
+    z-index: 2;
+  }
+  .custom-select-trigger {
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    width: 100%;
+    background-image: none !important;
+    padding-right: 0.75rem !important;
+    text-align: left;
+    cursor: pointer;
+    user-select: none;
+  }
+  .custom-select-trigger.is-active,
+  .custom-select-wrap.is-open .custom-select-trigger {
+    border-color: var(--color-brand-500);
+    box-shadow: 0 0 0 3px
+      color-mix(in srgb, var(--color-brand-500) 18%, transparent);
+  }
+  .custom-select-label {
+    flex: 1 1 auto;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 500;
+  }
+  .custom-select-chevron {
+    display: grid;
+    place-items: center;
+    flex: none;
+    color: var(--color-muted);
+    transition:
+      transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+      color 0.15s ease;
+  }
+  .custom-select-chevron.is-flipped {
+    transform: rotate(180deg);
+    color: var(--color-brand-600);
+  }
+  [data-theme="dark"] .custom-select-chevron.is-flipped {
+    color: var(--color-brand-400);
+  }
+  .custom-select-hidden {
+    position: absolute;
+    width: 0;
+    height: 0;
+    opacity: 0;
+    pointer-events: none;
+    margin: 0;
+    padding: 0;
+    border: none;
+  }
+  .custom-select-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    min-width: 100%;
+    width: max-content;
+    max-width: 320px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-line);
+    border-radius: 14px;
+    padding: 0.35rem;
+    box-shadow:
+      0 16px 36px -6px rgba(0, 0, 0, 0.16),
+      0 4px 12px rgba(0, 0, 0, 0.05);
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    max-height: 280px;
+    overflow-y: auto;
+    animation: custom-menu-pop-in 0.16s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  [data-theme="dark"] .custom-select-menu {
+    background: #1c1915;
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow:
+      0 20px 42px -6px rgba(0, 0, 0, 0.8),
+      0 0 0 1px rgba(255, 255, 255, 0.05);
+  }
+  @keyframes custom-menu-pop-in {
+    from {
+      opacity: 0;
+      transform: translateY(-4px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+  .custom-select-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.65rem;
+    width: 100%;
+    padding: 0.55rem 0.75rem;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--color-ink);
+    font-size: 0.88rem;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: left;
+    transition:
+      background 0.12s ease,
+      color 0.12s ease;
+  }
+  .custom-select-option:hover:not(:disabled) {
+    background: var(--color-surface-2);
+    color: var(--color-ink);
+  }
+  .custom-select-option:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+  .custom-select-option.is-selected {
+    background: color-mix(
+      in srgb,
+      var(--color-brand-500) 10%,
+      var(--color-surface)
+    );
+    color: var(--color-brand-600);
+    font-weight: 650;
+  }
+  [data-theme="dark"] .custom-select-option.is-selected {
+    background: rgba(16, 185, 129, 0.14);
+    color: var(--color-brand-400);
+  }
+  .custom-select-option-text {
+    flex: 1 1 auto;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .custom-select-check {
+    display: grid;
+    place-items: center;
+    flex: none;
+    color: var(--color-brand-600);
+  }
+  [data-theme="dark"] .custom-select-check {
+    color: var(--color-brand-400);
+  }
+
   /* Events-page search panel: query + province + sort on one line, advanced
-     date/price controls revealed on demand. */
+     date/price controls revealed on demand.
+
+     The panel drops the bordered-card wrapper (.panel) used before: on a split
+     page with map and cards, a heavy card-in-a-card frame competed with the
+     actual content. Now it sits flush on the page surface so the pills and
+     search row read as toolbar chrome, not a separate widget. */
   .searchpanel {
-    @apply sticky top-[54px] z-20;
+    @apply relative z-10;
+  }
+  /* Strip the .panel border/shadow when applied to .searchpanel — the
+     search area should feel like inline chrome, not a separate card. */
+  .searchpanel.panel {
+    @apply border-0 bg-transparent shadow-none;
+  }
+  .searchpanel > .panel-body {
+    @apply px-0;
   }
   .province-pills-row {
-    display: flex;
-    gap: 0.8rem;
-    margin-bottom: 0.5rem;
-    overflow-x: auto;
-    padding-bottom: 0.2rem;
+    @apply flex gap-[0.45rem] overflow-x-auto pb-[0.15rem];
+    margin-bottom: 0.75rem;
+    scrollbar-width: none;
   }
   .province-pills-row::-webkit-scrollbar {
     display: none;
   }
   .pill-btn {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    padding: 0.5rem 1.2rem;
-    border-radius: 9999px;
-    border: 1px solid transparent;
-    white-space: nowrap;
-    transition: all 0.2s;
-    background: transparent;
-    color: var(--color-ink-2);
-    font-weight: 500;
+    @apply flex items-center gap-[0.4rem] whitespace-nowrap rounded-full border
+      border-line bg-surface-2 px-[0.9rem] py-[0.4rem] text-[0.82rem]
+      font-semibold text-ink-2 cursor-pointer;
+    transition:
+      border-color 0.15s ease,
+      background-color 0.15s ease,
+      color 0.15s ease,
+      box-shadow 0.15s ease;
   }
   .pill-btn:hover {
-    background: var(--color-surface-hover);
+    @apply border-brand-500/40 bg-surface text-ink;
   }
   .pill-btn.is-active {
-    border-color: var(--color-brand-500);
-    background: var(--color-surface-2);
-    color: var(--color-ink);
+    @apply border-brand-600 bg-brand-600 text-white;
   }
 
   .search-row {
     @apply grid items-center gap-[0.6rem];
     grid-template-columns: minmax(0, 1fr) 190px auto;
+    /* Cap to the left cards column so the input does not stretch across the
+       full 1360px container — keeps it proportional to the grid below. */
+    max-width: calc(
+      (var(--container-shell) - 2 * var(--spacing-page) - 1.1rem) / 2
+    );
   }
   .search-row .btn {
     @apply relative min-h-[42px];
@@ -1864,13 +2397,13 @@
   .range-fill {
     @apply absolute inset-y-0 rounded-full bg-brand-600;
   }
-  .range input[type='range'] {
+  .range input[type="range"] {
     @apply absolute inset-x-0 m-0 w-full bg-transparent;
     -webkit-appearance: none;
     appearance: none;
     pointer-events: none;
   }
-  .range input[type='range']::-webkit-slider-thumb {
+  .range input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none;
     pointer-events: auto;
     height: 16px;
@@ -1881,7 +2414,7 @@
     box-shadow: var(--shadow-float);
     cursor: grab;
   }
-  .range input[type='range']::-moz-range-thumb {
+  .range input[type="range"]::-moz-range-thumb {
     pointer-events: auto;
     height: 16px;
     width: 16px;
@@ -1890,13 +2423,13 @@
     background: var(--color-brand-600);
     cursor: grab;
   }
-  .range input[type='range']:active::-webkit-slider-thumb {
+  .range input[type="range"]:active::-webkit-slider-thumb {
     cursor: grabbing;
   }
-  .range input[type='range']:focus-visible::-webkit-slider-thumb {
+  .range input[type="range"]:focus-visible::-webkit-slider-thumb {
     box-shadow: var(--shadow-focus);
   }
-  .range input[type='range']:focus-visible::-moz-range-thumb {
+  .range input[type="range"]:focus-visible::-moz-range-thumb {
     box-shadow: var(--shadow-focus);
   }
   /* The advanced row's columns are sized for a date or a number; a two-thumb
@@ -2014,7 +2547,7 @@
   }
   .gsi-sep::before,
   .gsi-sep::after {
-    content: '';
+    content: "";
     @apply flex-1 border-t border-line;
   }
   /*
@@ -2057,7 +2590,7 @@
   .pw-toggle:hover {
     @apply bg-surface-2 text-ink;
   }
-  .pw-toggle[aria-pressed='true'] {
+  .pw-toggle[aria-pressed="true"] {
     @apply text-link;
   }
 
@@ -2101,10 +2634,35 @@
   /* ------------------------------------------------------------ event card */
   .ev-card {
     @apply flex h-full flex-col overflow-hidden rounded-card border border-line bg-surface shadow-card;
-    transition: transform 0.16s ease, box-shadow 0.16s ease;
+    transition:
+      transform 0.16s ease,
+      box-shadow 0.16s ease,
+      border-color 0.16s ease;
   }
   .ev-card:hover {
     @apply -translate-y-[3px] no-underline shadow-float;
+  }
+  .ev-card.is-pinned {
+    border-color: var(--color-brand-500);
+    box-shadow:
+      0 0 0 1.5px var(--color-brand-500),
+      var(--shadow-card);
+  }
+  .ev-card.is-pinned:hover {
+    box-shadow:
+      0 0 0 2px var(--color-brand-500),
+      var(--shadow-float);
+  }
+  [data-theme="dark"] .ev-card.is-pinned {
+    border-color: var(--color-brand-500);
+    box-shadow:
+      0 0 0 1.5px var(--color-brand-500),
+      0 4px 20px rgba(0, 0, 0, 0.45);
+  }
+  [data-theme="dark"] .ev-card.is-pinned:hover {
+    box-shadow:
+      0 0 0 2px var(--color-brand-500),
+      0 8px 24px rgba(0, 0, 0, 0.55);
   }
   .ev-media {
     @apply relative isolate grid aspect-video place-items-center overflow-hidden text-white/95;
@@ -2112,11 +2670,19 @@
   /* Soft light sweep so flat gradients read as artwork, not a colour block. */
   .ev-media::before,
   .event-hero::before {
-    content: '';
+    content: "";
     @apply absolute inset-0 z-0;
     background:
-      radial-gradient(120% 90% at 15% 5%, rgba(255, 255, 255, 0.3), transparent 55%),
-      radial-gradient(90% 80% at 100% 100%, rgba(0, 0, 0, 0.28), transparent 60%);
+      radial-gradient(
+        120% 90% at 15% 5%,
+        rgba(255, 255, 255, 0.3),
+        transparent 55%
+      ),
+      radial-gradient(
+        90% 80% at 100% 100%,
+        rgba(0, 0, 0, 0.28),
+        transparent 60%
+      );
   }
 
   /* Uploaded artwork. Sits above the gradient but below every chip, so the
@@ -2142,7 +2708,12 @@
      the image is still the thing you see. */
   .ev-media.has-photo::before {
     background:
-      linear-gradient(to top, rgba(0, 0, 0, 0.58) 0%, rgba(0, 0, 0, 0.14) 34%, transparent 58%),
+      linear-gradient(
+        to top,
+        rgba(0, 0, 0, 0.58) 0%,
+        rgba(0, 0, 0, 0.14) 34%,
+        transparent 58%
+      ),
       linear-gradient(to bottom, rgba(0, 0, 0, 0.34) 0%, transparent 26%);
     @apply z-[1];
   }
@@ -2191,12 +2762,23 @@
     filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.2));
   }
   .ev-media:not(.has-photo)::after {
-    content: '';
+    content: "";
     @apply pointer-events-none absolute inset-0 z-0;
-    background-image: radial-gradient(rgba(255, 255, 255, 0.11) 1px, transparent 1px);
+    background-image: radial-gradient(
+      rgba(255, 255, 255, 0.11) 1px,
+      transparent 1px
+    );
     background-size: 16px 16px;
-    mask-image: radial-gradient(110% 80% at 12% 0%, rgba(0, 0, 0, 0.9), transparent 68%);
-    -webkit-mask-image: radial-gradient(110% 80% at 12% 0%, rgba(0, 0, 0, 0.9), transparent 68%);
+    mask-image: radial-gradient(
+      110% 80% at 12% 0%,
+      rgba(0, 0, 0, 0.9),
+      transparent 68%
+    );
+    -webkit-mask-image: radial-gradient(
+      110% 80% at 12% 0%,
+      rgba(0, 0, 0, 0.9),
+      transparent 68%
+    );
   }
   .ev-media .ev-date {
     @apply absolute bottom-[0.7rem] left-[0.7rem] z-[2] min-w-[40px] rounded-[10px] bg-white/[0.96]
@@ -2247,14 +2829,59 @@
   .meta-dim {
     @apply text-muted/75;
   }
+  /* Row that holds the pin button and the arrow side by side. */
+  .ev-foot-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
   /* The arrow is decoration - the whole card is the link - so it only picks
      up the brand colour on hover instead of competing as a second target. */
   .ev-go {
     @apply border-line-2 bg-surface-2 text-ink-2;
-    transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+    transition:
+      background-color 0.16s ease,
+      border-color 0.16s ease,
+      color 0.16s ease;
   }
   .ev-card:hover .ev-go {
     @apply border-brand-600 bg-brand-600 text-white;
+  }
+  /* Pin button: always visible, subtle by default, active when pinned. */
+  .ev-pin {
+    @apply border-line-2 bg-surface-2 text-muted;
+    transition:
+      background-color 0.16s ease,
+      border-color 0.16s ease,
+      color 0.16s ease,
+      transform 0.16s ease;
+  }
+  .ev-pin:hover {
+    @apply border-brand-500 text-brand-600;
+  }
+  .ev-pin.is-pinned {
+    @apply border-brand-600 bg-brand-600 text-white shadow-sm;
+    animation: ev-pin-pop 0.25s ease-out;
+  }
+  .ev-pin.is-pinned:hover {
+    @apply border-brand-700 bg-brand-700 text-white;
+  }
+  [data-theme="dark"] .ev-pin.is-pinned {
+    @apply border-brand-500 bg-brand-500 text-white;
+  }
+  [data-theme="dark"] .ev-pin.is-pinned:hover {
+    @apply border-brand-600 bg-brand-600 text-white;
+  }
+  @keyframes ev-pin-pop {
+    0% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.22);
+    }
+    100% {
+      transform: scale(1);
+    }
   }
   /* Sold out stays legible and clickable (the page still explains itself),
      just visibly spent next to cards you can still buy. */
@@ -2273,7 +2900,10 @@
     @apply grid items-center gap-[0.9rem] rounded-card border border-line bg-surface p-[0.8rem]
       text-inherit shadow-card;
     grid-template-columns: auto minmax(0, 1fr) auto;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+    transition:
+      border-color 0.15s ease,
+      box-shadow 0.15s ease,
+      transform 0.1s ease;
   }
   .bk-row:hover {
     @apply -translate-y-px border-brand-500 no-underline shadow-float;
@@ -2297,15 +2927,18 @@
   .bk-pay {
     @apply mt-[0.15rem];
   }
-  /* Closed bookings stay readable — they are the receipt archive — but drain
+  /* Closed and used bookings stay readable — they are the receipt archive — but drain
      of colour so a live booking is never lost among them. */
-  .bk-row.is-closed {
-    @apply bg-transparent;
+  .bk-row.is-closed,
+  .bk-row.is-used {
+    @apply bg-transparent opacity-80;
   }
-  .bk-row.is-closed .bk-art {
-    filter: saturate(0.3) opacity(0.75);
+  .bk-row.is-closed .bk-art,
+  .bk-row.is-used .bk-art {
+    filter: saturate(0.25) opacity(0.75);
   }
-  .bk-row.is-closed .bk-title {
+  .bk-row.is-closed .bk-title,
+  .bk-row.is-used .bk-title {
     @apply font-semibold text-muted;
   }
   /* The one state that costs the buyer money if ignored gets a live edge.
@@ -2332,6 +2965,173 @@
   }
   .bk-alert > span:nth-child(2) {
     @apply flex-auto;
+  }
+
+  /* --------------------------------------------------- booking toolbar & view toggle */
+  .bk-toolbar {
+    @apply mb-[1.1rem] flex flex-wrap items-center justify-between gap-3;
+  }
+  .bk-view-toggle {
+    @apply inline-flex items-center gap-0.5 rounded-ui border border-line bg-surface p-1 shadow-card;
+  }
+  .bk-view-btn {
+    @apply inline-flex size-8 items-center justify-center rounded-[8px] text-muted transition-colors;
+  }
+  .bk-view-btn:hover {
+    @apply text-ink bg-surface-2;
+  }
+  .bk-view-btn.active {
+    @apply bg-brand-500 text-white shadow-sm;
+  }
+  .bk-view-btn:focus-visible {
+    @apply outline-none ring-2 ring-gold-500;
+  }
+
+  /* --------------------------------------------------------- booking grid card */
+  .bk-card {
+    @apply relative flex flex-col overflow-hidden rounded-2xl border border-line bg-surface text-inherit shadow-card transition-all duration-200;
+  }
+  .bk-card:hover {
+    @apply -translate-y-1.5 border-brand-500 no-underline shadow-float;
+  }
+  .bk-card.is-closed,
+  .bk-card.is-used {
+    @apply bg-surface/75 opacity-80 border-line;
+  }
+  .bk-card.is-closed:hover,
+  .bk-card.is-used:hover {
+    @apply border-line-2 opacity-95;
+  }
+  .bk-card.is-closed .bk-card-media,
+  .bk-card.is-used .bk-card-media {
+    filter: saturate(0.25) opacity(0.85);
+  }
+  .bk-card.is-closed .bk-card-date span,
+  .bk-card.is-used .bk-card-date span {
+    @apply bg-cancelled text-white;
+  }
+  .bk-card.is-closed:hover .bk-notch path,
+  .bk-card.is-used:hover .bk-notch path {
+    stroke: var(--color-line-2);
+  }
+  .bk-card.is-payable {
+    @apply border-warning;
+    box-shadow:
+      0 0 0 1px var(--color-warning),
+      var(--shadow-card);
+  }
+  .bk-card-media {
+    @apply relative isolate flex aspect-[16/10] w-full items-center justify-center overflow-hidden bg-surface-2 text-white/95;
+  }
+  .bk-card-media .ev-photo {
+    @apply absolute inset-0 h-full w-full object-cover transition-transform duration-500 ease-out;
+  }
+  .bk-card:hover .bk-card-media .ev-photo {
+    @apply scale-105;
+  }
+  .bk-card-media-scrim {
+    @apply pointer-events-none absolute inset-0 z-[1];
+    background: linear-gradient(
+      180deg,
+      rgba(0, 0, 0, 0.55) 0%,
+      rgba(0, 0, 0, 0.05) 45%,
+      rgba(0, 0, 0, 0.65) 100%
+    );
+  }
+  .bk-card-badges {
+    @apply absolute inset-x-2.5 top-2.5 z-[2] flex items-center justify-between gap-1.5;
+  }
+  .bk-card-badges-left {
+    @apply flex items-center gap-1.5 min-w-0;
+  }
+  .bk-card-ref {
+    @apply inline-flex items-center gap-1 rounded-full bg-black/75 px-2 py-0.5 font-mono text-[0.68rem] font-bold text-white shadow-sm border border-white/10;
+  }
+  .bk-card-date {
+    @apply absolute bottom-2.5 left-2.5 z-[2] flex min-w-[40px] flex-col items-center rounded-lg bg-surface overflow-hidden
+      text-center text-ink shadow-card border border-line/40;
+  }
+  .bk-card-date span {
+    @apply w-full bg-brand-600 text-white px-1.5 py-0.5 text-[0.62rem] font-bold uppercase tracking-wider;
+  }
+  .bk-card-date b {
+    @apply px-1.5 py-0.5 text-[0.98rem] font-black text-ink tracking-tight;
+  }
+  [data-theme="dark"] .bk-card-date {
+    @apply border border-line-2 bg-surface text-ink;
+  }
+  [data-theme="dark"] .bk-card-date span {
+    @apply bg-brand-700 text-white;
+  }
+  .bk-card-body {
+    @apply flex flex-1 flex-col gap-2 p-4 pb-2.5;
+  }
+  .bk-card-title {
+    @apply line-clamp-2 text-[1.02rem] font-bold leading-snug text-ink m-0;
+    min-height: 2.5em;
+  }
+  .bk-card-meta {
+    @apply mt-auto flex flex-col gap-1.5 text-[0.82rem] text-muted pt-1;
+  }
+  .bk-card-meta .meta-row {
+    @apply flex items-center gap-1.5;
+  }
+
+  /* Perforated ticket tear line with SVG cutouts */
+  .bk-card-divider {
+    @apply relative flex h-6 w-full items-center my-0 select-none overflow-visible;
+  }
+  .bk-dashed-line {
+    @apply mx-3.5 flex-1 border-b-2 border-dashed border-line-2;
+  }
+  .bk-notch {
+    @apply absolute top-1/2 -translate-y-1/2 z-10 pointer-events-none;
+  }
+  .bk-notch path {
+    fill: var(--color-page);
+    stroke: var(--color-line);
+    stroke-width: 1;
+    transition: stroke 0.2s ease;
+  }
+  .bk-card:hover .bk-notch path {
+    stroke: var(--color-brand-500);
+  }
+  .bk-notch-left {
+    left: -0.5px;
+  }
+  .bk-notch-right {
+    right: -0.5px;
+  }
+
+  /* Stub footer */
+  .bk-card-foot {
+    @apply flex items-end justify-between p-4 pt-1.5 bg-surface-2/35;
+  }
+  .bk-card-foot-price {
+    @apply min-w-0;
+  }
+  .bk-card-booked {
+    @apply mt-0.5 block text-[0.72rem] text-muted;
+  }
+  .bk-ticket-btn {
+    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-link bg-brand-500/10 border border-brand-500/20 transition-all duration-150;
+  }
+  .bk-ticket-btn-arrow {
+    @apply transition-transform duration-150;
+  }
+  .bk-card:hover .bk-ticket-btn:not(.is-used) {
+    @apply bg-brand-600 text-white border-brand-600 shadow-sm;
+  }
+  .bk-card:hover .bk-ticket-btn:not(.is-used) .bk-ticket-btn-arrow {
+    @apply translate-x-0.5;
+  }
+  .bk-ticket-btn.is-used,
+  .bk-card.is-closed .bk-ticket-btn {
+    @apply text-muted bg-surface-2 border-line;
+  }
+  .bk-card:hover .bk-ticket-btn.is-used,
+  .bk-card.is-closed:hover .bk-ticket-btn {
+    @apply bg-surface-2 text-ink border-line-2 shadow-none;
   }
 
   /* The ABA mark is already a bordered lozenge; the generic slot chrome would
@@ -2422,16 +3222,30 @@
      Numbered rather than named: they are assigned by position in a ranking,
      and a name like `.bar-revenue` would imply a meaning the colour does not
      carry. */
-  .bar-1 { background: linear-gradient(90deg, #12613c 0%, #45b183 100%); }
-  .bar-2 { background: linear-gradient(90deg, #0e7d72 0%, #37bda8 100%); }
-  .bar-3 { background: linear-gradient(90deg, #c06a18 0%, #eda44f 100%); }
-  .bar-4 { background: linear-gradient(90deg, #b23464 0%, #e8749c 100%); }
-  .bar-5 { background: linear-gradient(90deg, #6b3aa0 0%, #a37ad6 100%); }
+  .bar-1 {
+    background: linear-gradient(90deg, #12613c 0%, #45b183 100%);
+  }
+  .bar-2 {
+    background: linear-gradient(90deg, #0e7d72 0%, #37bda8 100%);
+  }
+  .bar-3 {
+    background: linear-gradient(90deg, #c06a18 0%, #eda44f 100%);
+  }
+  .bar-4 {
+    background: linear-gradient(90deg, #b23464 0%, #e8749c 100%);
+  }
+  .bar-5 {
+    background: linear-gradient(90deg, #6b3aa0 0%, #a37ad6 100%);
+  }
 
   /* The month chart is one series, so it takes one colour - but vertically,
      brightest at the top, so the bars read as growing rather than as blocks. */
-  .bar-month { background: linear-gradient(180deg, #45b183 0%, #12613c 100%); }
-  .bar-month:hover { background: linear-gradient(180deg, #6cc79f 0%, #16744a 100%); }
+  .bar-month {
+    background: linear-gradient(180deg, #45b183 0%, #12613c 100%);
+  }
+  .bar-month:hover {
+    background: linear-gradient(180deg, #6cc79f 0%, #16744a 100%);
+  }
 
   /* ---------------------------------------------------------------- badges */
   .badge {
@@ -2464,6 +3278,12 @@
   }
   .s-CANCELLED {
     @apply bg-cancelled-soft text-cancelled;
+  }
+  .badge-used {
+    @apply inline-flex items-center gap-1 rounded-full bg-cancelled-soft text-cancelled px-2 py-0.5 text-[0.7rem] font-semibold border border-cancelled/25;
+  }
+  .badge-partial {
+    @apply inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[0.7rem] font-semibold text-amber-800 dark:bg-amber-950/70 dark:text-amber-300 dark:border dark:border-amber-800/60;
   }
   /* event + payment + hold states */
   .s-DRAFT {
@@ -2586,7 +3406,9 @@
   .select,
   .textarea {
     @apply min-h-[42px] w-full rounded-[10px] border border-line bg-surface px-[0.7rem] py-[0.55rem] text-ink;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    transition:
+      border-color 0.15s ease,
+      box-shadow 0.15s ease;
   }
 
   /* Native select chrome is inconsistent and washed out; draw our own chevron. */
@@ -2596,20 +3418,21 @@
     background-position: right 0.6rem center;
   }
   .select:hover {
-    border-color: color-mix(in oklab, var(--color-muted) 40%, var(--color-line));
+    border-color: color-mix(
+      in oklab,
+      var(--color-muted) 40%,
+      var(--color-line)
+    );
   }
   /* The chevron is a data URI, so its stroke can't read a variable — swap the
      whole image for a lighter one in dark mode. */
-  [data-theme='dark'] .select {
+  [data-theme="dark"] .select {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238b96b1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   }
   /* Surfaces that stay light in both themes — a QR must keep its contrast to
      scan, and the date chips sit on cover art. Re-declaring the neutral tokens
-     locally re-themes every descendant utility in one place.
-     Both chips belong here: .rail-date is the hero's copy of .ev-date on a
-     white plate of its own, and being left off this list is what left it
-     printing near-white text on near-white in dark mode. */
-  [data-theme='dark'] :is(.qr-frame, .ev-media .ev-date, .rail-date) {
+     locally re-themes every descendant utility in one place. */
+  [data-theme="dark"] :is(.qr-frame, .ev-media .ev-date) {
     /* Re-declaring the tokens fixes descendants that apply a colour utility… */
     --color-ink: #1d1a16;
     --color-ink-2: #4a443b;
@@ -2619,7 +3442,7 @@
   }
   /* Cards need a visible edge against a dark page, and the toast needs to
      separate from it. */
-  [data-theme='dark'] :is(.toast, .qr-frame) {
+  [data-theme="dark"] :is(.toast, .qr-frame) {
     @apply border border-line;
   }
   /* The pref group sits on the always-dark navbar, so it never inverts. */
@@ -2637,7 +3460,7 @@
   .textarea:focus {
     @apply border-brand-500 shadow-focus outline-none;
   }
-  .input[aria-invalid='true'] {
+  .input[aria-invalid="true"] {
     @apply border-danger;
   }
   .input::placeholder {
@@ -2665,10 +3488,10 @@
   }
   /* `type="search"` draws a native clear button in WebKit/Blink, which appeared
      alongside our own <SearchInput> clear button — two X icons in one field. */
-  .input[type='search']::-webkit-search-cancel-button,
-  .input[type='search']::-webkit-search-decoration,
-  .input[type='search']::-webkit-search-results-button,
-  .input[type='search']::-webkit-search-results-decoration {
+  .input[type="search"]::-webkit-search-cancel-button,
+  .input[type="search"]::-webkit-search-decoration,
+  .input[type="search"]::-webkit-search-results-button,
+  .input[type="search"]::-webkit-search-results-decoration {
     @apply hidden;
     -webkit-appearance: none;
     appearance: none;
@@ -2722,10 +3545,10 @@
     border-radius: 0;
     overflow: hidden;
     font-family: Arial, sans-serif;
-    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.05);
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.05);
   }
   .aba-khqr-logo-icon .aba-top {
-    background: #005E7B;
+    background: #005e7b;
     color: white;
     flex: 1.5;
     display: flex;
@@ -2737,11 +3560,11 @@
     padding-bottom: 1px;
   }
   .aba-khqr-logo-icon .aba-top .aba-quote {
-    color: #E1232E;
+    color: #e1232e;
     margin-left: 0.5px;
   }
   .aba-khqr-logo-icon .aba-bot {
-    background: #E1232E;
+    background: #e1232e;
     color: white;
     flex: 1;
     display: flex;
@@ -2903,7 +3726,10 @@
    */
   .stat-link {
     @apply block text-ink no-underline;
-    transition: transform 0.06s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+    transition:
+      transform 0.06s ease,
+      border-color 0.15s ease,
+      box-shadow 0.15s ease;
   }
   .stat-link:hover {
     @apply -translate-y-px border-brand-500 no-underline shadow-pop;
@@ -2953,7 +3779,7 @@
   .section-name {
     @apply mb-2 text-[10px] font-bold uppercase tracking-[0.1em] text-ink-2;
   }
-  html[lang='km'] .section-name {
+  html[lang="km"] .section-name {
     @apply tracking-normal;
   }
   /* The SVG seat map that used to live here (.seatmap, .stage, .stage-text,
@@ -3003,7 +3829,7 @@
     stroke: var(--color-brand-900);
     stroke-width: 2;
   }
-  [data-theme='dark'] .seat-selected {
+  [data-theme="dark"] .seat-selected {
     stroke: var(--color-surface);
   }
   .seat-held,
@@ -3017,7 +3843,11 @@
     fill: color-mix(in oklab, var(--color-muted) 40%, var(--color-surface-2));
   }
   .seat-held {
-    fill: color-mix(in oklab, var(--color-gold-500) 62%, var(--color-surface-2));
+    fill: color-mix(
+      in oklab,
+      var(--color-gold-500) 62%,
+      var(--color-surface-2)
+    );
   }
   /* Not for sale — deliberately reads as "inert", with a dashed outline so it
      is never mistaken for a sold seat at a glance. */
@@ -3028,16 +3858,28 @@
   }
   /* Legend swatches read the same mixes so map and key can never drift. */
   .swatch-sold {
-    background: color-mix(in oklab, var(--color-muted) 40%, var(--color-surface-2));
+    background: color-mix(
+      in oklab,
+      var(--color-muted) 40%,
+      var(--color-surface-2)
+    );
   }
   .swatch-selected {
     background: var(--color-ink);
   }
   .swatch-held {
-    background: color-mix(in oklab, var(--color-gold-500) 62%, var(--color-surface-2));
+    background: color-mix(
+      in oklab,
+      var(--color-gold-500) 62%,
+      var(--color-surface-2)
+    );
   }
   .swatch-blocked {
-    background: color-mix(in oklab, var(--color-muted) 12%, var(--color-surface-2));
+    background: color-mix(
+      in oklab,
+      var(--color-muted) 12%,
+      var(--color-surface-2)
+    );
     border-style: dashed;
     border-color: color-mix(in oklab, var(--color-muted) 55%, transparent);
   }
@@ -3059,7 +3901,7 @@
   .legend-cap {
     @apply text-tiny font-bold uppercase tracking-[0.05em] text-muted;
   }
-  html[lang='km'] .legend-cap {
+  html[lang="km"] .legend-cap {
     @apply tracking-normal;
   }
   .legend span {
@@ -3112,7 +3954,11 @@
   .holdbar {
     @apply sticky top-[54px] z-30 flex flex-wrap items-center gap-[0.9rem] rounded-ui
       px-[0.95rem] py-3 text-white shadow-float;
-    background: linear-gradient(135deg, var(--color-brand-800), var(--color-brand-600));
+    background: linear-gradient(
+      135deg,
+      var(--color-brand-800),
+      var(--color-brand-600)
+    );
   }
   .holdbar.warn {
     background: linear-gradient(135deg, #8e2418, #c8492f);
@@ -3225,7 +4071,7 @@
     @apply relative;
   }
   .qr-expired::after {
-    content: '';
+    content: "";
     @apply absolute inset-0 bg-white/[0.72];
   }
 
@@ -3413,25 +4259,30 @@
     animation: scan 2.2s ease-in-out infinite;
   }
   .scan-result {
-    @apply flex items-center gap-[0.9rem] rounded-ui px-[1.2rem] py-[1.1rem] text-white;
+    @apply flex items-start gap-[1rem] rounded-[14px] px-[1.35rem] py-[1.25rem] text-white;
+    animation: rise 0.28s ease-out both;
+    border-bottom: 3px solid rgba(255, 255, 255, 0.18);
   }
   .scan-result.ok {
     background: linear-gradient(135deg, #0f6b46, #17915f);
+    border-bottom-color: #34d399;
   }
   .scan-result.bad {
     background: linear-gradient(135deg, #8e2418, #c24433);
+    border-bottom-color: #f87171;
   }
   .scan-result.warn {
     background: linear-gradient(135deg, #96540a, #cc8420);
+    border-bottom-color: #fbbf24;
   }
   .scan-result > .icon {
-    @apply grid size-[46px] flex-none place-items-center rounded-[14px] bg-white/[0.18];
+    @apply grid size-[52px] flex-none place-items-center rounded-[14px] bg-white/[0.18];
   }
   .scan-result b {
-    @apply block text-[1.15rem];
+    @apply block text-[1.25rem] font-bold leading-snug;
   }
   .scan-result span {
-    @apply block text-[0.86rem] text-white/85;
+    @apply mt-0.5 block text-[0.86rem] text-white/85;
   }
 
   /* ----------------------------------------------------------------- alerts */
@@ -3452,7 +4303,7 @@
    * amber and the danger chip a red, with nothing to keep in step. 16% is low
    * enough that the icon on top still reads at full strength.
    */
-  [data-theme='dark'] .alert-icon {
+  [data-theme="dark"] .alert-icon {
     background: color-mix(in oklab, currentColor 16%, transparent);
   }
   .alert-info {
@@ -3512,11 +4363,20 @@
     grid-template-columns: 14px minmax(0, 1fr);
   }
   .timeline li::before {
-    content: '';
+    content: "";
     @apply mt-[0.45rem] size-[9px] rounded-full bg-brand-500;
   }
+  .timeline li.dot-ok::before {
+    @apply bg-success;
+  }
+  .timeline li.dot-warn::before {
+    background: #d97706;
+  }
+  .timeline li.dot-bad::before {
+    @apply bg-danger;
+  }
   .timeline li:not(:last-child)::after {
-    content: '';
+    content: "";
     @apply absolute bottom-0 left-1 top-[1.1rem] w-px bg-line;
   }
 
@@ -3547,7 +4407,7 @@
   .tabbar button:hover {
     @apply text-ink;
   }
-  .tabbar button[aria-pressed='true'] {
+  .tabbar button[aria-pressed="true"] {
     @apply text-ink;
     border-bottom-color: var(--color-brand-600);
   }
@@ -3556,7 +4416,7 @@
       px-[0.32rem] text-[0.74rem] text-muted;
     font-variant-numeric: tabular-nums;
   }
-  .tabbar button[aria-pressed='true'] .tab-n {
+  .tabbar button[aria-pressed="true"] .tab-n {
     @apply bg-brand-100 text-brand-800;
   }
 
@@ -3567,7 +4427,7 @@
     @apply grid h-9 min-w-9 place-items-center rounded-[9px] border border-line bg-surface text-[0.85rem];
     font-weight: 650;
   }
-  .pager button[aria-current='true'] {
+  .pager button[aria-current="true"] {
     @apply border-brand-600 bg-brand-600 text-white;
   }
   .pager button:disabled {
@@ -3681,8 +4541,8 @@
    * edge is darker or lighter than the navbar's they stop reading as one piece
    * of chrome, which is the thing these two were just matched to fix.
    */
-  [data-theme='dark'] .nav,
-  [data-theme='dark'] .footer {
+  [data-theme="dark"] .nav,
+  [data-theme="dark"] .footer {
     border-color: rgba(255, 255, 255, 0.16);
   }
   .footer-inner {
@@ -3707,25 +4567,38 @@
    * navs take a share of the width instead and spread across it, so the row
    * ends flush at both edges with no void in the middle.
    */
-  .footer-top {
-    @apply grid gap-x-12 gap-y-[2.4rem];
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+  /* -------------------------------------------------------- 4-Column Grid */
+  .footer-grid-4 {
+    @apply grid gap-x-10 gap-y-10;
+    grid-template-columns: minmax(0, 1.4fr) repeat(3, minmax(0, 1fr));
   }
-  .footer-nav {
-    @apply grid gap-x-8 gap-y-[1.9rem];
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-  /* Below 900 the brand paragraph and the nav block cannot share a line, so the
-     navs drop underneath and take the full width on their own. */
-  @media (max-width: 900px) {
-    .footer-top {
-      @apply grid-cols-1;
-    }
-  }
-  @media (max-width: 560px) {
-    .footer-nav {
+  @media (max-width: 1024px) {
+    .footer-grid-4 {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
+  }
+  @media (max-width: 580px) {
+    .footer-grid-4 {
+      grid-template-columns: 1fr;
+    }
+  }
+  .footer-brand-col {
+    @apply flex flex-col items-start gap-3;
+  }
+  .footer-brand-desc {
+    @apply m-0 text-[0.84rem] leading-relaxed text-white/70 max-w-[40ch];
+  }
+  .footer-contact-list {
+    @apply my-1 flex flex-col gap-1.5 text-[0.82rem] text-white/65;
+  }
+  .footer-contact-item {
+    @apply inline-flex items-center gap-2 text-white/70 no-underline transition-colors hover:text-white;
+  }
+  .footer-nav-link {
+    @apply inline-flex items-center gap-2 text-[0.84rem] text-white/75 no-underline transition-all hover:text-white;
+  }
+  .footer-back-to-top {
+    @apply inline-flex min-h-[32px] items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.05] px-3.5 py-1 text-[0.76rem] font-semibold text-white/75 no-underline transition-all hover:border-gold-500/60 hover:bg-gold-500/10 hover:text-gold-500 cursor-pointer;
   }
 
   /* The measure is capped on the paragraph, not on the column. Capping the
@@ -3746,13 +4619,23 @@
    * .nav-brand / .nav-mark, including the gap.
    */
   .footer-lockup {
-    @apply flex items-center gap-[0.5rem];
+    @apply flex flex-none items-center gap-[0.5rem] text-[1.02rem] font-extrabold text-white tracking-[-0.015em] no-underline transition-opacity hover:opacity-90 hover:no-underline;
+  }
+  .footer-lockup:hover,
+  .footer-lockup:focus {
+    @apply text-white no-underline;
+  }
+  .footer-lockup:focus-visible {
+    @apply outline-2 outline-offset-2 outline-gold-500;
+    box-shadow: none;
   }
   .footer-mark {
     @apply h-[30px] w-auto;
   }
+  .footer-brand-text,
+  .footer-lockup strong,
   .footer-brand strong {
-    @apply block text-[1.02rem] font-extrabold tracking-[-0.015em] text-white;
+    @apply whitespace-nowrap text-[1.02rem] font-extrabold tracking-[-0.015em] text-white;
     font-family: var(--font-sans);
   }
   .footer-brand p {
@@ -3791,7 +4674,10 @@
   .footer-cta {
     @apply inline-flex min-h-10 items-center gap-[0.45rem] rounded-full border
       border-gold-500/45 px-[1.05rem] text-[0.85rem] font-bold text-gold-500 no-underline;
-    transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+    transition:
+      background 0.16s ease,
+      border-color 0.16s ease,
+      color 0.16s ease;
   }
   .footer-cta:hover {
     @apply border-gold-500 bg-gold-500 text-brand-900 no-underline;
@@ -3834,11 +4720,16 @@
    */
   .footer-col a {
     @apply pb-[2px] text-white/[0.78] no-underline;
-    background-image: linear-gradient(rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.8));
+    background-image: linear-gradient(
+      rgba(255, 255, 255, 0.8),
+      rgba(255, 255, 255, 0.8)
+    );
     background-repeat: no-repeat;
     background-position: 0 100%;
     background-size: 0 2px;
-    transition: background-size 0.18s ease, color 0.18s ease;
+    transition:
+      background-size 0.18s ease,
+      color 0.18s ease;
   }
   .footer-col a:hover,
   .footer-col a:focus-visible {
@@ -3871,43 +4762,41 @@
   .footer-social span {
     @apply grid size-10 place-items-center rounded-[11px] border border-white/[0.14]
       bg-white/[0.06] text-white/[0.74] no-underline;
-    transition: background 0.15s ease, color 0.15s ease;
+    transition:
+      background 0.15s ease,
+      color 0.15s ease;
   }
   .footer-social a:hover {
-    @apply bg-white/15 text-white no-underline;
+    border-color: var(--social-accent, rgba(255, 255, 255, 0.3));
+    color: var(--social-accent, #ffffff);
+    background: rgba(255, 255, 255, 0.12);
+  }
+  .footer-social a[aria-label="TikTok"]:hover {
+    background: #000000;
+    border-color: rgba(255, 255, 255, 0.4);
+    color: #ffffff;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
   }
 
   /*
-   * The closing bar: copyright at one edge, the payment marks at the other.
-   *
-   * It used to run on .footer-grid's four-track template so its three items
-   * would line up with the columns above, which put the social plates in the
-   * dead centre of the bar with nothing above or below them. The accounts live
-   * with the brand now, which leaves two items and no reason for a grid.
+   * The closing bar: copyright on left, payment marks centered, back-to-top on right.
    */
   .footer-bottom {
-    @apply mt-[2.6rem] flex flex-wrap items-center justify-between gap-x-8 gap-y-[1rem]
-      border-t border-white/[0.11] pt-[1.15rem] text-[0.78rem] text-white/[0.56];
+    @apply mt-[2.6rem] flex flex-col items-center justify-between gap-y-4 gap-x-6
+      border-t border-white/[0.11] pt-[1.15rem] text-[0.78rem] text-white/[0.56]
+      md:grid md:grid-cols-3 md:items-center;
+  }
+  .footer-copy {
+    @apply flex items-center justify-center text-center md:justify-self-start md:text-left;
+  }
+  .footer-pay-cluster {
+    @apply flex flex-wrap items-center justify-center gap-2 md:justify-self-center;
+  }
+  .footer-bottom .footer-back-to-top {
+    @apply md:justify-self-end;
   }
   /*
    * Payment marks as plates rather than a line of small type.
-   *
-   * They answer "can I actually pay on this site", and a visitor settles that
-   * by spotting a mark they already know - so they are given an edge and a
-   * ground of their own instead of reading as two more footer links that have
-   * stopped working. They travel and wrap together.
-   */
-  .footer-pay-row {
-    @apply flex flex-wrap items-center gap-[0.45rem];
-  }
-  /*
-   * min-h rather than symmetric padding: one plate holds a line of type and the
-   * other holds the drawn KHQR mark, which is taller than the type it sits
-   * beside. Padding alone gave them two different heights, and two trust marks
-   * of different heights look like one of them is a mistake. The mark is set at
-   * 18px because the Q in it is a miniature QR symbol - below that the modules
-   * merge and it reads as a filled square, which is the one thing it must not
-   * look like.
    */
   .footer-pay {
     @apply inline-flex min-h-[32px] items-center gap-[0.4rem] rounded-tiny border
@@ -3949,9 +4838,13 @@
     }
   }
   .event-hero::after {
-    content: '';
+    content: "";
     @apply absolute inset-0 z-0;
-    background: linear-gradient(180deg, rgba(0, 0, 0, 0) 30%, rgba(0, 0, 0, 0.5));
+    background: linear-gradient(
+      180deg,
+      rgba(0, 0, 0, 0) 30%,
+      rgba(0, 0, 0, 0.5)
+    );
   }
   .event-hero > * {
     @apply relative z-[1];
@@ -4017,6 +4910,301 @@
     @apply block text-[0.92rem];
   }
 
+  /* ----------------------------------------- about-event combined card */
+  .about-event-card {
+    @apply flex flex-col;
+    gap: 1.1rem;
+  }
+  .about-event-heading {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: var(--color-ink);
+  }
+  .about-event-meta {
+    @apply flex items-center flex-wrap;
+    gap: 1.75rem;
+  }
+  .about-event-meta-item {
+    @apply flex items-center;
+    gap: 0.65rem;
+  }
+  .about-event-circle {
+    @apply inline-grid place-items-center rounded-full flex-none;
+    width: 38px;
+    height: 38px;
+    background: var(--color-tint-2);
+    color: var(--color-ink);
+    border: 1px solid var(--color-line);
+  }
+  .about-event-circle.blue {
+    background: rgba(59, 130, 246, 0.1);
+    color: #2563eb;
+    border: 1px solid rgba(59, 130, 246, 0.22);
+  }
+  .about-event-circle.gold {
+    background: rgba(245, 158, 11, 0.1);
+    color: #d97706;
+    border: 1px solid rgba(245, 158, 11, 0.22);
+  }
+  [data-theme="dark"] .about-event-circle.blue {
+    background: rgba(59, 130, 246, 0.16);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+  }
+  [data-theme="dark"] .about-event-circle.gold {
+    background: rgba(245, 158, 11, 0.16);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+  }
+  .about-event-meta-label {
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-muted);
+    line-height: 1;
+    margin-bottom: 0.2rem;
+  }
+  .about-event-meta-value {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--color-ink);
+  }
+  .about-event-desc {
+    color: var(--color-ink-2);
+    line-height: 1.65;
+    font-size: 0.88rem;
+  }
+  .about-event-desc p + p {
+    margin-top: 0.55rem;
+  }
+
+  /* ----------------------------------------- event location section */
+  .event-location-card {
+    @apply flex flex-col;
+    gap: 1rem;
+  }
+  .event-location-head {
+    @apply flex items-start justify-between gap-3 flex-wrap;
+  }
+  .event-location-heading {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: var(--color-ink);
+    margin: 0;
+  }
+  .event-location-sub {
+    font-size: 0.85rem;
+    color: var(--color-muted);
+    margin: 0.25rem 0 0;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+  }
+  .event-location-map-box {
+    position: relative;
+    width: 100%;
+    height: 320px;
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid var(--color-line);
+    background: var(--color-surface-2);
+    /* Strict clipping and stacking isolation for hardware-accelerated Leaflet map */
+    isolation: isolate;
+    z-index: 0;
+    contain: paint;
+    transform: translateZ(0);
+    -webkit-mask-image: -webkit-radial-gradient(white, black);
+    mask-image: radial-gradient(white, black);
+  }
+  @media (max-width: 640px) {
+    .event-location-map-box {
+      height: 250px;
+    }
+  }
+  [data-theme="dark"] .event-location-map-box {
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  }
+  .evloc-map-canvas {
+    width: 100%;
+    height: 100%;
+    border-radius: inherit;
+    overflow: hidden;
+    position: relative;
+    z-index: 0;
+  }
+  .evloc-map-canvas.leaflet-container {
+    width: 100%;
+    height: 100%;
+    border-radius: inherit;
+    overflow: hidden;
+    position: relative;
+    z-index: 0;
+    @apply bg-surface-2 font-sans;
+  }
+  .evloc-map-canvas.leaflet-container .leaflet-bar a,
+  .evloc-map-canvas.leaflet-container .leaflet-control-attribution {
+    @apply border-line bg-surface text-ink-2;
+  }
+  .evloc-map-canvas.leaflet-container .leaflet-control-attribution a {
+    @apply text-muted;
+  }
+  .evloc-map-canvas.leaflet-container .leaflet-popup-content-wrapper,
+  .evloc-map-canvas.leaflet-container .leaflet-popup-tip {
+    @apply border border-line bg-surface text-ink shadow-lg;
+  }
+
+  /* Keep Leaflet's internal controls & panes strictly bounded inside the map box */
+  .evloc-map-canvas .leaflet-pane {
+    z-index: 10;
+  }
+  .evloc-map-canvas .leaflet-tile-pane {
+    z-index: 10;
+  }
+  .evloc-map-canvas .leaflet-overlay-pane {
+    z-index: 20;
+  }
+  .evloc-map-canvas .leaflet-marker-pane {
+    z-index: 30;
+  }
+  .evloc-map-canvas .leaflet-tooltip-pane {
+    z-index: 40;
+  }
+  .evloc-map-canvas .leaflet-popup-pane {
+    z-index: 50;
+  }
+  .evloc-map-canvas .leaflet-top,
+  .evloc-map-canvas .leaflet-bottom {
+    z-index: 60;
+  }
+  .evloc-map-canvas .leaflet-control {
+    z-index: 70;
+  }
+
+  .event-location-map-skeleton {
+    width: 100%;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--color-surface-2);
+    animation: pulse 1.5s infinite;
+  }
+  .event-location-empty {
+    @apply flex flex-col items-center justify-center p-8 text-center text-muted gap-2 rounded-[14px] border border-line bg-surface-2;
+  }
+
+  /* Leaflet Map pin marker matching screenshot */
+  .evloc-marker-container {
+    background: transparent !important;
+    border: none !important;
+    overflow: visible !important;
+  }
+  .evloc-pin-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    pointer-events: auto;
+    cursor: pointer;
+  }
+  .evloc-pin-tag {
+    display: inline-flex;
+    align-items: center;
+    background: #0f172a;
+    color: #ffffff;
+    padding: 0.32rem 0.75rem;
+    border-radius: 8px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    white-space: nowrap;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    position: relative;
+    margin-bottom: 6px;
+    transition: transform 0.18s ease;
+  }
+  [data-theme="dark"] .evloc-pin-tag {
+    background: #1e293b;
+    border-color: rgba(255, 255, 255, 0.25);
+  }
+  .evloc-pin-wrap:hover .evloc-pin-tag {
+    transform: translateY(-2px);
+  }
+  .evloc-pin-tag-arrow {
+    position: absolute;
+    bottom: -5px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 5px solid #0f172a;
+  }
+  [data-theme="dark"] .evloc-pin-tag-arrow {
+    border-top-color: #1e293b;
+  }
+  .evloc-pin-badge {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 14px rgba(220, 38, 38, 0.5);
+    border: 2.5px solid #ffffff;
+    position: relative;
+    z-index: 2;
+  }
+  [data-theme="dark"] .evloc-pin-badge {
+    border-color: #ffffff;
+    box-shadow:
+      0 0 0 3px rgba(239, 68, 68, 0.3),
+      0 4px 16px rgba(220, 38, 38, 0.6);
+  }
+  .evloc-pin-point {
+    width: 8px;
+    height: 4px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.35);
+    margin-top: 2px;
+  }
+  .evloc-popup-title {
+    font-weight: 700;
+    font-size: 0.92rem;
+    color: var(--color-ink);
+    margin-bottom: 0.2rem;
+  }
+  [data-theme="dark"] .evloc-popup-title {
+    color: #f9fafb;
+  }
+  .evloc-popup-addr {
+    font-size: 0.78rem;
+    color: var(--color-muted);
+    line-height: 1.35;
+    margin-bottom: 0.45rem;
+  }
+  [data-theme="dark"] .evloc-popup-addr {
+    color: #9ca3af;
+  }
+  .evloc-popup-btn {
+    display: inline-block;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--color-brand-600);
+    text-decoration: none;
+  }
+  [data-theme="dark"] .evloc-popup-btn {
+    color: var(--color-brand-400, #34d399);
+  }
+  .evloc-popup-btn:hover {
+    text-decoration: underline;
+  }
+
   /* ------------------------------------------------------------------ icons */
   .icon {
     @apply flex-none;
@@ -4024,7 +5212,15 @@
   }
   /* The baseline nudge above is for icons sitting next to text; inside a grid or
      flex centring context it just pushes them off-centre. */
-  :is(.stepper button, .pager button, .nav-icon-btn, .icon-chip, .alert-icon, .clear-btn, .filter-pill button)
+  :is(
+      .stepper button,
+      .pager button,
+      .nav-icon-btn,
+      .icon-chip,
+      .alert-icon,
+      .clear-btn,
+      .filter-pill button
+    )
     > .icon {
     vertical-align: baseline;
   }
@@ -4070,12 +5266,18 @@
   }
 
   /* ------------------------------------------------------------- zone & seat */
-  .zone-radios { @apply flex flex-wrap gap-[10px] mb-4; }
+  .zone-radios {
+    @apply flex flex-wrap gap-[10px] mb-4;
+  }
   .zone-radio {
     @apply flex flex-1 basis-[150px] cursor-pointer items-center gap-[10px] rounded-ui border border-line bg-surface px-3 py-[10px];
-    transition: border-color 0.1s ease, background 0.1s ease;
+    transition:
+      border-color 0.1s ease,
+      background 0.1s ease;
   }
-  .zone-radio:hover { @apply border-brand-500; }
+  .zone-radio:hover {
+    @apply border-brand-500;
+  }
   /* The fill has to be the tint token, not brand-50: brand-50 keeps its light
      value in dark mode, so the selected card turned near-white while its text
      stayed light ink. In light mode the two are the same colour. */
@@ -4083,25 +5285,43 @@
     @apply bg-tint border-brand-500;
     box-shadow: inset 0 0 0 1px var(--color-brand-500);
   }
-  .zone-radio input[type="radio"] { @apply m-0 size-4 flex-none cursor-pointer accent-brand-500; }
-  .zr-body { @apply min-w-0 flex-1; }
-  .zr-name { @apply block text-[13.5px] font-bold; }
-  .zr-meta { @apply block text-[12px] text-muted; }
+  .zone-radio input[type="radio"] {
+    @apply m-0 size-4 flex-none cursor-pointer accent-brand-500;
+  }
+  .zr-body {
+    @apply min-w-0 flex-1;
+  }
+  .zr-name {
+    @apply block text-[13.5px] font-bold;
+  }
+  .zr-meta {
+    @apply block text-[12px] text-muted;
+  }
   .z-count {
     @apply inline-flex min-w-[20px] h-[20px] flex-none items-center justify-center rounded-full bg-brand-500 px-1 text-[11px] font-bold text-white;
   }
-  .z-count.zero { @apply bg-line-2 text-muted; }
+  .z-count.zero {
+    @apply bg-line-2 text-muted;
+  }
 
-  .seatmap-scroll { @apply overflow-x-auto; }
+  .seatmap-scroll {
+    @apply overflow-x-auto;
+  }
   /* Shrink-wrapped to the widest row, then centred as a block. Both seat maps
      draw with these classes - the buyer's picker and the organiser's preview -
      and a house laid out one way for the person who built it and another for
      the person buying a seat in it is two maps, which is the split this markup
      exists to avoid. When a row is wider than its panel the auto margins
      collapse to zero and the scroll container takes over. */
-  .rows { @apply mx-auto flex w-max flex-col gap-[10px]; }
-  .row { @apply flex items-center gap-[10px]; }
-  .row-label { @apply w-[18px] text-center text-[12px] font-semibold text-muted; }
+  .rows {
+    @apply mx-auto flex w-max flex-col gap-[10px];
+  }
+  .row {
+    @apply flex items-center gap-[10px];
+  }
+  .row-label {
+    @apply w-[18px] text-center text-[12px] font-semibold text-muted;
+  }
   /* Ragged rows straddle the middle of the widest one, the way a real house is
      laid out: a 12-seat row in front of a 14-seat row sits centred over it
      rather than flush left with an empty gap down the right-hand side. Rows
@@ -4115,34 +5335,64 @@
      short rows centred on a width no one can see. Auto margins only ever
      consume space that is already spare, so the overflow case falls back to
      plain left alignment and scrolls, which is what it did before. */
-  .seats { @apply mx-auto flex flex-nowrap gap-2; }
+  .seats {
+    @apply mx-auto flex flex-nowrap gap-2;
+  }
   .seat {
     @apply relative grid size-[34px] cursor-pointer place-items-center rounded-tiny text-[12.5px] font-bold;
     color: #fff;
     border: 1px solid color-mix(in oklab, var(--color-ink) 14%, transparent);
-    transition: transform 0.06s ease, box-shadow 0.1s ease;
+    transition:
+      transform 0.06s ease,
+      box-shadow 0.1s ease;
   }
-  .seat:hover:not(:disabled) { @apply -translate-y-[2px]; }
-  .seat:focus-visible { @apply outline-none shadow-focus; }
+  .seat:hover:not(:disabled) {
+    @apply -translate-y-[2px];
+  }
+  .seat:focus-visible {
+    @apply outline-none shadow-focus;
+  }
   /* Five tiers that must stay apart at ~14px. Pulled off one hue family on
      purpose: jade, steel, clay, plum, bronze. */
-  .seat.tier-0 { background: #12613c; }
-  .seat.tier-1 { background: #0e6f8a; }
-  .seat.tier-2 { background: #c2410c; }
-  .seat.tier-3 { background: #6b3aa0; }
-  .seat.tier-4 { background: #7a5c12; }
+  .seat.tier-0 {
+    background: #12613c;
+  }
+  .seat.tier-1 {
+    background: #0e6f8a;
+  }
+  .seat.tier-2 {
+    background: #c2410c;
+  }
+  .seat.tier-3 {
+    background: #6b3aa0;
+  }
+  .seat.tier-4 {
+    background: #7a5c12;
+  }
   .seat.sold {
     @apply cursor-not-allowed line-through;
-    background: color-mix(in oklab, var(--color-muted) 40%, var(--color-surface-2));
+    background: color-mix(
+      in oklab,
+      var(--color-muted) 40%,
+      var(--color-surface-2)
+    );
     color: color-mix(in oklab, var(--color-muted) 70%, var(--color-surface));
   }
   .seat.held {
     @apply cursor-not-allowed text-white;
-    background: color-mix(in oklab, var(--color-gold-500) 62%, var(--color-surface-2));
+    background: color-mix(
+      in oklab,
+      var(--color-gold-500) 62%,
+      var(--color-surface-2)
+    );
   }
   .seat.blocked {
     @apply cursor-not-allowed text-white;
-    background: color-mix(in oklab, var(--color-muted) 12%, var(--color-surface-2));
+    background: color-mix(
+      in oklab,
+      var(--color-muted) 12%,
+      var(--color-surface-2)
+    );
     border-style: dashed;
     border-color: color-mix(in oklab, var(--color-muted) 55%, transparent);
   }
@@ -4152,7 +5402,7 @@
     border-color: var(--color-brand-900);
     border-width: 2px;
   }
-  [data-theme='dark'] .seat.selected {
+  [data-theme="dark"] .seat.selected {
     border-color: var(--color-surface);
   }
 
@@ -4163,10 +5413,14 @@
      reduced-motion rule stops it and the plain block stays visible. */
   .skel {
     @apply relative isolate block overflow-hidden rounded-ui;
-    background: color-mix(in oklab, var(--color-muted) 16%, var(--color-surface-2));
+    background: color-mix(
+      in oklab,
+      var(--color-muted) 16%,
+      var(--color-surface-2)
+    );
   }
   .skel::after {
-    content: '';
+    content: "";
     @apply absolute inset-0;
     background: linear-gradient(
       90deg,
@@ -4184,7 +5438,12 @@
     background: rgba(255, 255, 255, 0.14);
   }
   .skel-dark::after {
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.2),
+      transparent
+    );
   }
   .skel-line {
     @apply h-[0.72rem] rounded-tiny;
@@ -4299,7 +5558,7 @@
 .pw-ticket {
   @apply w-full max-w-[320px] bg-white shadow-[0_4px_24px_rgba(0,0,0,0.12)] flex flex-col;
   border-radius: 16px;
-  border: 1px solid rgba(0,0,0,0.04);
+  border: 1px solid rgba(0, 0, 0, 0.04);
   overflow: hidden;
 }
 .pw-ticket-red {
@@ -4384,8 +5643,8 @@
 .pw-btn-outline {
   width: 100%;
   padding: 12px;
-  border: 1px solid #48C58F;
-  color: #48C58F;
+  border: 1px solid #48c58f;
+  color: #48c58f;
   background: white;
   border-radius: 6px;
   font-weight: 600;
@@ -4399,7 +5658,7 @@
 .pw-btn-solid {
   width: 100%;
   padding: 12px;
-  background: #48C58F;
+  background: #48c58f;
   color: white;
   border: none;
   border-radius: 6px;
@@ -4456,6 +5715,42 @@
   padding: 0.15rem 0.4rem;
   border-radius: 0.35rem;
   pointer-events: none;
+}
+
+.qr-used-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(2px);
+  border-radius: 0.6rem;
+  z-index: 2;
+  pointer-events: none;
+}
+[data-theme="dark"] .qr-used-overlay {
+  background: rgba(20, 24, 22, 0.88);
+}
+.qr-used-stamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.55rem;
+  border: 2px solid var(--color-success);
+  border-radius: 6px;
+  color: var(--color-success);
+  font-weight: 800;
+  font-size: 0.74rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transform: rotate(-6deg);
+  background: var(--color-surface);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+.ticket-stub-used {
+  font-weight: 600;
+  color: var(--color-success);
 }
 
 .qr-lightbox {
@@ -4620,12 +5915,65 @@
    far fewer pixels than that, and the room on screen is better spent on the
    verdict. */
 .scan-live {
-  width: min(100%, 320px);
+  position: relative;
+  width: min(100%, 360px);
   aspect-ratio: 1;
   margin-inline: auto;
   overflow: hidden;
-  border-radius: 0.7rem;
+  border-radius: 0.85rem;
   background: #000;
+}
+/* Corner bracket decorations — four L-shaped corners over the viewfinder. */
+.scan-live::before,
+.scan-live::after {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  width: 28px;
+  height: 28px;
+  border-color: rgba(255, 255, 255, 0.7);
+  border-style: solid;
+  pointer-events: none;
+}
+.scan-live::before {
+  top: 12px;
+  left: 12px;
+  border-width: 3px 0 0 3px;
+  border-radius: 4px 0 0 0;
+}
+.scan-live::after {
+  top: 12px;
+  right: 12px;
+  border-width: 3px 3px 0 0;
+  border-radius: 0 4px 0 0;
+}
+/* Bottom corners need a wrapper element since ::before/::after are taken. */
+.scan-corners {
+  position: relative;
+  width: min(100%, 360px);
+  margin-inline: auto;
+}
+.scan-corners::before,
+.scan-corners::after {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  bottom: 12px;
+  width: 28px;
+  height: 28px;
+  border-color: rgba(255, 255, 255, 0.7);
+  border-style: solid;
+  pointer-events: none;
+}
+.scan-corners::before {
+  left: 12px;
+  border-width: 0 0 3px 3px;
+  border-radius: 0 0 0 4px;
+}
+.scan-corners::after {
+  right: 12px;
+  border-width: 0 3px 3px 0;
+  border-radius: 0 0 4px 0;
 }
 
 /* The library writes inline width/height onto the elements it injects, so these
@@ -4648,16 +5996,98 @@
 
 .scanner-idle {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.4rem;
-  padding: 0.7rem;
-  border: 1px dashed rgba(163, 152, 137, 0.4);
-  border-radius: 0.6rem;
-  font-size: 0.78rem;
-  color: rgba(163, 152, 137, 0.9);
+  gap: 0.5rem;
+  padding: 1.5rem 1rem;
+  border: 1.5px dashed rgba(163, 152, 137, 0.3);
+  border-radius: 0.85rem;
+  font-size: 0.82rem;
+  color: rgba(163, 152, 137, 0.75);
+  background: rgba(163, 152, 137, 0.04);
+}
+.scanner-idle .scanner-idle-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(163, 152, 137, 0.1);
+  color: rgba(163, 152, 137, 0.6);
 }
 
+/* -------------------------------------------------------- check-in page extras */
+
+/* The page header lockup: icon-chip + title on the same line. */
+.page-title-lockup,
+.checkin-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.page-title-lockup h1,
+.checkin-head h1 {
+  font-size: clamp(1.85rem, 1.4rem + 1.4vw, 2.25rem);
+  @apply font-extrabold leading-tight tracking-tight text-ink;
+  margin: 0;
+}
+
+/* Camera toggle when active: tinted green to indicate live state. */
+.btn-cam-active {
+  border-color: color-mix(
+    in oklab,
+    var(--color-success) 50%,
+    transparent
+  ) !important;
+  background: color-mix(
+    in oklab,
+    var(--color-success) 12%,
+    transparent
+  ) !important;
+  color: var(--color-success) !important;
+}
+
+/* Scan prompt: the empty state shown when camera is on but nothing scanned. */
+.scan-prompt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1.2rem;
+  border-radius: 0.85rem;
+  background: color-mix(in oklab, var(--color-brand-500) 8%, transparent);
+  border: 1px solid color-mix(in oklab, var(--color-brand-500) 18%, transparent);
+  text-align: center;
+}
+.scan-prompt .scan-prompt-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: color-mix(in oklab, var(--color-brand-500) 14%, transparent);
+  color: var(--color-brand-500);
+}
+.scan-prompt span {
+  font-size: 0.84rem;
+  color: var(--color-ink-2);
+}
+
+/* Scan count badge next to the Recent scans panel title. */
+.scan-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: color-mix(in oklab, var(--color-brand-500) 14%, transparent);
+  color: var(--color-brand-500);
+}
 
 /* ---------------------------------------------------------------------------
    Group pass modal.
@@ -4686,9 +6116,19 @@
   overflow: hidden;
 }
 
-.gp-head { align-items: flex-start; }
-.gp-title { display: flex; align-items: center; gap: 0.65rem; }
-.gp-title h2 { margin: 0; font-size: 1.02rem; line-height: 1.25; }
+.gp-head {
+  align-items: flex-start;
+}
+.gp-title {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+.gp-title h2 {
+  margin: 0;
+  font-size: 1.02rem;
+  line-height: 1.25;
+}
 
 /* Monospace so a steward reading a ref aloud does not lose their place. */
 .gp-ref {
@@ -4698,7 +6138,9 @@
   letter-spacing: 0.02em;
 }
 
-.gp-panel .panel-body { overflow-y: auto; }
+.gp-panel .panel-body {
+  overflow-y: auto;
+}
 
 .gp-topline {
   display: flex;
@@ -4708,7 +6150,10 @@
   font-size: 0.92rem;
 }
 
-.gp-topline-counts { font-size: 0.78rem; color: var(--color-muted); }
+.gp-topline-counts {
+  font-size: 0.78rem;
+  color: var(--color-muted);
+}
 
 .gp-group {
   border: 1px solid var(--color-line);
@@ -4726,7 +6171,10 @@
   border-bottom: 1px solid var(--color-line-2);
 }
 
-.gp-group-head b { font-size: 0.88rem; display: block; }
+.gp-group-head b {
+  font-size: 0.88rem;
+  display: block;
+}
 
 .gp-group-kind {
   font-size: 0.68rem;
@@ -4775,10 +6223,20 @@
   cursor: pointer;
 }
 
-.gp-stepper button:disabled { opacity: 0.35; cursor: default; }
-.gp-stepper span { min-width: 1.4rem; text-align: center; font-weight: 800; }
+.gp-stepper button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.gp-stepper span {
+  min-width: 1.4rem;
+  text-align: center;
+  font-weight: 800;
+}
 
-.gp-rows { display: flex; flex-direction: column; }
+.gp-rows {
+  display: flex;
+  flex-direction: column;
+}
 
 .gp-row {
   display: flex;
@@ -4794,13 +6252,22 @@
   text-align: left;
 }
 
-.gp-rows > .gp-row:first-child { border-top: 0; }
+.gp-rows > .gp-row:first-child {
+  border-top: 0;
+}
 
 /* Only seats are tappable — picking which interchangeable zone ticket goes in
    is a decision with no content, so those rows are plain text. */
-.gp-row.seat { cursor: pointer; }
-.gp-row.seat:disabled { cursor: default; }
-.gp-row.seat:focus-visible { outline: 2px solid var(--color-brand-500); outline-offset: -2px; }
+.gp-row.seat {
+  cursor: pointer;
+}
+.gp-row.seat:disabled {
+  cursor: default;
+}
+.gp-row.seat:focus-visible {
+  outline: 2px solid var(--color-brand-500);
+  outline-offset: -2px;
+}
 
 .gp-row.on {
   background: var(--color-tint);
@@ -4808,7 +6275,9 @@
   font-weight: 700;
 }
 
-.gp-row.in { color: var(--color-muted); }
+.gp-row.in {
+  color: var(--color-muted);
+}
 
 .gp-row-name {
   flex: 1 1 auto;
@@ -4849,7 +6318,10 @@
   border-top: 1px solid var(--color-line-2);
 }
 
-.gp-foot .btn { flex: 1 1 0; justify-content: center; }
+.gp-foot .btn {
+  flex: 1 1 0;
+  justify-content: center;
+}
 
 .gp-error {
   display: flex;
@@ -4874,9 +6346,16 @@
    size the moment deserves. Nothing new is minted or signed.
    --------------------------------------------------------------------------- */
 
-.wallet { display: flex; flex-direction: column; gap: 0.7rem; }
+.wallet {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
 
-.wallet-head { display: flex; justify-content: flex-end; }
+.wallet-head {
+  display: flex;
+  justify-content: flex-end;
+}
 
 .wallet-count {
   font-size: 0.76rem;
@@ -4975,10 +6454,16 @@
   cursor: pointer;
 }
 
-.wallet-chev { transition: transform 0.15s ease; }
-.wallet-chev.open { transform: rotate(90deg); }
+.wallet-chev {
+  transition: transform 0.15s ease;
+}
+.wallet-chev.open {
+  transform: rotate(90deg);
+}
 
-.wallet-note { margin: 0; }
+.wallet-note {
+  margin: 0;
+}
 
 .sr-only {
   position: absolute;
@@ -5015,8 +6500,12 @@
   outline-offset: -2px;
 }
 
-.gp-chev { transition: transform 0.15s ease; }
-.gp-chev.open { transform: rotate(90deg); }
+.gp-chev {
+  transition: transform 0.15s ease;
+}
+.gp-chev.open {
+  transform: rotate(90deg);
+}
 
 /* The open attempt's deadline, beside the pay button. The button alone does not
    say the offer is expiring — and when it lapses the seats go back on sale. */
@@ -5069,7 +6558,10 @@
   background: var(--color-surface);
 }
 
-.drawer-head h2 { margin: 0; font-size: 1rem; }
+.drawer-head h2 {
+  margin: 0;
+  font-size: 1rem;
+}
 
 .drawer-body {
   flex: 1 1 auto;
@@ -5087,7 +6579,9 @@
   font-weight: 600;
   cursor: pointer;
 }
-.linkish:hover { text-decoration: underline; }
+.linkish:hover {
+  text-decoration: underline;
+}
 
 /* Retiring a venue is reversible-ish and non-destructive, but it is still the
    one action here nobody wants to hit by accident — pushed away from Edit and
@@ -5196,7 +6690,9 @@
   cursor: pointer;
 }
 
-.scope-tab:hover { color: var(--color-ink); }
+.scope-tab:hover {
+  color: var(--color-ink);
+}
 
 .scope-tab.on {
   background: var(--color-surface);
@@ -5204,14 +6700,21 @@
   box-shadow: var(--shadow-card);
 }
 
-/* The count rides along muted, so a two-digit number cannot make the labels
-   jump as events move between the two sets. */
 .scope-tab-n {
   color: var(--color-muted);
   font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  transition: color 0.15s ease;
 }
 
-.scope-tab.on .scope-tab-n { color: var(--color-brand-700); }
+.scope-tab.on .scope-tab-n {
+  color: var(--color-brand-600);
+  font-weight: 700;
+}
+
+[data-theme="dark"] .scope-tab.on .scope-tab-n {
+  color: #4ade80;
+}
 
 /* Where an event stands in its sales window, under the lifecycle badge.
 
@@ -5237,7 +6740,7 @@
 }
 
 .sales-pill::before {
-  content: '';
+  content: "";
   width: 0.42rem;
   height: 0.42rem;
   border-radius: 50%;
@@ -5248,9 +6751,18 @@
 /* info, not brand green - the Badge above is already that green for
    "Published", and a second green pill right under it reads as the same fact
    said twice rather than the different one it actually is. */
-.sales-pill.ok { color: var(--color-info); background: var(--color-info-soft); }
-.sales-pill.warn { color: var(--color-warning); background: var(--color-warning-soft); }
-.sales-pill.bad { color: var(--color-danger); background: var(--color-danger-soft); }
+.sales-pill.ok {
+  color: var(--color-info);
+  background: var(--color-info-soft);
+}
+.sales-pill.warn {
+  color: var(--color-warning);
+  background: var(--color-warning-soft);
+}
+.sales-pill.bad {
+  color: var(--color-danger);
+  background: var(--color-danger-soft);
+}
 /* quiet keeps the muted default background - nothing is happening, and that is the point. */
 
 /* A table row that opens something when clicked.
@@ -5408,12 +6920,20 @@
    file", not "is this the exact crop" - and two boxes of different shapes read
    as two different kinds of control. The cover is still used portrait on the
    public page; that is the renderer's business, not this preview's. */
-.img-field .img-drop { width: 176px; }
+.img-field .img-drop {
+  width: 176px;
+}
 
-.img-field { display: flex; flex-direction: column; gap: 0.35rem; }
+.img-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
 
 /* Wraps under its thumbnail rather than stretching the row. */
-.img-field .hint { max-width: 13rem; }
+.img-field .hint {
+  max-width: 13rem;
+}
 
 .img-field-head {
   display: flex;
@@ -5431,7 +6951,9 @@
   color: var(--color-muted);
   cursor: pointer;
 }
-.img-field-clear:hover:not(:disabled) { color: var(--color-danger); }
+.img-field-clear:hover:not(:disabled) {
+  color: var(--color-danger);
+}
 
 .img-drop {
   position: relative;
@@ -5445,9 +6967,17 @@
   cursor: pointer;
 }
 
-.img-drop.has-image { border-style: solid; }
-.img-drop:disabled { cursor: default; opacity: 0.6; }
-.img-drop:focus-visible { outline: 2px solid var(--color-brand-500); outline-offset: 2px; }
+.img-drop.has-image {
+  border-style: solid;
+}
+.img-drop:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+.img-drop:focus-visible {
+  outline: 2px solid var(--color-brand-500);
+  outline-offset: 2px;
+}
 
 .img-drop img {
   width: 100%;
@@ -5520,7 +7050,7 @@
   border-top: 1px solid var(--color-line-2);
 }
 
-.crop-zoom input[type='range'] {
+.crop-zoom input[type="range"] {
   flex: 1 1 auto;
   accent-color: var(--color-brand-500);
 }
@@ -5606,7 +7136,9 @@
   min-width: 0;
 }
 
-.venue-layout-tap { margin-top: 0.2rem; }
+.venue-layout-tap {
+  margin-top: 0.2rem;
+}
 
 .venue-layout-full {
   /*
@@ -5667,7 +7199,7 @@
 /* Khmer runs taller than Latin and needs the script-aware family. Scoped to
    elements that declare lang="km" so it follows the content, not the UI
    language - the Khmer name field stays Khmer on an English page. */
-.org-apply [lang='km'] {
+.org-apply [lang="km"] {
   font-family: var(--font-khmer);
   line-height: 1.7;
 }
@@ -5677,9 +7209,6 @@
   margin-bottom: 1.4rem;
 }
 .org-apply-head h1 {
-  font-size: clamp(1.5rem, 4vw, 1.75rem);
-  font-weight: 700;
-  letter-spacing: -0.02em;
   margin: 0 0 0.15rem;
 }
 .org-apply-head-km {
@@ -5793,14 +7322,17 @@
   font-weight: 500;
   padding: 0.35rem 0.85rem;
   cursor: pointer;
-  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
 .org-apply-chip:hover {
   border-color: color-mix(in oklab, var(--color-muted) 40%, var(--color-line));
 }
 /* Selection is carried by aria-pressed, so the styling cannot drift from the
    state a screen reader announces. */
-.org-apply-chip[aria-pressed='true'] {
+.org-apply-chip[aria-pressed="true"] {
   background: var(--color-tint);
   border-color: var(--color-brand-600);
   color: var(--color-on-tint);
@@ -5986,7 +7518,7 @@
 }
 .invoice-no {
   margin: 0.1rem 0 0.4rem;
-  font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
   font-size: 1.05rem;
   font-weight: 700;
   color: var(--color-ink);
@@ -6138,7 +7670,7 @@
  * fine, matched the element, and silently lost every time. Matched on the ARIA
  * role rather than Google's class names, which are minified per release.
  */
-.gsi-host [role='button'] {
+.gsi-host [role="button"] {
   height: 3rem; /* .btn-lg is min-h-12 */
   border-radius: var(--radius-ui);
 }
@@ -6160,7 +7692,7 @@
  * Google's minified class names. If they restructure, this stops matching and
  * the plate comes back — visible, not broken.
  */
-:root[data-theme='dark'] .gsi-host [role='button'] div:has(svg) {
+:root[data-theme="dark"] .gsi-host [role="button"] div:has(svg) {
   background-color: transparent;
 }
 
@@ -6211,7 +7743,7 @@
   margin: 0;
   max-width: 62ch;
 }
-html[lang='km'] .about-lead {
+html[lang="km"] .about-lead {
   line-height: 1.95;
 }
 
@@ -6274,7 +7806,7 @@ html[lang='km'] .about-lead {
      nudging down to share a baseline with the first line of text. */
   padding-top: 0.1rem;
 }
-html[lang='km'] .about-step-n {
+html[lang="km"] .about-step-n {
   /* Moul has no lining numerals worth setting at this size, and the Latin
      digits are what the numeral is - so it keeps the Latin face in both
      locales, the way .nav-brand-text does for the wordmark. */
@@ -6557,7 +8089,7 @@ html[lang='km'] .about-step-n {
   color: var(--color-muted);
   margin: 0 0 0.8rem;
 }
-html[lang='km'] .contact-card h2 {
+html[lang="km"] .contact-card h2 {
   text-transform: none;
   letter-spacing: 0;
 }
@@ -6750,7 +8282,7 @@ html[lang='km'] .contact-card h2 {
  * A vector tile provider would do this properly with a real dark style; this
  * is the honest approximation until the catalogue map needs one anyway.
  */
-[data-theme='dark'] .pin-preview .leaflet-tile-pane {
+[data-theme="dark"] .pin-preview .leaflet-tile-pane {
   filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.9);
 }
 
@@ -6792,32 +8324,25 @@ html[lang='km'] .contact-card h2 {
  */
 
 /*
- * The catalogue runs wider than the rest of the site.
+ * Events page: catalogue on the left, map on the right.
  *
- * Every other page is capped at the 1360px shell, which is a reading width -
- * right for a form or an event's details. Here it was leaving a 273px void
- * down the left of a 1905px screen while the map sat against the right edge,
- * because a list and a map side by side want the window, not a column.
- *
- * Wide, but not unbounded: past ~2100px the cards stop gaining anything and
- * the eye has too far to travel between a card and its pin. Even gutters
- * rather than bleeding to the edge - which is what the big travel sites
- * actually do, and it drops the negative-margin and overflow-clip workarounds
- * that reaching the edge needed.
+ * Sized to match .nav-inner and .footer-inner via .container (max-w-shell: 1360px, px-page).
  */
 .events-page {
-  max-width: min(2100px, 100%);
-  padding-inline: clamp(var(--spacing-page), 3vw, 2.75rem);
+  /* Inherits max-w-shell and px-page from .container */
 }
-/* Two across. The list is sharing the shell with a map now, and the
-   four-across grid of the full-width page loses its titles to ellipsis. */
+/* Two across. Sized to match the exact card width of HomePage's 4-up grid
+   ((--container-shell - 2*--spacing-page - 3*gap) / 4) ~317.6px per card.
+   2 cards + 1 gap = (--container-shell - 2*--spacing-page - gap) / 2 = ~652.8px. */
 .grid-cards-split {
   @apply grid-cols-2;
 }
 
 .events-split {
   @apply mt-[1.4rem] grid items-start;
-  grid-template-columns: minmax(0, 1fr) clamp(360px, 42vw, 820px);
+  grid-template-columns:
+    calc((var(--container-shell) - 2 * var(--spacing-page) - 1.1rem) / 2)
+    minmax(0, 1fr);
   gap: 1.5rem;
 }
 .events-list {
@@ -6860,16 +8385,33 @@ html[lang='km'] .contact-card h2 {
 .evmap-pin-wrap {
   @apply !h-auto !w-auto;
 }
+/* Column that stacks the needle icon on top of the price pill. */
+.evmap-pin-stack {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  transform: translate(-50%, -50%);
+  gap: 1px;
+}
+/* The SVG pin needle that appears when a marker is pinned (clicked). */
+.evmap-needle {
+  color: var(--color-brand-600);
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.32));
+  flex-shrink: 0;
+}
 .evmap-pin {
-  @apply inline-block -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full px-[0.55rem] py-[0.22rem] text-[0.76rem] font-bold;
+  @apply inline-block whitespace-nowrap rounded-full px-[0.55rem] py-[0.22rem] text-[0.76rem] font-bold;
   background: var(--color-surface);
   color: var(--color-ink);
   border: 1px solid var(--color-line);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.22);
-  transition: transform 0.15s, background 0.15s, color 0.15s;
+  transition:
+    transform 0.15s,
+    background 0.15s,
+    color 0.15s;
 }
 .evmap-pin:hover {
-  transform: translate(-50%, -50%) scale(1.06);
+  transform: scale(1.06);
 }
 /* Selected gets a brand highlight ring and accent color on a white surface
    so it stands out cleanly without dark color bleeding into popups. */
@@ -6877,17 +8419,59 @@ html[lang='km'] .contact-card h2 {
   background: var(--color-surface);
   color: var(--color-brand-600);
   border-color: var(--color-brand-500);
-  box-shadow: 0 0 0 2px var(--color-brand-500), 0 2px 6px rgba(0, 0, 0, 0.18);
-  transform: translate(-50%, -50%) scale(1.08);
+  box-shadow:
+    0 0 0 2px var(--color-brand-500),
+    0 2px 6px rgba(0, 0, 0, 0.18);
+  transform: scale(1.08);
+}
+/* Pinned (clicked) marker: solid brand fill so the user knows it's locked.
+   Overrides is-active when both apply (hover on top of pinned). */
+.evmap-pin.is-pinned {
+  background: var(--color-brand-600);
+  color: #fff;
+  border-color: var(--color-brand-700);
+  box-shadow:
+    0 0 0 3px rgba(22, 116, 74, 0.32),
+    0 3px 8px rgba(0, 0, 0, 0.28);
+  transform: scale(1.12);
+  animation: evmap-pin-pulse 0.3s ease-out;
+}
+@keyframes evmap-pin-pulse {
+  0% {
+    box-shadow:
+      0 0 0 0 rgba(22, 116, 74, 0.5),
+      0 3px 8px rgba(0, 0, 0, 0.28);
+  }
+  60% {
+    box-shadow:
+      0 0 0 8px rgba(22, 116, 74, 0),
+      0 3px 8px rgba(0, 0, 0, 0.28);
+  }
+  100% {
+    box-shadow:
+      0 0 0 3px rgba(22, 116, 74, 0.32),
+      0 3px 8px rgba(0, 0, 0, 0.28);
+  }
+}
+[data-theme="dark"] .evmap-needle {
+  color: #4ade80;
+}
+[data-theme="dark"] .evmap-pin.is-pinned {
+  background: var(--color-brand-600);
+  border-color: var(--color-brand-500);
+  box-shadow:
+    0 0 0 3px rgba(74, 222, 128, 0.3),
+    0 3px 8px rgba(0, 0, 0, 0.4);
 }
 
-/* The card whose pin is lit. A ring rather than a transform: the cards sit in
-   a grid and scaling one nudges its neighbours. */
-.ev-slot {
-  @apply min-w-0 rounded-[14px] transition-shadow;
-}
-.ev-slot.is-active {
-  box-shadow: 0 0 0 2px var(--color-brand-500);
+/*
+ * Map Dark Theme: automatically switches with the web theme ([data-theme="dark"]).
+ * Inverts and hue-rotates the raster tile pane so land surfaces turn to deep midnight slate
+ * and water to night blue, while the emerald pins and price badges stay 100% vibrant.
+ */
+[data-theme="dark"] .events-map .leaflet-tile-pane,
+[data-theme="dark"] .evloc-map-canvas .leaflet-tile-pane {
+  filter: invert(95%) hue-rotate(180deg) brightness(1.18) contrast(78%);
 }
 
 /* Leaflet's chrome on this project's surfaces. Compound selector, not
@@ -6906,6 +8490,43 @@ html[lang='km'] .contact-card h2 {
 .events-map.leaflet-container .leaflet-popup-tip {
   @apply border border-line bg-surface text-ink;
 }
+
+[data-theme="dark"] .events-map.leaflet-container,
+[data-theme="dark"] .evloc-map-canvas.leaflet-container {
+  background: #23272f;
+}
+[data-theme="dark"] .events-map.leaflet-container .leaflet-bar a,
+[data-theme="dark"] .events-map.leaflet-container .leaflet-control-attribution,
+[data-theme="dark"] .evloc-map-canvas.leaflet-container .leaflet-bar a,
+[data-theme="dark"]
+  .evloc-map-canvas.leaflet-container
+  .leaflet-control-attribution {
+  background: #2d323b;
+  color: #f3f4f6;
+  border-color: rgba(255, 255, 255, 0.18);
+}
+[data-theme="dark"]
+  .events-map.leaflet-container
+  .leaflet-control-attribution
+  a,
+[data-theme="dark"]
+  .evloc-map-canvas.leaflet-container
+  .leaflet-control-attribution
+  a {
+  color: #a0aec0;
+}
+[data-theme="dark"]
+  .events-map.leaflet-container
+  .leaflet-popup-content-wrapper,
+[data-theme="dark"] .events-map.leaflet-container .leaflet-popup-tip,
+[data-theme="dark"]
+  .evloc-map-canvas.leaflet-container
+  .leaflet-popup-content-wrapper,
+[data-theme="dark"] .evloc-map-canvas.leaflet-container .leaflet-popup-tip {
+  background: #23272f;
+  color: #f9fafb;
+  border-color: rgba(255, 255, 255, 0.18);
+}
 .evmap-pop-title {
   @apply font-bold;
 }
@@ -6913,7 +8534,69 @@ html[lang='km'] .contact-card h2 {
   @apply text-muted text-[0.78rem];
 }
 .evmap-pop-price {
-  @apply mt-1 font-bold;
+  @apply font-bold;
+}
+.evmap-pop-foot {
+  @apply mt-[0.4rem] flex items-center justify-between gap-[0.5rem];
+}
+.leaflet-popup-content a.evmap-pop-detail,
+.events-map .evmap-pop-detail,
+.evmap-pop-detail {
+  @apply inline-flex items-center justify-center gap-[0.35rem] rounded-full px-[0.85rem] py-[0.3rem]
+    text-[0.75rem] font-semibold no-underline overflow-hidden relative cursor-pointer select-none;
+  background: linear-gradient(
+    135deg,
+    var(--color-brand-600),
+    var(--color-brand-700)
+  ) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 6px -1px rgba(18, 97, 60, 0.4);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transform: translateY(0);
+  text-decoration: none !important;
+}
+
+.leaflet-popup-content a.evmap-pop-detail::before,
+.evmap-pop-detail::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.25),
+    transparent
+  );
+  transition: left 0.5s ease-out;
+}
+
+.leaflet-popup-content a.evmap-pop-detail:hover,
+.events-map .evmap-pop-detail:hover,
+.evmap-pop-detail:hover {
+  background: linear-gradient(
+    135deg,
+    var(--color-brand-500),
+    var(--color-brand-600)
+  ) !important;
+  color: #ffffff !important;
+  box-shadow: 0 5px 14px -2px rgba(18, 97, 60, 0.5);
+  transform: translateY(-1.5px) scale(1.03);
+  text-decoration: none !important;
+}
+
+.leaflet-popup-content a.evmap-pop-detail:hover::before,
+.evmap-pop-detail:hover::before {
+  left: 100%;
+}
+
+.leaflet-popup-content a.evmap-pop-detail:active,
+.events-map .evmap-pop-detail:active,
+.evmap-pop-detail:active {
+  transform: translateY(0.5px) scale(0.97);
+  box-shadow: 0 1px 3px -1px rgba(18, 97, 60, 0.4);
 }
 
 /*
@@ -6938,12 +8621,6 @@ html[lang='km'] .contact-card h2 {
   .events-chrome {
     @apply mb-4;
   }
-  .events-page .page-head {
-    @apply mb-2 items-baseline;
-  }
-  .events-page .page-head h1 {
-    @apply text-[2rem];
-  }
   .events-split {
     @apply mt-0 items-start;
   }
@@ -6960,22 +8637,6 @@ html[lang='km'] .contact-card h2 {
   }
 }
 
-/* The toggle is mobile-only; on desktop both columns are on screen at once. */
-.events-map-toggle {
-  @apply hidden;
-}
-
-@media (max-width: 1240px) {
-  .grid-cards-split {
-    @apply grid-cols-1;
-  }
-}
-
-/*
- * Below this the map stops being a column and becomes a second view of the
- * same results. Two panes do not fit on a phone, and a map stacked under eight
- * cards is one nobody scrolls far enough to find.
- */
 @media (max-width: 900px) {
   .events-split {
     @apply grid-cols-1;
@@ -6984,25 +8645,84 @@ html[lang='km'] .contact-card h2 {
     @apply grid-cols-2;
   }
   .events-map-col {
-    @apply static hidden;
-  }
-  .events-map-col.is-open {
-    @apply block;
-  }
-  .events-list.is-map-open {
     @apply hidden;
-  }
-  .events-map {
-    @apply rounded-[12px] border border-line;
-    height: calc(100vh - 12rem);
-  }
-  .events-map-toggle {
-    @apply fixed bottom-5 left-1/2 z-30 flex -translate-x-1/2 shadow-lg;
   }
 }
 @media (max-width: 560px) {
   .grid-cards-split {
     @apply grid-cols-1;
+  }
+}
+
+/* Events Map Popup Modal (Mobile & Tablet) */
+.events-map-modal-backdrop {
+  @apply fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-5;
+  background: rgba(0, 0, 0, 0.72);
+  animation: eventsMapFadeIn 0.2s ease-out;
+}
+.events-map-modal-dialog {
+  @apply relative flex w-full max-w-4xl flex-col overflow-hidden border border-line bg-surface shadow-2xl;
+  height: 86vh;
+  border-radius: 20px;
+  animation: eventsMapScaleUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.events-map-modal-header {
+  @apply flex shrink-0 items-center justify-between border-b border-line bg-surface px-4 py-3 sm:px-5 sm:py-3.5;
+}
+.events-map-modal-title-group {
+  @apply flex items-center gap-3 min-w-0;
+}
+.events-map-modal-icon-chip {
+  @apply flex h-9 w-9 shrink-0 items-center justify-center rounded-xl;
+  background: color-mix(in oklab, var(--color-brand-500) 14%, transparent);
+  color: var(--color-brand-600);
+  border: 1px solid color-mix(in oklab, var(--color-brand-500) 24%, transparent);
+}
+[data-theme="dark"] .events-map-modal-icon-chip {
+  color: var(--color-brand-500);
+}
+.events-map-modal-title {
+  @apply m-0 text-base font-bold text-ink leading-tight truncate sm:text-lg;
+}
+.events-map-modal-sub {
+  @apply m-0 mt-0.5 text-xs text-muted truncate;
+}
+.events-map-modal-close {
+  @apply flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-line text-muted transition-colors hover:bg-surface-2 hover:text-ink cursor-pointer;
+}
+.events-map-modal-body {
+  @apply relative flex-1 min-h-0 w-full overflow-hidden bg-surface-2;
+}
+.events-map-modal-body .events-map {
+  border: none !important;
+  border-radius: 0 !important;
+  height: 100% !important;
+}
+@keyframes eventsMapFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes eventsMapScaleUp {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+@media (max-width: 560px) {
+  .events-map-modal-backdrop {
+    @apply p-2;
+  }
+  .events-map-modal-dialog {
+    height: 92vh;
+    border-radius: 16px;
   }
 }
 
@@ -7039,14 +8759,14 @@ html[lang='km'] .contact-card h2 {
 }
 /* Bigger than the stock 16px thumb: this one has to be grabbable over a chart
    and is the only affordance in the control. */
-.pricerange-slider input[type='range']::-webkit-slider-thumb {
+.pricerange-slider input[type="range"]::-webkit-slider-thumb {
   height: 24px;
   width: 24px;
   border: 1px solid var(--color-line);
   background: var(--color-surface);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.26);
 }
-.pricerange-slider input[type='range']::-moz-range-thumb {
+.pricerange-slider input[type="range"]::-moz-range-thumb {
   height: 24px;
   width: 24px;
   border: 1px solid var(--color-line);
@@ -7055,16 +8775,16 @@ html[lang='km'] .contact-card h2 {
 }
 
 .pricerange-ends {
-  @apply mt-[0.7rem] flex items-end gap-2;
+  @apply mt-[0.7rem] flex items-center justify-between gap-2;
 }
-/* items-start / items-end, not stretch: a flex column stretches its children
-   by default, which blew the "$0" pill across the whole left half while the
-   right one stayed compact. */
 .pricerange-end {
-  @apply flex flex-1 flex-col items-start gap-[0.25rem];
+  @apply flex items-center;
 }
-.pricerange-end:last-of-type {
-  @apply items-end;
+.pricerange-mid {
+  @apply flex flex-wrap items-center justify-center gap-[0.4rem];
+}
+.pricerange-reset-btn {
+  @apply !px-2 !py-1 text-muted hover:text-ink;
 }
 /* A read-only pill, not an input: these mirror the handles rather than taking
    typed values, and a box that looks editable but is not is worse than one
@@ -7073,7 +8793,605 @@ html[lang='km'] .contact-card h2 {
   @apply inline-block rounded-full border border-line px-[0.85rem] py-[0.35rem] text-[0.86rem] font-bold;
   background: var(--color-surface);
 }
+
+/* Reserve Modal: clean darkened overlay with NO backdrop blur per user request */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(12, 14, 18, 0.62);
+  /* Explicitly NO backdrop-filter blur */
+  display: grid;
+  place-items: center;
+  z-index: 9999;
+  padding: 1.25rem;
+}
+
+[data-theme="dark"] .modal-overlay {
+  background: rgba(0, 0, 0, 0.82);
+}
+
+.modal-container.reserve-modal {
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: 24px;
+  width: 100%;
+  max-width: 468px;
+  max-height: calc(100dvh - 2.5rem);
+  box-shadow:
+    0 24px 60px -12px rgba(15, 23, 42, 0.22),
+    0 4px 16px -2px rgba(15, 23, 42, 0.06),
+    0 0 0 1px rgba(15, 23, 42, 0.04);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: reserve-pop-in 0.26s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+[data-theme="dark"] .modal-container.reserve-modal {
+  background: #181714;
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 32px 72px -16px rgba(0, 0, 0, 0.85),
+    0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+@keyframes reserve-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Mobile Sheet Pull Handle */
+.reserve-modal-handle-wrap {
+  display: none;
+  justify-content: center;
+  padding: 0.6rem 0 0.15rem;
+  background: var(--color-surface);
+}
+
+.reserve-modal-handle {
+  width: 38px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--color-line);
+}
+
+/* Header */
+.reserve-head {
+  padding: 1.25rem 1.35rem 1rem;
+  background: var(--color-surface);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.85rem;
+}
+
+.reserve-head-left {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.reserve-head-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  color: var(--color-brand-600);
+  background: var(--color-tint);
+  border: 1px solid color-mix(in srgb, var(--color-brand-500) 25%, transparent);
+}
+
+[data-theme="dark"] .reserve-head-icon {
+  color: var(--color-brand-400);
+}
+
+.reserve-head-meta {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.reserve-head-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.reserve-title {
+  margin: 0;
+  font-size: 1.18rem;
+  font-weight: 780;
+  color: var(--color-ink);
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+}
+
+.reserve-count-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-line-2);
+  color: var(--color-muted);
+}
+
+.reserve-event-name {
+  margin-top: 0.25rem;
+  font-size: 0.88rem;
+  color: var(--color-ink);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.35;
+}
+
+.reserve-event-subline {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--color-muted);
+  font-weight: 500;
+  flex-wrap: wrap;
+}
+
+.reserve-subline-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+
+.reserve-quit {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--color-line-2);
+  border-radius: 999px;
+  background: var(--color-surface-2);
+  color: var(--color-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-top: 0.15rem;
+}
+.reserve-quit:hover {
+  background: var(--color-line-2);
+  color: var(--color-ink);
+  transform: scale(1.05);
+}
+.reserve-quit:active {
+  transform: scale(0.95);
+}
+
+/* Urgency Status Banner */
+.reserve-status-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.65rem 1.35rem;
+  background: color-mix(
+    in srgb,
+    var(--color-brand-500) 7%,
+    var(--color-surface)
+  );
+  border-top: 1px solid var(--color-line-2);
+  border-bottom: 1px solid var(--color-line-2);
+  gap: 0.75rem;
+  font-size: 0.82rem;
+  color: var(--color-ink);
+}
+
+[data-theme="dark"] .reserve-status-banner {
+  background: rgba(16, 185, 129, 0.08);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.reserve-status-banner.warn {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #991b1b;
+}
+
+[data-theme="dark"] .reserve-status-banner.warn {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.25);
+  color: #fca5a5;
+}
+
+.reserve-status-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.reserve-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 0 2.5px rgba(16, 185, 129, 0.25);
+  animation: timer-pulse 1.8s infinite;
+  flex: none;
+}
+
+.reserve-status-banner.warn .reserve-status-dot {
+  background: #ef4444;
+  box-shadow: 0 0 0 2.5px rgba(239, 68, 68, 0.25);
+}
+
+.reserve-status-text {
+  font-weight: 600;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.reserve-timer-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-line-2);
+  color: var(--color-ink);
+  font-size: 0.78rem;
+  flex: none;
+}
+
+[data-theme="dark"] .reserve-timer-pill {
+  background: rgba(0, 0, 0, 0.25);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.reserve-timer-label {
+  font-size: 0.74rem;
+  color: var(--color-muted);
+  font-weight: 500;
+}
+
+.reserve-status-clock {
+  font-variant-numeric: tabular-nums;
+  font-weight: 750;
+  color: var(--color-brand-600);
+  letter-spacing: 0.02em;
+}
+
+.reserve-status-banner.warn .reserve-status-clock {
+  color: #dc2626;
+}
+
+[data-theme="dark"] .reserve-status-clock {
+  color: var(--color-brand-400);
+}
+
+/* Modal Body */
+.reserve-modal-body {
+  padding: 1.15rem 1.35rem 0.85rem;
+  overflow-y: auto;
+}
+
+.reserve-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin-bottom: 0.85rem;
+}
+
+.reserve-item-row {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.8rem 0.95rem;
+  border-radius: 14px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-line-2);
+  transition: all 0.15s ease;
+}
+
+.reserve-item-row:hover {
+  border-color: var(--color-line);
+}
+
+.reserve-item-mark {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  color: var(--color-brand-600);
+  background: var(--color-surface);
+  border: 1px solid var(--color-line-2);
+  flex: none;
+}
+
+[data-theme="dark"] .reserve-item-mark {
+  color: var(--color-brand-400);
+}
+
+.reserve-item-info {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.reserve-item-title {
+  color: var(--color-ink);
+  font-size: 0.93rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.reserve-item-sub {
+  margin-top: 0.15rem;
+  color: var(--color-muted);
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+.reserve-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex: none;
+}
+
+.reserve-item-price {
+  color: var(--color-ink);
+  font-weight: 750;
+  font-size: 0.98rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.btn-item-remove {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-item-remove:hover {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #dc2626;
+  transform: scale(1.08);
+}
+
+[data-theme="dark"] .btn-item-remove:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #fca5a5;
+}
+
+/* Receipt breakdown */
+.reserve-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 0.85rem 0.5rem 0.2rem;
+  border-top: 1px dashed var(--color-line);
+}
+
+.reserve-breakdown-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.88rem;
+  color: var(--color-muted);
+}
+
+.reserve-breakdown-val {
+  font-weight: 600;
+  color: var(--color-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.reserve-breakdown-divider {
+  height: 1px;
+  background: var(--color-line-2);
+  margin: 0.2rem 0;
+}
+
+.reserve-breakdown-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 0.15rem;
+}
+
+.reserve-breakdown-total .reserve-total-label {
+  font-size: 1.05rem;
+  font-weight: 780;
+  color: var(--color-ink);
+  letter-spacing: -0.01em;
+}
+
+.reserve-breakdown-total .reserve-total-val {
+  font-size: 1.55rem;
+  font-weight: 800;
+  color: var(--color-brand-600);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+}
+
+[data-theme="dark"] .reserve-breakdown-total .reserve-total-val {
+  color: var(--color-brand-400);
+}
+
+/* Modal Footer & Actions */
+.reserve-modal-footer {
+  padding: 1.1rem 1.35rem 1.35rem;
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-line-2);
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.btn-checkout-primary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 50px;
+  padding: 0 1.25rem;
+  border-radius: 14px;
+  background: linear-gradient(
+    135deg,
+    var(--color-brand-600),
+    var(--color-brand-700)
+  );
+  color: #ffffff !important;
+  font-size: 1rem;
+  font-weight: 750;
+  text-decoration: none !important;
+  cursor: pointer;
+  box-shadow:
+    0 4px 14px rgba(18, 97, 60, 0.32),
+    0 1px 2px rgba(18, 97, 60, 0.2);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-checkout-primary:hover {
+  background: linear-gradient(
+    135deg,
+    var(--color-brand-500),
+    var(--color-brand-600)
+  );
+  box-shadow:
+    0 8px 24px rgba(18, 97, 60, 0.42),
+    0 2px 4px rgba(18, 97, 60, 0.2);
+  transform: translateY(-1.5px);
+}
+
+.btn-checkout-primary:active {
+  transform: translateY(0.5px);
+}
+
+.btn-checkout-end {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-checkout-badge {
+  padding: 0.2rem 0.55rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.2);
+  font-size: 0.85rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+.reserve-footer-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 0.1rem;
+}
+
+.btn-release-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: transparent;
+  border: none;
+  color: var(--color-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.25rem 0;
+  transition: color 0.15s ease;
+}
+
+.btn-release-link:hover {
+  color: #dc2626;
+}
+
+.reserve-guarantee-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+@keyframes timer-pulse {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.25);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+}
+
+@media (max-width: 480px) {
+  .modal-overlay {
+    align-items: end;
+    padding: 0;
+  }
+  .modal-container.reserve-modal {
+    border-radius: 24px 24px 0 0;
+    max-height: 88dvh;
+    border-bottom: none;
+    border-left: none;
+    border-right: none;
+  }
+  .reserve-modal-handle-wrap {
+    display: flex;
+  }
+  .reserve-head {
+    padding: 0.85rem 1.15rem 0.85rem;
+  }
+  .reserve-status-banner {
+    padding: 0.55rem 1.15rem;
+  }
+  .reserve-modal-body {
+    padding: 0.95rem 1.15rem 0.65rem;
+  }
+  .reserve-modal-footer {
+    padding: 0.95rem 1.15rem 1.25rem;
+  }
+  .reserve-head-meta .reserve-event-name {
+    max-width: 220px;
+  }
+}
+
 .pricerange-dash {
-  @apply mb-[1.1rem] h-px w-3 shrink-0;
+  @apply h-px w-3 shrink-0 self-center;
   background: var(--color-line);
 }

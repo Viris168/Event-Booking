@@ -1,6 +1,7 @@
 package com.eventbooking.service.notification;
 
 import com.eventbooking.Enumeration.NotificationType;
+import com.eventbooking.Enumeration.NotificationFilter;
 import com.eventbooking.dto.notification.NotificationResponse;
 import org.springframework.data.domain.Page;
 
@@ -25,7 +26,7 @@ public interface NotificationService {
      *
      * @param unreadOnly what the bell's dropdown asks for; the full page passes false
      */
-    Page<NotificationResponse> inbox(Long recipientUserId, boolean unreadOnly, int page, int size);
+    Page<NotificationResponse> inbox(Long recipientUserId, NotificationFilter filter, int page, int size);
 
     /** The badge number. */
     long unreadCount(Long recipientUserId);

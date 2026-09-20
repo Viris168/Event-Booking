@@ -7,7 +7,30 @@
  */
 export function plottable(events) {
   return (events ?? []).filter((e) => {
-    const v = e.venue
-    return v && v.lat != null && v.lng != null && Number.isFinite(+v.lat) && Number.isFinite(+v.lng)
-  })
+    const v = e?.venue;
+    if (!v) return false;
+    const lat = v.lat ?? v.latitude;
+    const lng = v.lng ?? v.longitude;
+    return (
+      lat != null &&
+      lng != null &&
+      Number.isFinite(+lat) &&
+      Number.isFinite(+lng)
+    );
+  });
+}
+
+export function getVenueCoords(venue) {
+  if (!venue) return null;
+  const lat = venue.lat ?? venue.latitude;
+  const lng = venue.lng ?? venue.longitude;
+  if (
+    lat == null ||
+    lng == null ||
+    !Number.isFinite(+lat) ||
+    !Number.isFinite(+lng)
+  ) {
+    return null;
+  }
+  return [+lat, +lng];
 }

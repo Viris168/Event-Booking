@@ -6,6 +6,9 @@ import com.eventbooking.model.Booking;
 import com.eventbooking.model.BookingItem;
 import org.springframework.stereotype.Component;
 
+import com.eventbooking.config.BookingProperties;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 /**
@@ -16,10 +19,23 @@ import java.util.List;
 @Component
 public class BookingMapper {
 
+    private final BookingProperties properties;
+
+    public BookingMapper(BookingProperties properties) {
+        this.properties = properties;
+    }
+
     public BookingResponse toResponse(Booking booking) {
         List<BookingItemResponse> items = booking.getItems().stream()
                 .map(this::toItemResponse)
                 .toList();
+
+        Instant expiresAt = null;
+        if (booking.getState() == com.eventbooking.Enumeration.BookingStatus.PENDING_PAYMENT ||
+            booking.getState() == com.eventbooking.Enumeration.BookingStatus.AWAITING_CONFIRMATION ||
+            booking.getState() == com.eventbooking.Enumeration.BookingStatus.PAYMENT_FAILED) {
+            expiresAt = booking.getCreatedAt().plus(properties.paymentWindowMinutes(), ChronoUnit.MINUTES);
+        }
 
         return new BookingResponse(
                 booking.getId(),
@@ -37,6 +53,7 @@ public class BookingMapper {
                 booking.getTotalKhr(),
                 booking.getCreatedAt(),
                 booking.getStateChangedAt(),
+                expiresAt,
                 items
         );
     }

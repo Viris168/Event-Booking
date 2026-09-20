@@ -61,3 +61,35 @@ export const NOTIFICATION_TONE = {
 /** Unknown types still render: a new server type should not leave a blank row. */
 export const notificationIcon = (type) => NOTIFICATION_ICON[type] || 'info'
 export const notificationTone = (type) => NOTIFICATION_TONE[type] || 'quiet'
+
+/**
+ * Collapse a list into one entry per type, iOS-style.
+ *
+ * Six "tickets sold" in a row are six facts but one thing to know about, and a
+ * list that spends its whole height on them buries the review decision
+ * underneath. Grouping by type rather than by event is deliberate: the reason
+ * to collapse is that the rows say the same KIND of thing, and an organiser
+ * with two busy events wants one stack, not two.
+ *
+ * Order is the server's, untouched. A group sits where its newest member was,
+ * so collapsing never moves anything up past something more recent than it.
+ * Returned entries are always groups - a lone notification is a group of one,
+ * so the caller has a single shape to render rather than a branch.
+ */
+export function groupByType(items) {
+  const byType = new Map()
+  for (const n of items) {
+    const bucket = byType.get(n.type)
+    if (bucket) bucket.push(n)
+    else byType.set(n.type, [n])
+  }
+
+  const out = []
+  const placed = new Set()
+  for (const n of items) {
+    if (placed.has(n.type)) continue
+    placed.add(n.type)
+    out.push({ type: n.type, items: byType.get(n.type) })
+  }
+  return out
+}

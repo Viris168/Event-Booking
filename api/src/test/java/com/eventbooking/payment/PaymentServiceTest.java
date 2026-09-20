@@ -9,6 +9,7 @@ import com.eventbooking.Enumeration.PaymentProvider;
 import com.eventbooking.Enumeration.PaymentStatus;
 import com.eventbooking.config.BookingProperties;
 import com.eventbooking.service.booking.BookingStateMachine;
+import com.eventbooking.service.booking.BookingService;
 import com.eventbooking.exception.booking.BookingNotFoundException;
 import com.eventbooking.dto.payment.PaymentResponse;
 import com.eventbooking.model.Booking;
@@ -62,6 +63,7 @@ class PaymentServiceTest {
     private PaymentTransactionRepository paymentRepository;
     private BookingRepository bookingRepository;
     private TicketService ticketService;
+    private BookingService bookingService;
     private List<BookingStatusHistory> history;
     private PaymentService service;
 
@@ -70,6 +72,7 @@ class PaymentServiceTest {
         paymentRepository = mock(PaymentTransactionRepository.class);
         bookingRepository = mock(BookingRepository.class);
         ticketService = mock(TicketService.class);
+        bookingService = mock(BookingService.class);
 
         BookingStatusHistoryRepository historyRepository = mock(BookingStatusHistoryRepository.class);
         history = new ArrayList<>();
@@ -90,6 +93,7 @@ class PaymentServiceTest {
                 properties,
                 new BookingProperties(new BigDecimal("4100.0000"), 15),
                 mock(AbaPaywayGateway.class),
+                bookingService,
                 // payway.checkout-ttl, matching the Bakong QR TTL.
                 Duration.ofMinutes(5));
 
@@ -300,8 +304,7 @@ class PaymentServiceTest {
 
     @Test
     void expiresALapsedQrAndLetsTheCustomerTryAgain() {
-        // The timeout path. PAYMENT_FAILED is not terminal, so the seats are
-        // still theirs - releasing those is the booking payment window's job.
+        // The timeout path.
         Booking booking = bookingIn(BookingStatus.AWAITING_CONFIRMATION);
         PaymentTransaction attempt = openAttempt(booking, Instant.now().minusSeconds(1));
         givenAttemptUnderLock(booking, attempt);
@@ -309,8 +312,7 @@ class PaymentServiceTest {
         service.applyProviderResult(PAYMENT_ID, BakongCheckResult.notFound("no transaction yet"));
 
         assertThat(attempt.getStatus()).isEqualTo(PaymentStatus.EXPIRED);
-        assertThat(booking.getState()).isEqualTo(BookingStatus.PAYMENT_FAILED);
-        assertThat(history).hasSize(1);
+        verify(bookingService).expireBooking(booking.getId(), "Payment expired");
     }
 
     @Test
@@ -337,7 +339,7 @@ class PaymentServiceTest {
         service.applyProviderResult(PAYMENT_ID, BakongCheckResult.unavailable("connect timed out"));
 
         assertThat(attempt.getStatus()).isEqualTo(PaymentStatus.EXPIRED);
-        assertThat(booking.getState()).isEqualTo(BookingStatus.PAYMENT_FAILED);
+        verify(bookingService).expireBooking(booking.getId(), "Payment expired");
     }
 
     // ------------------------------------------------------------------

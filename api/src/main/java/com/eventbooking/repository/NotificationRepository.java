@@ -31,6 +31,19 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     Page<Notification> findByRecipientUserIdAndReadAtIsNullOrderByCreatedAtDesc(
             Long recipientUserId, Pageable pageable);
 
+    /**
+     * The read inbox, newest first.
+     *
+     * <p>No partial index behind this one, unlike its unread twin. The index on
+     * (recipient, created_at DESC) still orders it; what it cannot do is skip
+     * the unread rows, so this filters them after the fact. That is the right
+     * trade here: the unread set is what gets counted on a timer by every open
+     * tab, and the read set is what somebody scrolls once when they go looking
+     * for something they have already seen.
+     */
+    Page<Notification> findByRecipientUserIdAndReadAtIsNotNullOrderByCreatedAtDesc(
+            Long recipientUserId, Pageable pageable);
+
     /** The badge number. Served by the partial index, so it stays cheap as history grows. */
     long countByRecipientUserIdAndReadAtIsNull(Long recipientUserId);
 

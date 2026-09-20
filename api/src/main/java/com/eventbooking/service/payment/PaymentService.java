@@ -7,6 +7,7 @@ import com.eventbooking.Enumeration.PaymentCurrency;
 import com.eventbooking.Enumeration.PaymentProvider;
 import com.eventbooking.Enumeration.PaymentStatus;
 import com.eventbooking.config.BookingProperties;
+import com.eventbooking.service.booking.BookingService;
 import com.eventbooking.service.booking.BookingStateMachine;
 import com.eventbooking.exception.booking.BookingNotFoundException;
 import com.eventbooking.exception.PaymentGatewayException;
@@ -70,6 +71,7 @@ public class PaymentService {
     private final PaymentProperties paymentProperties;
     private final BookingProperties bookingProperties;
     private final AbaPaywayGateway abaPaywayGateway;
+    private final BookingService bookingService;
 
     /**
      * PayWay's equivalent of {@code app.payment.bakong.qr-ttl}. It lives under the
@@ -87,6 +89,7 @@ public class PaymentService {
                           PaymentProperties paymentProperties,
                           BookingProperties bookingProperties,
                           AbaPaywayGateway abaPaywayGateway,
+                          BookingService bookingService,
                           @Value("${payway.checkout-ttl:5m}") Duration paywayCheckoutTtl) {
         this.paymentRepository = paymentRepository;
         this.bookingRepository = bookingRepository;
@@ -97,6 +100,7 @@ public class PaymentService {
         this.paymentProperties = paymentProperties;
         this.bookingProperties = bookingProperties;
         this.abaPaywayGateway = abaPaywayGateway;
+        this.bookingService = bookingService;
         this.paywayCheckoutTtl = paywayCheckoutTtl;
     }
 
@@ -563,8 +567,7 @@ public class PaymentService {
         attempt.setNote("QR expired before payment");
 
         if (booking.getState() == BookingStatus.AWAITING_CONFIRMATION) {
-            stateMachine.transition(booking, BookingStatus.PAYMENT_FAILED, null,
-                    "KHQR expired before payment");
+            bookingService.expireBooking(booking.getId(), "Payment expired");
         }
 
         log.info("Attempt {} on booking {} expired after {} poll(s)",

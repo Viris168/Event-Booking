@@ -1,4 +1,5 @@
-import { useMemo } from 'react'
+import { useMemo } from "react";
+import Icon from "./Icon.jsx";
 
 /**
  * The price filter, with the catalogue's own distribution behind it.
@@ -17,7 +18,7 @@ import { useMemo } from 'react'
  */
 
 /** Enough bars to show a shape, few enough to stay legible at ~320px. */
-const BUCKETS = 28
+const BUCKETS = 28;
 
 export default function PriceRange({
   min,
@@ -25,26 +26,29 @@ export default function PriceRange({
   step = 1,
   value,
   onChange,
+  onReset,
   prices = [],
   lowLabel,
   highLabel,
-  locale = 'en',
+  locale = "en",
 }) {
-  const [low, high] = value
-  const pct = (n) => ((n - min) / (max - min)) * 100
-  const km = locale === 'km'
+  const [low, high] = value;
+  const pct = (n) => ((n - min) / (max - min)) * 100;
 
   const bars = useMemo(() => {
-    const counts = new Array(BUCKETS).fill(0)
+    const counts = new Array(BUCKETS).fill(0);
     for (const p of prices) {
-      if (!Number.isFinite(p)) continue
+      if (!Number.isFinite(p)) continue;
       // Anything at or above the top of the track belongs to the last bucket -
       // the ceiling means "and up", so those events are not off the chart.
-      const clamped = Math.min(Math.max(p, min), max)
-      const i = Math.min(BUCKETS - 1, Math.floor(((clamped - min) / (max - min)) * BUCKETS))
-      counts[i] += 1
+      const clamped = Math.min(Math.max(p, min), max);
+      const i = Math.min(
+        BUCKETS - 1,
+        Math.floor(((clamped - min) / (max - min)) * BUCKETS),
+      );
+      counts[i] += 1;
     }
-    const peak = Math.max(...counts, 1)
+    const peak = Math.max(...counts, 1);
     return counts.map((n, i) => ({
       // A bucket with events never renders as nothing: a 1px stub says "some"
       // where a proportional height would round it away to "none".
@@ -52,10 +56,10 @@ export default function PriceRange({
       from: min + ((max - min) * i) / BUCKETS,
       to: min + ((max - min) * (i + 1)) / BUCKETS,
       count: n,
-    }))
-  }, [prices, min, max])
+    }));
+  }, [prices, min, max]);
 
-  const hasShape = prices.length > 0
+  const hasShape = prices.length > 0;
 
   return (
     <div className="pricerange">
@@ -64,21 +68,24 @@ export default function PriceRange({
           {bars.map((b, i) => {
             // A bar counts as selected when any part of its bucket is in range,
             // so the ends of the selection are never a half-lit bar.
-            const inRange = b.to > low && b.from < high
+            const inRange = b.to > low && b.from < high;
             return (
               <span
                 key={i}
-                className={`pricerange-bar${inRange ? ' is-in' : ''}`}
+                className={`pricerange-bar${inRange ? " is-in" : ""}`}
                 style={{ height: `${Math.round(b.height * 100)}%` }}
               />
-            )
+            );
           })}
         </div>
       )}
 
       <div className="range pricerange-slider">
         <div className="range-track">
-          <div className="range-fill" style={{ left: `${pct(low)}%`, right: `${100 - pct(high)}%` }} />
+          <div
+            className="range-fill"
+            style={{ left: `${pct(low)}%`, right: `${100 - pct(high)}%` }}
+          />
         </div>
         <input
           type="range"
@@ -87,7 +94,9 @@ export default function PriceRange({
           step={step}
           value={low}
           aria-label={lowLabel}
-          onChange={(e) => onChange([Math.min(Number(e.target.value), high), high])}
+          onChange={(e) =>
+            onChange([Math.min(Number(e.target.value), high), high])
+          }
         />
         <input
           type="range"
@@ -96,27 +105,57 @@ export default function PriceRange({
           step={step}
           value={high}
           aria-label={highLabel}
-          onChange={(e) => onChange([low, Math.max(Number(e.target.value), low)])}
+          onChange={(e) =>
+            onChange([low, Math.max(Number(e.target.value), low)])
+          }
         />
       </div>
 
-      {/* The two ends spelled out. The top of the track means "no maximum"
-          rather than exactly $100, so it is written with a + - a range left
-          alone must not read as one that excludes the dearest events. */}
+      {/* The two ends spelled out. When filtered, the active chip and reset sit directly on this same line between 0 and 100+. */}
       <div className="pricerange-ends">
         <div className="pricerange-end">
-          <span className="tiny">{km ? 'អប្បបរមា' : 'Minimum'}</span>
-          <output className="pricerange-value">${low}</output>
+          <output className="pricerange-value">${min}</output>
         </div>
-        <span className="pricerange-dash" aria-hidden="true" />
+        {low > min || high < max ? (
+          <div className="pricerange-mid">
+            <span className="filter-pill">
+              <Icon name="wallet" size={12} />
+              <span>
+                ${low} –{" "}
+                {high >= max ? (locale === "km" ? "ឡើងទៅ" : "any") : `$${high}`}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  onChange([min, max]);
+                  onReset?.();
+                }}
+                aria-label={
+                  locale === "km" ? "លុបតម្រងតម្លៃ" : "Remove price filter"
+                }
+              >
+                <Icon name="close" size={11} strokeWidth={2.5} />
+              </button>
+            </span>
+            <button
+              type="button"
+              className="btn btn-sm btn-ghost pricerange-reset-btn"
+              onClick={() => {
+                onChange([min, max]);
+                onReset?.();
+              }}
+            >
+              <Icon name="close" size={13} />
+              {locale === "km" ? "កំណត់ឡើងវិញ" : "Reset"}
+            </button>
+          </div>
+        ) : (
+          <span className="pricerange-dash" aria-hidden="true" />
+        )}
         <div className="pricerange-end">
-          <span className="tiny">{km ? 'អតិបរមា' : 'Maximum'}</span>
-          <output className="pricerange-value">
-            ${high}
-            {high >= max ? '+' : ''}
-          </output>
+          <output className="pricerange-value">${max}+</output>
         </div>
       </div>
     </div>
-  )
+  );
 }

@@ -8,7 +8,7 @@
  * Maps SeatClassResponse
  */
 export function mapSeatClass(c) {
-  if (!c) return null
+  if (!c) return null;
   return {
     id: c.id,
     event_id: c.event_id ?? c.eventId,
@@ -22,7 +22,7 @@ export function mapSeatClass(c) {
     seat_count: c.seat_count ?? c.seatCount ?? 0,
     sold_count: c.sold_count ?? c.soldCount ?? 0,
     held_count: c.held_count ?? c.heldCount ?? 0,
-  }
+  };
 }
 
 /**
@@ -30,7 +30,7 @@ export function mapSeatClass(c) {
  * Compatible with ZonePicker.jsx
  */
 export function mapZone(z) {
-  if (!z) return null
+  if (!z) return null;
   return {
     id: z.id ?? z.zone_id ?? z.zoneId,
     event_id: z.event_id ?? z.eventId,
@@ -39,25 +39,32 @@ export function mapZone(z) {
     capacity: z.capacity ?? 0,
     held_qty: z.held_qty ?? z.heldQty ?? 0,
     sold_qty: z.sold_qty ?? z.soldQty ?? 0,
-    price_usd_cents: z.price_usd_cents ?? z.priceUsdCents ?? z.unit_price_usd_cents ?? z.unitPriceUsdCents ?? 0,
-  }
+    price_usd_cents:
+      z.price_usd_cents ??
+      z.priceUsdCents ??
+      z.unit_price_usd_cents ??
+      z.unitPriceUsdCents ??
+      0,
+  };
 }
 
 /**
  * Maps EventResponse
  */
 export function mapEvent(e) {
-  if (!e) return null
+  if (!e) return null;
   return {
     id: e.id,
     organizer_id: e.organizer_id ?? e.organizerId,
+    organizer_name_en: e.organizerNameEn ?? e.organizer_name_en ?? null,
+    organizer_name_km: e.organizerNameKm ?? e.organizer_name_km ?? null,
     // EventResponse carries the venue as a nested object and no flat id, so
     // the first two are always undefined on a real response. Without the third
     // the edit form loaded an event, found no venue, never fetched that venue's
     // seat map, and told the organiser "No seats in this venue" about a venue
     // with fifty of them.
     venue_id: e.venue_id ?? e.venueId ?? e.venue?.id ?? null,
-    venue: e.venue, // Keep the venue object!
+    venue: e.venue ? mapVenue(e.venue) : null,
     inventory_mode: e.inventory_mode ?? e.inventoryMode,
     slug: e.slug,
     title_en: e.title_en ?? e.titleEn,
@@ -103,7 +110,7 @@ export function mapEvent(e) {
     // that predates the field behaving as it used to.
     available_actions: e.available_actions ?? e.availableActions ?? [],
     editable: e.editable ?? true,
-  }
+  };
 }
 
 /**
@@ -111,11 +118,14 @@ export function mapEvent(e) {
  * Compatible with SeatMap.jsx
  */
 export function mapSeatMap(res) {
-  if (!res) return { seats: [], seat_classes: [] }
+  if (!res) return { seats: [], seat_classes: [] };
   const rawSeats = Array.isArray(res)
     ? res
-    : res.seats || (res.sections || []).flatMap((section) => section.seats || [])
-  const rawClasses = Array.isArray(res) ? [] : res.seat_classes || res.seatClasses || []
+    : res.seats ||
+      (res.sections || []).flatMap((section) => section.seats || []);
+  const rawClasses = Array.isArray(res)
+    ? []
+    : res.seat_classes || res.seatClasses || [];
 
   const seats = rawSeats.map((s) => ({
     id: s.id ?? s.event_seat_id ?? s.eventSeatId,
@@ -131,11 +141,11 @@ export function mapSeatMap(res) {
     status: s.status,
     pos_x: s.pos_x ?? s.posX,
     pos_y: s.pos_y ?? s.posY,
-  }))
+  }));
 
-  const seatClasses = rawClasses.map(mapSeatClass)
+  const seatClasses = rawClasses.map(mapSeatClass);
 
-  return { seats, seat_classes: seatClasses }
+  return { seats, seat_classes: seatClasses };
 }
 
 /**
@@ -143,7 +153,8 @@ export function mapSeatMap(res) {
  * Compatible with CheckoutPage.jsx and HoldBar.jsx
  */
 export function mapHoldResponse(res) {
-  if (!res) return { hold: null, seats: [], zoneLines: [], subtotalUsdCents: 0 }
+  if (!res)
+    return { hold: null, seats: [], zoneLines: [], subtotalUsdCents: 0 };
 
   const hold = {
     id: res.id,
@@ -153,7 +164,7 @@ export function mapHoldResponse(res) {
     expires_at: res.expires_at ?? res.expiresAt,
     created_at: res.created_at ?? res.createdAt,
     extended: Boolean(res.extended),
-  }
+  };
 
   const seats = (res.seats || []).map((s) => ({
     id: s.event_seat_id ?? s.eventSeatId ?? s.id,
@@ -165,11 +176,16 @@ export function mapHoldResponse(res) {
     seat_class: {
       price_usd_cents: s.price_usd_cents ?? s.priceUsdCents,
     },
-  }))
+  }));
 
   const zoneLines = (res.zones || []).map((z) => {
-    const unitPrice = z.unit_price_usd_cents ?? z.unitPriceUsdCents ?? z.price_usd_cents ?? z.priceUsdCents ?? 0
-    const qty = z.qty ?? 0
+    const unitPrice =
+      z.unit_price_usd_cents ??
+      z.unitPriceUsdCents ??
+      z.price_usd_cents ??
+      z.priceUsdCents ??
+      0;
+    const qty = z.qty ?? 0;
     return {
       event_zone_id: z.event_zone_id ?? z.eventZoneId ?? z.id,
       qty,
@@ -180,40 +196,41 @@ export function mapHoldResponse(res) {
         name_km: z.name_km ?? z.nameKm ?? z.name_en ?? z.nameEn,
         price_usd_cents: unitPrice,
       },
-    }
-  })
+    };
+  });
 
   const subtotalUsdCents =
     res.total_usd_cents ??
     res.totalUsdCents ??
     seats.reduce((a, s) => a + (s.price_usd_cents || 0), 0) +
-      zoneLines.reduce((a, l) => a + l.lineTotalCents, 0)
+      zoneLines.reduce((a, l) => a + l.lineTotalCents, 0);
 
-  return { hold, seats, zoneLines, subtotalUsdCents }
+  return { hold, seats, zoneLines, subtotalUsdCents };
 }
 
 export function mapBookingItem(i) {
-  if (!i) return null
+  if (!i) return null;
 
   // BookingItemResponse populates exactly one of eventSeatId / eventZoneId, and
   // that is what says which kind of line this is — there is no `kind` field on
   // the wire. `label` is the seat class or zone name, already resolved server
   // side, so the UI does not need the seat or zone object to print a line.
-  const eventSeatId = i.eventSeatId ?? i.event_seat_id ?? null
-  const eventZoneId = i.eventZoneId ?? i.event_zone_id ?? null
-  const unitPrice = i.unitPriceUsdCents ?? i.unit_price_usd_cents ?? 0
-  const qty = i.qty ?? 1
+  const eventSeatId = i.eventSeatId ?? i.event_seat_id ?? null;
+  const eventZoneId = i.eventZoneId ?? i.event_zone_id ?? null;
+  const unitPrice = i.unitPriceUsdCents ?? i.unit_price_usd_cents ?? 0;
+  const qty = i.qty ?? 1;
 
   return {
     id: i.id,
-    kind: eventSeatId ? 'SEAT' : 'ZONE',
+    kind: eventSeatId ? "SEAT" : "ZONE",
     event_seat_id: eventSeatId,
     event_zone_id: eventZoneId,
     label: i.label,
     qty,
     unit_price_usd_cents: unitPrice,
-    line_total_usd_cents: i.lineTotalUsdCents ?? i.line_total_usd_cents ?? unitPrice * qty,
-  }
+    line_total_usd_cents:
+      i.lineTotalUsdCents ?? i.line_total_usd_cents ?? unitPrice * qty,
+  };
 }
 
 /**
@@ -221,7 +238,7 @@ export function mapBookingItem(i) {
  * three at a time yields three, numbered by unit_seq.
  */
 export function mapTicket(t) {
-  if (!t) return null
+  if (!t) return null;
   return {
     id: t.id,
     booking_id: t.bookingId ?? t.booking_id,
@@ -240,11 +257,11 @@ export function mapTicket(t) {
     issued_at: t.issuedAt ?? t.issued_at,
     checked_in: t.checkedIn ?? t.checked_in ?? false,
     checked_in_at: t.checkedInAt ?? t.checked_in_at ?? null,
-  }
+  };
 }
 
 export function mapBooking(b) {
-  if (!b) return null
+  if (!b) return null;
   return {
     id: b.id,
     booking_ref: b.bookingRef ?? b.booking_ref,
@@ -261,8 +278,8 @@ export function mapBooking(b) {
     total_khr: b.totalKhr ?? b.total_khr,
     created_at: b.createdAt ?? b.created_at,
     state_changed_at: b.stateChangedAt ?? b.state_changed_at,
-    items: (b.items || []).map(mapBookingItem)
-  }
+    items: (b.items || []).map(mapBookingItem),
+  };
 }
 
 /**
@@ -277,9 +294,9 @@ export function mapBooking(b) {
  * (MALFORMED, BAD_SIGNATURE, UNKNOWN_TICKET), so every read of it is guarded.
  */
 export function mapScanResult(r) {
-  if (!r) return null
-  const ticket = r.ticket ?? null
-  const booking = r.booking ?? null
+  if (!r) return null;
+  const ticket = r.ticket ?? null;
+  const booking = r.booking ?? null;
   return {
     admitted: r.admitted ?? false,
     outcome: r.outcome,
@@ -301,7 +318,7 @@ export function mapScanResult(r) {
       checked_in: booking.checkedIn ?? booking.checked_in,
       remaining: booking.remaining,
     },
-  }
+  };
 }
 
 /** One row of a group preview — carries its own check-in state. */
@@ -318,17 +335,17 @@ function mapPreviewTicket(t) {
     unit_seq: t.unitSeq ?? t.unit_seq,
     checked_in: t.checkedIn ?? t.checked_in ?? false,
     checked_in_at: t.checkedInAt ?? t.checked_in_at ?? null,
-  }
+  };
 }
 
 function mapParty(p) {
-  if (!p) return null
+  if (!p) return null;
   return {
     booking_id: p.bookingId ?? p.booking_id,
     booking_ref: p.bookingRef ?? p.booking_ref,
     buyer_name: p.buyerName ?? p.buyer_name,
     event_title_en: p.eventTitleEn ?? p.event_title_en,
-  }
+  };
 }
 
 /**
@@ -337,7 +354,7 @@ function mapParty(p) {
  * `outcome: VALID` here means "real booking, right gate", never "admitted".
  */
 export function mapGroupPreview(r) {
-  if (!r) return null
+  if (!r) return null;
   return {
     admissible: r.admissible ?? false,
     outcome: r.outcome,
@@ -347,12 +364,12 @@ export function mapGroupPreview(r) {
     total: r.total ?? 0,
     checked_in: r.checkedIn ?? r.checked_in ?? 0,
     remaining: r.remaining ?? 0,
-  }
+  };
 }
 
 /** A group confirm. `tickets` is only what THIS call admitted, not the party. */
 export function mapGroupConfirm(r) {
-  if (!r) return null
+  if (!r) return null;
   return {
     admitted: r.admitted ?? false,
     admitted_count: r.admittedCount ?? r.admitted_count ?? 0,
@@ -367,7 +384,7 @@ export function mapGroupConfirm(r) {
     })),
     total: r.total ?? 0,
     remaining: r.remaining ?? 0,
-  }
+  };
 }
 
 /** A venue, as the organiser's forms read it. */
@@ -376,11 +393,21 @@ export function eventImages(e) {
   return {
     cover_image_url: e?.coverImageUrl ?? e?.cover_image_url ?? null,
     banner_image_url: e?.bannerImageUrl ?? e?.banner_image_url ?? null,
-  }
+  };
 }
 
 export function mapVenue(v) {
-  if (!v) return null
+  if (!v) return null;
+  const rawLat = v.lat ?? v.latitude;
+  const rawLng = v.lng ?? v.longitude;
+  const lat =
+    rawLat != null && rawLat !== "" && Number.isFinite(Number(rawLat))
+      ? Number(rawLat)
+      : null;
+  const lng =
+    rawLng != null && rawLng !== "" && Number.isFinite(Number(rawLng))
+      ? Number(rawLng)
+      : null;
   return {
     id: v.id,
     organizer_id: v.organizerId ?? v.organizer_id,
@@ -390,6 +417,14 @@ export function mapVenue(v) {
     khan_district: v.khanDistrict ?? v.khan_district,
     sangkat_commune: v.sangkatCommune ?? v.sangkat_commune,
     street_address: v.streetAddress ?? v.street_address,
+    lat,
+    lng,
+    map_url:
+      v.mapUrl ??
+      v.map_url ??
+      (lat != null && lng != null
+        ? `https://www.google.com/maps?q=${lat},${lng}`
+        : ""),
     is_disabled: v.isDisabled ?? v.is_disabled ?? false,
-  }
+  };
 }

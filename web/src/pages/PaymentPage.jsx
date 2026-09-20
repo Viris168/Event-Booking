@@ -1,55 +1,60 @@
-import { useDocumentTitle } from '../lib/useDocumentTitle.js'
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { QRCodeSVG } from 'qrcode.react'
-import Icon from '../components/Icon.jsx'
-import KhqrCard from '../components/KhqrCard.jsx'
-import PaywayCheckout from '../components/PaywayCheckout.jsx'
-import BakongCheckout from '../components/BakongCheckout.jsx'
-import { CheckoutSkeleton } from '../components/Skeleton.jsx'
-import { Alert } from '../components/ui.jsx'
-import { useLocale } from '../context/LocaleContext.jsx'
-import { countdown } from '../lib/format.js'
-import { mapBooking } from '../api/adapters.js'
+import { useDocumentTitle } from "../lib/useDocumentTitle.js";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  Link,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
+import { QRCodeSVG } from "qrcode.react";
+import Icon from "../components/Icon.jsx";
+import KhqrCard from "../components/KhqrCard.jsx";
+import PaywayCheckout from "../components/PaywayCheckout.jsx";
+import BakongCheckout from "../components/BakongCheckout.jsx";
+import { CheckoutSkeleton } from "../components/Skeleton.jsx";
+import { Alert } from "../components/ui.jsx";
+import { useLocale } from "../context/LocaleContext.jsx";
+import { countdown } from "../lib/format.js";
+import { mapBooking } from "../api/adapters.js";
 import {
   startPayment as startApiPayment,
   pollPayment,
   getBookingPayments,
-} from '../api/payment.js'
-import { MERCHANT_NAME, PROVIDER } from '../lib/payway.js'
-import { getBooking as getApiBooking } from '../api/bookings.js'
+} from "../api/payment.js";
+import { MERCHANT_NAME, PROVIDER } from "../lib/payway.js";
+import { getBooking as getApiBooking } from "../api/bookings.js";
 
 // How each payment_status reads on screen.
 const STRIP = {
-  PENDING: { tone: 'wait', key: 'waitingForPayment' },
-  SUCCESS: { tone: 'ok', key: 'paymentReceived' },
-  FAILED: { tone: 'bad', key: 'paymentFailedMsg' },
-  CANCELLED: { tone: 'neutral', key: 'paymentCancelled' },
-  EXPIRED: { tone: 'neutral', key: 'transactionExpired' },
-}
+  PENDING: { tone: "wait", key: "waitingForPayment" },
+  SUCCESS: { tone: "ok", key: "paymentReceived" },
+  FAILED: { tone: "bad", key: "paymentFailedMsg" },
+  CANCELLED: { tone: "neutral", key: "paymentCancelled" },
+  EXPIRED: { tone: "neutral", key: "transactionExpired" },
+};
 
 export default function PaymentPage() {
-  const { bookingId } = useParams()
-  const [params] = useSearchParams()
-  const { t } = useLocale()
-  const navigate = useNavigate()
+  const { bookingId } = useParams();
+  const [params] = useSearchParams();
+  const { t } = useLocale();
+  const navigate = useNavigate();
 
-  const [apiBooking, setApiBooking] = useState(null)
-  const [bookingLoading, setBookingLoading] = useState(true)
-  const [bookingError, setBookingError] = useState(false)
-  const [reloadKey, setReloadKey] = useState(0)
+  const [apiBooking, setApiBooking] = useState(null);
+  const [bookingLoading, setBookingLoading] = useState(true);
+  const [bookingError, setBookingError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
-  const [txn, setTxn] = useState(null)
-  const [sheetOpen, setSheetOpen] = useState(false)
-  const [checking, setChecking] = useState(false) // Check Transaction in flight
-  const [now, setNow] = useState(() => Date.now()) // drives the lifetime countdown
-  const onSettledRef = useRef(() => {})
+  const [txn, setTxn] = useState(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [checking, setChecking] = useState(false); // Check Transaction in flight
+  const [now, setNow] = useState(() => Date.now()); // drives the lifetime countdown
+  const onSettledRef = useRef(() => {});
 
   useEffect(() => {
-    let active = true
+    let active = true;
     getApiBooking(bookingId)
       .then((res) => {
-        if (active && res) setApiBooking(mapBooking(res))
+        if (active && res) setApiBooking(mapBooking(res));
       })
       .catch(() => {
         // Record it. This page used to swallow the error and fall back to the
@@ -57,61 +62,75 @@ export default function PaymentPage() {
         // on the screen where the customer is about to pay - wrong total, wrong
         // seats, or a booking the server has never heard of. A payment screen
         // has to fail loudly or not at all.
-        if (active) setBookingError(true)
+        if (active) setBookingError(true);
       })
       .finally(() => {
-        if (active) setBookingLoading(false)
-      })
-    return () => { active = false }
-  }, [bookingId, reloadKey])
+        if (active) setBookingLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [bookingId, reloadKey]);
 
-  const booking = apiBooking
-  useDocumentTitle(booking ? `${t('checkout')} · ${booking.booking_ref}` : null)
+  const booking = apiBooking;
+  useDocumentTitle(
+    booking ? `${t("checkout")} · ${booking.booking_ref}` : null,
+  );
 
-  const requestedOption = params.get('option')
+  const requestedOption = params.get("option");
 
   const status =
     txn?.status ||
-    { CONFIRMED: 'SUCCESS', PAYMENT_FAILED: 'FAILED', CANCELLED: 'CANCELLED' }[booking?.state] ||
-    'PENDING'
+    { CONFIRMED: "SUCCESS", PAYMENT_FAILED: "FAILED", CANCELLED: "CANCELLED" }[
+      booking?.state
+    ] ||
+    "PENDING";
 
   /** Create Transaction */
   const openTransaction = useCallback(
     async (provider) => {
-      if (!booking || !apiBooking) return
-      
+      if (!booking || !apiBooking) return;
+
       try {
         const data = await startApiPayment(apiBooking.id, provider);
-        setTxn(data)
-        setChecking(false)
-        if (provider === 'ABA_PAYWAY' || provider === 'BAKONG_KHQR') {
-          setSheetOpen(true)
+        setTxn(data);
+        setChecking(false);
+        if (provider === "ABA_PAYWAY" || provider === "BAKONG_KHQR") {
+          setSheetOpen(true);
         }
       } catch (err) {
-        console.error("Failed to generate payment:", err)
-        alert("Failed to generate payment. See browser console for details: " + err.message)
+        console.error("Failed to generate payment:", err);
+        alert(
+          "Failed to generate payment. See browser console for details: " +
+            err.message,
+        );
       }
     },
     [booking, apiBooking],
-  )
+  );
 
   const refreshBooking = useCallback(() => {
-    if (!apiBooking) return
+    if (!apiBooking) return;
     getApiBooking(apiBooking.id)
       .then((res) => {
-        if (res) setApiBooking(mapBooking(res))
+        if (res) setApiBooking(mapBooking(res));
       })
-      .catch(() => {})
-  }, [apiBooking?.id])
+      .catch(() => {});
+  }, [apiBooking?.id]);
 
   useEffect(() => {
-    if (!booking || txn) return
+    if (!booking || txn) return;
     // PAYMENT_FAILED is retryable: the backend lets a failed/expired booking
     // open a fresh attempt, so "Try again" must do the same on this side.
-    if (booking.state === 'PENDING_PAYMENT' || booking.state === 'PAYMENT_FAILED' || booking.state === 'AWAITING_CONFIRMATION' || !booking.state) {
+    if (
+      booking.state === "PENDING_PAYMENT" ||
+      booking.state === "PAYMENT_FAILED" ||
+      booking.state === "AWAITING_CONFIRMATION" ||
+      !booking.state
+    ) {
       if (requestedOption) {
-        openTransaction(requestedOption)
-        return
+        openTransaction(requestedOption);
+        return;
       }
 
       /*
@@ -127,88 +146,115 @@ export default function PaymentPage() {
        * Asking for the same provider is safe: the server hands back the SAME
        * QR and reference instead of creating anything.
        */
-      let cancelled = false
+      let cancelled = false;
       getBookingPayments(apiBooking?.id ?? bookingId)
         .then((list) => {
-          if (cancelled) return
+          if (cancelled) return;
           const open = (list || []).find((p) =>
-            ['PENDING', 'CREATED'].includes(p.status ?? p.state),
-          )
-          openTransaction(open?.provider || 'ABA_PAYWAY')
+            ["PENDING", "CREATED"].includes(p.status ?? p.state),
+          );
+          openTransaction(open?.provider || "ABA_PAYWAY");
         })
-        .catch(() => !cancelled && openTransaction('ABA_PAYWAY'))
+        .catch(() => !cancelled && openTransaction("ABA_PAYWAY"));
       return () => {
-        cancelled = true
-      }
+        cancelled = true;
+      };
     }
-  }, [booking, txn, requestedOption, openTransaction, apiBooking?.id, bookingId])
+  }, [
+    booking,
+    txn,
+    requestedOption,
+    openTransaction,
+    apiBooking?.id,
+    bookingId,
+  ]);
 
   useEffect(() => {
-    if (txn?.status === 'PENDING' && txn?.provider === 'ABA_PAYWAY') setSheetOpen(true)
-  }, [txn?.status, txn?.provider])
+    if (txn?.status === "PENDING" && txn?.provider === "ABA_PAYWAY")
+      setSheetOpen(true);
+  }, [txn?.status, txn?.provider]);
 
   // Poll for completion
   useEffect(() => {
-    if ((txn?.status !== 'PENDING' && txn?.status !== 'CREATED') || !txn?.id) return
+    if ((txn?.status !== "PENDING" && txn?.status !== "CREATED") || !txn?.id)
+      return;
     const timer = setInterval(() => {
-      pollPayment(txn.id).then(data => {
-        if (data && data.status === 'SUCCESS') {
-          onSettledRef.current('SUCCESS')
-          if (data.bookingState && data.bookingState !== 'CONFIRMED') {
-            console.error('Payment approved but booking is', data.bookingState)
+      pollPayment(txn.id)
+        .then((data) => {
+          if (data && data.status === "SUCCESS") {
+            onSettledRef.current("SUCCESS");
+            if (data.bookingState && data.bookingState !== "CONFIRMED") {
+              console.error(
+                "Payment approved but booking is",
+                data.bookingState,
+              );
+            }
+            refreshBooking();
+          } else if (data && data.status === "EXPIRED") {
+            onSettledRef.current("EXPIRED");
+            refreshBooking();
+          } else if (data && data.status === "FAILED") {
+            onSettledRef.current("FAILED");
+            refreshBooking();
           }
-          refreshBooking()
-        } else if (data && data.status === 'EXPIRED') {
-          onSettledRef.current('EXPIRED')
-          refreshBooking()
-        } else if (data && data.status === 'FAILED') {
-          onSettledRef.current('FAILED')
-          refreshBooking()
-        }
-      }).catch(err => console.error(err))
-    }, 3000)
-    return () => clearInterval(timer)
-  }, [txn?.status, txn?.id, refreshBooking])
+        })
+        .catch((err) => console.error(err));
+    }, 3000);
+    return () => clearInterval(timer);
+  }, [txn?.status, txn?.id, refreshBooking]);
 
   // A purchase only lives for its `lifetime`
   useEffect(() => {
-    if (txn?.status !== 'PENDING' && txn?.status !== 'CREATED') return
-    const expiresAt = txn.expires_at ?? txn.expiresAt
+    if (txn?.status !== "PENDING" && txn?.status !== "CREATED") return;
+    const expiresAt = txn.expires_at ?? txn.expiresAt;
     const tick = setInterval(() => {
-      setNow(Date.now())
-      if (Date.parse(expiresAt) <= Date.now()) onSettledRef.current('EXPIRED')
-    }, 1000)
-    return () => clearInterval(tick)
-  }, [txn?.status, txn?.expires_at, txn?.expiresAt])
+      setNow(Date.now());
+      if (Date.parse(expiresAt) <= Date.now()) onSettledRef.current("EXPIRED");
+    }, 1000);
+    return () => clearInterval(tick);
+  }, [txn?.status, txn?.expires_at, txn?.expiresAt]);
 
   const onSettled = useCallback(
     (status) => {
-      if (!booking) return
+      if (!booking) return;
 
-      if (status === 'SUCCESS') {
-        setSheetOpen(false)
+      if (status === "SUCCESS") {
+        setSheetOpen(false);
         setTxn((prev) =>
-          prev ? { ...prev, status, resolved_at: new Date().toISOString() } : null,
-        )
+          prev
+            ? { ...prev, status, resolved_at: new Date().toISOString() }
+            : null,
+        );
         // Settlement only ever comes from polling check-transaction now, so go
         // straight to the tickets, the way PayWay's skip-success-page flow ends.
-        navigate(`/bookings/${booking.id}`)
-        return
+        navigate(`/bookings/${booking.id}`);
+        return;
       }
 
       setTxn((prev) =>
         prev
           ? { ...prev, status, resolved_at: new Date().toISOString() }
           : null,
-      )
-      setSheetOpen(false)
+      );
+      setSheetOpen(false);
     },
-    [booking, apiBooking, txn?.id, txn?.provider, txn?.providerRef, txn?.provider_ref, refreshBooking, navigate],
-  )
-  onSettledRef.current = onSettled
+    [
+      booking,
+      apiBooking,
+      txn?.id,
+      txn?.provider,
+      txn?.providerRef,
+      txn?.provider_ref,
+      refreshBooking,
+      navigate,
+    ],
+  );
+  useEffect(() => {
+    onSettledRef.current = onSettled;
+  }, [onSettled]);
 
   if (bookingLoading) {
-    return <CheckoutSkeleton />
+    return <CheckoutSkeleton />;
   }
 
   // A request that failed is not the same as a booking that does not exist, and
@@ -225,19 +271,21 @@ export default function PaymentPage() {
               type="button"
               className="btn btn-sm btn-primary"
               onClick={() => {
-                setBookingError(false)
-                setBookingLoading(true)
-                setReloadKey((k) => k + 1)
+                setBookingError(false);
+                setBookingLoading(true);
+                setReloadKey((k) => k + 1);
               }}
             >
               Try again
             </button>
           }
         >
-          <p>We could not reach the server. Your booking has not been changed.</p>
+          <p>
+            We could not reach the server. Your booking has not been changed.
+          </p>
         </Alert>
       </div>
-    )
+    );
   }
 
   if (!booking) {
@@ -246,29 +294,32 @@ export default function PaymentPage() {
         <Alert tone="danger" title="Booking not found">
           <Link to="/my-bookings" className="with-icon">
             <Icon name="arrowLeft" size={15} />
-            {t('myBookings')}
+            {t("myBookings")}
           </Link>
         </Alert>
       </div>
-    )
+    );
   }
 
-  const strip = STRIP[status] || STRIP.PENDING
-  const isOpen = status === 'PENDING' || status === 'CREATED'
+  const strip = STRIP[status] || STRIP.PENDING;
+  const isOpen = status === "PENDING" || status === "CREATED";
 
   // Map the unified txn object to the shape PaywayCheckout expects. The API
   // responds snake_case, so read both shapes until the client normalizes.
-  const checkoutTxn = txn && txn.provider === 'ABA_PAYWAY' ? {
-    ...txn,
-    tran_id: txn.providerRef ?? txn.provider_ref,
-    amount_usd_cents: booking.total_usd_cents,
-    qrImage: txn.qrPayload ?? txn.qr_payload,
-    checkoutAction: txn.checkoutAction ?? txn.checkout_action,
-    checkoutFields: txn.checkoutFields ?? txn.checkout_fields,
-    expires_at: txn.expiresAt ?? txn.expires_at
-  } : null
+  const checkoutTxn =
+    txn && txn.provider === "ABA_PAYWAY"
+      ? {
+          ...txn,
+          tran_id: txn.providerRef ?? txn.provider_ref,
+          amount_usd_cents: booking.total_usd_cents,
+          qrImage: txn.qrPayload ?? txn.qr_payload,
+          checkoutAction: txn.checkoutAction ?? txn.checkout_action,
+          checkoutFields: txn.checkoutFields ?? txn.checkout_fields,
+          expires_at: txn.expiresAt ?? txn.expires_at,
+        }
+      : null;
 
-  let checkout = null
+  let checkout = null;
   if (checkoutTxn) {
     checkout = (
       <PaywayCheckout
@@ -276,15 +327,15 @@ export default function PaymentPage() {
         merchant={MERCHANT_NAME}
         onClose={() => setSheetOpen(false)}
       />
-    )
-  } else if (txn && txn.provider === 'BAKONG_KHQR') {
+    );
+  } else if (txn && txn.provider === "BAKONG_KHQR") {
     checkout = (
       <BakongCheckout
         txn={txn}
         booking={booking}
         onClose={() => setSheetOpen(false)}
       />
-    )
+    );
   }
 
   return (
@@ -298,47 +349,65 @@ export default function PaymentPage() {
       {!sheetOpen && (txn || !isOpen) && (
         <div className="container container-narrow">
           <div className="panel pw-launch">
-            <div className="panel-body stack-sm text-center" style={{ alignItems: 'center' }}>
-              <span className="icon-chip lg">
-                <Icon name="qr" size={22} />
+            <div
+              className="panel-body stack-sm text-center"
+              style={{ alignItems: "center" }}
+            >
+              <span className="icon-chip lg overflow-hidden">
+                {txn?.provider === "BAKONG_KHQR" ? (
+                  <img
+                    src="/logo/bakong.png"
+                    alt="Bakong"
+                    className="size-full object-cover rounded-[8px]"
+                  />
+                ) : (
+                  <Icon name="qr" size={22} />
+                )}
               </span>
-              <strong>{txn?.provider || 'Payment'}</strong>
+              <strong>{txn?.provider || "Payment"}</strong>
               <p className="small muted">
                 {checking
-                  ? t('checkingTransaction')
+                  ? t("checkingTransaction")
                   : isOpen
-                    ? t('paywayHandoff')
+                    ? t("paywayHandoff")
                     : t(strip.key)}
               </p>
               {isOpen ? (
-                <button className="btn pw-pay btn-block" onClick={() => setSheetOpen(true)}>
+                <button
+                  className="btn pw-pay btn-block"
+                  onClick={() => setSheetOpen(true)}
+                >
                   <Icon name="lock" size={15} />
-                  {t('openCheckout')}
+                  {t("openCheckout")}
                 </button>
-              ) : status === 'SUCCESS' ? (
-                <Link className="btn btn-primary btn-block" to={`/bookings/${booking.id}`}>
+              ) : status === "SUCCESS" ? (
+                <Link
+                  className="btn btn-primary btn-block"
+                  to={`/bookings/${booking.id}`}
+                >
                   <Icon name="ticket" size={15} />
-                  {t('yourTickets')}
+                  {t("yourTickets")}
                 </Link>
               ) : (
                 <button
                   className="btn btn-primary btn-block"
                   onClick={() => {
-                    setTxn(null)
+                    setTxn(null);
                   }}
                 >
                   <Icon name="refresh" size={15} />
-                  {t('tryAgain')}
+                  {t("tryAgain")}
                 </button>
               )}
               {isOpen && txn && (
                 <span className="small muted with-icon">
                   <Icon name="clock" size={13} />
-                  {t('completeWithin')} {countdown(Date.parse(txn.expires_at ?? txn.expiresAt) - now)}
+                  {t("completeWithin")}{" "}
+                  {countdown(Date.parse(txn.expires_at ?? txn.expiresAt) - now)}
                 </span>
               )}
               <Link className="small with-icon" to={`/bookings/${booking.id}`}>
-                {t('bookingRef')} {booking.booking_ref}
+                {t("bookingRef")} {booking.booking_ref}
                 <Icon name="arrowRight" size={14} />
               </Link>
             </div>
@@ -346,5 +415,5 @@ export default function PaymentPage() {
         </div>
       )}
     </>
-  )
+  );
 }

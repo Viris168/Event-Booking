@@ -1,17 +1,24 @@
-import { useCallback, useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import ContactButtons from '../../components/ContactButtons.jsx'
-import Icon from '../../components/Icon.jsx'
-import ConfirmDialog from '../../components/ConfirmDialog.jsx'
-import FormDialog from '../../components/FormDialog.jsx'
-import { Alert, Badge, Empty, Field, ResponsiveTable, TablePager } from '../../components/ui.jsx'
-import { TableRowsSkeleton } from '../../components/Skeleton.jsx'
-import { useLocale } from '../../context/LocaleContext.jsx'
-import { useToast } from '../../context/ToastContext.jsx'
-import { useDocumentTitle } from '../../lib/useDocumentTitle.js'
-import { timeAgo, usd } from '../../lib/format.js'
-import { usePaging } from '../../lib/usePaging.js'
-import { downscaleImage } from '../../lib/downscaleImage.js'
+import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import ContactButtons from "../../components/ContactButtons.jsx";
+import Icon from "../../components/Icon.jsx";
+import ConfirmDialog from "../../components/ConfirmDialog.jsx";
+import FormDialog from "../../components/FormDialog.jsx";
+import {
+  Alert,
+  Badge,
+  Empty,
+  Field,
+  ResponsiveTable,
+  TablePager,
+} from "../../components/ui.jsx";
+import { TableRowsSkeleton } from "../../components/Skeleton.jsx";
+import { useLocale } from "../../context/LocaleContext.jsx";
+import { useToast } from "../../context/ToastContext.jsx";
+import { useDocumentTitle } from "../../lib/useDocumentTitle.js";
+import { timeAgo, usd } from "../../lib/format.js";
+import { usePaging } from "../../lib/usePaging.js";
+import { downscaleImage } from "../../lib/downscaleImage.js";
 import {
   approvePayout,
   extractPayoutReceipt,
@@ -21,7 +28,7 @@ import {
   getAdminPayouts,
   markPayoutPaid,
   PAYOUT_STATUSES,
-} from '../../api/payouts.js'
+} from "../../api/payouts.js";
 
 /**
  * The payout queue.
@@ -50,53 +57,50 @@ import {
  * does as a commission.
  */
 function derivation(p, km) {
-  const gross = `${usd(p.gross_usd_cents)} ${km ? 'សរុប' : 'gross'}`
-  const fee = `${usd(p.fee_usd_cents)} ${km ? 'កម្រៃ' : 'fee'} (${feePercent(p.fee_bps)})`
-  return `${gross} − ${fee}`
+  const gross = `${usd(p.gross_usd_cents)} ${km ? "សរុប" : "gross"}`;
+  const fee = `${usd(p.fee_usd_cents)} ${km ? "កម្រៃ" : "fee"} (${feePercent(p.fee_bps)})`;
+  return `${gross} − ${fee}`;
 }
 
 const TAB_LABELS = {
-  REQUESTED: { en: 'Waiting', km: 'រង់ចាំ' },
-  APPROVED: { en: 'To transfer', km: 'ត្រូវផ្ទេរ' },
-  PAID: { en: 'Paid', km: 'បានទូទាត់' },
-}
+  REQUESTED: { en: "Waiting", km: "រង់ចាំ" },
+  APPROVED: { en: "To transfer", km: "ត្រូវផ្ទេរ" },
+  PAID: { en: "Paid", km: "បានទូទាត់" },
+};
 
 export default function AdminPayoutsPage() {
-  const { locale, dateTime, date } = useLocale()
-  const km = locale === 'km'
-  const toast = useToast()
-  useDocumentTitle(km ? 'ការទូទាត់' : 'Payouts')
+  const { locale, dateTime, date } = useLocale();
+  const km = locale === "km";
+  const toast = useToast();
+  useDocumentTitle(km ? "ការទូទាត់" : "Payouts");
 
-  const [tab, setTab] = useState('REQUESTED')
-  const [rows, setRows] = useState([])
-  const [counts, setCounts] = useState({})
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(false)
+  const [tab, setTab] = useState("REQUESTED");
+  const [rows, setRows] = useState([]);
+  const [counts, setCounts] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
-  const load = useCallback(
-    (status) => {
-      setLoading(true)
-      setError(false)
-      // Counts alongside the list, not derived from it: the tabs have to show
-      // every status while the list holds one, and a badge computed from the
-      // rows in hand would read 0 on every tab but the open one.
-      return Promise.all([getAdminPayouts(status), getAdminPayoutCounts()])
-        .then(([list, c]) => {
-          setRows(list || [])
-          setCounts(c || {})
-        })
-        .catch(() => {
-          setError(true)
-          setRows([])
-        })
-        .finally(() => setLoading(false))
-    },
-    [],
-  )
+  const load = useCallback((status) => {
+    setLoading(true);
+    setError(false);
+    // Counts alongside the list, not derived from it: the tabs have to show
+    // every status while the list holds one, and a badge computed from the
+    // rows in hand would read 0 on every tab but the open one.
+    return Promise.all([getAdminPayouts(status), getAdminPayoutCounts()])
+      .then(([list, c]) => {
+        setRows(list || []);
+        setCounts(c || {});
+      })
+      .catch(() => {
+        setError(true);
+        setRows([]);
+      })
+      .finally(() => setLoading(false));
+  }, []);
 
   useEffect(() => {
-    load(tab)
-  }, [load, tab])
+    load(tab);
+  }, [load, tab]);
 
   /*
    * Paging, keyed on the tab: each one is a different list, so switching starts
@@ -105,7 +109,7 @@ export default function AdminPayoutsPage() {
    * PAID is why this is here. Waiting and To transfer are queues that get
    * emptied, but every payout the platform has ever made stays in Paid.
    */
-  const paged = usePaging(rows, tab)
+  const paged = usePaging(rows, tab);
 
   /*
    * What the tab on screen is worth. The badge beside each tab says how many
@@ -116,14 +120,14 @@ export default function AdminPayoutsPage() {
    * `rows` rather than `paged.visible` on purpose: this describes the tab, not
    * the page of it currently rendered.
    */
-  const tabTotal = rows.reduce((a, r) => a + r.net_usd_cents, 0)
+  const tabTotal = rows.reduce((a, r) => a + r.net_usd_cents, 0);
 
   // ---------------------------------------------------------------- actions
 
-  const [busy, setBusy] = useState(false)
-  const [approving, setApproving] = useState(null)
-  const [paying, setPaying] = useState(null)
-  const [payForm, setPayForm] = useState({ reference: '', note: '' })
+  const [busy, setBusy] = useState(false);
+  const [approving, setApproving] = useState(null);
+  const [paying, setPaying] = useState(null);
+  const [payForm, setPayForm] = useState({ reference: "", note: "" });
   /*
    * The receipt reader that fills the reference box for the admin.
    *
@@ -131,7 +135,12 @@ export default function AdminPayoutsPage() {
    * key: that answer cannot change between two clicks, and a drop zone that
    * re-offers itself after saying it does not work is worse than no drop zone.
    */
-  const [receipt, setReceipt] = useState({ busy: false, fields: null, error: '', off: false })
+  const [receipt, setReceipt] = useState({
+    busy: false,
+    fields: null,
+    error: "",
+    off: false,
+  });
 
   /**
    * Every action funnels through here so the stale-row case is handled once.
@@ -140,28 +149,30 @@ export default function AdminPayoutsPage() {
    * and reload, because the row on screen is no longer the row in the database.
    */
   const run = async (fn, successMessage, close) => {
-    setBusy(true)
+    setBusy(true);
     try {
-      await fn()
-      close()
-      toast(successMessage, 'success')
-      await load(tab)
+      await fn();
+      close();
+      toast(successMessage, "success");
+      await load(tab);
     } catch (e) {
-      const code = e?.response?.data?.errorCode
-      if (code === 'PAYOUT_ALREADY_DECIDED') {
+      const code = e?.response?.data?.errorCode;
+      if (code === "PAYOUT_ALREADY_DECIDED") {
         toast(
-          km ? 'សំណើនេះត្រូវបានសម្រេចរួចហើយ' : 'Somebody has already decided this one.',
-          'error',
-        )
-        close()
-        await load(tab)
+          km
+            ? "សំណើនេះត្រូវបានសម្រេចរួចហើយ"
+            : "Somebody has already decided this one.",
+          "error",
+        );
+        close();
+        await load(tab);
       } else {
-        toast(km ? 'មិនបានសម្រេច' : 'That did not go through', 'error')
+        toast(km ? "មិនបានសម្រេច" : "That did not go through", "error");
       }
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
-  }
+  };
 
   /**
    * The account number arrives masked in the list and unmasked from this
@@ -169,19 +180,24 @@ export default function AdminPayoutsPage() {
    * whole page, so a screenful of bank accounts is never on screen at once.
    */
   const openPay = async (row) => {
-    setPayForm({ reference: '', note: '' })
+    setPayForm({ reference: "", note: "" });
     // `off` survives, deliberately - see the state declaration.
-    setReceipt((r) => ({ busy: false, fields: null, error: '', off: r.off }))
-    setPaying(row)
+    setReceipt((r) => ({ busy: false, fields: null, error: "", off: r.off }));
+    setPaying(row);
     try {
-      const full = await getAdminPayout(row.id)
-      setPaying(full)
+      const full = await getAdminPayout(row.id);
+      setPaying(full);
     } catch {
       // The masked row is still enough to identify the payout; the dialog says
       // so rather than refusing to open over a failed second request.
-      toast(km ? 'មិនអាចផ្ទុកលេខគណនីបានទេ' : 'Could not load the full account number', 'error')
+      toast(
+        km
+          ? "មិនអាចផ្ទុកលេខគណនីបានទេ"
+          : "Could not load the full account number",
+        "error",
+      );
     }
-  }
+  };
 
   /**
    * Read a dropped confirmation screenshot and fill the reference box with it.
@@ -193,38 +209,40 @@ export default function AdminPayoutsPage() {
    * failure path leaves them exactly where they were, typing.
    */
   const readReceipt = async (file) => {
-    if (!file || !paying || receipt.busy) return
+    if (!file || !paying || receipt.busy) return;
 
-    setReceipt((r) => ({ ...r, busy: true, error: '', fields: null }))
+    setReceipt((r) => ({ ...r, busy: true, error: "", fields: null }));
     try {
-      const small = await downscaleImage(file)
-      const fields = await extractPayoutReceipt(paying.id, small)
+      const small = await downscaleImage(file);
+      const fields = await extractPayoutReceipt(paying.id, small);
 
       // Only the reference is written into the form. The other three are shown
       // beside it as context for judging whether this is the right transfer -
       // nothing else on this dialog is theirs to fill.
-      setReceipt({ busy: false, fields, error: '', off: false })
+      setReceipt({ busy: false, fields, error: "", off: false });
       if (fields.reference_number) {
-        setPayForm((f) => ({ ...f, reference: fields.reference_number }))
+        setPayForm((f) => ({ ...f, reference: fields.reference_number }));
       }
     } catch (e) {
-      const code = e?.response?.data?.errorCode
+      const code = e?.response?.data?.errorCode;
 
-      if (code === 'RECEIPT_EXTRACTION_UNAVAILABLE') {
-        setReceipt({ busy: false, fields: null, error: '', off: true })
-        return
+      if (code === "RECEIPT_EXTRACTION_UNAVAILABLE") {
+        setReceipt({ busy: false, fields: null, error: "", off: true });
+        return;
       }
       // Somebody else settled this row while the dialog was open. Same
       // treatment as any other stale-row case: say so, close, reload.
-      if (code === 'PAYOUT_ALREADY_DECIDED') {
-        setReceipt({ busy: false, fields: null, error: '', off: false })
+      if (code === "PAYOUT_ALREADY_DECIDED") {
+        setReceipt({ busy: false, fields: null, error: "", off: false });
         toast(
-          km ? 'សំណើនេះត្រូវបានសម្រេចរួចហើយ' : 'Somebody has already decided this one.',
-          'error',
-        )
-        setPaying(null)
-        await load(tab)
-        return
+          km
+            ? "សំណើនេះត្រូវបានសម្រេចរួចហើយ"
+            : "Somebody has already decided this one.",
+          "error",
+        );
+        setPaying(null);
+        await load(tab);
+        return;
       }
 
       setReceipt({
@@ -232,16 +250,16 @@ export default function AdminPayoutsPage() {
         fields: null,
         off: false,
         error:
-          code === 'FILE_TOO_LARGE'
+          code === "FILE_TOO_LARGE"
             ? km
-              ? 'រូបភាពធំពេក'
-              : 'That image is too large.'
+              ? "រូបភាពធំពេក"
+              : "That image is too large."
             : km
-              ? 'មិនអាចអានរូបភាពបានទេ សូមវាយលេខយោងដោយដៃ'
-              : 'Could not read that one. Type the reference instead.',
-      })
+              ? "មិនអាចអានរូបភាពបានទេ សូមវាយលេខយោងដោយដៃ"
+              : "Could not read that one. Type the reference instead.",
+      });
     }
-  }
+  };
 
   return (
     <div className="container container-wide">
@@ -250,23 +268,31 @@ export default function AdminPayoutsPage() {
           heading of its own and the card carried one instead. */}
       <div className="page-head">
         <div>
-          <h1>{km ? 'ការទូទាត់ជូនអ្នករៀបចំ' : 'Organizer payouts'}</h1>
+          <div className="page-title-lockup">
+            <span className="icon-chip green lg">
+              <Icon name="wallet" size={22} />
+            </span>
+            <h1>{km ? "ការទូទាត់ជូនអ្នករៀបចំ" : "Organizer payouts"}</h1>
+          </div>
           <p>
             {km
-              ? 'អនុម័តសំណើ រួចកត់ត្រាការផ្ទេរប្រាក់ជាមួយលេខយោង'
-              : 'Approve a request, then record the transfer against its reference.'}
+              ? "អនុម័តសំណើ រួចកត់ត្រាការផ្ទេរប្រាក់ជាមួយលេខយោង"
+              : "Approve a request, then record the transfer against its reference."}
           </p>
         </div>
       </div>
 
       <div className="bg-surface border border-line rounded-hero shadow-card overflow-hidden">
-
         {/* ------------------------------------------------------------ tabs */}
         {/* Tabs, not buttons. They were drawn as a row of btn-sm, so the one
             you were on differed from the other two by a hairline border - and
             the strip sat flush against the window edge while the header and
             table above and below it were padded. */}
-        <div className="tabbar" role="tablist" aria-label={km ? 'ស្ថានភាព' : 'Status'}>
+        <div
+          className="tabbar"
+          role="tablist"
+          aria-label={km ? "ស្ថានភាព" : "Status"}
+        >
           {PAYOUT_STATUSES.map((s) => (
             <button
               key={s}
@@ -282,23 +308,22 @@ export default function AdminPayoutsPage() {
           ))}
         </div>
 
-
-
         {/* The open tab, in money, directly under the tabs that select it.
             Replaces an alert that said this for the APPROVED tab alone - the
             other two had a count and no idea what it was worth. It follows the
             tabs rather than the title because it changes with them. */}
         {!loading && !error && rows.length > 0 && (
           <p className="px-5 pt-3 text-small text-muted m-0">
-            {rows.length} {km ? 'សំណើ' : rows.length === 1 ? 'request' : 'requests'} ·{' '}
-            <span className="font-semibold text-ink">{usd(tabTotal)}</span>{' '}
-            {tab === 'PAID'
+            {rows.length}{" "}
+            {km ? "សំណើ" : rows.length === 1 ? "request" : "requests"} ·{" "}
+            <span className="font-semibold text-ink">{usd(tabTotal)}</span>{" "}
+            {tab === "PAID"
               ? km
-                ? 'បានផ្ទេររួច'
-                : 'transferred'
+                ? "បានផ្ទេររួច"
+                : "transferred"
               : km
-                ? 'ត្រូវទូទាត់'
-                : 'payable'}
+                ? "ត្រូវទូទាត់"
+                : "payable"}
           </p>
         )}
 
@@ -307,35 +332,52 @@ export default function AdminPayoutsPage() {
           <table className="table">
             <thead>
               <tr>
-                <th>{km ? 'វិក្កយបត្រ' : 'Invoice'}</th>
-                <th>{km ? 'អ្នករៀបចំ' : 'Organizer'}</th>
-                <th>{km ? 'ព្រឹត្តិការណ៍' : 'Event'}</th>
-                <th>{km ? 'ផ្ញើទៅ' : 'Send to'}</th>
-                <th className="num whitespace-nowrap">{km ? 'ត្រូវទូទាត់' : 'Payable'}</th>
-                <th>{km ? 'ស្ថានភាព' : 'Status'}</th>
-                <th className="num">{km ? 'សកម្មភាព' : 'Action'}</th>
+                <th>{km ? "វិក្កយបត្រ" : "Invoice"}</th>
+                <th>{km ? "អ្នករៀបចំ" : "Organizer"}</th>
+                <th>{km ? "ព្រឹត្តិការណ៍" : "Event"}</th>
+                <th>{km ? "ផ្ញើទៅ" : "Send to"}</th>
+                <th className="num whitespace-nowrap">
+                  {km ? "ត្រូវទូទាត់" : "Payable"}
+                </th>
+                <th>{km ? "ស្ថានភាព" : "Status"}</th>
+                <th className="num">{km ? "សកម្មភាព" : "Action"}</th>
               </tr>
             </thead>
             {loading ? (
-              <TableRowsSkeleton rows={5} cols={7} cellClassName="px-[0.9rem] py-[0.7rem]" rowClassName="border-b border-line-2" />
+              <TableRowsSkeleton
+                rows={5}
+                cols={7}
+                cellClassName="px-[0.9rem] py-[0.7rem]"
+                rowClassName="border-b border-line-2"
+              />
             ) : (
               <tbody>
                 {error ? (
                   <tr>
                     <td colSpan={7}>
-                      <Empty icon="alert" title={km ? 'មិនអាចផ្ទុកបានទេ' : 'Could not load payouts'}>
-                        {km ? 'សូមពិនិត្យម៉ាស៊ីនបម្រើ' : 'Check that the API is running, then reload.'}
+                      <Empty
+                        icon="alert"
+                        title={
+                          km ? "មិនអាចផ្ទុកបានទេ" : "Could not load payouts"
+                        }
+                      >
+                        {km
+                          ? "សូមពិនិត្យម៉ាស៊ីនបម្រើ"
+                          : "Check that the API is running, then reload."}
                       </Empty>
                     </td>
                   </tr>
                 ) : rows.length === 0 ? (
                   <tr>
                     <td colSpan={7}>
-                      <Empty icon="wallet" title={km ? 'គ្មានអ្វីនៅទីនេះទេ' : 'Nothing here'}>
-                        {tab === 'REQUESTED'
+                      <Empty
+                        icon="wallet"
+                        title={km ? "គ្មានអ្វីនៅទីនេះទេ" : "Nothing here"}
+                      >
+                        {tab === "REQUESTED"
                           ? km
-                            ? 'គ្មានសំណើថ្មីទេ'
-                            : 'No payout requests are waiting.'
+                            ? "គ្មានសំណើថ្មីទេ"
+                            : "No payout requests are waiting."
                           : undefined}
                       </Empty>
                     </td>
@@ -348,10 +390,15 @@ export default function AdminPayoutsPage() {
                             text until now, so the admin who makes the transfer
                             had no way to read the document it is made against
                             - while the organiser could print theirs. */}
-                        <Link className="font-mono text-small" to={`/admin/payouts/${p.id}`}>
+                        <Link
+                          className="font-mono text-small"
+                          to={`/admin/payouts/${p.id}`}
+                        >
                           {p.invoice_no}
                         </Link>
-                        <p className="text-tiny text-muted m-0">{dateTime(p.requested_at)}</p>
+                        <p className="text-tiny text-muted m-0">
+                          {dateTime(p.requested_at)}
+                        </p>
                       </td>
                       <td>
                         {km ? p.organizer_name_km : p.organizer_name_en}
@@ -361,25 +408,35 @@ export default function AdminPayoutsPage() {
                             is left off - a transfer query wants the channel the
                             organiser actually watches, and two buttons in a
                             table row is a toolbar. */}
-                        <ContactButtons telegram={p.organizer_telegram_handle} km={km} />
+                        <ContactButtons
+                          telegram={p.organizer_telegram_handle}
+                          km={km}
+                        />
                       </td>
                       <td>
                         {km ? p.event_title_km : p.event_title_en}
                         <p className="text-tiny text-muted m-0">
-                          {date(p.event_starts_at)} · {p.tickets_sold} {km ? 'សំបុត្រ' : 'tickets'}
+                          {date(p.event_starts_at)} · {p.tickets_sold}{" "}
+                          {km ? "សំបុត្រ" : "tickets"}
                         </p>
                       </td>
                       <td>
                         {p.payout_method}
-                        <p className="text-tiny text-muted m-0">{p.account_name}</p>
-                        <p className="text-tiny text-muted m-0 font-mono">{p.account_number}</p>
+                        <p className="text-tiny text-muted m-0">
+                          {p.account_name}
+                        </p>
+                        <p className="text-tiny text-muted m-0 font-mono">
+                          {p.account_number}
+                        </p>
                       </td>
                       <td className="num whitespace-nowrap">
                         <b>{usd(p.net_usd_cents)}</b>
                         {/* The derivation, small, under the number an admin is
                             about to transfer. Checking it should not require
                             opening anything. */}
-                        <p className="text-tiny text-muted m-0">{derivation(p, km)}</p>
+                        <p className="text-tiny text-muted m-0">
+                          {derivation(p, km)}
+                        </p>
                       </td>
                       <td>
                         <Badge status={p.status} />
@@ -387,38 +444,41 @@ export default function AdminPayoutsPage() {
                             queue is ordered oldest-first, so this is what that
                             order is showing - and a request sitting for eleven
                             days reads as a date nobody subtracts. */}
-                        {p.status !== 'PAID' && (
+                        {p.status !== "PAID" && (
                           <p className="text-tiny text-muted m-0 mt-1">
-                            {km ? 'រង់ចាំ' : 'waiting'} {timeAgo(p.requested_at).replace(' ago', '')}
+                            {km ? "រង់ចាំ" : "waiting"}{" "}
+                            {timeAgo(p.requested_at).replace(" ago", "")}
                           </p>
                         )}
                         {p.reviewed_by_name && (
                           <p className="text-tiny text-muted m-0 mt-1">
-                            {km ? 'ដោយ' : 'by'} {p.reviewed_by_name}
+                            {km ? "ដោយ" : "by"} {p.reviewed_by_name}
                           </p>
                         )}
-                        {p.status === 'PAID' && p.paid_reference && (
-                          <p className="text-tiny text-muted m-0 font-mono">{p.paid_reference}</p>
+                        {p.status === "PAID" && p.paid_reference && (
+                          <p className="text-tiny text-muted m-0 font-mono">
+                            {p.paid_reference}
+                          </p>
                         )}
                       </td>
                       <td className="num whitespace-nowrap">
-                        {p.status === 'REQUESTED' && (
+                        {p.status === "REQUESTED" && (
                           <button
                             type="button"
                             className="btn btn-sm btn-primary"
                             onClick={() => setApproving(p)}
                           >
-                            {km ? 'អនុម័ត' : 'Approve'}
+                            {km ? "អនុម័ត" : "Approve"}
                           </button>
                         )}
-                        {p.status === 'APPROVED' && (
+                        {p.status === "APPROVED" && (
                           <button
                             type="button"
                             className="btn btn-sm btn-primary"
                             onClick={() => openPay(p)}
                           >
                             <Icon name="bank" size={14} />
-                            {km ? 'កត់ត្រាការផ្ទេរ' : 'Record transfer'}
+                            {km ? "កត់ត្រាការផ្ទេរ" : "Record transfer"}
                           </button>
                         )}
                       </td>
@@ -449,13 +509,13 @@ export default function AdminPayoutsPage() {
         /* Only 'danger' and 'warn' have a styled icon chip, and 'warn' is the
            honest one anyway: approving is not destructive, but it is money. */
         tone="warn"
-        title={km ? 'អនុម័តការទូទាត់?' : 'Approve this payout?'}
-        confirmLabel={km ? 'អនុម័ត' : 'Approve'}
+        title={km ? "អនុម័តការទូទាត់?" : "Approve this payout?"}
+        confirmLabel={km ? "អនុម័ត" : "Approve"}
         onClose={() => setApproving(null)}
         onConfirm={() =>
           run(
             () => approvePayout(approving.id),
-            km ? 'បានអនុម័ត' : 'Approved',
+            km ? "បានអនុម័ត" : "Approved",
             () => setApproving(null),
           )
         }
@@ -475,14 +535,15 @@ export default function AdminPayoutsPage() {
       <FormDialog
         open={Boolean(paying)}
         busy={busy}
-        title={km ? 'កត់ត្រាការផ្ទេរប្រាក់' : 'Record the transfer'}
-        submitLabel={km ? 'កត់ត្រា' : 'Record it'}
+        title={km ? "កត់ត្រាការផ្ទេរប្រាក់" : "Record the transfer"}
+        submitLabel={km ? "កត់ត្រា" : "Record it"}
         submitDisabled={!payForm.reference.trim()}
         onClose={() => setPaying(null)}
         onSubmit={() =>
           run(
-            () => markPayoutPaid(paying.id, payForm.reference.trim(), payForm.note),
-            km ? 'បានកត់ត្រា' : 'Recorded',
+            () =>
+              markPayoutPaid(paying.id, payForm.reference.trim(), payForm.note),
+            km ? "បានកត់ត្រា" : "Recorded",
             () => setPaying(null),
           )
         }
@@ -493,13 +554,15 @@ export default function AdminPayoutsPage() {
                 reference - they are copying these into a banking app in another
                 window, and a dialog that hid them would send them back. */}
             <dl className="text-small m-0 mb-3 p-3 rounded-card bg-surface-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
-              <dt className="text-muted m-0">{km ? 'ចំនួន' : 'Amount'}</dt>
+              <dt className="text-muted m-0">{km ? "ចំនួន" : "Amount"}</dt>
               <dd className="m-0 font-bold">{usd(paying.net_usd_cents)}</dd>
-              <dt className="text-muted m-0">{km ? 'ធនាគារ' : 'Bank'}</dt>
+              <dt className="text-muted m-0">{km ? "ធនាគារ" : "Bank"}</dt>
               <dd className="m-0">{paying.payout_method}</dd>
-              <dt className="text-muted m-0">{km ? 'ឈ្មោះគណនី' : 'Account name'}</dt>
+              <dt className="text-muted m-0">
+                {km ? "ឈ្មោះគណនី" : "Account name"}
+              </dt>
               <dd className="m-0">{paying.account_name}</dd>
-              <dt className="text-muted m-0">{km ? 'លេខគណនី' : 'Account'}</dt>
+              <dt className="text-muted m-0">{km ? "លេខគណនី" : "Account"}</dt>
               <dd className="m-0 font-mono">{paying.account_number}</dd>
             </dl>
 
@@ -511,11 +574,11 @@ export default function AdminPayoutsPage() {
             {!receipt.off && (
               <div className="mb-3">
                 <label
-                  className={`receipt-drop${receipt.busy ? ' is-busy' : ''}`}
+                  className={`receipt-drop${receipt.busy ? " is-busy" : ""}`}
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={(e) => {
-                    e.preventDefault()
-                    readReceipt(e.dataTransfer.files?.[0])
+                    e.preventDefault();
+                    readReceipt(e.dataTransfer.files?.[0]);
                   }}
                 >
                   <input
@@ -524,25 +587,27 @@ export default function AdminPayoutsPage() {
                     className="sr-only"
                     disabled={receipt.busy}
                     onChange={(e) => {
-                      readReceipt(e.target.files?.[0])
+                      readReceipt(e.target.files?.[0]);
                       // Cleared so that picking the SAME file twice still
                       // fires onChange - after a failed read, re-picking the
                       // one file they have is the obvious thing to try.
-                      e.target.value = ''
+                      e.target.value = "";
                     }}
                   />
                   {receipt.busy ? (
                     <>
                       <span className="spinner" />
-                      <span>{km ? 'កំពុងអានបង្កាន់ដៃ...' : 'Reading the receipt...'}</span>
+                      <span>
+                        {km ? "កំពុងអានបង្កាន់ដៃ..." : "Reading the receipt..."}
+                      </span>
                     </>
                   ) : (
                     <>
                       <Icon name="scan" size={16} />
                       <span>
                         {km
-                          ? 'ទម្លាក់រូបបញ្ជាក់ការផ្ទេរ ដើម្បីបំពេញលេខយោង'
-                          : 'Drop the transfer screenshot to fill in the reference'}
+                          ? "ទម្លាក់រូបបញ្ជាក់ការផ្ទេរ ដើម្បីបំពេញលេខយោង"
+                          : "Drop the transfer screenshot to fill in the reference"}
                       </span>
                     </>
                   )}
@@ -553,12 +618,14 @@ export default function AdminPayoutsPage() {
                     bank details is what happens to the picture. */}
                 <p className="text-small text-muted m-0 mt-1">
                   {km
-                    ? 'រូបភាពមិនត្រូវបានរក្សាទុកទេ'
-                    : 'The image is read once and never stored.'}
+                    ? "រូបភាពមិនត្រូវបានរក្សាទុកទេ"
+                    : "The image is read once and never stored."}
                 </p>
 
                 {receipt.error && (
-                  <p className="text-small text-danger m-0 mt-1">{receipt.error}</p>
+                  <p className="text-small text-danger m-0 mt-1">
+                    {receipt.error}
+                  </p>
                 )}
 
                 {/* What was read, minus the reference - that one is already in
@@ -567,45 +634,62 @@ export default function AdminPayoutsPage() {
                     screenshot. */}
                 {receipt.fields && (
                   <dl className="text-small m-0 mt-2 p-2 rounded-card bg-surface-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
-                    <dt className="text-muted m-0">{km ? 'ចំនួន' : 'Amount read'}</dt>
-                    <dd className="m-0">{receipt.fields.amount || (km ? 'រកមិនឃើញ' : 'not found')}</dd>
-                    <dt className="text-muted m-0">{km ? 'កាលបរិច្ឆេទ' : 'Date read'}</dt>
-                    <dd className="m-0">{receipt.fields.date || (km ? 'រកមិនឃើញ' : 'not found')}</dd>
-                    <dt className="text-muted m-0">{km ? 'អ្នកផ្ញើ' : 'Payer'}</dt>
-                    <dd className="m-0">{receipt.fields.payer_name || (km ? 'រកមិនឃើញ' : 'not found')}</dd>
+                    <dt className="text-muted m-0">
+                      {km ? "ចំនួន" : "Amount read"}
+                    </dt>
+                    <dd className="m-0">
+                      {receipt.fields.amount || (km ? "រកមិនឃើញ" : "not found")}
+                    </dd>
+                    <dt className="text-muted m-0">
+                      {km ? "កាលបរិច្ឆេទ" : "Date read"}
+                    </dt>
+                    <dd className="m-0">
+                      {receipt.fields.date || (km ? "រកមិនឃើញ" : "not found")}
+                    </dd>
+                    <dt className="text-muted m-0">
+                      {km ? "អ្នកផ្ញើ" : "Payer"}
+                    </dt>
+                    <dd className="m-0">
+                      {receipt.fields.payer_name ||
+                        (km ? "រកមិនឃើញ" : "not found")}
+                    </dd>
                   </dl>
                 )}
               </div>
             )}
 
             <Field
-              label={km ? 'លេខយោងពីធនាគារ' : 'Bank reference'}
+              label={km ? "លេខយោងពីធនាគារ" : "Bank reference"}
               hint={
                 km
-                  ? 'អ្នករៀបចំនឹងឃើញលេខនេះ ហើយប្រើវាពេលសួរធនាគារ។ សូមផ្ទៀងផ្ទាត់មុនកត់ត្រា'
-                  : 'The organizer sees this and will quote it to their bank, so check it against the screenshot before recording.'
+                  ? "អ្នករៀបចំនឹងឃើញលេខនេះ ហើយប្រើវាពេលសួរធនាគារ។ សូមផ្ទៀងផ្ទាត់មុនកត់ត្រា"
+                  : "The organizer sees this and will quote it to their bank, so check it against the screenshot before recording."
               }
             >
               <input
                 className="input font-mono"
                 value={payForm.reference}
                 maxLength={120}
-                onChange={(e) => setPayForm((f) => ({ ...f, reference: e.target.value }))}
+                onChange={(e) =>
+                  setPayForm((f) => ({ ...f, reference: e.target.value }))
+                }
               />
             </Field>
 
-            <Field label={km ? 'កំណត់ចំណាំ' : 'Note'} optional>
+            <Field label={km ? "កំណត់ចំណាំ" : "Note"} optional>
               <textarea
                 className="input"
                 rows={2}
                 maxLength={1000}
                 value={payForm.note}
-                onChange={(e) => setPayForm((f) => ({ ...f, note: e.target.value }))}
+                onChange={(e) =>
+                  setPayForm((f) => ({ ...f, note: e.target.value }))
+                }
               />
             </Field>
           </>
         )}
       </FormDialog>
     </div>
-  )
+  );
 }

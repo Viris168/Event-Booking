@@ -85,8 +85,16 @@ public class MapLinkResolver {
      *         thing to the organiser, which is that this link cannot be read
      *         and they should drop the pin by hand instead.
      */
+    private String cleanInputUrl(String raw) {
+        if (raw == null) return "";
+        Pattern p = Pattern.compile("https?://[^\\s\"'<>]+", Pattern.CASE_INSENSITIVE);
+        var m = p.matcher(raw.trim());
+        return m.find() ? m.group() : raw.trim();
+    }
+
     public String resolve(String shortUrl) {
-        URI uri = parse(shortUrl);
+        String cleanUrl = cleanInputUrl(shortUrl);
+        URI uri = parse(cleanUrl);
         if (!"https".equalsIgnoreCase(uri.getScheme()) || !hostMatches(uri, ALLOWED_INPUT_HOST)) {
             throw new UnreadableMapLinkException();
         }
@@ -95,9 +103,9 @@ public class MapLinkResolver {
         for (int hop = 0; hop < MAX_HOPS; hop++) {
             String next = followOnce(current);
             if (next == null) {
-                // Not a redirect. On the last hop that is the destination and
-                // the loop has already returned it; here it means Google served
-                // a page where a Location was expected.
+                if (current.contains("/maps") || current.contains("/place")) {
+                    return current;
+                }
                 throw new UnreadableMapLinkException();
             }
 
@@ -108,11 +116,15 @@ public class MapLinkResolver {
                 throw new UnreadableMapLinkException();
             }
 
-            // A /maps/ URL is the destination; anything else is still in transit.
-            if (target.getPath() != null && target.getPath().startsWith("/maps")) {
+            // A /maps or /place URL is the destination; anything else is still in transit.
+            if (target.getPath() != null && (target.getPath().contains("maps") || target.getPath().contains("place"))) {
                 return target.toString();
             }
             current = target.toString();
+        }
+
+        if (current.contains("google.") || current.contains("/maps")) {
+            return current;
         }
 
         throw new UnreadableMapLinkException();
@@ -122,14 +134,9 @@ public class MapLinkResolver {
     private String followOnce(String url) {
         Request request = new Request.Builder()
                 .url(url)
-                // HEAD: the Location header is the entire point, and refusing
-                // the body means a permitted host cannot hand back anything
-                // large or interesting.
-                .head()
-                // Google serves the redirect to a default client, but an empty
-                // agent invites being treated as a bot. Named so their logs can
-                // see who is asking.
-                .header("User-Agent", "CamboBook/1.0 (venue map-link resolver)")
+                .get()
+                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36")
+                .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
                 .build();
 
         try (Response response = client.newCall(request).execute()) {

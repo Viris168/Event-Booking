@@ -1,5 +1,6 @@
 package com.eventbooking.service.notification.impl;
 
+import com.eventbooking.Enumeration.NotificationFilter;
 import com.eventbooking.Enumeration.NotificationType;
 import com.eventbooking.Enumeration.Role;
 import com.eventbooking.dto.notification.NotificationResponse;
@@ -48,13 +49,22 @@ public class NotificationServiceimpl implements NotificationService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<NotificationResponse> inbox(Long recipientUserId, boolean unreadOnly, int page, int size) {
+    public Page<NotificationResponse> inbox(Long recipientUserId, NotificationFilter filter, int page, int size) {
         Pageable pageable = PageRequest.of(Math.max(0, page), Math.clamp(size, 1, MAX_PAGE_SIZE));
 
-        Page<Notification> rows = unreadOnly
-                ? notificationRepository.findByRecipientUserIdAndReadAtIsNullOrderByCreatedAtDesc(
-                        recipientUserId, pageable)
-                : notificationRepository.findByRecipientUserIdOrderByCreatedAtDesc(recipientUserId, pageable);
+        // Null rather than a default in the signature: the controller supplies
+        // ALL when the parameter is absent, and a caller inside the app that
+        // forgets it should get the whole inbox rather than an exception.
+        NotificationFilter which = filter == null ? NotificationFilter.ALL : filter;
+
+        Page<Notification> rows = switch (which) {
+            case UNREAD -> notificationRepository
+                    .findByRecipientUserIdAndReadAtIsNullOrderByCreatedAtDesc(recipientUserId, pageable);
+            case READ -> notificationRepository
+                    .findByRecipientUserIdAndReadAtIsNotNullOrderByCreatedAtDesc(recipientUserId, pageable);
+            case ALL -> notificationRepository
+                    .findByRecipientUserIdOrderByCreatedAtDesc(recipientUserId, pageable);
+        };
 
         return rows.map(NotificationResponse::from);
     }
