@@ -2119,6 +2119,166 @@
     @apply pr-[2.1rem];
   }
 
+  /* Custom Select Component (theme-aware, rich dropdown) */
+  .custom-select-wrap {
+    position: relative;
+  }
+  .custom-select-icon {
+    pointer-events: none;
+    position: absolute;
+    left: 0.72rem;
+    display: grid;
+    place-items: center;
+    color: color-mix(in oklab, var(--color-muted) 88%, transparent);
+    z-index: 2;
+  }
+  .custom-select-trigger {
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    width: 100%;
+    background-image: none !important;
+    padding-right: 0.75rem !important;
+    text-align: left;
+    cursor: pointer;
+    user-select: none;
+  }
+  .custom-select-trigger.is-active,
+  .custom-select-wrap.is-open .custom-select-trigger {
+    border-color: var(--color-brand-500);
+    box-shadow: 0 0 0 3px
+      color-mix(in srgb, var(--color-brand-500) 18%, transparent);
+  }
+  .custom-select-label {
+    flex: 1 1 auto;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 500;
+  }
+  .custom-select-chevron {
+    display: grid;
+    place-items: center;
+    flex: none;
+    color: var(--color-muted);
+    transition:
+      transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+      color 0.15s ease;
+  }
+  .custom-select-chevron.is-flipped {
+    transform: rotate(180deg);
+    color: var(--color-brand-600);
+  }
+  [data-theme="dark"] .custom-select-chevron.is-flipped {
+    color: var(--color-brand-400);
+  }
+  .custom-select-hidden {
+    position: absolute;
+    width: 0;
+    height: 0;
+    opacity: 0;
+    pointer-events: none;
+    margin: 0;
+    padding: 0;
+    border: none;
+  }
+  .custom-select-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    min-width: 100%;
+    width: max-content;
+    max-width: 320px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-line);
+    border-radius: 14px;
+    padding: 0.35rem;
+    box-shadow:
+      0 16px 36px -6px rgba(0, 0, 0, 0.16),
+      0 4px 12px rgba(0, 0, 0, 0.05);
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    max-height: 280px;
+    overflow-y: auto;
+    animation: custom-menu-pop-in 0.16s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  [data-theme="dark"] .custom-select-menu {
+    background: #1c1915;
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow:
+      0 20px 42px -6px rgba(0, 0, 0, 0.8),
+      0 0 0 1px rgba(255, 255, 255, 0.05);
+  }
+  @keyframes custom-menu-pop-in {
+    from {
+      opacity: 0;
+      transform: translateY(-4px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+  .custom-select-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.65rem;
+    width: 100%;
+    padding: 0.55rem 0.75rem;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--color-ink);
+    font-size: 0.88rem;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: left;
+    transition:
+      background 0.12s ease,
+      color 0.12s ease;
+  }
+  .custom-select-option:hover:not(:disabled) {
+    background: var(--color-surface-2);
+    color: var(--color-ink);
+  }
+  .custom-select-option:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+  .custom-select-option.is-selected {
+    background: color-mix(
+      in srgb,
+      var(--color-brand-500) 10%,
+      var(--color-surface)
+    );
+    color: var(--color-brand-600);
+    font-weight: 650;
+  }
+  [data-theme="dark"] .custom-select-option.is-selected {
+    background: rgba(16, 185, 129, 0.14);
+    color: var(--color-brand-400);
+  }
+  .custom-select-option-text {
+    flex: 1 1 auto;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .custom-select-check {
+    display: grid;
+    place-items: center;
+    flex: none;
+    color: var(--color-brand-600);
+  }
+  [data-theme="dark"] .custom-select-check {
+    color: var(--color-brand-400);
+  }
+
   /* Events-page search panel: query + province + sort on one line, advanced
      date/price controls revealed on demand.
 
