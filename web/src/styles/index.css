@@ -1837,48 +1837,53 @@
      section reversed. One layout serves all three - which side carries the
      text is the only thing that changes between them. */
   .home-events-section {
-    @apply mb-12;
+    @apply mb-14;
   }
   .home-split {
-    @apply mb-10 mt-12 grid items-center gap-10 border-t border-line pt-10;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 0.85fr);
+    @apply mb-16 mt-14 grid items-center gap-12 border-t border-line pt-14;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
   }
   /* Column widths only - no `order` override. The panel is written FIRST in
      JSX for this variant, so plain grid auto-placement already lands it in
      the first (narrower) column and the text in the second: exactly "image
-     left, text right" with nothing to reverse. An order swap here was tried
-     and did the opposite of what it looked like it should - it un-reversed
-     the reverse at desktop width, which is what put the image back on the
-     right and the panel where the text was meant to be. */
+     left, text right" with nothing to reverse. */
   .home-split-reverse {
-    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
   }
   @media (max-width: 860px) {
     .home-split {
-      @apply grid-cols-1 gap-6;
+      @apply grid-cols-1 gap-8 mb-12 mt-10 pt-10;
     }
   }
+
+  .home-kicker {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold tracking-wide uppercase text-link bg-brand-500/10 border border-brand-500/20 mb-3;
+  }
+
   .home-split-text h2 {
-    @apply m-0 max-w-[22ch] text-[1.55rem] leading-[1.2];
+    @apply m-0 text-2xl md:text-3xl font-extrabold tracking-tight text-ink leading-tight max-w-[24ch];
   }
   .home-split-text > p {
     @apply mb-0 mt-3 max-w-[54ch] text-[0.98rem] leading-relaxed text-muted;
   }
   .home-bullets {
-    @apply m-0 my-5 flex list-none flex-col gap-[0.6rem] p-0;
+    @apply m-0 my-6 flex list-none flex-col gap-3.5 p-0;
   }
   .home-bullets li {
-    @apply flex items-start gap-[0.55rem] text-[0.95rem] leading-[1.5] text-ink-2;
+    @apply flex items-start gap-3 text-[0.95rem] text-ink-2;
   }
-  .home-bullets svg {
-    @apply mt-[0.15rem] flex-none text-success;
+  .home-bullet-icon {
+    @apply flex-none w-7 h-7 rounded-lg bg-emerald-500/10 text-success border border-emerald-500/20 flex items-center justify-center mt-0.5;
+  }
+  .home-bullet-text {
+    @apply leading-relaxed font-medium text-ink-2;
   }
 
   /* The decorative panel standing in for photography - see FeaturePanel in
      HomePage.jsx. Square-ish rather than a photo's 16/9, so it reads as an
      illustrated tile and not as a broken image waiting for real art. */
   .home-panel {
-    @apply mx-auto grid aspect-[4/3] max-h-[320px] w-full place-items-center justify-self-center rounded-card text-white/90;
+    @apply mx-auto grid aspect-[4/3] max-h-[340px] w-full place-items-center justify-self-center rounded-2xl text-white/90;
   }
   /* A real photo filling the same slot as the decorative gradient tile -
      cover rather than contain, so a wide crop fills the frame instead of
@@ -1891,7 +1896,7 @@
      adding height that would knock the split out of alignment with its text
      column. */
   .home-photo {
-    @apply relative m-0 overflow-hidden;
+    @apply relative m-0 overflow-hidden rounded-2xl border border-line/60 shadow-card;
   }
   /* Every slide stacks in the same box; only the active one is opaque. A
      cross-fade rather than a slide - these boxes are too small for a track
@@ -1908,16 +1913,16 @@
     }
   }
   .home-photo figcaption {
-    @apply absolute bottom-2 right-2 z-[1] rounded-full bg-ink/70 px-[0.6rem] py-[0.2rem] text-white/80 backdrop-blur-sm;
+    @apply absolute bottom-3 right-3 z-[1] rounded-full bg-ink/80 px-3 py-1 text-xs text-white/90;
   }
   .home-photo figcaption a {
-    @apply text-white/90 underline decoration-white/30 underline-offset-2;
+    @apply text-white underline decoration-white/40 underline-offset-2;
   }
   .home-photo-dots {
-    @apply absolute bottom-2 left-2 z-[1] flex items-center gap-[0.3rem];
+    @apply absolute bottom-3 left-3 z-[1] flex items-center gap-1.5;
   }
   .home-photo-dot {
-    @apply h-[6px] w-[6px] cursor-pointer rounded-full border-0 bg-white/40 p-0;
+    @apply h-[7px] w-[7px] cursor-pointer rounded-full border-0 bg-white/40 p-0;
     transition:
       width 0.25s ease,
       background-color 0.25s ease;
@@ -1926,90 +1931,83 @@
     @apply bg-white/70;
   }
   .home-photo-dot.on {
-    @apply w-[16px] bg-white/95;
+    @apply w-4 bg-white;
   }
 
   /* --------------------------------------------------------- three steps ---
-     Numbered and threaded on a rule, which is what turns "three icon boxes"
-     into a sequence: find, pay, scan, in that order, joined by the line the
-     numbers sit on rather than three unrelated cards. */
+     Numbered step cards with hover elevation and clear sequential structure. */
   .home-steps-section {
-    @apply mb-8 border-t border-line pt-8;
+    @apply mb-14 border-t border-line pt-14;
   }
   .home-steps-head {
-    @apply mb-8 text-center;
+    @apply mb-10 text-center;
   }
   .home-steps-head h2 {
-    @apply m-0 text-[1.55rem];
+    @apply m-0 text-2xl md:text-3xl font-extrabold tracking-tight text-ink;
+  }
+  .home-steps-head .section-sub {
+    @apply mt-2 text-muted text-base max-w-[48ch] mx-auto;
   }
   .home-steps {
-    @apply relative m-0 grid list-none gap-8 p-0 md:grid-cols-3 md:gap-10;
+    @apply relative m-0 grid list-none gap-6 p-0 md:grid-cols-3;
   }
-  /* The connecting line, drawn once behind all three rather than as a border
-     on each - a border per item would just be three more boxes. */
-  @media (min-width: 861px) {
-    .home-steps::before {
-      content: "";
-      @apply absolute left-[16.5%] right-[16.5%] top-[13px] -z-[1] border-t border-dashed border-line;
-    }
+  .home-step-card {
+    @apply relative flex flex-col p-6 rounded-2xl bg-surface border border-line shadow-card hover:shadow-pop hover:-translate-y-1 transition-all duration-200 text-left;
   }
-  .home-steps li {
-    @apply flex flex-col items-center gap-[0.35rem] text-center;
+  .home-step-top {
+    @apply flex items-center justify-between mb-4 w-full;
   }
-  .home-steps svg {
-    @apply mb-1 text-gold-500;
+  .home-step-icon {
+    @apply flex-none w-12 h-12 rounded-xl bg-brand-500/10 text-link border border-brand-500/20 flex items-center justify-center transition-colors;
   }
   .home-step-num {
-    @apply text-[0.72rem] font-extrabold tracking-[0.16em] text-muted;
+    @apply text-2xl font-black text-muted/30 tracking-tight font-mono;
   }
-  .home-steps h3 {
-    @apply m-0 mt-1 text-[1.02rem] font-bold;
+  .home-step-card h3 {
+    @apply m-0 mb-2 text-lg font-bold text-ink;
   }
-  .home-steps p {
-    @apply mb-0 mt-[0.3rem] max-w-[26ch] text-[0.9rem] leading-[1.55] text-ink-2;
-  }
-  .home-steps-cta {
-    @apply mt-9 flex justify-center;
+  .home-step-card p {
+    @apply mb-0 text-sm leading-relaxed text-muted;
   }
 
   /* ------------------------------------------------------------- proof ---
-     The wireframe's testimonial slot, plain and centred - no card, no
-     quote marks, because there is no customer quote to put there yet. Real
-     numbers instead of an invented one. */
+     Real metrics wrapped in clean elevated cards with tabular numbers. */
   .home-proof {
-    @apply mb-8 border-t border-line pt-10 text-center;
+    @apply mb-16 border-t border-line pt-14 text-center;
   }
-  .home-proof h2 {
-    @apply m-0 text-[1.4rem];
+  .home-proof-head h2 {
+    @apply m-0 text-2xl md:text-3xl font-extrabold tracking-tight text-ink;
+  }
+  .home-proof-head .section-sub {
+    @apply mt-2 text-muted text-base max-w-[48ch] mx-auto;
   }
   .home-proof-stats {
-    @apply mx-auto mt-7 flex max-w-[560px] flex-wrap justify-center gap-x-10 gap-y-5;
+    @apply mx-auto mt-8 grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-[780px];
   }
-  .home-proof-stats div {
-    @apply min-w-[120px];
+  .home-proof-stat-card {
+    @apply p-6 rounded-2xl bg-surface border border-line shadow-card hover:shadow-pop hover:-translate-y-0.5 transition-all duration-200 flex flex-col items-center justify-center;
   }
-  .home-proof-stats b {
-    @apply block text-[2rem] font-extrabold tracking-tight text-ink;
-    font-variant-numeric: tabular-nums;
+  .home-proof-stat-card b {
+    @apply block text-3xl md:text-4xl font-black text-link tracking-tight tabular-nums mb-1;
   }
-  .home-proof-stats span {
-    @apply text-[0.85rem] text-muted;
+  .home-proof-stat-card span {
+    @apply text-xs md:text-sm font-semibold text-muted uppercase tracking-wider;
   }
 
   /* --------------------------------------------------------------- FAQ ---
-     <details>/<summary> rather than a controlled accordion component: no
-     state to wire up, keyboard and screen-reader behaviour come for free, and
-     more than one can be open at once, which is the ordinary way an FAQ
-     works. */
+     Accordion details cards with hover states, smooth chevron indicators,
+     and dividing border. */
   .home-faq {
-    @apply my-5 flex flex-col gap-[0.6rem];
+    @apply my-6 flex flex-col gap-3;
   }
   .home-faq-item {
-    @apply rounded-ui border border-line bg-surface px-4 py-3;
+    @apply rounded-xl border border-line bg-surface p-4 transition-all duration-200 hover:border-brand-500/40 shadow-sm;
+  }
+  .home-faq-item[open] {
+    @apply border-brand-500/40 shadow-card;
   }
   .home-faq-item summary {
-    @apply flex cursor-pointer list-none items-center justify-between gap-3
-      text-[0.98rem] font-semibold text-ink;
+    @apply flex cursor-pointer list-none items-center justify-between gap-3 text-[0.98rem] font-semibold text-ink select-none;
   }
   .home-faq-item summary::-webkit-details-marker {
     display: none;
@@ -2018,30 +2016,47 @@
     @apply flex-none text-muted transition-transform duration-200;
   }
   .home-faq-item[open] summary svg {
-    @apply rotate-180;
+    @apply rotate-180 text-link;
   }
   .home-faq-item p {
-    @apply mb-0 mt-[0.6rem] text-[0.9rem] leading-[1.6] text-ink-2;
+    @apply mb-0 mt-3 border-t border-line/60 pt-3 text-[0.92rem] leading-relaxed text-ink-2;
   }
 
-  /* --------------------------------------------------------- final band ---
-     Mirrors the hero: a banner behind, one card in front. brand-900 rather
-     than the hero's photo, so the page's last section reads as a deliberate
-     bookend and not as a second hero. */
-  .home-final {
-    @apply bg-brand-900 py-16;
+  /* --------------------------------------------------------- final strip ---
+     Full-width banner directly above footer with downward pointer notch. */
+  .home-final-strip {
+    @apply relative w-full bg-brand-700 text-white overflow-visible transition-colors duration-200;
   }
-  .home-final-card {
-    @apply mx-auto max-w-[640px] rounded-card bg-surface px-8 py-10 text-center shadow-pop;
+  .home-final-strip:hover {
+    @apply bg-brand-600;
   }
-  .home-final-card h2 {
-    @apply m-0 text-[1.6rem];
+  .home-final-strip::after {
+    content: "";
+    @apply absolute left-1/2 -bottom-[8px] -translate-x-1/2 z-10 pointer-events-none;
+    width: 0;
+    height: 0;
+    border-left: 9px solid transparent;
+    border-right: 9px solid transparent;
+    border-top: 8px solid var(--color-brand-700);
+    transition: border-top-color 0.2s ease;
   }
-  .home-final-card p {
-    @apply mb-0 mt-3 text-[0.98rem] leading-relaxed text-muted;
+  .home-final-strip:hover::after {
+    border-top-color: var(--color-brand-600);
   }
-  .home-final-card .btn {
-    @apply mt-7;
+  .home-final-strip-link {
+    @apply mx-auto flex max-w-shell items-center justify-center gap-2.5 px-page py-5 md:py-6 text-center text-white no-underline select-none;
+  }
+  .home-final-strip-link:hover {
+    @apply no-underline text-white;
+  }
+  .home-final-strip-text {
+    @apply text-base md:text-lg font-bold tracking-tight text-white;
+  }
+  .home-final-strip-arrow {
+    @apply flex-none text-white/80 transition-transform duration-200;
+  }
+  .home-final-strip:hover .home-final-strip-arrow {
+    @apply translate-x-1 text-white;
   }
 
   /* ------------------------------------------------------------ search bar */
