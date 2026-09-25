@@ -380,11 +380,11 @@ export default function ContactPage() {
           <dl className="page-band-stats">
             <div>
               <dt>{km ? 'រយៈពេលឆ្លើយតបជាធម្មតា' : 'Usual reply time'}</dt>
-              <dd>{km ? '១ ថ្ងៃធ្វើការ' : '1 business day'}</dd>
+              <dd>{km ? '1 ថ្ងៃធ្វើការ' : '1 business day'}</dd>
             </div>
             <div>
               <dt>{km ? 'ថ្ងៃច័ន្ទ ដល់ ថ្ងៃសុក្រ (ម៉ោងកម្ពុជា)' : 'Monday to Friday, Cambodia time'}</dt>
-              <dd>{km ? '៨ៈ០០ ដល់ ១៧ៈ០០' : '8:00 to 17:00'}</dd>
+              <dd>{km ? '8:00 ដល់ 17:00' : '8:00 to 17:00'}</dd>
             </div>
           </dl>
         </div>
@@ -651,7 +651,7 @@ export default function ContactPage() {
               <h2>{km ? 'ពេលវេលាឆ្លើយតប' : 'When we answer'}</h2>
               <p className="contact-hours">
                 {km
-                  ? 'ថ្ងៃច័ន្ទ ដល់ ថ្ងៃសុក្រ ម៉ោង ៨ៈ០០ ដល់ ១៧ៈ០០ (ម៉ោងនៅកម្ពុជា)។ សារដែលផ្ញើនៅចុងសប្តាហ៍ត្រូវបានឆ្លើយតបនៅថ្ងៃច័ន្ទ។'
+                  ? 'ថ្ងៃច័ន្ទ ដល់ ថ្ងៃសុក្រ ម៉ោង 8:00 ដល់ 17:00 (ម៉ោងនៅកម្ពុជា)។ សារដែលផ្ញើនៅចុងសប្តាហ៍ត្រូវបានឆ្លើយតបនៅថ្ងៃច័ន្ទ។'
                   : 'Monday to Friday, 8:00 to 17:00 Cambodia time. Anything sent over the weekend is answered on Monday.'}
               </p>
               <p className="contact-hours-note">
