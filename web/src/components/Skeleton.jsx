@@ -83,24 +83,52 @@ export function SkeletonPanel({ lines = 3, head = true, className = "" }) {
 }
 
 /** Mirrors EventCard: media band, title pair, two meta rows, price footer. */
+/**
+ * Placeholder for one EventCard.
+ *
+ * <p>Uses the card's OWN classes - .ev-card, .ev-media, .ev-body, .ev-foot -
+ * rather than restating their utilities. It used to copy .ev-card's and
+ * .ev-foot's strings verbatim while writing its own body with gap-[0.55rem]
+ * against the real .ev-body's gap-[0.35rem], which is the sort of drift that
+ * only ever grows: three of the four boxes were already duplicated by hand.
+ * Now padding, gap and the media aspect all come from one place.
+ *
+ * <p>A card whose title wraps to two lines is genuinely taller than one that
+ * does not, so a placeholder cannot match every card to the pixel - but it can
+ * stop being wrong about the parts that are fixed.
+ */
 export function EventCardSkeleton() {
   return (
-    <div
-      className="flex h-full flex-col overflow-hidden rounded-card border border-line bg-surface shadow-card"
-      aria-hidden="true"
-    >
-      <Skeleton className="aspect-video w-full rounded-none" />
-      <div className="flex flex-auto flex-col gap-[0.55rem] px-4 pt-[0.95rem]">
-        <Skeleton className="h-[1.1rem] w-20 rounded-full" />
-        <Skeleton className="skel-line lg w-[85%]" />
-        <Skeleton className="skel-line w-[60%]" />
-        <div className="mt-[0.35rem] flex flex-col gap-[0.4rem]">
-          <Skeleton className="skel-line w-[70%]" />
-          <Skeleton className="skel-line w-[55%]" />
+    <div className="ev-card pointer-events-none" aria-hidden="true">
+      <div className="ev-media">
+        <Skeleton className="h-full w-full rounded-none" />
+      </div>
+      {/* The real .ev-body holds exactly three things: .ev-title, the Khmer
+          subtitle, and .ev-meta's two rows. The status badge above them only
+          renders when a card is NOT published, which never happens in a public
+          grid, so a placeholder that drew one was inventing a row.
+
+          Each bar is the line box it stands in - text size x line-height, the
+          body's 1.65 except .ev-title-km which sets its own 1.75 - so the
+          column adds up to the same height the text will. A title that wraps
+          to two lines is really taller; that part no placeholder can know. */}
+      <div className="ev-body">
+        <Skeleton className="h-[1.65rem] w-[85%]" />
+        <Skeleton className="h-[1.505rem] w-[60%]" />
+        <div className="ev-meta">
+          <Skeleton className="h-[1.353rem] w-[70%]" />
+          <Skeleton className="h-[1.353rem] w-[55%]" />
         </div>
       </div>
-      <div className="mt-auto flex items-end justify-between gap-[0.6rem] px-4 pb-4 pt-[0.85rem]">
-        <Skeleton className="h-[1.6rem] w-20" />
+      {/* The foot's left side is .price-tag, which is TWO line boxes - the
+          "from" label over the stacked price - and measures 39.7px. A single
+          1.6rem bar stood 25.6px, which is where the last of the card's
+          height gap lived. The right side is the 32px arrow button. */}
+      <div className="ev-foot">
+        <span className="price-tag flex flex-col gap-[0.36rem]">
+          <Skeleton className="h-[0.8125rem] w-10" />
+          <Skeleton className="h-[1.3125rem] w-20" />
+        </span>
         <Skeleton className="h-8 w-10 rounded-ui" />
       </div>
     </div>
@@ -118,23 +146,45 @@ export function EventGridSkeleton({ count = 4, className = "", style }) {
   );
 }
 
-/** The hero's "Top selling" card, on navy — hence the dark variant. */
+/**
+ * The hero's "Top selling" rail, while the catalogue is still loading.
+ *
+ * <p>Built out of HeroRail's OWN class names rather than a card shaped to
+ * look roughly similar. It used to render `.spotlight` - a different component
+ * with a fixed 104px image band and three text lines - which stood 288px tall
+ * where the rail that replaced it stands 377px, so the hero grew 28px at the
+ * moment the data arrived. A placeholder whose only job is to hold the space
+ * was the thing causing the shift.
+ *
+ * <p>Borrowing the real classes means the geometry cannot drift again: the
+ * square comes from `.rail-card`'s own aspect-ratio through `.skel-rail-card`,
+ * the badge sits in the real `.hero-rail-head`, and the dots are the real
+ * `.hero-dots`. Change the rail and this follows.
+ *
+ * <p>The dots are spans, not buttons - there is nothing to press yet - and the
+ * whole thing is `dark` because it sits on the photographic hero, not on paper.
+ */
 export function SpotlightSkeleton() {
   return (
-    <SkeletonRegion className="spotlight">
-      <div className="spot-head">
-        <Skeleton className="h-[0.8rem] w-16" dark />
-        <Skeleton className="h-[1.1rem] w-20 rounded-full" dark />
+    <SkeletonRegion className="hero-rail">
+      <div className="hero-rail-head">
+        {/* The real pill, with its label loading inside it. Sizing the bar by
+            hand left the head 23.2px against the badge's 29px; the badge is
+            29px because body line-height (1.65) on its 0.72rem text makes a
+            19px line box inside 0.5rem of padding and a 1px border. Putting
+            the placeholder INSIDE the real pill means that arithmetic is the
+            stylesheet's problem, not this file's. */}
+        <span className="rail-pill-badge">
+          <Skeleton className="h-[1.19rem] w-[5.5rem]" dark />
+        </span>
       </div>
-      <Skeleton className="mx-[0.9rem] h-[104px] rounded-ui" dark />
-      <div className="flex flex-col gap-[0.5rem] px-[0.9rem] pb-[0.9rem] pt-[0.8rem]">
-        <Skeleton className="skel-line lg w-[80%]" dark />
-        <Skeleton className="skel-line w-[55%]" dark />
-        <Skeleton className="skel-line w-[65%]" dark />
+      <div className="hero-viewport">
+        <Skeleton className="skel-rail-card" dark />
       </div>
-      <div className="flex items-center justify-between gap-3 border-t border-white/15 px-[0.9rem] py-[0.75rem]">
-        <Skeleton className="h-[1.6rem] w-20" dark />
-        <Skeleton className="h-8 w-28 rounded-ui" dark />
+      <div className="hero-dots" aria-hidden="true">
+        {Array.from({ length: 5 }, (_, i) => (
+          <span key={i} className={`hero-dot${i === 0 ? " on" : ""}`} />
+        ))}
       </div>
     </SkeletonRegion>
   );

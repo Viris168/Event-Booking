@@ -236,7 +236,7 @@ export default function AboutPage() {
               whole waits for at least one, so a failed fetch leaves the band
               as a heading and a paragraph rather than an empty strip. */}
           {(liveCount != null || provinceCount != null) && (
-            <dl className="about-band-stats">
+            <dl className="page-band-stats">
               {liveCount != null && (
                 <div>
                   <dt>{km ? "ព្រឹត្តិការណ៍កំពុងលក់" : "Events on sale now"}</dt>

@@ -881,19 +881,22 @@
     }
   }
   @media (max-width: 560px) {
-    /* The wordmark stays. A mark on its own is only a name to someone who has
-       already learned it, and this one is not famous enough to assume that -
-       so the lockup keeps its title and pays for the space by shrinking both
-       halves rather than dropping one. */
-    .nav-brand-text {
-      @apply text-[0.9rem];
-    }
-    .nav-mark {
-      @apply h-[26px];
-    }
-    .nav-brand {
-      @apply gap-[0.35rem];
-    }
+    /* The LOCKUP does not shrink here - only the space around it.
+       .footer-lockup says it is matched to .nav-brand "to the pixel,
+       including the gap", and that was true at every width except the phone
+       ones, where this block quietly took the navbar to a 26px mark beside
+       0.9rem type and a tighter gap while the footer held 30px / 1.02rem /
+       0.5rem. The two ends of the same page wore two different brands on
+       exactly the screens where a reader passes both in one scroll.
+
+       The space it used to buy was never the constraint: .nav-brand sits in a
+       flexible grid track and the compact cluster is placed independently, so
+       the row's width is set by the controls on the right, not by the wordmark
+       on the left. The real relief valve for narrow screens is the 380px rule
+       below, which drops the title outright.
+
+       What still tightens is the gaps BETWEEN the lockup and everything else,
+       which is space, not identity. */
     .nav-inner {
       @apply gap-2;
     }
@@ -1541,17 +1544,20 @@
   }
 
   /* Modern bold headline matching platform-wide design language. */
+  /* Solid, not a gradient clipped to the glyphs.
+
+     Two reasons, and the second is the one that matters. CLAUDE.md lists
+     gradient hero text among the patterns this project does not reach for.
+     More seriously, `background-clip: text` with a transparent fill only shows
+     a word because its BACKGROUND is painted - so anywhere the background is
+     dropped, the word is not dimmed, it is gone. Forced-colors / Windows High
+     Contrast does exactly that, and so does printing. The country this
+     platform is named after was the one word on the page that could disappear.
+
+     One hard-coded gold replaces four, taken from the middle of the ramp the
+     gradient spent most of its length in, so the word looks as it did. */
   .hero-accent {
-    background: linear-gradient(
-      135deg,
-      #ffe599 0%,
-      #f6c05d 40%,
-      #e59c2b 75%,
-      #ffd470 100%
-    );
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: #f3c063;
     filter: drop-shadow(0 2px 14px rgba(230, 160, 50, 0.35));
   }
   /* Same box shape as .nav-inner / .container / .footer-inner: the max-width
@@ -1573,12 +1579,8 @@
     line-height: 1.35;
     letter-spacing: normal;
   }
-  html[lang="km"] .hero-accent {
-    background: linear-gradient(135deg, #ffe599 0%, #f6c05d 50%, #e59c2b 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
+  /* Khmer had its own gradient and so needed its own removal; the colour is
+     shared with the Latin rule above, so there is nothing left to restate. */
   .hero p {
     @apply mt-3 max-w-[56ch] text-[1.05rem] font-normal leading-relaxed text-white/80;
   }
@@ -1586,6 +1588,14 @@
      stack, and the rail goes wide-and-short instead of disappearing. */
   .hero-grid {
     @apply grid items-center gap-10;
+    /* 320 stays, deliberately. The copy column caps at 720px while its 1fr
+       track keeps growing, so from 1440px up a fixed ~283px of untouched
+       photograph sits between the copy and the card. That reads as a gap, but
+       widening the card does not fix it for free: .rail-card is aspect-ratio
+       1/1, so every pixel of width is a pixel of height, and taking the card
+       to 380 grew the whole hero 572px -> 632px. That trades 60px of gap over
+       a photograph for 60px of delay before the storefront, on every visit.
+       The air is the cheaper thing to keep. */
     grid-template-columns: minmax(0, 1fr) 320px;
   }
   @media (max-width: 1080px) {
@@ -1714,6 +1724,15 @@
     .hero-dot {
       transition: none;
     }
+  }
+
+  /* The loading stand-in for .rail-card: the same square, so the hero reserves
+     the height the real card will need instead of growing under the reader
+     when the catalogue answers. Width comes from .hero-viewport, height from
+     the ratio - no measurement to keep in sync. */
+  .skel-rail-card {
+    @apply block w-full;
+    aspect-ratio: 1 / 1;
   }
 
   /* The spotlight card is taller than the copy column, so the grid row already
@@ -1929,8 +1948,13 @@
   .home-bullets li {
     @apply flex items-start gap-3 text-[0.95rem] text-ink-2;
   }
+  /* Brand tint, matching .home-step-icon. These were the only two uses of raw
+     Tailwind `emerald` left in the stylesheet - every other green on the page
+     comes from the jade brand scale - and emerald (#10b981) is a colder,
+     brighter green that read as a second brand sitting a few hundred pixels
+     above the steps band it is supposed to rhyme with. */
   .home-bullet-icon {
-    @apply flex-none w-7 h-7 rounded-lg bg-emerald-500/10 text-success border border-emerald-500/20 flex items-center justify-center mt-0.5;
+    @apply flex-none w-7 h-7 rounded-lg bg-brand-500/10 text-link border border-brand-500/20 flex items-center justify-center mt-0.5;
   }
   .home-bullet-text {
     @apply leading-relaxed font-medium text-ink-2;
@@ -2090,51 +2114,56 @@
   }
 
   /* --------------------------------------------------------- final CTA ---
-     The accent TINT, not the solid. On paper this band read as more page:
-     surface-2 sits a couple of percent off the body colour, so the closing
-     ask had no ground of its own.
+     The brand tint, not the accent. This band went through the accent's solid
+     rungs and its tint before landing here, and the warm versions all fought
+     the same battle: gold at full width stops being an accent and becomes a
+     wall of orange landing on the jade footer, and even the tint left the
+     closing ask reading as a warm patch bolted onto a green page.
 
-     gold-100 gives it one without repeating the earlier mistake. The solid
-     rungs - 500 and 600 - were both tried full-width and both failed for the
-     same reason: at this width the gold stops being an accent and becomes a
-     wall of orange, landing directly on the jade footer, the strongest colour
-     on the page. Two saturated bands stacked is what was uncomfortable. The
-     tint carries the same hue at a tenth of the strength, so the band is
-     visibly warm, the ink heading keeps its contrast, and the step down into
-     the footer still reads as a step rather than a collision. It also picks
-     up the gold the footer already uses for its column headings, which is
-     what ties the last two bands together.
+     brand-100 gives it a ground of its own in the page's OWN colour. It is
+     the same hue as the footer below and the button inside it, three rungs
+     lighter, so the last two bands read as one family stepping down into the
+     dark rather than as two different temperatures meeting. The ink heading
+     keeps its contrast, and the jade button stays the one saturated thing in
+     the band.
 
      The edge into the footer is a straight one. A downward arrow used to sit
      on it, pointing into the footer from the middle of the band; against a
      coloured ground it read as a notch bitten out of the green rather than as
-     a join, so the two bands now simply meet.
-
-     gold-100 is one of the tints that goes dark in [data-theme="dark"] - a
-     warm brown ground there, not a light patch - but not the right rung of
-     one, see below. */
+     a join, so the two bands now simply meet. */
   .home-cta {
-    @apply w-full border-t border-gold-500/25 bg-gold-100 text-ink;
+    @apply w-full border-t border-brand-500/25 bg-brand-100 text-ink;
   }
   /*
    * Dark mode: the band has to clear the footer, not just differ from it.
    *
-   * The token's dark value, #362415, measures 1.08:1 against the footer's
-   * #062718 - the same near-black trap the navbar and footer edges are dealt
-   * with further down, except those two are chrome meeting page, where a
-   * hairline is the whole answer. Here the point of the band IS that it is a
-   * ground of its own; at the token's lightness it stops being one and the
-   * closing ask is swallowed by the footer, with only hue left to separate
-   * two dark blocks stacked directly on each other.
-   *
-   * So the dark band takes a lifted rung of the same brown: above surface-2
-   * (#23201a), the highest warm surface in the dark scale, which is right for
-   * the one band that is asking for something. The token itself is left alone
-   * because it is also a small badge fill, where #362415 is correct - a badge
-   * sits ON a dark surface and would glow at this value.
+   * The tint's dark value (#23392c) sits too close to the footer's #062718 to
+   * read as a separate ground, which is the whole point of the band - at that
+   * lightness the closing ask is swallowed and only hue separates two dark
+   * blocks stacked on each other. This rung measures 1.37:1 against the
+   * footer, matching the separation the warm version used to carry, which is
+   * the least that still reads as a step. The token itself is left alone
+   * because it is also a small fill elsewhere, where the darker value is
+   * right - something sitting ON a dark surface would glow at this one.
    */
   [data-theme="dark"] .home-cta {
-    background-color: #4a331d;
+    background-color: #14402c;
+  }
+  /*
+   * ...and the button has to clear the BAND. In light mode the jade button on
+   * the pale tint is the strongest thing here, but in dark the band is itself
+   * jade, and brand-600 on it measures 1.56:1 - a primary button that has all
+   * but dissolved into its own background. White is the only fill that stays
+   * unambiguous on a dark green ground, so dark mode inverts it. The rule in
+   * both themes is the same one: the thing meant to be pressed is the
+   * highest-contrast object in the band.
+   */
+  [data-theme="dark"] .home-cta-btn {
+    @apply bg-white text-brand-900;
+  }
+  [data-theme="dark"] .home-cta-btn:hover {
+    @apply bg-white text-brand-900;
+    opacity: 0.92;
   }
   .home-cta-inner {
     @apply mx-auto flex max-w-shell flex-col items-center gap-6 px-page py-10 text-center md:flex-row md:justify-between md:gap-10 md:py-12 md:text-left;
@@ -8105,7 +8134,7 @@ html[lang="km"] .page-band-lead {
 /* The figures, set the way .hero-stats sets them: a large tabular number over
    a quiet label, divided by hairlines. The label comes first in the source
    because it is the <dt>; column-reverse puts the number on top visually. */
-.about-band-stats {
+.page-band-stats {
   display: flex;
   flex-wrap: wrap;
   gap: 1rem 0;
@@ -8113,21 +8142,21 @@ html[lang="km"] .page-band-lead {
   padding-top: 1.3rem;
   border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
-.about-band-stats > div {
+.page-band-stats > div {
   display: flex;
   flex-direction: column-reverse;
   padding-right: 2.2rem;
 }
-.about-band-stats > div + div {
+.page-band-stats > div + div {
   padding-left: 2.2rem;
   border-left: 1px solid rgba(255, 255, 255, 0.14);
 }
-.about-band-stats dt {
+.page-band-stats dt {
   font-size: 0.82rem;
   font-weight: 500;
   color: rgba(255, 255, 255, 0.62);
 }
-.about-band-stats dd {
+.page-band-stats dd {
   margin: 0;
   font-size: 1.7rem;
   font-weight: 800;
@@ -8137,11 +8166,11 @@ html[lang="km"] .page-band-lead {
   color: #fff;
 }
 @media (max-width: 560px) {
-  .about-band-stats {
+  .page-band-stats {
     gap: 1rem 1.8rem;
   }
-  .about-band-stats > div,
-  .about-band-stats > div + div {
+  .page-band-stats > div,
+  .page-band-stats > div + div {
     padding: 0;
     border-left: 0;
   }
@@ -8860,7 +8889,7 @@ html[lang="km"] .contact-faq details p {
 
 /* Leaflet's own chrome, brought onto this project's surfaces instead of its
    default white-on-white.
-   
+
    Written as .pin-preview.leaflet-container - one compound selector, no
    descendant space. Leaflet puts .leaflet-container on the host element
    ITSELF, so `.pin-preview .leaflet-container` describes a child that does not
