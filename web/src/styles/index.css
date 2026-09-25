@@ -4507,6 +4507,47 @@
     @apply mt-0.5 block text-[0.86rem] text-white/85;
   }
 
+  /* The verdict again, full screen, for a steward reading a phone at arm's
+     length. Same tone colours as the inline card, just bigger and centred. */
+  .scan-popup-overlay {
+    @apply fixed inset-0 z-[1100] grid place-items-center p-4;
+    background: rgba(9, 11, 16, 0.72);
+    animation: pw-fade 0.15s ease-out both;
+  }
+  .scan-popup {
+    @apply relative w-[min(92vw,26rem)] flex-col items-center overflow-hidden px-6 pt-8 pb-6 text-center;
+    animation: pw-rise 0.2s ease-out both;
+  }
+  .scan-popup > .icon {
+    @apply size-[88px] rounded-[22px];
+  }
+  .scan-popup > .icon svg {
+    @apply size-14;
+  }
+  .scan-popup b {
+    @apply mt-1 text-[1.75rem];
+  }
+  .scan-popup span {
+    @apply mt-1.5 text-[1rem];
+  }
+  .scan-popup-next {
+    @apply mt-5 min-h-12 w-full rounded-[12px] bg-white/[0.18] text-[1rem] font-semibold text-white;
+  }
+  .scan-popup-next:hover {
+    @apply bg-white/[0.26];
+  }
+  /* A clean admit closes itself; the bar shows how long is left. */
+  .scan-popup.auto::after {
+    content: "";
+    @apply absolute bottom-0 left-0 h-1 w-full origin-left bg-white/60;
+    animation: scan-popup-timer 2.2s linear both;
+  }
+  @keyframes scan-popup-timer {
+    to {
+      transform: scaleX(0);
+    }
+  }
+
   /* ----------------------------------------------------------------- alerts */
   .alert {
     @apply flex items-start gap-[0.65rem] rounded-ui border border-transparent px-4 py-[0.8rem] text-[0.88rem];
