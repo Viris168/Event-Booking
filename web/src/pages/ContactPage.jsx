@@ -372,6 +372,21 @@ export default function ContactPage() {
               ? 'អ្នកមិនចាំបាច់មានគណនីដើម្បីសរសេរមកទេ។ យើងឆ្លើយតបតាមអ៊ីមែល ជាធម្មតាក្នុងរយៈពេលមួយថ្ងៃធ្វើការ។'
               : 'You do not need an account to write to us, which matters most when the reason you are writing is that you cannot get into yours. We reply by email, usually within one business day.'}
           </p>
+
+          {/* The same figures strip as About, carrying what a sender wants to
+              know before writing: how long a reply takes and when anyone is
+              there to send it. Both are the promises the "When we answer"
+              card below makes, so the two must change together. */}
+          <dl className="page-band-stats">
+            <div>
+              <dt>{km ? 'រយៈពេលឆ្លើយតបជាធម្មតា' : 'Usual reply time'}</dt>
+              <dd>{km ? '១ ថ្ងៃធ្វើការ' : '1 business day'}</dd>
+            </div>
+            <div>
+              <dt>{km ? 'ថ្ងៃច័ន្ទ ដល់ ថ្ងៃសុក្រ (ម៉ោងកម្ពុជា)' : 'Monday to Friday, Cambodia time'}</dt>
+              <dd>{km ? '៨ៈ០០ ដល់ ១៧ៈ០០' : '8:00 to 17:00'}</dd>
+            </div>
+          </dl>
         </div>
       </header>
 

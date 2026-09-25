@@ -1544,17 +1544,20 @@
   }
 
   /* Modern bold headline matching platform-wide design language. */
+  /* Solid, not a gradient clipped to the glyphs.
+
+     Two reasons, and the second is the one that matters. CLAUDE.md lists
+     gradient hero text among the patterns this project does not reach for.
+     More seriously, `background-clip: text` with a transparent fill only shows
+     a word because its BACKGROUND is painted - so anywhere the background is
+     dropped, the word is not dimmed, it is gone. Forced-colors / Windows High
+     Contrast does exactly that, and so does printing. The country this
+     platform is named after was the one word on the page that could disappear.
+
+     One hard-coded gold replaces four, taken from the middle of the ramp the
+     gradient spent most of its length in, so the word looks as it did. */
   .hero-accent {
-    background: linear-gradient(
-      135deg,
-      #ffe599 0%,
-      #f6c05d 40%,
-      #e59c2b 75%,
-      #ffd470 100%
-    );
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: #f3c063;
     filter: drop-shadow(0 2px 14px rgba(230, 160, 50, 0.35));
   }
   /* Same box shape as .nav-inner / .container / .footer-inner: the max-width
@@ -1576,12 +1579,8 @@
     line-height: 1.35;
     letter-spacing: normal;
   }
-  html[lang="km"] .hero-accent {
-    background: linear-gradient(135deg, #ffe599 0%, #f6c05d 50%, #e59c2b 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
+  /* Khmer had its own gradient and so needed its own removal; the colour is
+     shared with the Latin rule above, so there is nothing left to restate. */
   .hero p {
     @apply mt-3 max-w-[56ch] text-[1.05rem] font-normal leading-relaxed text-white/80;
   }
@@ -1589,6 +1588,14 @@
      stack, and the rail goes wide-and-short instead of disappearing. */
   .hero-grid {
     @apply grid items-center gap-10;
+    /* 320 stays, deliberately. The copy column caps at 720px while its 1fr
+       track keeps growing, so from 1440px up a fixed ~283px of untouched
+       photograph sits between the copy and the card. That reads as a gap, but
+       widening the card does not fix it for free: .rail-card is aspect-ratio
+       1/1, so every pixel of width is a pixel of height, and taking the card
+       to 380 grew the whole hero 572px -> 632px. That trades 60px of gap over
+       a photograph for 60px of delay before the storefront, on every visit.
+       The air is the cheaper thing to keep. */
     grid-template-columns: minmax(0, 1fr) 320px;
   }
   @media (max-width: 1080px) {
@@ -1717,6 +1724,15 @@
     .hero-dot {
       transition: none;
     }
+  }
+
+  /* The loading stand-in for .rail-card: the same square, so the hero reserves
+     the height the real card will need instead of growing under the reader
+     when the catalogue answers. Width comes from .hero-viewport, height from
+     the ratio - no measurement to keep in sync. */
+  .skel-rail-card {
+    @apply block w-full;
+    aspect-ratio: 1 / 1;
   }
 
   /* The spotlight card is taller than the copy column, so the grid row already
@@ -8077,7 +8093,7 @@ html[lang="km"] .page-band-lead {
 /* The figures, set the way .hero-stats sets them: a large tabular number over
    a quiet label, divided by hairlines. The label comes first in the source
    because it is the <dt>; column-reverse puts the number on top visually. */
-.about-band-stats {
+.page-band-stats {
   display: flex;
   flex-wrap: wrap;
   gap: 1rem 0;
@@ -8085,21 +8101,21 @@ html[lang="km"] .page-band-lead {
   padding-top: 1.3rem;
   border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
-.about-band-stats > div {
+.page-band-stats > div {
   display: flex;
   flex-direction: column-reverse;
   padding-right: 2.2rem;
 }
-.about-band-stats > div + div {
+.page-band-stats > div + div {
   padding-left: 2.2rem;
   border-left: 1px solid rgba(255, 255, 255, 0.14);
 }
-.about-band-stats dt {
+.page-band-stats dt {
   font-size: 0.82rem;
   font-weight: 500;
   color: rgba(255, 255, 255, 0.62);
 }
-.about-band-stats dd {
+.page-band-stats dd {
   margin: 0;
   font-size: 1.7rem;
   font-weight: 800;
@@ -8109,11 +8125,11 @@ html[lang="km"] .page-band-lead {
   color: #fff;
 }
 @media (max-width: 560px) {
-  .about-band-stats {
+  .page-band-stats {
     gap: 1rem 1.8rem;
   }
-  .about-band-stats > div,
-  .about-band-stats > div + div {
+  .page-band-stats > div,
+  .page-band-stats > div + div {
     padding: 0;
     border-left: 0;
   }
@@ -8832,7 +8848,7 @@ html[lang="km"] .contact-faq details p {
 
 /* Leaflet's own chrome, brought onto this project's surfaces instead of its
    default white-on-white.
-   
+
    Written as .pin-preview.leaflet-container - one compound selector, no
    descendant space. Leaflet puts .leaflet-container on the host element
    ITSELF, so `.pin-preview .leaflet-container` describes a child that does not

@@ -329,7 +329,12 @@ export default function AdminPayoutsPage() {
 
         {/* ----------------------------------------------------------- table */}
         <ResponsiveTable>
-          <table className="table">
+          {/* aria-busy while the rows load: TableRowsSkeleton renders its
+              <tbody> aria-hidden, so without this the table says nothing at
+              all to a screen reader between request and response - the rows
+              are hidden and no busy state replaces them. The organizer
+              tables get this from SkeletonRegion; these three never did. */}
+          <table className="table" aria-busy={loading}>
             <thead>
               <tr>
                 <th>{km ? "វិក្កយបត្រ" : "Invoice"}</th>

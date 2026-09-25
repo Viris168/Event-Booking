@@ -7,7 +7,7 @@ import { plottable } from "../lib/eventGeo.js";
 import { minPriceUsd } from "../lib/eventPrice.js";
 import PriceRange from "../components/PriceRange.jsx";
 import Icon from "../components/Icon.jsx";
-import { EventCardSkeleton, Skeleton } from "../components/Skeleton.jsx";
+import { EventGridSkeleton, Skeleton } from "../components/Skeleton.jsx";
 import {
   ActiveFilters,
   Empty,
@@ -580,11 +580,22 @@ export default function EventsPage() {
         {loading ? (
           <div className="events-split" style={{ marginTop: "1.4rem" }}>
             <div className="events-list">
-              <div className="grid grid-cards grid-cards-split">
-                {Array.from({ length: 4 }, (_, i) => (
-                  <EventCardSkeleton key={i} />
-                ))}
-              </div>
+              {/* EventGridSkeleton, not a hand-rolled grid of cards: this was
+                  the one loading state in the app not wrapped in
+                  SkeletonRegion, so it announced nothing - no role="status",
+                  no aria-busy, no "loading" for a screen reader - while the
+                  catalogue fetched.
+
+                  PAGE_SIZE, not a literal 4. A page holds eight results, so
+                  four placeholders reserved 759px for a list that arrived
+                  1535px tall - the page grew 776px under the reader the
+                  instant the catalogue answered, which is the single largest
+                  shift on the site and precisely what a placeholder exists to
+                  prevent. Tied to the constant so it cannot drift again. */}
+              <EventGridSkeleton
+                count={PAGE_SIZE}
+                className="grid-cards-split"
+              />
             </div>
             <div className="events-map-col">
               <div className="events-map events-map-loading" />
