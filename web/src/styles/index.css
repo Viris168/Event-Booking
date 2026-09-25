@@ -7976,10 +7976,11 @@
 }
 :root[data-theme="dark"] .gsi-host:has(iframe:not([style*="height: 0px"])) {
   background: #202124;
-  border-color: #3c4043;
+  border-color: transparent; /* Remove the custom border to prevent clashing with the iframe's edges */
 }
 .gsi-host iframe:not([style*="height: 0px"]) {
-  clip-path: inset(1px 1px 4px 1px round 6px);
+  /* Increased top inset to 2px to hide the white line Google recently added */
+  clip-path: inset(2px 1px 4px 1px round 6px);
 }
 
 /*
