@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { useLocale } from '../context/LocaleContext.jsx'
 import { useTheme } from '../context/ThemeContext.jsx'
+import { useLocale } from '../context/LocaleContext.jsx'
 
 /*
  * Google's own button, rendered by Google's own script.
@@ -26,6 +26,14 @@ const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
  */
 const MIN_W = 200
 const MAX_W = 400
+
+/*
+ * The personalised "Continue as <name>" iframe has a fixed ~40px height that no
+ * option or stylesheet reaches, so it is scaled up as a whole in CSS
+ * (.gsi-host.is-framed) - keep the two in step. Scaling widens it too, so it is
+ * asked for a width this much narrower to land on the same footprint.
+ */
+const FRAME_SCALE = 1.1
 
 /**
  * One shared load. Two screens mounting at once must not inject two scripts.
@@ -80,6 +88,10 @@ export default function GoogleSignInButton({ onToken, disabled = false }) {
   // 0 until measured. The render effect waits for it rather than guessing, so
   // the button is only ever drawn at the width it should already be.
   const [width, setWidth] = useState(0)
+  // Whether Google drew the personalised iframe rather than the plain button.
+  // Only known after the first render, and sticky: once signed in to Google,
+  // every re-render on this page takes the same path.
+  const [framed, setFramed] = useState(false)
 
   /*
    * The old fixed 320px was narrower than the submit button above it on every
@@ -111,6 +123,7 @@ export default function GoogleSignInButton({ onToken, disabled = false }) {
   useEffect(() => {
     if (!CLIENT_ID || !hostRef.current || !width) return undefined
     let cancelled = false
+    let mo = null
 
     loadGis(km ? 'km' : 'en')
       .then(() => {
@@ -123,13 +136,17 @@ export default function GoogleSignInButton({ onToken, disabled = false }) {
         // or width change would stack a second button under the first.
         hostRef.current.replaceChildren()
         window.google.accounts.id.renderButton(hostRef.current, {
-          // Google offers no token-driven theme, so this is the one place the
-          // app's dark mode has to be mirrored by hand. A white outline button
-          // on the dark ground is the one combination their branding rules do
-          // not permit.
+          // Google offers no token-driven theme, so the app's dark mode is
+          // mirrored by hand. In the personalised iframe the dark theme puts the
+          // G on a white disc; that is Google's artwork and out of our reach.
           theme: isDark ? 'filled_black' : 'outline',
           size: 'large',
-          width: Math.max(MIN_W, Math.min(MAX_W, width)),
+          // Only the personalised "Continue as <name>" iframe honours this; the
+          // signed-out button's corners are set in CSS to match .btn-lg.
+          shape: 'pill',
+          width: Math.round(
+            Math.max(MIN_W, Math.min(MAX_W, width)) / (framed ? FRAME_SCALE : 1),
+          ),
           // Default is 'left', which strands the mark against the far edge with
           // the label centred in what is left - the wider the button, the bigger
           // the gap. Centring sets the two as one unit, like every other button
@@ -138,13 +155,28 @@ export default function GoogleSignInButton({ onToken, disabled = false }) {
           text: 'continue_with',
           locale: km ? 'km' : 'en',
         })
+        // The personalised path shows itself by giving Google's iframe a real
+        // height; the plain one keeps it at 0.
+        if (!framed) {
+          const check = () => {
+            const frame = hostRef.current?.querySelector('iframe')
+            if (frame && frame.offsetHeight > 0) {
+              mo?.disconnect()
+              setFramed(true)
+            }
+          }
+          mo = new MutationObserver(check)
+          mo.observe(hostRef.current, { subtree: true, childList: true, attributes: true })
+          check()
+        }
       })
       .catch(() => !cancelled && setFailed(true))
 
     return () => {
       cancelled = true
+      mo?.disconnect()
     }
-  }, [km, isDark, width])
+  }, [km, isDark, width, framed])
 
   // Nothing at all when the deployment has no client id. An "unavailable"
   // message would be telling users about a feature that does not exist here.
@@ -165,7 +197,7 @@ export default function GoogleSignInButton({ onToken, disabled = false }) {
       </div>
       {/* Google draws into this node. Height is reserved so the form does not
           jump when the widget arrives a moment after the page. */}
-      <div ref={hostRef} className="gsi-host" />
+      <div ref={hostRef} className={framed ? 'gsi-host is-framed' : 'gsi-host'} />
     </div>
   )
 }
