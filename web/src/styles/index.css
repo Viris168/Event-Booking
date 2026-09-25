@@ -2770,15 +2770,16 @@
    * and `width` both: it comes back white, square-cornered and a fixed 420px,
    * 20px wider than the card, and no stylesheet of ours reaches into it.
    *
-   * Clipping is the one thing that still applies from outside the frame. It
-   * takes off the overhang and the square corners, so the button at least
-   * lands on the same footprint as the submit button above it. It stays white
-   * - that part is Google's. localhost is never an eligible origin, so none of
-   * this is visible in dev; it only appears on the deployed site.
+   * So the personalised button is left exactly as Google draws it. Framing it
+   * to match .btn-lg meant cropping the frame's edges by a few measured pixels,
+   * and those move with zoom, sub-pixel offsets and Google's own releases -
+   * every attempt left a stray border somewhere. Nor is it clipped: the frame
+   * comes out a little wider than the width asked for, and a clip on a centred
+   * overflow cut both ends off the pill. localhost is never an eligible origin,
+   * so none of this is visible in dev; it only appears on the deployed site.
    */
   .gsi-host {
-    @apply flex min-h-[44px] w-full justify-center overflow-hidden;
-    border-radius: var(--radius-ui);
+    @apply flex min-h-[44px] w-full justify-center;
   }
 
   /* Password input with a reveal toggle. */
@@ -7952,51 +7953,30 @@
 }
 
 /*
- * The personalised "Continue as <name>" button, framed to match.
+ * The personalised button's frame keeps a transparent background.
  *
- * On the deployed site GIS shows it in the iframe it otherwise keeps at
- * `height: 0px`, so a frame with any other height is the personalised one -
- * matched on that inline style rather than on Google's minified classes. Its
- * contents are Google's and out of reach; only the box around it is ours.
- *
- * The host becomes the button: 48px and the UI radius like .btn-lg, with our
- * hairline border, filled with the same colour as Google's button in each
- * theme (white for `outline`, #202124 for `filled_black`) so the frame's edges
- * disappear into it. The clip takes 6px off the top and bottom and 3px off
- * the sides - enough to remove the frame's own grey edge (which sits 2-3px in
- * from the top, not flush, and is smeared a further pixel when the frame lands
- * on a fractional offset) and the strip under the button, white in both
- * themes, while staying clear of the avatar and G, ~9px in from every side.
- * What the clip exposes is the host's fill, the same colour, so it is unseen.
- * The white square behind the G in dark mode is Google's artwork and stays.
+ * The page declares `color-scheme: light dark`, and when an iframe's scheme
+ * differs from its embedder's Chrome paints an opaque canvas behind it - white,
+ * showing through the pill's rounded corners in dark mode. Google's frame has
+ * no scheme of its own, so pinning the element to light makes the two agree.
  */
-.gsi-host:has(iframe:not([style*="height: 0px"])) {
-  height: 3rem;
+.gsi-host iframe {
+  color-scheme: light;
+}
+
+/*
+ * The personalised button, scaled up to sit nearer .btn-lg's 48px. Its height
+ * is fixed inside Google's frame, so the whole frame is scaled; the component
+ * asks for a width narrower by the same factor (FRAME_SCALE) so the result
+ * still lines up with the submit button above. Transforms leave layout alone,
+ * so the host reserves the scaled height itself.
+ */
+.gsi-host.is-framed {
+  min-height: 3rem;
   align-items: center;
-  background: #fff;
-  border: 1px solid var(--color-line);
 }
-:root[data-theme="dark"] .gsi-host:has(iframe:not([style*="height: 0px"])) {
-  background: #202124;
-  border-color: transparent; /* Remove the custom border to prevent clashing with the iframe's edges */
-}
-/* Cropped by overflow on Google's wrapper rather than by clip-path on the
-   frame. A clip-path edge is anti-aliased, and on a frame sitting at a
-   fractional offset Chrome blends a sliver of whatever is outside the clip
-   into it - a faint white seam along the top and bottom of the dark button.
-   An overflow crop on straight edges snaps to whole pixels instead - which is
-   also why it has no border-radius: a rounded crop is anti-aliased the same
-   way and left a faint arc at each corner. Square corners are safe here, as
-   3px in they already sit inside the host's own rounded border. The frame is
-   pulled up and left by the amount trimmed; the wrapper's width is what trims
-   the right. */
-.gsi-host > div:has(> iframe:not([style*="height: 0px"])) {
-  width: calc(100% - 6px);
-  height: calc(100% - 12px);
-  overflow: hidden;
-}
-.gsi-host iframe:not([style*="height: 0px"]) {
-  margin: -6px 0 0 -3px;
+.gsi-host.is-framed iframe {
+  transform: scale(1.1);
 }
 
 /*
