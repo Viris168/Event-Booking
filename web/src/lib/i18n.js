@@ -445,6 +445,9 @@ export const STATUS_LABELS = {
   },
   PAYMENT_FAILED: { en: "Payment failed", km: "ការទូទាត់បរាជ័យ" },
   CONFIRMED: { en: "Confirmed", km: "បញ្ជាក់រួចរាល់" },
+  // Not a stored booking state: a confirmed booking whose tickets were all
+  // scanned. My Bookings derives it for its filter chips.
+  USED: { en: "Used", km: "បានប្រើរួច" },
   EXPIRED: { en: "Expired", km: "ផុតកំណត់" },
   CANCELLED: { en: "Cancelled", km: "បានបោះបង់" },
   DRAFT: { en: "Draft", km: "សេចក្តីព្រាង" },

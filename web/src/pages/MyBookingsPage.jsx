@@ -1,5 +1,5 @@
 import { useDocumentTitle } from "../lib/useDocumentTitle.js";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import Icon, { CATEGORY_ICON } from "../components/Icon.jsx";
 import {
@@ -35,6 +35,7 @@ const STATES = [
   "AWAITING_CONFIRMATION",
   "PAYMENT_FAILED",
   "CONFIRMED",
+  "USED",
   "EXPIRED",
   "CANCELLED",
 ];
@@ -542,11 +543,27 @@ export default function MyBookingsPage() {
   }, [bookingsData]);
 
   const all = bookingsData;
-  const counts = all.reduce(
-    (acc, b) => ({ ...acc, [b.state]: (acc[b.state] || 0) + 1 }),
-    {},
+
+  /**
+   * The status the filter chips sort by. A confirmed booking whose tickets are
+   * all scanned reads as Used, and one whose event day is over as Expired, so
+   * "Confirmed" only counts bookings you can still walk in with. Each booking
+   * lands under exactly one chip.
+   */
+  const shownState = useCallback(
+    (b) => {
+      if (b.state !== "CONFIRMED") return b.state;
+      if (ticketCounts[b.id]?.allUsed) return "USED";
+      if (ticketsExpired(apiEvents[b.event_id])) return "EXPIRED";
+      return "CONFIRMED";
+    },
+    [ticketCounts, apiEvents],
   );
-  const filtered = state ? all.filter((b) => b.state === state) : all;
+  const counts = all.reduce((acc, b) => {
+    const s = shownState(b);
+    return { ...acc, [s]: (acc[s] || 0) + 1 };
+  }, {});
+  const filtered = state ? all.filter((b) => shownState(b) === state) : all;
 
   /**
    * Split by whether the event has happened, then sort each half towards the
@@ -567,17 +584,14 @@ export default function MyBookingsPage() {
     for (const b of filtered) {
       const startsAt = apiEvents[b.event_id]?.starts_at;
       const ts = startsAt ? new Date(startsAt).getTime() : null;
-      const inactive =
-        CLOSED.includes(b.state) ||
-        Boolean(ticketCounts[b.id]?.allUsed) ||
-        (b.state === "CONFIRMED" && ticketsExpired(apiEvents[b.event_id], now));
+      const inactive = [...CLOSED, "USED"].includes(shownState(b));
       if (ts != null && ts < now) done.push([b, ts, inactive]);
       else up.push([b, ts ?? Number.MAX_SAFE_INTEGER, inactive]);
     }
     up.sort((a, z) => a[2] - z[2] || a[1] - z[1]);
     done.sort((a, z) => a[2] - z[2] || z[1] - a[1]);
     return { upcoming: up.map(([b]) => b), past: done.map(([b]) => b) };
-  }, [filtered, apiEvents, ticketCounts]);
+  }, [filtered, apiEvents, shownState]);
 
   // Signed out: nothing to fetch, and an empty "no bookings" state would be a
   // lie — the bookings may well exist, just not for an anonymous caller.
@@ -614,7 +628,7 @@ export default function MyBookingsPage() {
           ) : (
             <p>
               {all.length} {locale === "km" ? "ការកក់" : "bookings"} ·{" "}
-              {all.filter((b) => b.state === "CONFIRMED").length}{" "}
+              {counts.CONFIRMED || 0}{" "}
               {status("CONFIRMED").toLowerCase()}
             </p>
           )}
