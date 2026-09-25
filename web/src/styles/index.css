@@ -1620,7 +1620,7 @@
   }
   .hero-track {
     @apply flex items-stretch;
-    transition: transform 0.62s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform var(--motion-enter) var(--motion-ease);
   }
   /* The slide, not the card, carries the width — so all five stay the height of
      the tallest and the rail does not resize as it advances. */
@@ -1704,7 +1704,7 @@
     @apply mt-[0.75rem] flex items-center justify-center gap-[0.35rem];
   }
   .hero-dot {
-    @apply h-[6px] w-[6px] cursor-pointer rounded-full border-0 bg-white/30 p-0;
+    @apply relative h-[6px] w-[6px] cursor-pointer overflow-hidden rounded-full border-0 bg-white/30 p-0;
     transition:
       width 0.25s ease,
       background-color 0.25s ease;
@@ -1712,8 +1712,16 @@
   .hero-dot:hover {
     @apply bg-white/60;
   }
+  /* The active dot is a track, and its fill is how long until the rail moves
+     on - see the motion block. At rest (paused, or reduced motion) the fill is
+     simply full, which is how the dot looked before it had a timer in it. */
   .hero-dot.on {
-    @apply w-[16px] bg-white/90;
+    @apply w-[22px] bg-white/30;
+  }
+  .hero-dot.on::after {
+    content: "";
+    @apply absolute inset-0 rounded-full bg-white/90;
+    transform-origin: left center;
   }
   /* Respect a stated preference for less motion: the rail still advances, it
      just cuts rather than slides. */
@@ -1985,19 +1993,16 @@
   .home-photo {
     @apply relative m-0 overflow-hidden rounded-2xl border border-line/60 shadow-float;
   }
-  /* Every slide stacks in the same box; only the active one is opaque. A
-     cross-fade rather than a slide - these boxes are too small for a track
-     to read as motion rather than a jump cut. */
+  /* Every slide stacks in the same box; only the active one is opaque, and
+     it sits on top so the next photo can be drawn OVER the last one - see
+     the slide-over in the motion block. Without motion this is a plain cut,
+     which is what a reduced-motion reader asked for. The dots and caption
+     share z-1 but come later in the DOM, so they stay above the photo. */
   .home-photo .home-shot {
-    @apply absolute inset-0 h-full w-full opacity-0 transition-opacity duration-700 ease-in-out;
+    @apply absolute inset-0 h-full w-full opacity-0;
   }
   .home-photo .home-shot.is-active {
-    @apply opacity-100;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .home-photo .home-shot {
-      transition: none;
-    }
+    @apply z-[1] opacity-100;
   }
   .home-photo figcaption {
     @apply absolute bottom-3 right-3 z-[1] rounded-full bg-ink/80 px-3 py-1 text-xs text-white/90;
@@ -2009,7 +2014,7 @@
     @apply absolute bottom-3 left-3 z-[1] flex items-center gap-1.5;
   }
   .home-photo-dot {
-    @apply h-[7px] w-[7px] cursor-pointer rounded-full border-0 bg-white/40 p-0;
+    @apply relative h-[7px] w-[7px] cursor-pointer overflow-hidden rounded-full border-0 bg-white/40 p-0;
     transition:
       width 0.25s ease,
       background-color 0.25s ease;
@@ -2017,8 +2022,15 @@
   .home-photo-dot:hover {
     @apply bg-white/70;
   }
+  /* A track with a timer in it, like .hero-dot.on - full when paused or
+     under reduced motion. */
   .home-photo-dot.on {
-    @apply w-4 bg-white;
+    @apply w-5 bg-white/40;
+  }
+  .home-photo-dot.on::after {
+    content: "";
+    @apply absolute inset-0 rounded-full bg-white;
+    transform-origin: left center;
   }
 
   /* --------------------------------------------------------- three steps ---
@@ -2194,23 +2206,194 @@
      Everything below is an ENTRANCE, never a resting state: each rule
      animates *from* a hidden position and leaves the element in its ordinary
      one. That is why nothing here can strand content invisible - if an
-     animation never runs, the element was already where it ends up.
+     animation never runs, the element was already where it ends up. Every
+     entrance is `backwards`, not `both`, so once it ends it lets go of
+     transform and opacity entirely and hover lifts work as if it never ran.
 
      The armed state is the one exception, and it is written by useReveal at
      runtime rather than by these rules, and only ever inside the
      no-preference query below. A reader who asked for less motion is served
      a page with no hidden elements at all, not a page that hides things and
-     then rushes them in. */
+     then rushes them in.
+
+     One vocabulary for the whole page, so it reads as a system rather than a
+     collection of effects:
+       - one curve: expo-out, fast off the mark and a long quiet settle. No
+         overshoot anywhere - bounce reads as playful, not as confident.
+       - three durations: quick for UI responses, enter for content, slow
+         for photographs, which are big enough that fast motion looks cheap.
+       - one stagger step, so every sequence on the page keeps the same beat.
+       - headings come into focus (a short blur-to-sharp); everything else
+         rises. That one distinction is what gives each section a lead. */
+  :root {
+    --motion-ease: cubic-bezier(0.16, 1, 0.3, 1);
+    --motion-quick: 380ms;
+    --motion-enter: 800ms;
+    --motion-slow: 1400ms;
+    --motion-stagger: 70ms;
+  }
+
   @media (prefers-reduced-motion: no-preference) {
     [data-reveal="armed"] {
       opacity: 0;
     }
 
-    /* The splits: the block rises a little as it arrives. Short and small -
-       16px and a third of a second - because this is punctuation between
-       sections, not an event in its own right. */
-    .home-split[data-reveal="in"] {
-      animation: home-rise 420ms cubic-bezier(0.22, 0.75, 0.3, 1) both;
+    /* ---------------------------------------------------------- the hero ---
+       The one entrance that plays without a scroll: the hero is the first
+       thing on screen, so it arrives as the page does. The photograph settles
+       from a slight zoom while the copy comes in top to bottom, in the order
+       it is meant to be read. */
+    .hero-bg {
+      animation: hero-settle var(--motion-slow) var(--motion-ease) backwards;
+    }
+    .hero-copy > * {
+      animation: home-rise var(--motion-enter) var(--motion-ease) backwards;
+    }
+    .hero-copy > h1 {
+      animation-name: home-focus;
+    }
+    .hero-copy > :nth-child(2) {
+      animation-delay: var(--motion-stagger);
+    }
+    .hero-copy > :nth-child(3) {
+      animation-delay: calc(var(--motion-stagger) * 2);
+    }
+    .hero-copy > :nth-child(4) {
+      animation-delay: calc(var(--motion-stagger) * 3);
+    }
+    /* Mounts when the catalogue answers, replacing the skeleton, so this is
+       the card arriving rather than a delay dressed up as one. */
+    .hero-rail {
+      animation: home-rise var(--motion-enter) var(--motion-ease)
+        calc(var(--motion-stagger) * 2) backwards;
+    }
+    .hero-stats > div {
+      animation: home-rise var(--motion-enter) var(--motion-ease)
+        calc(var(--motion-stagger) * 4) backwards;
+    }
+    .hero-stats > div:nth-child(2) {
+      animation-delay: calc(var(--motion-stagger) * 5);
+    }
+    .hero-stats > div:nth-child(3) {
+      animation-delay: calc(var(--motion-stagger) * 6);
+    }
+
+    /* The rail's timer, drawn. Keyed on NOT paused rather than paused with
+       animation-play-state, because HeroRail restarts its whole timeout on
+       release: dropping the animation while held and re-adding it on release
+       restarts the fill from empty too, so the bar and the timer agree. */
+    .hero-rail:not(.is-paused) .hero-dot.on::after {
+      animation: rail-progress var(--rail-rotate, 5000ms) linear both;
+    }
+    /* The picture moves, then the words: a new slide's copy lifts in once
+       the track is most of the way there. */
+    .hero-slide.is-active .rail-date {
+      animation: home-scale var(--motion-enter) var(--motion-ease) 220ms
+        backwards;
+    }
+    .hero-slide.is-active .rail-body {
+      animation: home-rise var(--motion-enter) var(--motion-ease) 290ms
+        backwards;
+    }
+
+    /* ------------------------------------------------ section headings ---
+       The two centred/boxed headers above a grid of cards: the heading
+       focuses, the rest follows on the page's beat. */
+    :is(.section-head, .home-steps-head)[data-reveal="in"] :is(.home-kicker, h2, .section-sub, .btn) {
+      animation: home-rise var(--motion-enter) var(--motion-ease) backwards;
+    }
+    :is(.section-head, .home-steps-head)[data-reveal="in"] h2 {
+      animation-name: home-focus;
+      animation-delay: var(--motion-stagger);
+    }
+    :is(.section-head, .home-steps-head)[data-reveal="in"] :is(.section-sub, .btn) {
+      animation-delay: calc(var(--motion-stagger) * 2);
+    }
+
+    /* ---------------------------------------------------------- splits ---
+       The text is read top to bottom, so it arrives that way: kicker,
+       heading, paragraph, then each bullet or question on its own beat, then
+       the button. Lists are excluded from the parent stagger so their items
+       are not faded twice (once with the list, once on their own). */
+    .home-split[data-reveal="in"]
+      .home-split-text
+      > :not(.home-bullets, .home-faq) {
+      animation: home-rise var(--motion-enter) var(--motion-ease) backwards;
+    }
+    .home-split[data-reveal="in"] .home-split-text > h2 {
+      animation-name: home-focus;
+    }
+    .home-split[data-reveal="in"] .home-split-text > :nth-child(2) {
+      animation-delay: var(--motion-stagger);
+    }
+    .home-split[data-reveal="in"] .home-split-text > :nth-child(3) {
+      animation-delay: calc(var(--motion-stagger) * 2);
+    }
+    /* A button in fourth place (the organiser band has no list) follows the
+       paragraph directly; in fifth place it waits for four list items. */
+    .home-split[data-reveal="in"] .home-split-text > :nth-child(4) {
+      animation-delay: calc(var(--motion-stagger) * 3);
+    }
+    .home-split[data-reveal="in"] .home-split-text > :nth-child(5) {
+      animation-delay: calc(var(--motion-stagger) * 7);
+    }
+    .home-split[data-reveal="in"] :is(.home-bullets > li, .home-faq-item) {
+      animation: home-rise var(--motion-enter) var(--motion-ease)
+        calc(var(--motion-stagger) * 3) backwards;
+    }
+    .home-split[data-reveal="in"]
+      :is(.home-bullets > li, .home-faq-item):nth-child(2) {
+      animation-delay: calc(var(--motion-stagger) * 4);
+    }
+    .home-split[data-reveal="in"]
+      :is(.home-bullets > li, .home-faq-item):nth-child(3) {
+      animation-delay: calc(var(--motion-stagger) * 5);
+    }
+    .home-split[data-reveal="in"]
+      :is(.home-bullets > li, .home-faq-item):nth-child(4) {
+      animation-delay: calc(var(--motion-stagger) * 6);
+    }
+
+    /* The photo is unmasked from a smaller rounded frame out to its full
+       size while the picture inside settles from a slight zoom - the panel
+       grows toward you, the image eases back into place. The drift is scoped
+       to revealed sections so it starts WITH the unmask rather than having
+       quietly played out off-screen, and then carries on for each new photo
+       the slider brings up. */
+    .home-split[data-reveal="in"] .home-photo {
+      animation: home-unmask var(--motion-slow) var(--motion-ease) backwards;
+    }
+    .home-split[data-reveal="in"] .home-shot.is-active {
+      animation: home-drift 7s var(--motion-ease) backwards;
+    }
+
+    /* ------------------------------------------- photo panel, next photo ---
+       Used to be a flat cross-fade, which in the middle shows two
+       half-transparent photos at once - the muddy frame that makes a
+       slideshow look like a slideshow. Now the next photo is drawn across
+       the panel from the right edge, on top, settling from a zoom as it
+       lands, while the one it covers slips back and dims underneath. At no
+       point is either picture see-through.
+
+       The outgoing photo has to stay opaque until it is fully covered, so
+       an inactive shot drops its opacity only after the slide-over's length,
+       and the active one takes it back immediately. */
+    .home-photo .home-shot {
+      transition: opacity 0s linear var(--motion-slow);
+    }
+    .home-photo .home-shot.is-active {
+      transition: none;
+    }
+    .home-photo[data-moved] .home-shot.is-active {
+      animation:
+        shot-enter var(--motion-slow) var(--motion-ease) backwards,
+        home-drift 7s var(--motion-ease) backwards;
+    }
+    .home-photo[data-moved] .home-shot:not(.is-active) {
+      animation: shot-leave var(--motion-slow) var(--motion-ease) forwards;
+    }
+    .home-photo:not(.is-paused) .home-photo-dot.on::after {
+      animation: rail-progress var(--rail-rotate, 6000ms) linear both;
     }
 
     /* --------------------------------------------------- the steps band ---
@@ -2221,18 +2404,39 @@
        fading in together would have said the opposite. */
     .home-steps[data-reveal="in"]::before {
       transform-origin: left center;
-      animation: home-draw 760ms cubic-bezier(0.22, 0.75, 0.3, 1) both;
+      animation: home-draw var(--motion-slow) var(--motion-ease) both;
     }
     .home-steps[data-reveal="in"] .home-step-card {
-      animation: home-rise 460ms cubic-bezier(0.22, 0.75, 0.3, 1) both;
+      animation: home-rise var(--motion-enter) var(--motion-ease) backwards;
     }
-    /* Paced against the line, not evenly: the line crosses each gap in about
-       190ms, so a card lands just after it has been reached. */
+    /* Paced against the line, not evenly: on this curve the line crosses
+       each gap in about 180ms, so a card lands just after it is reached,
+       and its icon a beat after that. */
     .home-steps[data-reveal="in"] .home-step-card:nth-child(2) {
-      animation-delay: 190ms;
+      animation-delay: 180ms;
     }
     .home-steps[data-reveal="in"] .home-step-card:nth-child(3) {
-      animation-delay: 380ms;
+      animation-delay: 360ms;
+    }
+    .home-steps[data-reveal="in"] .home-step-icon {
+      animation: home-scale var(--motion-enter) var(--motion-ease) 120ms
+        backwards;
+    }
+    .home-steps[data-reveal="in"] .home-step-card:nth-child(2) .home-step-icon {
+      animation-delay: 300ms;
+    }
+    .home-steps[data-reveal="in"] .home-step-card:nth-child(3) .home-step-icon {
+      animation-delay: 480ms;
+    }
+    /* The payment note is the footnote to step two, so it follows the route
+       rather than arriving with it. It is not observed itself: it is hidden
+       while the steps are, and shown once the third card has landed. */
+    .home-steps[data-reveal="armed"] + .home-steps-note {
+      opacity: 0;
+    }
+    .home-steps[data-reveal="in"] + .home-steps-note {
+      animation: home-rise var(--motion-enter) var(--motion-ease) 560ms
+        backwards;
     }
 
     /* ------------------------------------------------- the events grid ---
@@ -2242,16 +2446,25 @@
        the catalogue page, which re-renders this grid on every filter change,
        does not flicker on each keystroke. */
     .home-events-section .grid-cards > * {
-      animation: home-rise 420ms cubic-bezier(0.22, 0.75, 0.3, 1) both;
+      animation: home-rise var(--motion-enter) var(--motion-ease) backwards;
     }
     .home-events-section .grid-cards > :nth-child(2) {
-      animation-delay: 45ms;
+      animation-delay: var(--motion-stagger);
     }
     .home-events-section .grid-cards > :nth-child(3) {
-      animation-delay: 90ms;
+      animation-delay: calc(var(--motion-stagger) * 2);
     }
     .home-events-section .grid-cards > :nth-child(4) {
-      animation-delay: 135ms;
+      animation-delay: calc(var(--motion-stagger) * 3);
+    }
+
+    /* The closing ask: the question, then the button to answer it. */
+    .home-cta-inner[data-reveal="in"] > * {
+      animation: home-focus var(--motion-enter) var(--motion-ease) backwards;
+    }
+    .home-cta-inner[data-reveal="in"] > .btn {
+      animation-name: home-rise;
+      animation-delay: calc(var(--motion-stagger) * 2);
     }
   }
 
@@ -2279,8 +2492,8 @@
         block-size: 0;
         overflow: hidden;
         transition:
-          block-size 280ms cubic-bezier(0.22, 0.75, 0.3, 1),
-          content-visibility 280ms allow-discrete;
+          block-size var(--motion-quick) var(--motion-ease),
+          content-visibility var(--motion-quick) allow-discrete;
       }
       .home-faq-item[open]::details-content {
         block-size: auto;
@@ -5799,6 +6012,69 @@
     transform: scaleX(0);
   }
 }
+/* Headings: rise the same distance as everything else, but come into focus
+   rather than just fading. Kept to a few pixels of blur - past that it reads
+   as a loading glitch, not as a lens pulling focus. */
+@keyframes home-focus {
+  from {
+    opacity: 0;
+    filter: blur(8px);
+    transform: translateY(12px);
+  }
+}
+/* Small chips (step icons, the rail's date). No overshoot - see the motion
+   block. */
+@keyframes home-scale {
+  from {
+    opacity: 0;
+    transform: scale(0.88);
+  }
+}
+/* Explicit `to`: inset() cannot interpolate to the implicit `none`, and would
+   jump instead of opening. The negative end clears the panel's shadow, so
+   nothing is cut off while it runs and nothing changes when it lets go. */
+@keyframes home-unmask {
+  from {
+    opacity: 0;
+    clip-path: inset(9% 7% round 1.5rem);
+  }
+  to {
+    clip-path: inset(-2rem round 0);
+  }
+}
+@keyframes home-drift {
+  from {
+    transform: scale(1.1);
+  }
+}
+@keyframes hero-settle {
+  from {
+    opacity: 0;
+    transform: scale(1.08);
+  }
+}
+/* The photo panel's slide-over: the incoming photo is uncovered from the
+   right edge, the outgoing one moves back a little and darkens as it is
+   covered. Explicit `to` on the clip for the same reason as home-unmask. */
+@keyframes shot-enter {
+  from {
+    clip-path: inset(0 0 0 100%);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+@keyframes shot-leave {
+  to {
+    transform: translateX(-8%) scale(1.02);
+    filter: brightness(0.55);
+  }
+}
+@keyframes rail-progress {
+  from {
+    transform: scaleX(0);
+  }
+}
 @keyframes shimmer {
   from {
     transform: translateX(-100%);
@@ -5806,6 +6082,15 @@
   to {
     transform: translateX(100%);
   }
+}
+
+/* ---------------------------------------------------------- theme switch */
+/* Light/dark switches run as view transitions (lib/viewTransition.js); this sets the
+   pace of the page-wide crossfade (the browser default is a quick 250ms). */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 400ms;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* ------------------------------------------------------- reduced motion */
