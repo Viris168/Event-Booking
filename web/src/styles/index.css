@@ -4519,16 +4519,16 @@
     animation: pw-rise 0.2s ease-out both;
   }
   .scan-popup > .icon {
-    @apply size-[88px] rounded-[22px];
+    @apply size-[68px] rounded-[18px];
   }
   .scan-popup > .icon svg {
-    @apply size-14;
+    @apply size-10;
   }
   .scan-popup b {
-    @apply mt-1 text-[1.75rem];
+    @apply mt-1 text-[1.4rem];
   }
   .scan-popup span {
-    @apply mt-1.5 text-[1rem];
+    @apply mt-1.5 text-[0.92rem];
   }
   .scan-popup-next {
     @apply mt-5 min-h-12 w-full rounded-[12px] bg-white/[0.18] text-[1rem] font-semibold text-white;
@@ -7978,7 +7978,7 @@
 }
 :root[data-theme="dark"] .gsi-host:has(iframe:not([style*="height: 0px"])) {
   background: #202124;
-  border-color: #3c4043;
+  border-color: transparent; /* Remove the custom border to prevent clashing with the iframe's edges */
 }
 /* Cropped by overflow on Google's wrapper rather than by clip-path on the
    frame. A clip-path edge is anti-aliased, and on a frame sitting at a
