@@ -881,19 +881,22 @@
     }
   }
   @media (max-width: 560px) {
-    /* The wordmark stays. A mark on its own is only a name to someone who has
-       already learned it, and this one is not famous enough to assume that -
-       so the lockup keeps its title and pays for the space by shrinking both
-       halves rather than dropping one. */
-    .nav-brand-text {
-      @apply text-[0.9rem];
-    }
-    .nav-mark {
-      @apply h-[26px];
-    }
-    .nav-brand {
-      @apply gap-[0.35rem];
-    }
+    /* The LOCKUP does not shrink here - only the space around it.
+       .footer-lockup says it is matched to .nav-brand "to the pixel,
+       including the gap", and that was true at every width except the phone
+       ones, where this block quietly took the navbar to a 26px mark beside
+       0.9rem type and a tighter gap while the footer held 30px / 1.02rem /
+       0.5rem. The two ends of the same page wore two different brands on
+       exactly the screens where a reader passes both in one scroll.
+
+       The space it used to buy was never the constraint: .nav-brand sits in a
+       flexible grid track and the compact cluster is placed independently, so
+       the row's width is set by the controls on the right, not by the wordmark
+       on the left. The real relief valve for narrow screens is the 380px rule
+       below, which drops the title outright.
+
+       What still tightens is the gaps BETWEEN the lockup and everything else,
+       which is space, not identity. */
     .nav-inner {
       @apply gap-2;
     }
