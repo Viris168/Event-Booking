@@ -2903,22 +2903,35 @@
     @apply mt-[0.85rem] grid gap-[0.7rem] border-t border-dashed border-line pt-[0.85rem];
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   }
-  @media (max-width: 820px) {
+  /* At the width where the map leaves the page (EventsPage's isMobile query,
+     900px) the list runs full width, so the cap to the left column goes too -
+     it left the row stopping two thirds of the way across a tablet. Search
+     takes the first line; sort, Filters and Map share the second. It used to
+     go two-across here, which parked Map alone on a third row. */
+  @media (max-width: 900px) {
     .search-row {
-      @apply grid-cols-2;
+      max-width: none;
+      grid-template-columns: minmax(0, 1fr) auto auto;
     }
     .search-row .search-main {
       @apply col-span-full;
     }
+  }
+  @media (max-width: 820px) {
     .searchpanel {
       @apply static;
     }
   }
-  /* Below ~560px the two selects are too narrow for their labels once the
-     leading icon and chevron are accounted for; give each a full row. */
+  /* Below ~560px the sort select is too narrow for its label once the leading
+     icon and chevron are accounted for, so it takes a line of its own and the
+     two buttons pair up under it: three rows, where it used to be four
+     full-width ones before the first event. */
   @media (max-width: 560px) {
     .search-row {
-      @apply grid-cols-1;
+      @apply grid-cols-2;
+    }
+    .search-row .search-sort {
+      @apply col-span-full;
     }
   }
 
@@ -4555,6 +4568,53 @@
   @media (max-width: 900px) {
     .summary {
       @apply static;
+    }
+  }
+
+  /* ----------------------------------------------------- mobile buy bar ---
+     See MobileBuyBar.jsx. Only below the width where .split stacks; above
+     it the sticky .summary already keeps Reserve beside the content. It
+     slides off the bottom edge rather than fading, so a hidden bar is simply
+     not on screen, and `inert` in the component takes it out of the tab
+     order at the same time. */
+  .buybar {
+    @apply hidden;
+  }
+  @media (max-width: 900px) {
+    .buybar {
+      @apply fixed inset-x-0 bottom-0 z-40 flex items-center justify-between gap-4 border-t border-line bg-surface px-page pt-3;
+      padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+      box-shadow: 0 -10px 30px -12px rgba(0, 0, 0, 0.18);
+      translate: 0 110%;
+      transition: translate var(--motion-enter) var(--motion-ease);
+    }
+    .buybar.is-visible {
+      translate: 0 0;
+    }
+    .buybar-price {
+      @apply flex min-w-0 flex-col leading-tight;
+    }
+    .buybar-price .tiny {
+      @apply text-muted;
+    }
+    .buybar-price b {
+      @apply text-[1.2rem] font-extrabold tabular-nums text-ink;
+    }
+    .buybar .btn {
+      @apply min-h-11 flex-none whitespace-nowrap px-5;
+    }
+    /* Room for the bar, so the capacity card is never parked under it. */
+    .container:has(> .buybar) {
+      @apply pb-28;
+    }
+    /* Clear the sticky navbar when "Choose tickets" scrolls here. */
+    #pick-seats {
+      scroll-margin-top: 70px;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .buybar {
+      transition: none;
     }
   }
   .line {
