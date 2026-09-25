@@ -2641,8 +2641,12 @@
   .searchbar .sb-cell:focus-within {
     @apply bg-transparent shadow-none;
   }
+  /* A little air before the button only. The query and province cells stay
+     joined by their hairline - they are one question - while the button is
+     the answer to it, and butting straight up against the province box made
+     the two read as one control. */
   .searchbar .btn {
-    @apply min-h-[46px] whitespace-nowrap rounded-full px-[1.5rem] font-bold transition-all duration-200;
+    @apply ml-1.5 min-h-[46px] whitespace-nowrap rounded-full px-[1.5rem] font-bold transition-all duration-200;
   }
   .searchbar .btn:hover {
     @apply shadow-float -translate-y-px;
@@ -2655,7 +2659,7 @@
       @apply left-2 right-2 top-0 bottom-auto h-px w-auto;
     }
     .searchbar .btn {
-      @apply rounded-[10px];
+      @apply ml-0 rounded-[10px];
     }
   }
 
