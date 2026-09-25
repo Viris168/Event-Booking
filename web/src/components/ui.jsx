@@ -12,7 +12,11 @@ import { Link } from "react-router-dom";
 import Icon from "./Icon.jsx";
 import { useLocale } from "../context/LocaleContext.jsx";
 import { formatDate, usd } from "../lib/format.js";
-import CalendarPopover, { parseISODate } from "./CalendarPopover.jsx";
+import CalendarPopover, {
+  parseISODate,
+  startOfToday,
+  toISODate,
+} from "./CalendarPopover.jsx";
 
 /** Booking / event / payment status pill. Every state gets its own colour. */
 export function Badge({ status, children, className = "" }) {
@@ -209,10 +213,10 @@ export function Field({
  * The value and `onChange` are the native input's own, so it is a drop-in
  * replacement for `<input className="input" type="date">`.
  *
- * <p>On a desktop (a mouse or trackpad) a date-only field opens our own
- * calendar instead of the browser's - see CalendarPopover. Touch screens keep
- * the native control and its picker. Date-and-time fields stay native
- * everywhere for now.
+ * <p>On a desktop (a mouse or trackpad) the field opens our own calendar
+ * instead of the browser's, with hour and minute columns beside it for a
+ * date-and-time field - see CalendarPopover. Touch screens keep the native
+ * control and its picker.
  */
 export function DateInput({
   type = "date",
@@ -234,9 +238,10 @@ export function DateInput({
         ? "ជ្រើសរើសថ្ងៃ និងម៉ោង"
         : "Select date & time");
   const empty = !value;
-  if (type === "date" && finePointer) {
+  if (finePointer && (type === "date" || type === "datetime-local")) {
     return (
       <DesktopDateField
+        type={type}
         value={value}
         hint={hint}
         className={className}
@@ -277,12 +282,23 @@ function useFinePointer() {
   );
 }
 
+/** A new date-and-time with no time chosen yet starts here, and the time
+ * columns open on it so it is one click to change. */
+const DEFAULT_TIME = "09:00";
+
 /**
  * The desktop half of DateInput: a button that looks like the field, and our
- * calendar under it. `onChange` is called with an event-shaped object, so the
- * callers' `(e) => set(e.target.value)` handlers work unchanged.
+ * calendar under it. Values are the native input's own formats -
+ * "YYYY-MM-DD", or "YYYY-MM-DDTHH:mm" for datetime-local - and `onChange` is
+ * called with an event-shaped object, so the callers'
+ * `(e) => set(e.target.value)` handlers work unchanged.
+ *
+ * <p>A date field closes the moment a day is picked. A date-and-time field
+ * writes each change through as it is made - day, hour, minute - and closes
+ * on Done, so nothing is lost if the reader clicks away half way.
  */
 function DesktopDateField({
+  type,
   value,
   hint,
   className,
@@ -294,25 +310,59 @@ function DesktopDateField({
   "aria-label": ariaLabel,
 }) {
   const { locale } = useLocale();
+  const withTime = type === "datetime-local";
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);
   const triggerRef = useRef(null);
-  const date = parseISODate(value);
-  const shown = date ? formatDate(date, locale) : hint;
+  const popRef = useRef(null);
 
-  useEffect(() => {
-    if (!open) return undefined;
-    const onDown = (e) => {
-      if (!wrapRef.current?.contains(e.target)) setOpen(false);
-    };
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, [open]);
+  const datePart = value ? String(value).slice(0, 10) : "";
+  const timePart = withTime && value ? String(value).slice(11, 16) : "";
+  const date = parseISODate(datePart);
+  let shown = hint;
+  if (date) {
+    if (withTime && timePart) {
+      // The time as the columns show it, 24-hour. The locale formatter prints
+      // "07:30 PM" for Khmer, which read as a different time from the "19"
+      // and "30" picked a moment ago in the columns right under it.
+      shown = `${formatDate(date, locale)} · ${timePart}`;
+    } else {
+      shown = formatDate(date, locale);
+    }
+  }
+
+  const emit = (v) =>
+    onChange?.({ target: { value: v }, currentTarget: { value: v } });
 
   function close(returnFocus) {
     setOpen(false);
     if (returnFocus) triggerRef.current?.focus();
   }
+
+  useEffect(() => {
+    if (!open) return undefined;
+    // The popover lives in <body>, outside this wrapper, so a click is only
+    // "outside" when it is outside both.
+    const onDown = (e) => {
+      if (!wrapRef.current?.contains(e.target) && !popRef.current?.contains(e.target))
+        setOpen(false);
+    };
+    // Capture phase, so Escape closes the calendar and stops there - inside
+    // an edit dialog, the dialog's own document-level Escape handler would
+    // otherwise close the whole dialog along with it.
+    const onKey = (e) => {
+      if (e.key !== "Escape") return;
+      e.stopPropagation();
+      setOpen(false);
+      triggerRef.current?.focus();
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey, true);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey, true);
+    };
+  }, [open]);
 
   return (
     <span
@@ -335,14 +385,24 @@ function DesktopDateField({
       <Icon name="calendar" size={16} className="date-input-icon" />
       {open && (
         <CalendarPopover
-          value={value}
-          min={min}
-          max={max}
+          value={datePart}
+          min={min ? String(min).slice(0, 10) : undefined}
+          max={max ? String(max).slice(0, 10) : undefined}
           locale={locale}
+          anchorRef={wrapRef}
+          popRef={popRef}
+          withTime={withTime}
+          time={timePart || null}
           onClose={close}
+          onDone={() => close(true)}
+          onTime={(t) => emit(`${datePart || toISODate(startOfToday())}T${t}`)}
           onPick={(iso) => {
-            onChange?.({ target: { value: iso }, currentTarget: { value: iso } });
-            close(true);
+            if (!withTime || !iso) {
+              emit(iso);
+              close(true);
+              return;
+            }
+            emit(`${iso}T${timePart || DEFAULT_TIME}`);
           }}
         />
       )}

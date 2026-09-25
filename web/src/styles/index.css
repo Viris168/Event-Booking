@@ -4186,12 +4186,13 @@
     @apply text-link;
   }
 
+  /* Fixed and portalled to <body> - see CalendarPopover - so it can never be
+     clipped by a narrow column or a scrolling dialog; the component sets top
+     and left from the field. Above .confirm-overlay (1100), since it opens
+     from inside edit dialogs too. */
   .cal {
-    position: absolute;
-    top: calc(100% + 6px);
-    left: 0;
-    z-index: 100;
-    width: 300px;
+    position: fixed;
+    z-index: 1200;
     padding: 0.75rem;
     background: var(--color-surface);
     border: 1px solid var(--color-line);
@@ -4201,13 +4202,11 @@
       0 4px 12px rgba(0, 0, 0, 0.05);
     animation: custom-menu-pop-in 0.16s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
-  .cal.is-right {
-    left: auto;
-    right: 0;
+  .cal-body {
+    @apply flex gap-3;
   }
-  .cal.is-up {
-    top: auto;
-    bottom: calc(100% + 6px);
+  .cal-main {
+    width: 276px;
   }
   [data-theme="dark"] .cal {
     background: #1c1915;
@@ -4285,6 +4284,53 @@
   }
   .cal-link:disabled {
     @apply cursor-not-allowed opacity-40;
+  }
+  .cal-done {
+    @apply cursor-pointer rounded-lg border-0 bg-brand-600 px-4 py-1.5 text-[0.85rem] font-semibold text-white;
+    transition: background-color 0.15s ease;
+  }
+  .cal-done:hover {
+    @apply bg-brand-700;
+  }
+  .cal-done:focus-visible {
+    @apply outline-2 outline-offset-2 outline-brand-500;
+  }
+
+  /* Hour and minute columns beside the calendar, the layout Chrome's own
+     date-and-time picker uses. Each column scrolls on its own; its height is
+     the calendar grid's, so the two halves end on the same line. */
+  .cal-time {
+    @apply flex flex-col border-l border-line-2 pl-3;
+  }
+  .cal-time-head {
+    @apply mb-2 flex h-8 items-center justify-center gap-1.5 text-[0.85rem] font-bold text-ink;
+  }
+  .cal-time-head svg {
+    @apply text-muted;
+  }
+  .cal-time-cols {
+    @apply flex gap-1.5;
+  }
+  .cal-time-col {
+    @apply flex w-[52px] flex-col gap-0.5 overflow-y-auto;
+    height: 262px;
+    scrollbar-width: thin;
+    overscroll-behavior: contain;
+  }
+  .cal-time-opt {
+    @apply flex-none cursor-pointer rounded-[10px] border-0 bg-transparent py-[0.45rem] text-center text-[0.86rem] text-ink;
+    font-variant-numeric: tabular-nums;
+    transition: background-color 0.12s ease;
+  }
+  .cal-time-opt:hover {
+    @apply bg-surface-2;
+  }
+  .cal-time-opt.is-selected,
+  .cal-time-opt.is-selected:hover {
+    @apply bg-brand-600 font-bold text-white;
+  }
+  .cal-time-opt:focus-visible {
+    @apply outline-2 -outline-offset-2 outline-brand-500;
   }
   @media (prefers-reduced-motion: reduce) {
     .cal {
