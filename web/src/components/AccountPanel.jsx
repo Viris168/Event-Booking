@@ -637,8 +637,8 @@ function AccountMenu({ user, km, t, onGo, onLeave }) {
             title={km ? "លេខទូរស័ព្ទ" : "Phone number"}
             sub={
               km
-                ? "លេខសម្រាប់ចូលប្រើ មិនអាចប្តូរបានទេ"
-                : "How you sign in. Cannot be changed here."
+                ? "លេខសម្រាប់ចូលប្រើ។ ទាក់ទងមកយើង ដើម្បីប្តូរលេខ។"
+                : "How you sign in. Contact us to change it."
             }
             value={<span className="mono">{user.phone_e164}</span>}
           />
