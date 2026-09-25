@@ -274,7 +274,10 @@ export default function BookingDetailPage() {
         hold the server had already closed. The extension lives on the event
         page, where the hold is still ACTIVE and extending it means something.
       */}
-      <div className="page-head" style={{ marginTop: '1rem' }}>
+      {/* The extra space separates the title from the Steps bar above it. With
+          no Steps it would only push the title below where every other page
+          puts it. */}
+      <div className="page-head" style={act.hasTickets ? { marginTop: '1rem' } : undefined}>
         <div>
           <div className="tiny">{t('bookingRef')}</div>
           <h1 className="mono" style={{ fontSize: '1.6rem' }}>
@@ -297,6 +300,19 @@ export default function BookingDetailPage() {
           <span className="small muted">
             {t('status')} · {dateTime(booking.state_changed_at)}
           </span>
+          {/* Opens /contact already filled in, so the one thing support will
+              ask for first - which booking - is never the thing missing. An
+              unsettled booking is almost always a payment question. */}
+          <Link
+            className="small with-icon"
+            to={`/contact?${new URLSearchParams({
+              topic: booking.state === 'CONFIRMED' ? 'BOOKING' : 'PAYMENT',
+              ref: booking.booking_ref,
+            })}`}
+          >
+            <Icon name="mail" size={14} />
+            {locale === 'km' ? 'ត្រូវការជំនួយសម្រាប់ការកក់នេះ?' : 'Get help with this booking'}
+          </Link>
         </div>
       </div>
 
