@@ -11,7 +11,7 @@ const EventLocationMap = lazy(
 import SeatMap from "../components/SeatMap.jsx";
 import VenueLayoutPanel from "../components/VenueLayoutPanel.jsx";
 import ZonePicker from "../components/ZonePicker.jsx";
-import { EventDetailSkeleton } from "../components/Skeleton.jsx";
+import { EventDetailSkeleton, Skeleton } from "../components/Skeleton.jsx";
 import { Alert, Badge, BiTitle, Money, Progress } from "../components/ui.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useLocale } from "../context/LocaleContext.jsx";
@@ -731,7 +731,7 @@ export default function EventDetailPage() {
                 {venue.lat && venue.lng ? (
                   <div className="event-location-map-box">
                     <Suspense
-                      fallback={<div className="event-location-map-skeleton" />}
+                      fallback={<Skeleton className="h-full w-full rounded-none" />}
                     >
                       <EventLocationMap
                         lat={+venue.lat}

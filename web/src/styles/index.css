@@ -5796,13 +5796,6 @@
     z-index: 70;
   }
 
-  .event-location-map-skeleton {
-    width: 100%;
-    height: 100%;
-    border-radius: inherit;
-    background: var(--color-surface-2);
-    animation: pulse 1.5s infinite;
-  }
   .event-location-empty {
     @apply flex flex-col items-center justify-center p-8 text-center text-muted gap-2 rounded-[14px] border border-line bg-surface-2;
   }
@@ -6157,6 +6150,12 @@
       rgba(255, 255, 255, 0.2),
       transparent
     );
+  }
+  /* The event hero is dark whatever the event turns out to be, so its
+     placeholder is too - a neutral warm dark rather than one of the cover
+     hues, since it cannot know which cover is coming. */
+  .event-hero-skel {
+    background: linear-gradient(135deg, #2e2a23, #16140f);
   }
   .skel-line {
     @apply h-[0.72rem] rounded-tiny;
