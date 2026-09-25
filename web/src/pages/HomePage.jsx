@@ -703,9 +703,9 @@ export default function HomePage() {
             </Link>
           </div>
           {loading ? (
-            <EventGridSkeleton count={GRID_SIZE} />
+            <EventGridSkeleton count={GRID_SIZE} className="home-card-rail" />
           ) : featured.length ? (
-            <div className="grid grid-cards">
+            <div className="grid grid-cards home-card-rail">
               {featured.map((e) => (
                 <EventCard key={e.id} event={e} />
               ))}

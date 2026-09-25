@@ -1857,6 +1857,22 @@
   .quick-chip:hover {
     @apply border-white/40 bg-white/[0.18] text-white -translate-y-0.5 no-underline;
   }
+  /* On a phone the five chips wrapped to three rows and pushed the stats
+     under the fold. One swipeable line instead, bled to the screen edge like
+     the event row below it so the cut-off chip says there is more. */
+  @media (max-width: 640px) {
+    .quick-links {
+      @apply -mx-page flex-nowrap overflow-x-auto px-page py-1;
+      scrollbar-width: none;
+      overscroll-behavior-x: contain;
+    }
+    .quick-links::-webkit-scrollbar {
+      display: none;
+    }
+    .quick-links > * {
+      @apply flex-none;
+    }
+  }
 
   /* ======================================================= page bands ===
      Between the hero and the footer the page alternates ground: paper for
@@ -1911,6 +1927,30 @@
   .home-events-section {
     @apply m-0;
   }
+  /* The "on sale now" row, below the width where .grid-cards stops being
+     four-across. Four cards in a 3-up grid left one orphan on a second row,
+     and in the 1-up grid on a phone they stacked into ~1,600px of scrolling
+     before the page said anything else. A swipeable row keeps it what the
+     band is meant to be - one shop window - at every width.
+
+     It bleeds to the viewport edge (the container is full width below the
+     shell's max) and pads back in by the page gutter, so the first card still
+     lines up with the heading while the next one visibly runs off the edge. */
+  @media (max-width: 1180px) {
+    .home-card-rail {
+      @apply -mx-page overflow-x-auto px-page pt-1 pb-3;
+      grid-auto-flow: column;
+      grid-template-columns: none;
+      grid-auto-columns: min(80%, 18.5rem);
+      scroll-snap-type: x mandatory;
+      scroll-padding-inline: var(--spacing-page);
+      scrollbar-width: thin;
+      overscroll-behavior-x: contain;
+    }
+    .home-card-rail > * {
+      scroll-snap-align: start;
+    }
+  }
   .home-split {
     @apply grid items-center gap-12;
     grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
@@ -1937,6 +1977,12 @@
     .home-lead .home-split,
     .home-tail .home-split + .home-split {
       @apply mt-10 pt-10;
+    }
+    /* Once stacked, the reversed split would open on a photo with its
+       heading a screen further down. Every section leads with its words on a
+       phone, so the photo drops below them here. */
+    .home-split-reverse > .home-photo {
+      order: 1;
     }
   }
 
@@ -2083,6 +2129,33 @@
   }
   .home-step-card p {
     @apply mb-0 text-sm leading-relaxed text-muted;
+  }
+  /* Stacked (below md), each card was a tall box with the icon and number
+     alone on their own row. Icon beside the text instead, number tucked in the
+     corner - the same content in about two thirds of the height. */
+  @media (max-width: 767px) {
+    .home-steps {
+      @apply gap-4;
+    }
+    .home-step-card {
+      @apply grid gap-x-4 p-5;
+      grid-template-columns: auto minmax(0, 1fr);
+    }
+    .home-step-top {
+      @apply contents;
+    }
+    .home-step-icon {
+      @apply row-span-2 h-11 w-11;
+    }
+    .home-step-num {
+      @apply absolute right-5 top-4 text-xl;
+    }
+    .home-step-card h3 {
+      @apply mb-1 self-end pr-10;
+    }
+    .home-step-card p {
+      @apply col-start-2;
+    }
   }
 
   /* The one question that stops a first-time KHQR buyer at step two. Centred
@@ -5228,6 +5301,62 @@
    */
   .footer-col h4 {
     @apply mb-[0.35rem] text-[0.72rem] font-bold uppercase tracking-[0.09em] text-gold-500;
+  }
+  .footer-col-links {
+    @apply flex flex-col items-start gap-[0.55rem];
+  }
+
+  /*
+   * Phone: each link column collapses behind its heading (see FooterSection).
+   *
+   * Stacked, the three columns were fourteen links in one list, longer than
+   * the rest of the footer put together. The sections are hairline-separated
+   * rows now, the heading keeps its gold caps so it still reads as the same
+   * heading, and the whole row is the tap target at 48px tall.
+   */
+  @media (max-width: 580px) {
+    .footer-grid-4 {
+      @apply gap-y-0;
+    }
+    .footer-brand-col {
+      @apply mb-6;
+    }
+    .footer-col.is-compact {
+      @apply gap-0 border-t border-white/[0.11];
+    }
+    /* The last section closes the list with its own rule, so the bottom
+       bar's top rule would be a second line 2.6rem under the first. */
+    .footer-col.is-compact:last-child {
+      @apply border-b;
+    }
+    .footer .footer-bottom {
+      @apply border-t-0;
+    }
+    .footer-col.is-compact h4 {
+      @apply m-0 w-full;
+    }
+    .footer-col-toggle {
+      @apply flex min-h-12 w-full cursor-pointer items-center justify-between gap-3 border-0 bg-transparent p-0
+        text-left font-[inherit] uppercase tracking-[inherit] text-[inherit];
+    }
+    .footer-col-toggle svg {
+      @apply flex-none text-white/60;
+      transition: rotate 0.2s var(--motion-ease);
+    }
+    .footer-col.is-open .footer-col-toggle svg {
+      @apply rotate-180 text-gold-500;
+    }
+    .footer-col-toggle:focus-visible {
+      @apply rounded-[6px] outline-2 outline-offset-2 outline-gold-500;
+      box-shadow: none;
+    }
+    /* Roomier rows than the desktop column: these are thumb targets. */
+    .footer-col.is-compact .footer-col-links {
+      @apply gap-0 pb-3;
+    }
+    .footer-col.is-compact .footer-col-links > a {
+      @apply py-2;
+    }
   }
   /*
    * A white rule that draws itself in from the left, not a gold one.
