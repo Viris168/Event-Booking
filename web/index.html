@@ -99,8 +99,96 @@
       defer
       src="https://checkout.payway.com.kh/plugins/checkout2-0.js"
     ></script>
+
+    <!-- Apply the saved theme before first paint. ThemeContext does the same
+         once React runs, but by then the splash below has already been drawn
+         in whatever colours the stylesheet guessed. Same key, same fallback. -->
+    <script>
+      (function () {
+        var t
+        try { t = localStorage.getItem('theme') } catch (e) {}
+        if (t !== 'light' && t !== 'dark') {
+          t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+        }
+        document.documentElement.dataset.theme = t
+        document.documentElement.style.colorScheme = t
+      })()
+    </script>
+
+    <!-- Splash. Inlined rather than in index.css because the bundle is what we
+         are waiting on: this has to paint before any of it arrives. Colours
+         are the page/brand tokens from index.css, copied by value. -->
+    <style>
+      #splash {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 28px;
+        background: #f6f3ec;
+        transition: opacity 0.3s ease, visibility 0.3s ease;
+      }
+      [data-theme='dark'] #splash { background: #14120e; }
+      #splash.is-done { opacity: 0; visibility: hidden; }
+      /* Mark and name on one row, like .nav-brand. Height drives the mark so
+         it lines up with the cap height of the name beside it. */
+      #splash .splash-lockup { display: flex; align-items: center; gap: 12px; }
+      #splash img { height: 52px; width: auto; }
+      /* Same face and weight as .nav-brand-text, so the splash hands over to
+         the navbar without the name changing shape. Two-tone like the logo
+         lockup: the place in the dark green, the action in the lighter one. */
+      #splash .splash-word {
+        margin: 0;
+        font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        font-size: 2.25rem;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        line-height: 1;
+        color: #0d4a2d;
+      }
+      #splash .splash-word span { color: #208a52; }
+      [data-theme='dark'] #splash .splash-word { color: #f2ece0; }
+      [data-theme='dark'] #splash .splash-word span { color: #6fc99a; }
+      #splash .splash-dots { display: flex; gap: 8px; }
+      #splash .splash-dots span {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #157e4e;
+        animation: splash-dot 1.2s ease-in-out infinite;
+      }
+      [data-theme='dark'] #splash .splash-dots span { background: #6fc99a; }
+      #splash .splash-dots span:nth-child(2) { animation-delay: 0.15s; }
+      #splash .splash-dots span:nth-child(3) { animation-delay: 0.3s; }
+      @keyframes splash-dot {
+        0%, 80%, 100% { transform: scale(0.4); opacity: 0.4; }
+        40% { transform: scale(1); opacity: 1; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #splash .splash-dots span { animation: none; opacity: 0.7; }
+        #splash { transition: none; }
+      }
+    </style>
   </head>
   <body>
+    <div id="splash" role="status" aria-label="Loading CamboBook">
+      <div class="splash-lockup">
+        <img src="/logo/CB-mark.png" alt="" width="280" height="320" />
+        <p class="splash-word" aria-hidden="true">Cambo<span>Book</span></p>
+      </div>
+      <div class="splash-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+    </div>
+    <!-- Safety net: if the bundle fails to load or throws before hiding the
+         splash, don't leave people staring at a spinner forever. -->
+    <script>
+      setTimeout(function () {
+        var s = document.getElementById('splash')
+        if (s) s.remove()
+      }, 10000)
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

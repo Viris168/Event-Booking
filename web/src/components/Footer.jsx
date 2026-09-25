@@ -39,10 +39,69 @@ const SOCIAL = [
 
 const isLive = (url) => url && url.startsWith("http");
 
+/* The width at which .footer-grid-4 drops to one column - keep the two in
+   step. Above it the columns sit side by side and every link is visible; below
+   it they stacked into one long list of fourteen links, so each becomes a
+   collapsed section instead. */
+const COMPACT_QUERY = "(max-width: 580px)";
+
+function useCompactFooter() {
+  const [compact, setCompact] = useState(
+    () =>
+      typeof window !== "undefined" && window.matchMedia(COMPACT_QUERY).matches,
+  );
+  useEffect(() => {
+    const mq = window.matchMedia(COMPACT_QUERY);
+    const handler = (e) => setCompact(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+  return compact;
+}
+
+/**
+ * One link column. On a phone the heading is a real disclosure button; on
+ * wider screens it is just a heading, since a toggle that is always open and
+ * does nothing when pressed is worse than no toggle at all.
+ */
+function FooterSection({ id, title, compact, isNav = true, children }) {
+  const [open, setOpen] = useState(false);
+  const expanded = !compact || open;
+  const Tag = isNav ? "nav" : "div";
+
+  return (
+    <Tag
+      className={`footer-col${compact ? " is-compact" : ""}${expanded ? " is-open" : ""}`}
+      aria-labelledby={isNav ? id : undefined}
+    >
+      <h4 id={id}>
+        {compact ? (
+          <button
+            type="button"
+            className="footer-col-toggle"
+            aria-expanded={open}
+            aria-controls={`${id}-links`}
+            onClick={() => setOpen((o) => !o)}
+          >
+            <span>{title}</span>
+            <Icon name="chevronDown" size={16} />
+          </button>
+        ) : (
+          title
+        )}
+      </h4>
+      <div id={`${id}-links`} className="footer-col-links" hidden={!expanded}>
+        {children}
+      </div>
+    </Tag>
+  );
+}
+
 export default function Footer() {
   const { t, locale } = useLocale();
   const { isAuthenticated, isOrganizer, isAdmin, user, role } = useAuth();
   const km = locale === "km";
+  const compact = useCompactFooter();
   const [provinceCount, setProvinceCount] = useState(null);
 
   const isOrgUser =
@@ -248,21 +307,25 @@ export default function Footer() {
           </div>
 
           {/* Col 2: Categories */}
-          <nav className="footer-col" aria-labelledby="footer-categories">
-            <h4 id="footer-categories">
-              {km ? "ប្រភេទព្រឹត្តិការណ៍" : "Discover Categories"}
-            </h4>
+          <FooterSection
+            id="footer-categories"
+            title={km ? "ប្រភេទព្រឹត្តិការណ៍" : "Discover Categories"}
+            compact={compact}
+          >
             {categories.map((c) => (
               <Link key={c.to} to={c.to} className="footer-nav-link">
                 <Icon name={c.icon} size={14} />
                 <span>{c.label}</span>
               </Link>
             ))}
-          </nav>
+          </FooterSection>
 
           {/* Col 3: For Organizers & Workspace */}
-          <nav className="footer-col" aria-labelledby="footer-workspace">
-            <h4 id="footer-workspace">{workspace.label}</h4>
+          <FooterSection
+            id="footer-workspace"
+            title={workspace.label}
+            compact={compact}
+          >
             {workspace.links
               .filter(
                 (l) =>
@@ -279,19 +342,21 @@ export default function Footer() {
                   <span>{l.label}</span>
                 </Link>
               ))}
-          </nav>
+          </FooterSection>
 
           {/* Col 4: Explore & Support */}
-          <div className="footer-col footer-col-support">
-            <h4 id="footer-support">
-              {km ? "ស្វែងរក & ជំនួយ" : "Explore & Support"}
-            </h4>
+          <FooterSection
+            id="footer-support"
+            title={km ? "ស្វែងរក & ជំនួយ" : "Explore & Support"}
+            compact={compact}
+            isNav={false}
+          >
             {supportLinks.map((l) => (
               <Link key={l.to} to={l.to} className="footer-nav-link">
                 <span>{l.label}</span>
               </Link>
             ))}
-          </div>
+          </FooterSection>
         </div>
 
         {/* ---------------------------------------------------- Bottom Bar */}

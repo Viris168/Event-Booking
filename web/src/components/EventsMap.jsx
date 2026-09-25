@@ -109,6 +109,13 @@ const TILES = {
 const TILE_ATTRIBUTION =
   '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 
+/**
+ * Lifts the selected pin over its neighbours. Two events at the same venue
+ * share coordinates exactly, and Leaflet stacks markers by latitude, so
+ * without this the chosen pill could sit underneath the other one's.
+ */
+const SELECTED_Z = 1000;
+
 /** The whole country, for when nothing narrower is selected. */
 const CAMBODIA = { center: [12.5657, 104.991], zoom: 7 };
 
@@ -184,6 +191,10 @@ export default function EventsMap({
   useEffect(() => {
     pinnedIdRef.current = pinnedId;
   }, [pinnedId]);
+  const activeIdRef = useRef(activeId);
+  useEffect(() => {
+    activeIdRef.current = activeId;
+  }, [activeId]);
 
   // Track the current active destination so we don't interrupt a flight in progress to restart an identical one.
   const flightDestRef = useRef(null);
@@ -534,8 +545,16 @@ export default function EventsMap({
       const coords = getVenueCoords(venue);
       if (!coords) return;
 
+      const selected =
+        String(e.id) === String(activeIdRef.current) ||
+        String(e.id) === String(pinnedIdRef.current);
       const marker = L.marker(coords, {
-        icon: priceIcon({ label, active: false }),
+        icon: priceIcon({
+          label,
+          active: String(e.id) === String(activeIdRef.current),
+          pinned: String(e.id) === String(pinnedIdRef.current),
+        }),
+        zIndexOffset: selected ? SELECTED_Z : 0,
       })
         .addTo(map)
         .bindPopup(
@@ -556,6 +575,24 @@ export default function EventsMap({
       mine[e.id] = marker;
     });
     markersRef.current = mine;
+
+    /*
+     * A rebuild must not drop the selection.
+     *
+     * This effect re-runs for reasons that have nothing to do with the
+     * selection - most often the province names arriving a beat after the
+     * map, since they are part of the popup text. Tearing the old markers
+     * down closes whatever popup was open, and the icon effect below does not
+     * re-run (its own inputs have not changed), so the selected event lost
+     * both its name and its pinned look moments after being chosen. On a
+     * phone that is exactly when the map popup has just opened on it. Only the
+     * popup is restored - the camera already went where it should.
+     */
+    const keep = mine[activeIdRef.current ?? pinnedIdRef.current];
+    if (keep) {
+      const size = map.getSize();
+      if (size.x && size.y) keep.openPopup();
+    }
 
     /*
      * Each run tears down the markers it created, rather than the next run
@@ -593,6 +630,7 @@ export default function EventsMap({
           pinned: isPinned,
         }),
       );
+      m.setZIndexOffset(isActive || isPinned ? SELECTED_Z : 0);
     });
   }, [activeId, pinnedId]);
 

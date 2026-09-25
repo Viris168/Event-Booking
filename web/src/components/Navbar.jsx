@@ -7,6 +7,22 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { useTheme } from "../context/ThemeContext.jsx";
 import { useLocale } from "../context/LocaleContext.jsx";
 import { countdown } from "../lib/format.js";
+import { Skeleton } from "./Skeleton.jsx";
+
+/*
+ * Stands in for the account button while a saved session is being resumed.
+ * Without it a signed-in reader sees "Log in / Sign up" for a moment on every
+ * reload before the bar flips to their avatar - the splash used to hide that
+ * by staying up until /auth/me answered, which held back every public page
+ * with it. Same box as .nav-avatar-btn, so nothing shifts when it resolves.
+ */
+function AccountPending() {
+  return (
+    <span className="nav-avatar-btn" aria-hidden="true">
+      <Skeleton dark className="size-[26px] rounded-full" />
+    </span>
+  );
+}
 
 /*
  * How often the navbar looks for a hold it does not already know about.
@@ -41,7 +57,10 @@ const ROLE_LABEL = {
 };
 
 export default function Navbar({ onOpenAccount }) {
-  const { isAuthenticated, user, role, isOrganizer, isAdmin } = useAuth();
+  const { isAuthenticated, loading, user, role, isOrganizer, isAdmin } =
+    useAuth();
+  // Neither signed in nor signed out yet - see AccountPending.
+  const signedOut = !isAuthenticated && !loading;
   const { t, locale, setLocale } = useLocale();
   const { isDark, toggle: toggleTheme } = useTheme();
   const location = useLocation();
@@ -335,10 +354,10 @@ export default function Navbar({ onOpenAccount }) {
           {/* Theme toggle directly in the navbar, replacing search */}
           {themeToggle}
 
-          {!isAuthenticated && langToggle}
+          {signedOut && langToggle}
 
           {/* Divider before auth buttons for unauthenticated visitors */}
-          {!isAuthenticated && <span className="nav-sep" aria-hidden="true" />}
+          {signedOut && <span className="nav-sep" aria-hidden="true" />}
 
           {isAuthenticated ? (
             <>
@@ -368,6 +387,8 @@ export default function Navbar({ onOpenAccount }) {
                 </span>
               </button>
             </>
+          ) : loading ? (
+            <AccountPending />
           ) : (
             <>
               <NavLink to="/login" className="nav-link">
@@ -402,6 +423,7 @@ export default function Navbar({ onOpenAccount }) {
           {/* Outside the drawer, like the hold countdown: a badge folded behind
               a burger cannot tell you there is anything to open it for. */}
           {isAuthenticated && <NotificationBell />}
+          {loading && <AccountPending />}
 
           {/* The account, as an initial and nothing else.
               It sat only inside the drawer, which made reaching your own
@@ -458,7 +480,7 @@ export default function Navbar({ onOpenAccount }) {
                   </span>
                 </button>
               </div>
-            ) : (
+            ) : signedOut ? (
               <div className="drawer-auth">
                 <Link className="btn btn-outline btn-block" to="/login">
                   <Icon name="login" size={16} />
@@ -468,7 +490,7 @@ export default function Navbar({ onOpenAccount }) {
                   {t("register")}
                 </Link>
               </div>
-            )}
+            ) : null}
 
             <div className="drawer-links">
               {drawerLinks.map((l) => (

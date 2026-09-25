@@ -1,5 +1,6 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
+import { Skeleton, SkeletonPanel, SkeletonRegion } from '../components/Skeleton.jsx'
 
 /**
  * Wraps routes that need a login, optionally restricted to specific roles.
@@ -20,8 +21,25 @@ export default function ProtectedRoute({ roles }) {
   // so `isAuthenticated` is briefly false for a user who is perfectly signed in.
   // Redirecting during that window sends people to the login screen every time
   // they refresh a page - and, worse, loses where they were going.
+  //
+  // A page-shaped placeholder rather than nothing: the boot splash no longer
+  // waits for /auth/me, so this is what a signed-in reader sees during that
+  // window, and an empty <main> would park the footer under the navbar.
   if (loading) {
-    return null
+    return (
+      <SkeletonRegion className="container">
+        <div className="page-head">
+          <div className="stack-sm">
+            <Skeleton className="skel-line w-28" />
+            <Skeleton className="h-[1.7rem] w-64" />
+          </div>
+        </div>
+        <div className="stack">
+          <SkeletonPanel lines={4} />
+          <SkeletonPanel lines={3} />
+        </div>
+      </SkeletonRegion>
+    )
   }
 
   if (!isAuthenticated) {

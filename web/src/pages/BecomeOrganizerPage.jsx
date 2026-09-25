@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Icon from '../components/Icon.jsx'
+import { SkeletonPanel, SkeletonRegion } from '../components/Skeleton.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useDocumentTitle } from '../lib/useDocumentTitle.js'
 import {
@@ -17,6 +18,23 @@ import {
 const EVENT_TYPES = ['Concert', 'Festival', 'Conference', 'Sports', 'Workshop', 'Exhibition', 'Other']
 
 const MESSAGE_MAX = 2000
+
+/**
+ * The field already draws the "@", so a typed or pasted one would be stored
+ * twice. People also paste their t.me link; keep only the handle from it.
+ */
+const cleanTelegram = (value) =>
+  value
+    .trim()
+    .replace(/^(https?:\/\/)?(www\.)?(t|telegram)\.me\//i, '')
+    .replace(/^@+/, '')
+
+/** What the rail on the right shows, in order. Index is the stage. */
+const STAGES = [
+  { title: 'Apply', note: 'Tell us who you are. It takes about three minutes.' },
+  { title: 'Review', note: 'Our team checks your details, usually within 2 business days.' },
+  { title: 'Start selling', note: 'Publish events, draw seat maps and take KHQR payments.' },
+]
 
 const EMPTY_FORM = {
   org_name_en: '',
@@ -112,8 +130,9 @@ export default function BecomeOrganizerPage() {
     load()
   }, [role, navigate, load])
 
-  const set = (name) => (e) => {
-    setForm((f) => ({ ...f, [name]: e.target.value }))
+  const set = (name, clean = (v) => v) => (e) => {
+    const value = clean(e.target.value)
+    setForm((f) => ({ ...f, [name]: value }))
     setFieldErrors((f) => ({ ...f, [name]: undefined }))
   }
 
@@ -131,7 +150,11 @@ export default function BecomeOrganizerPage() {
     if (!form.org_name_km.trim()) errors.org_name_km = 'Required'
     if (form.message.length > MESSAGE_MAX) errors.message = `At most ${MESSAGE_MAX} characters`
     setFieldErrors(errors)
-    return Object.keys(errors).length === 0
+    // Field ids match the error keys, so the first failure can take focus -
+    // on a phone the invalid field is often scrolled out of view by now.
+    const first = Object.keys(errors)[0]
+    if (first) document.getElementById(first)?.focus()
+    return !first
   }
 
   const submit = async (e) => {
@@ -159,9 +182,20 @@ export default function BecomeOrganizerPage() {
     }
   }
 
-  if (loading) return <div className="container org-apply is-loading">Loading…</div>
+  if (loading) {
+    return (
+      <div className="container org-apply">
+        <SkeletonRegion label="Loading your application" className="org-apply-layout">
+          <SkeletonPanel lines={6} />
+          <SkeletonPanel lines={4} head={false} />
+        </SkeletonRegion>
+      </div>
+    )
+  }
 
   const showForm = !application || (application.status === 'REJECTED' && reapplying)
+  // Where the rail puts its marker. A rejected applicant is back at the start.
+  const stage = application?.status === 'PENDING' ? 1 : 0
 
   return (
     <div className="container org-apply">
@@ -169,146 +203,221 @@ export default function BecomeOrganizerPage() {
         <h1>Become an organizer</h1>
         <p className="org-apply-head-km" lang="km">ក្លាយជាអ្នករៀបចំព្រឹត្តិការណ៍</p>
         <p className="org-apply-head-note">
-          Tell us about your organization. A member of our team reviews every application,
-          usually within 2 business days.
+          Sell tickets to your concerts, festivals and conferences on CamboBook. Tell us about
+          your organization and a member of our team will review it.
         </p>
       </header>
 
-      {error && <div className="org-apply-error" role="alert">{error}</div>}
-
-      {application?.status === 'PENDING' && <PendingCard application={application} />}
-
-      {application?.status === 'REJECTED' && !reapplying && (
-        <RejectedCard application={application} onRetry={() => setReapplying(true)} />
-      )}
-
-      {showForm && (
-        <form className="card org-apply-form" onSubmit={submit} noValidate>
-          <section className="org-apply-section">
-            <h2>Organization</h2>
-            <p className="org-apply-section-note">The name that appears on your event pages.</p>
-
-            <Field
-              id="org_name_en"
-              label="Organization name (English)"
-              required
-              value={form.org_name_en}
-              onChange={set('org_name_en')}
-              error={fieldErrors.org_name_en}
-              placeholder="Mekong Live Productions"
-            />
-            <Field
-              id="org_name_km"
-              label="Organization name (Khmer)"
-              required
-              lang="km"
-              value={form.org_name_km}
-              onChange={set('org_name_km')}
-              error={fieldErrors.org_name_km}
-              placeholder="ផលិតកម្មមេគង្គឡាយវ៍"
-              hint="Shown to Khmer-language visitors."
-            />
-          </section>
-
-          <section className="org-apply-section">
-            <h2>How we reach you</h2>
-            <p className="org-apply-section-note">At least one way for our reviewer to contact you.</p>
-
-            <div className="org-apply-pair">
-            <Field
-              id="telegram_handle"
-              label="Telegram"
-              optional
-              prefix="@"
-              value={form.telegram_handle}
-              onChange={set('telegram_handle')}
-              placeholder="yourhandle"
-            />
-            <Field
-              id="facebook_url"
-              label="Facebook page"
-              optional
-              value={form.facebook_url}
-              onChange={set('facebook_url')}
-              placeholder="facebook.com/yourpage"
-            />
+      <div className="org-apply-layout">
+        <div className="org-apply-main">
+          {error && (
+            <div className="org-apply-error" role="alert">
+              <Icon name="alert" size={16} />
+              {error}
             </div>
-          </section>
+          )}
 
-          <section className="org-apply-section">
-            <h2>About your events</h2>
-            <p className="org-apply-section-note">Helps us review faster.</p>
+          {application?.status === 'PENDING' && <PendingCard application={application} />}
 
-            <fieldset className="org-apply-chips">
-              <legend>What do you organize?</legend>
-              <div className="org-apply-chips-row">
-                {EVENT_TYPES.map((type) => (
-                  <button
-                    key={type}
-                    type="button"
-                    className="org-apply-chip"
-                    aria-pressed={types.includes(type)}
-                    onClick={() => toggleType(type)}
-                  >
-                    {type}
+          {application?.status === 'REJECTED' && !reapplying && (
+            <RejectedCard application={application} onRetry={() => setReapplying(true)} />
+          )}
+
+          {showForm && (
+            <form className="card org-apply-form" onSubmit={submit} noValidate>
+              <Section n={1} title="Organization" note="The name that appears on your event pages and tickets.">
+                <div className="org-apply-pair">
+                  <Field
+                    id="org_name_en"
+                    label="Name in English"
+                    required
+                    value={form.org_name_en}
+                    onChange={set('org_name_en')}
+                    error={fieldErrors.org_name_en}
+                    placeholder="Mekong Live Productions"
+                    autoComplete="organization"
+                  />
+                  <Field
+                    id="org_name_km"
+                    label="Name in Khmer"
+                    required
+                    lang="km"
+                    value={form.org_name_km}
+                    onChange={set('org_name_km')}
+                    error={fieldErrors.org_name_km}
+                    placeholder="ផលិតកម្មមេគង្គឡាយវ៍"
+                    hint="Shown to visitors browsing in Khmer."
+                  />
+                </div>
+              </Section>
+
+              <Section
+                n={2}
+                title="How we reach you"
+                note="Optional, but a reviewer will message you here if anything needs checking."
+              >
+                <div className="org-apply-pair">
+                  <Field
+                    id="telegram_handle"
+                    label="Telegram"
+                    icon="telegram"
+                    prefix="@"
+                    value={form.telegram_handle}
+                    onChange={set('telegram_handle', cleanTelegram)}
+                    placeholder="yourhandle"
+                    autoCapitalize="none"
+                    spellCheck={false}
+                  />
+                  <Field
+                    id="facebook_url"
+                    label="Facebook page"
+                    icon="facebook"
+                    type="url"
+                    inputMode="url"
+                    value={form.facebook_url}
+                    onChange={set('facebook_url')}
+                    placeholder="facebook.com/yourpage"
+                    autoCapitalize="none"
+                    spellCheck={false}
+                  />
+                </div>
+              </Section>
+
+              <Section n={3} title="About your events" note="Optional. The more we know, the faster the review.">
+                <fieldset className="org-apply-chips">
+                  <legend>What do you organize?</legend>
+                  <div className="org-apply-chips-row">
+                    {EVENT_TYPES.map((type) => {
+                      const on = types.includes(type)
+                      return (
+                        <button
+                          key={type}
+                          type="button"
+                          className="org-apply-chip"
+                          aria-pressed={on}
+                          onClick={() => toggleType(type)}
+                        >
+                          {on && <Icon name="check" size={13} strokeWidth={2.75} />}
+                          {type}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </fieldset>
+
+                <div className={`field${fieldErrors.message ? ' has-error' : ''}`}>
+                  <label className="label" htmlFor="message">
+                    Anything else?
+                  </label>
+                  <span className="org-apply-counted">
+                    <textarea
+                      id="message"
+                      className="textarea"
+                      rows={5}
+                      value={form.message}
+                      maxLength={MESSAGE_MAX}
+                      onChange={set('message')}
+                      aria-invalid={!!fieldErrors.message}
+                      aria-describedby={fieldErrors.message ? 'message-message' : undefined}
+                      placeholder="Past events you've run, venues you work with, or anything that helps us verify you."
+                    />
+                    <span
+                      className={`org-apply-count${form.message.length > MESSAGE_MAX * 0.9 ? ' is-near' : ''}`}
+                      aria-hidden="true"
+                    >
+                      {form.message.length} / {MESSAGE_MAX}
+                    </span>
+                  </span>
+                  {fieldErrors.message && (
+                    <span className="err" id="message-message">{fieldErrors.message}</span>
+                  )}
+                </div>
+              </Section>
+
+              <div className="org-apply-foot">
+                <p className="org-apply-note">
+                  <Icon name="bell" size={16} />
+                  We'll tell you the decision by Telegram and in your notifications.
+                </p>
+
+                <div className="org-apply-actions">
+                  <button type="button" className="btn btn-ghost" onClick={() => navigate(-1)}>
+                    Cancel
                   </button>
-                ))}
+                  <button type="submit" className="btn btn-primary" disabled={submitting}>
+                    {submitting ? 'Submitting…' : 'Submit application'}
+                    {!submitting && <Icon name="arrowRight" size={16} />}
+                  </button>
+                </div>
               </div>
-            </fieldset>
+            </form>
+          )}
+        </div>
 
-            <div className="field">
-              <label className="label" htmlFor="message">
-                Anything else?<span className="opt"> (optional)</span>
-              </label>
-              <span className="org-apply-counted">
-                <textarea
-                  id="message"
-                  className="textarea"
-                  rows={4}
-                  value={form.message}
-                  maxLength={MESSAGE_MAX}
-                  onChange={set('message')}
-                  placeholder="Tell us about past events you've run, your venue partners, or anything that helps us verify you."
-                />
-                <span className="org-apply-count">
-                  {form.message.length} / {MESSAGE_MAX}
+        <aside className="org-apply-aside" aria-label="How it works">
+          <h2>How it works</h2>
+          <ol className="org-apply-stages">
+            {STAGES.map((s, i) => (
+              <li
+                key={s.title}
+                className={i < stage ? 'is-done' : i === stage ? 'is-current' : undefined}
+                aria-current={i === stage ? 'step' : undefined}
+              >
+                <span className="org-apply-stage-mark" aria-hidden="true">
+                  {i < stage ? <Icon name="check" size={12} strokeWidth={3} /> : i + 1}
                 </span>
-              </span>
-              {fieldErrors.message && <span className="org-apply-field-error">{fieldErrors.message}</span>}
-            </div>
-          </section>
+                <span>
+                  <strong>{s.title}</strong>
+                  <span className="org-apply-stage-note">{s.note}</span>
+                </span>
+              </li>
+            ))}
+          </ol>
 
-          <div className="org-apply-foot">
-            <p className="org-apply-note">
-              <Icon name="info" size={16} />
-              We'll notify you by Telegram and in the app once a decision is made.
-            </p>
-
-            <div className="org-apply-actions">
-              <button type="button" className="btn btn-ghost" onClick={() => navigate(-1)}>
-                Cancel
-              </button>
-              <button type="submit" className="btn btn-primary" disabled={submitting}>
-                {submitting ? 'Submitting…' : 'Submit application'}
-              </button>
-            </div>
+          <div className="org-apply-need">
+            <h3>Have these ready</h3>
+            <ul>
+              <li>Your organization's name in English and Khmer</li>
+              <li>A Telegram handle or Facebook page, if you have one</li>
+            </ul>
           </div>
-        </form>
-      )}
+        </aside>
+      </div>
     </div>
+  )
+}
+
+/** One numbered block of the form. */
+function Section({ n, title, note, children }) {
+  const id = `org-apply-s${n}`
+  return (
+    <section className="org-apply-section" aria-labelledby={id}>
+      <div className="org-apply-section-head">
+        <span className="org-apply-num" aria-hidden="true">{n}</span>
+        <div>
+          <h2 id={id}>{title}</h2>
+          {note && <p className="org-apply-section-note">{note}</p>}
+        </div>
+      </div>
+      <div className="org-apply-section-body">{children}</div>
+    </section>
   )
 }
 
 function PendingCard({ application }) {
   return (
     <section className="card org-apply-status is-pending">
-      <h2>Application under review</h2>
+      <span className="org-apply-status-tag">
+        <Icon name="clock" size={14} />
+        Under review
+      </span>
+      <h2>We've got your application</h2>
       <p className="org-apply-status-meta">
         Submitted {new Date(application.submitted_at).toLocaleDateString()}
       </p>
       <p>
-        A member of our team is looking at your application. We'll let you know as soon as
-        there's a decision — usually within 2 business days.
+        A member of our team is looking at it now. We'll let you know as soon as there's a
+        decision, usually within 2 business days.
       </p>
       <Summary application={application} />
     </section>
@@ -318,11 +427,25 @@ function PendingCard({ application }) {
 function RejectedCard({ application, onRetry }) {
   return (
     <section className="card org-apply-status is-rejected">
+      <span className="org-apply-status-tag">
+        <Icon name="xCircle" size={14} />
+        Not approved
+      </span>
       <h2>We couldn't approve this application</h2>
+      {application.submitted_at && (
+        <p className="org-apply-status-meta">
+          Submitted {new Date(application.submitted_at).toLocaleDateString()}
+        </p>
+      )}
       {/* admin_note is required on REJECTED by a DB CHECK, so this is always
           present - a rejection the applicant cannot act on is worse than none. */}
-      <blockquote className="org-apply-reason">{application.admin_note}</blockquote>
+      <figure className="org-apply-reason">
+        <figcaption>Note from the reviewer</figcaption>
+        <blockquote>{application.admin_note}</blockquote>
+      </figure>
+      <p>Fix what the note mentions and send a new application. Your details start blank.</p>
       <button type="button" className="btn btn-primary" onClick={onRetry}>
+        <Icon name="refresh" size={16} />
         Apply again
       </button>
     </section>
@@ -341,7 +464,13 @@ function Summary({ application }) {
       {application.telegram_handle && (
         <>
           <dt>Telegram</dt>
-          <dd>{application.telegram_handle}</dd>
+          <dd>@{application.telegram_handle.replace(/^@+/, '')}</dd>
+        </>
+      )}
+      {application.facebook_url && (
+        <>
+          <dt>Facebook</dt>
+          <dd className="org-apply-summary-url">{application.facebook_url}</dd>
         </>
       )}
       {application.event_types && (
@@ -354,24 +483,43 @@ function Summary({ application }) {
   )
 }
 
-function Field({ id, label, required, optional, hint, error, prefix, ...props }) {
+function Field({ id, label, required, hint, error, prefix, icon, ...props }) {
+  const messageId = error || hint ? `${id}-message` : undefined
+  const input = (
+    <input
+      id={id}
+      name={id}
+      className="input"
+      aria-invalid={!!error}
+      aria-required={required || undefined}
+      aria-describedby={messageId}
+      {...props}
+    />
+  )
   return (
     <div className={`field${error ? ' has-error' : ''}`}>
       <label className="label" htmlFor={id}>
+        {icon && (
+          <span className={`org-apply-label-icon is-${icon}`} aria-hidden="true">
+            <Icon name={icon} size={16} />
+          </span>
+        )}
         {label}
         {required && <span className="org-apply-req" aria-hidden="true"> *</span>}
-        {optional && <span className="opt"> (optional)</span>}
       </label>
       {prefix ? (
         <span className="org-apply-prefixed">
           <span className="org-apply-prefix" aria-hidden="true">{prefix}</span>
-          <input id={id} name={id} className="input" aria-invalid={!!error} {...props} />
+          {input}
         </span>
       ) : (
-        <input id={id} name={id} className="input" aria-invalid={!!error} {...props} />
+        input
       )}
-      {hint && <span className="hint">{hint}</span>}
-      {error && <span className="org-apply-field-error">{error}</span>}
+      {error ? (
+        <span className="err" id={messageId}>{error}</span>
+      ) : hint ? (
+        <span className="hint" id={messageId}>{hint}</span>
+      ) : null}
     </div>
   )
 }

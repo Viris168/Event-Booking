@@ -131,6 +131,13 @@ export default function EventsPage() {
   const [pinnedId, setPinnedId] = useState(null);
   const [hoveredId, setHoveredId] = useState(null);
   const [showMapModal, setShowMapModal] = useState(false);
+  /* Below 900px the map only exists inside the popup, so a pin has nothing
+     to mark once it closes - and the card was left highlighted, with its pin
+     button reopening the popup instead of clearing it. Closing clears it. */
+  const closeMapModal = () => {
+    setShowMapModal(false);
+    setPinnedId(null);
+  };
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [apiResults, setApiResults] = useState([]);
   const [totalPages, setTotalPages] = useState(1);
@@ -160,7 +167,7 @@ export default function EventsPage() {
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const onKeyDown = (e) => {
-      if (e.key === "Escape") setShowMapModal(false);
+      if (e.key === "Escape") closeMapModal();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => {
@@ -613,8 +620,14 @@ export default function EventsPage() {
                     pinned={String(pinnedId) === String(e.id)}
                     onPin={() => {
                       if (isMobile) {
-                        setPinnedId(e.id);
-                        setShowMapModal(true);
+                        /* Same toggle as desktop: a card that is already
+                           pinned unpins rather than reopening the map. */
+                        if (String(pinnedId) === String(e.id)) {
+                          setPinnedId(null);
+                        } else {
+                          setPinnedId(e.id);
+                          setShowMapModal(true);
+                        }
                       } else {
                         setPinnedId((prev) =>
                           String(prev) === String(e.id) ? null : e.id,
@@ -727,7 +740,7 @@ export default function EventsPage() {
           <div
             className="events-map-modal-backdrop"
             onClick={(e) => {
-              if (e.target === e.currentTarget) setShowMapModal(false);
+              if (e.target === e.currentTarget) closeMapModal();
             }}
             role="dialog"
             aria-modal="true"
@@ -754,7 +767,7 @@ export default function EventsPage() {
                 <button
                   type="button"
                   className="events-map-modal-close"
-                  onClick={() => setShowMapModal(false)}
+                  onClick={closeMapModal}
                   aria-label={locale === "km" ? "បិទ" : "Close"}
                 >
                   <Icon name="close" size={18} />

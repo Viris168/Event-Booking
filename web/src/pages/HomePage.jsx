@@ -10,6 +10,7 @@ import { Empty, IconSelect, Money, SearchInput } from "../components/ui.jsx";
 import { useLocale } from "../context/LocaleContext.jsx";
 import { useProvinces } from "../lib/useProvinces.js";
 import { useReveal } from "../lib/useReveal.js";
+import { useCountUp } from "../lib/useCountUp.js";
 import { eventArt } from "../lib/eventArt.js";
 import { getEvents } from "../api/events.js";
 
@@ -205,7 +206,10 @@ function HeroRail({ events }) {
 
   return (
     <div
-      className="hero-rail"
+      className={`hero-rail${paused ? " is-paused" : ""}`}
+      /* The active dot fills over the same interval the timer waits, so the
+         reader can see when the rail is about to move. */
+      style={{ "--rail-rotate": `${ROTATE_MS}ms` }}
       onMouseEnter={hold}
       onMouseLeave={release}
       onFocusCapture={hold}
@@ -229,7 +233,7 @@ function HeroRail({ events }) {
         >
           {events.map((e, i) => (
             <div
-              className="hero-slide"
+              className={`hero-slide${i === active ? " is-active" : ""}`}
               key={e.id}
               /* Boolean, not "" / undefined. React 19 takes `inert` as a real
                  boolean prop and warned on every render about the empty
@@ -424,25 +428,34 @@ function FeatureSlider({ photos }) {
   const { locale } = useLocale();
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
+  /* False until the first change. The CSS only plays the slide-over
+     transition once this is set, so the first photo arrives with the
+     section's own reveal instead of wiping in on top of it. */
+  const [moved, setMoved] = useState(false);
   const count = photos.length;
   const active = count ? index % count : 0;
   const current = photos[active];
 
+  const go = useCallback((next) => {
+    setMoved(true);
+    setIndex(next);
+  }, []);
+
   useEffect(() => {
     if (paused || count < 2) return undefined;
-    const id = setTimeout(
-      () => setIndex((i) => (i + 1) % count),
-      PHOTO_ROTATE_MS,
-    );
+    const id = setTimeout(() => go((active + 1) % count), PHOTO_ROTATE_MS);
     return () => clearTimeout(id);
-  }, [active, paused, count]);
+  }, [active, paused, count, go]);
 
   const hold = useCallback(() => setPaused(true), []);
   const release = useCallback(() => setPaused(false), []);
 
   return (
     <figure
-      className="home-panel home-photo"
+      className={`home-panel home-photo${paused ? " is-paused" : ""}`}
+      data-moved={moved ? "" : undefined}
+      /* Same countdown fill as the hero rail's dots. */
+      style={{ "--rail-rotate": `${PHOTO_ROTATE_MS}ms` }}
       onMouseEnter={hold}
       onMouseLeave={release}
       onFocusCapture={hold}
@@ -475,7 +488,7 @@ function FeatureSlider({ photos }) {
               className={`home-photo-dot${i === active ? " on" : ""}`}
               aria-current={i === active}
               aria-label={`${locale === "km" ? "រូបភាព" : "Photo"} ${i + 1}`}
-              onClick={() => setIndex(i)}
+              onClick={() => i !== active && go(i)}
             />
           ))}
         </div>
@@ -499,10 +512,13 @@ export default function HomePage() {
   const navigate = useNavigate();
   /* One reveal per band below the hero. The hero itself is never armed - it
      is the first thing on screen and has nothing to be revealed from. */
+  const eventsHeadRef = useReveal();
   const whyRef = useReveal();
+  const stepsHeadRef = useReveal();
   const stepsRef = useReveal();
   const orgRef = useReveal();
   const faqRef = useReveal();
+  const ctaRef = useReveal();
   const [q, setQ] = useState("");
   const [province, setProvince] = useState("");
 
@@ -550,6 +566,11 @@ export default function HomePage() {
     (sum, e) => sum + (e.total_sold ?? e.totalSold ?? 0),
     0,
   );
+  /* The counters climb to their values as the fetches land, rather than
+     blinking from 0 to the answer. */
+  const shownLive = useCountUp(totalLive);
+  const shownSold = useCountUp(ticketsSold, 1200);
+  const shownProvinces = useCountUp(provinces.length);
 
   function submit(e) {
     e.preventDefault();
@@ -638,15 +659,15 @@ export default function HomePage() {
           <div className="hero-inner hero-base-inner">
             <div className="hero-stats">
               <div>
-                <b>{totalLive}</b>
+                <b>{shownLive}</b>
                 {locale === "km" ? "ព្រឹត្តិការណ៍ផ្សាយ" : "live events"}
               </div>
               <div>
-                <b>{ticketsSold.toLocaleString()}</b>
+                <b>{shownSold.toLocaleString()}</b>
                 {locale === "km" ? "សំបុត្រលក់រួច" : "tickets sold"}
               </div>
               <div>
-                <b>{provinces.length}</b>
+                <b>{shownProvinces}</b>
                 {locale === "km" ? "ខេត្ត/ក្រុង" : "provinces covered"}
               </div>
             </div>
@@ -664,7 +685,7 @@ export default function HomePage() {
           single row of cards read as a nearly-empty catalogue. */}
       <div className="container home-lead">
         <section className="home-events-section">
-          <div className="section-head">
+          <div className="section-head" ref={eventsHeadRef}>
             <div>
               <span className="home-kicker">
                 <Icon name="calendar" size={13} />
@@ -682,9 +703,9 @@ export default function HomePage() {
             </Link>
           </div>
           {loading ? (
-            <EventGridSkeleton count={GRID_SIZE} />
+            <EventGridSkeleton count={GRID_SIZE} className="home-card-rail" />
           ) : featured.length ? (
-            <div className="grid grid-cards">
+            <div className="grid grid-cards home-card-rail">
               {featured.map((e) => (
                 <EventCard key={e.id} event={e} />
               ))}
@@ -749,7 +770,7 @@ export default function HomePage() {
           product instead of selling it. */}
       <section className="home-band home-band-warm">
         <div className="home-band-inner">
-          <div className="home-steps-head">
+          <div className="home-steps-head" ref={stepsHeadRef}>
             <span className="home-kicker">
               <Icon name="ticket" size={13} />
               <span>{locale === "km" ? "ដំណើរការងាយៗ" : "Simple Process"}</span>
@@ -886,7 +907,7 @@ export default function HomePage() {
           its own instead of dissolving into the paper above it, and the jade
           button stays the single saturated thing in the strip. */}
       <section className="home-cta">
-        <div className="home-cta-inner">
+        <div className="home-cta-inner" ref={ctaRef}>
           <h2>
             {locale === "km"
               ? "ត្រៀមរួចរាល់ស្វែងរកព្រឹត្តិការណ៍បន្ទាប់របស់អ្នកហើយឬនៅ?"

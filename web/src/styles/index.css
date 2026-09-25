@@ -1620,7 +1620,7 @@
   }
   .hero-track {
     @apply flex items-stretch;
-    transition: transform 0.62s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform var(--motion-enter) var(--motion-ease);
   }
   /* The slide, not the card, carries the width — so all five stay the height of
      the tallest and the rail does not resize as it advances. */
@@ -1704,7 +1704,7 @@
     @apply mt-[0.75rem] flex items-center justify-center gap-[0.35rem];
   }
   .hero-dot {
-    @apply h-[6px] w-[6px] cursor-pointer rounded-full border-0 bg-white/30 p-0;
+    @apply relative h-[6px] w-[6px] cursor-pointer overflow-hidden rounded-full border-0 bg-white/30 p-0;
     transition:
       width 0.25s ease,
       background-color 0.25s ease;
@@ -1712,8 +1712,16 @@
   .hero-dot:hover {
     @apply bg-white/60;
   }
+  /* The active dot is a track, and its fill is how long until the rail moves
+     on - see the motion block. At rest (paused, or reduced motion) the fill is
+     simply full, which is how the dot looked before it had a timer in it. */
   .hero-dot.on {
-    @apply w-[16px] bg-white/90;
+    @apply w-[22px] bg-white/30;
+  }
+  .hero-dot.on::after {
+    content: "";
+    @apply absolute inset-0 rounded-full bg-white/90;
+    transform-origin: left center;
   }
   /* Respect a stated preference for less motion: the rail still advances, it
      just cuts rather than slides. */
@@ -1849,6 +1857,22 @@
   .quick-chip:hover {
     @apply border-white/40 bg-white/[0.18] text-white -translate-y-0.5 no-underline;
   }
+  /* On a phone the five chips wrapped to three rows and pushed the stats
+     under the fold. One swipeable line instead, bled to the screen edge like
+     the event row below it so the cut-off chip says there is more. */
+  @media (max-width: 640px) {
+    .quick-links {
+      @apply -mx-page flex-nowrap overflow-x-auto px-page py-1;
+      scrollbar-width: none;
+      overscroll-behavior-x: contain;
+    }
+    .quick-links::-webkit-scrollbar {
+      display: none;
+    }
+    .quick-links > * {
+      @apply flex-none;
+    }
+  }
 
   /* ======================================================= page bands ===
      Between the hero and the footer the page alternates ground: paper for
@@ -1903,6 +1927,30 @@
   .home-events-section {
     @apply m-0;
   }
+  /* The "on sale now" row, below the width where .grid-cards stops being
+     four-across. Four cards in a 3-up grid left one orphan on a second row,
+     and in the 1-up grid on a phone they stacked into ~1,600px of scrolling
+     before the page said anything else. A swipeable row keeps it what the
+     band is meant to be - one shop window - at every width.
+
+     It bleeds to the viewport edge (the container is full width below the
+     shell's max) and pads back in by the page gutter, so the first card still
+     lines up with the heading while the next one visibly runs off the edge. */
+  @media (max-width: 1180px) {
+    .home-card-rail {
+      @apply -mx-page overflow-x-auto px-page pt-1 pb-3;
+      grid-auto-flow: column;
+      grid-template-columns: none;
+      grid-auto-columns: min(80%, 18.5rem);
+      scroll-snap-type: x mandatory;
+      scroll-padding-inline: var(--spacing-page);
+      scrollbar-width: thin;
+      overscroll-behavior-x: contain;
+    }
+    .home-card-rail > * {
+      scroll-snap-align: start;
+    }
+  }
   .home-split {
     @apply grid items-center gap-12;
     grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
@@ -1929,6 +1977,12 @@
     .home-lead .home-split,
     .home-tail .home-split + .home-split {
       @apply mt-10 pt-10;
+    }
+    /* Once stacked, the reversed split would open on a photo with its
+       heading a screen further down. Every section leads with its words on a
+       phone, so the photo drops below them here. */
+    .home-split-reverse > .home-photo {
+      order: 1;
     }
   }
 
@@ -1985,19 +2039,16 @@
   .home-photo {
     @apply relative m-0 overflow-hidden rounded-2xl border border-line/60 shadow-float;
   }
-  /* Every slide stacks in the same box; only the active one is opaque. A
-     cross-fade rather than a slide - these boxes are too small for a track
-     to read as motion rather than a jump cut. */
+  /* Every slide stacks in the same box; only the active one is opaque, and
+     it sits on top so the next photo can be drawn OVER the last one - see
+     the slide-over in the motion block. Without motion this is a plain cut,
+     which is what a reduced-motion reader asked for. The dots and caption
+     share z-1 but come later in the DOM, so they stay above the photo. */
   .home-photo .home-shot {
-    @apply absolute inset-0 h-full w-full opacity-0 transition-opacity duration-700 ease-in-out;
+    @apply absolute inset-0 h-full w-full opacity-0;
   }
   .home-photo .home-shot.is-active {
-    @apply opacity-100;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .home-photo .home-shot {
-      transition: none;
-    }
+    @apply z-[1] opacity-100;
   }
   .home-photo figcaption {
     @apply absolute bottom-3 right-3 z-[1] rounded-full bg-ink/80 px-3 py-1 text-xs text-white/90;
@@ -2009,7 +2060,7 @@
     @apply absolute bottom-3 left-3 z-[1] flex items-center gap-1.5;
   }
   .home-photo-dot {
-    @apply h-[7px] w-[7px] cursor-pointer rounded-full border-0 bg-white/40 p-0;
+    @apply relative h-[7px] w-[7px] cursor-pointer overflow-hidden rounded-full border-0 bg-white/40 p-0;
     transition:
       width 0.25s ease,
       background-color 0.25s ease;
@@ -2017,8 +2068,15 @@
   .home-photo-dot:hover {
     @apply bg-white/70;
   }
+  /* A track with a timer in it, like .hero-dot.on - full when paused or
+     under reduced motion. */
   .home-photo-dot.on {
-    @apply w-4 bg-white;
+    @apply w-5 bg-white/40;
+  }
+  .home-photo-dot.on::after {
+    content: "";
+    @apply absolute inset-0 rounded-full bg-white;
+    transform-origin: left center;
   }
 
   /* --------------------------------------------------------- three steps ---
@@ -2071,6 +2129,33 @@
   }
   .home-step-card p {
     @apply mb-0 text-sm leading-relaxed text-muted;
+  }
+  /* Stacked (below md), each card was a tall box with the icon and number
+     alone on their own row. Icon beside the text instead, number tucked in the
+     corner - the same content in about two thirds of the height. */
+  @media (max-width: 767px) {
+    .home-steps {
+      @apply gap-4;
+    }
+    .home-step-card {
+      @apply grid gap-x-4 p-5;
+      grid-template-columns: auto minmax(0, 1fr);
+    }
+    .home-step-top {
+      @apply contents;
+    }
+    .home-step-icon {
+      @apply row-span-2 h-11 w-11;
+    }
+    .home-step-num {
+      @apply absolute right-5 top-4 text-xl;
+    }
+    .home-step-card h3 {
+      @apply mb-1 self-end pr-10;
+    }
+    .home-step-card p {
+      @apply col-start-2;
+    }
   }
 
   /* The one question that stops a first-time KHQR buyer at step two. Centred
@@ -2194,23 +2279,206 @@
      Everything below is an ENTRANCE, never a resting state: each rule
      animates *from* a hidden position and leaves the element in its ordinary
      one. That is why nothing here can strand content invisible - if an
-     animation never runs, the element was already where it ends up.
+     animation never runs, the element was already where it ends up. Every
+     entrance is `backwards`, not `both`, so once it ends it lets go of
+     transform and opacity entirely and hover lifts work as if it never ran.
 
      The armed state is the one exception, and it is written by useReveal at
      runtime rather than by these rules, and only ever inside the
      no-preference query below. A reader who asked for less motion is served
      a page with no hidden elements at all, not a page that hides things and
-     then rushes them in. */
+     then rushes them in.
+
+     One vocabulary for the whole page, so it reads as a system rather than a
+     collection of effects:
+       - one curve: expo-out, fast off the mark and a long quiet settle. No
+         overshoot anywhere - bounce reads as playful, not as confident.
+       - three durations: quick for UI responses, enter for content, slow
+         for photographs, which are big enough that fast motion looks cheap.
+       - one stagger step, so every sequence on the page keeps the same beat.
+       - headings come into focus (a short blur-to-sharp); everything else
+         rises. That one distinction is what gives each section a lead. */
+  :root {
+    --motion-ease: cubic-bezier(0.16, 1, 0.3, 1);
+    --motion-quick: 380ms;
+    --motion-enter: 800ms;
+    --motion-slow: 1400ms;
+    --motion-stagger: 70ms;
+  }
+
   @media (prefers-reduced-motion: no-preference) {
     [data-reveal="armed"] {
       opacity: 0;
     }
 
-    /* The splits: the block rises a little as it arrives. Short and small -
-       16px and a third of a second - because this is punctuation between
-       sections, not an event in its own right. */
-    .home-split[data-reveal="in"] {
-      animation: home-rise 420ms cubic-bezier(0.22, 0.75, 0.3, 1) both;
+    /* Hold every entrance at its first frame while the boot splash is still
+       covering the page, and let them run the moment it starts to fade.
+       Otherwise the hero plays its whole arrival underneath the splash and
+       the reader is shown the end of it. Keyed on the splash element itself
+       (a sibling ahead of #root in index.html), so when the splash is gone -
+       faded, removed, or never there - nothing is held. */
+    #splash:not(.is-done) ~ #root *,
+    #splash:not(.is-done) ~ #root *::before,
+    #splash:not(.is-done) ~ #root *::after {
+      animation-play-state: paused;
+    }
+
+    /* ---------------------------------------------------------- the hero ---
+       The one entrance that plays without a scroll: the hero is the first
+       thing on screen, so it arrives as the page does. The photograph settles
+       from a slight zoom while the copy comes in top to bottom, in the order
+       it is meant to be read. */
+    .hero-bg {
+      animation: hero-settle var(--motion-slow) var(--motion-ease) backwards;
+    }
+    .hero-copy > * {
+      animation: home-rise var(--motion-enter) var(--motion-ease) backwards;
+    }
+    .hero-copy > h1 {
+      animation-name: home-focus;
+    }
+    .hero-copy > :nth-child(2) {
+      animation-delay: var(--motion-stagger);
+    }
+    .hero-copy > :nth-child(3) {
+      animation-delay: calc(var(--motion-stagger) * 2);
+    }
+    .hero-copy > :nth-child(4) {
+      animation-delay: calc(var(--motion-stagger) * 3);
+    }
+    /* Mounts when the catalogue answers, replacing the skeleton, so this is
+       the card arriving rather than a delay dressed up as one. */
+    .hero-rail {
+      animation: home-rise var(--motion-enter) var(--motion-ease)
+        calc(var(--motion-stagger) * 2) backwards;
+    }
+    .hero-stats > div {
+      animation: home-rise var(--motion-enter) var(--motion-ease)
+        calc(var(--motion-stagger) * 4) backwards;
+    }
+    .hero-stats > div:nth-child(2) {
+      animation-delay: calc(var(--motion-stagger) * 5);
+    }
+    .hero-stats > div:nth-child(3) {
+      animation-delay: calc(var(--motion-stagger) * 6);
+    }
+
+    /* The rail's timer, drawn. Keyed on NOT paused rather than paused with
+       animation-play-state, because HeroRail restarts its whole timeout on
+       release: dropping the animation while held and re-adding it on release
+       restarts the fill from empty too, so the bar and the timer agree. */
+    .hero-rail:not(.is-paused) .hero-dot.on::after {
+      animation: rail-progress var(--rail-rotate, 5000ms) linear both;
+    }
+    /* The picture moves, then the words: a new slide's copy lifts in once
+       the track is most of the way there. */
+    .hero-slide.is-active .rail-date {
+      animation: home-scale var(--motion-enter) var(--motion-ease) 220ms
+        backwards;
+    }
+    .hero-slide.is-active .rail-body {
+      animation: home-rise var(--motion-enter) var(--motion-ease) 290ms
+        backwards;
+    }
+
+    /* ------------------------------------------------ section headings ---
+       The two centred/boxed headers above a grid of cards: the heading
+       focuses, the rest follows on the page's beat. */
+    :is(.section-head, .home-steps-head)[data-reveal="in"] :is(.home-kicker, h2, .section-sub, .btn) {
+      animation: home-rise var(--motion-enter) var(--motion-ease) backwards;
+    }
+    :is(.section-head, .home-steps-head)[data-reveal="in"] h2 {
+      animation-name: home-focus;
+      animation-delay: var(--motion-stagger);
+    }
+    :is(.section-head, .home-steps-head)[data-reveal="in"] :is(.section-sub, .btn) {
+      animation-delay: calc(var(--motion-stagger) * 2);
+    }
+
+    /* ---------------------------------------------------------- splits ---
+       The text is read top to bottom, so it arrives that way: kicker,
+       heading, paragraph, then each bullet or question on its own beat, then
+       the button. Lists are excluded from the parent stagger so their items
+       are not faded twice (once with the list, once on their own). */
+    .home-split[data-reveal="in"]
+      .home-split-text
+      > :not(.home-bullets, .home-faq) {
+      animation: home-rise var(--motion-enter) var(--motion-ease) backwards;
+    }
+    .home-split[data-reveal="in"] .home-split-text > h2 {
+      animation-name: home-focus;
+    }
+    .home-split[data-reveal="in"] .home-split-text > :nth-child(2) {
+      animation-delay: var(--motion-stagger);
+    }
+    .home-split[data-reveal="in"] .home-split-text > :nth-child(3) {
+      animation-delay: calc(var(--motion-stagger) * 2);
+    }
+    /* A button in fourth place (the organiser band has no list) follows the
+       paragraph directly; in fifth place it waits for four list items. */
+    .home-split[data-reveal="in"] .home-split-text > :nth-child(4) {
+      animation-delay: calc(var(--motion-stagger) * 3);
+    }
+    .home-split[data-reveal="in"] .home-split-text > :nth-child(5) {
+      animation-delay: calc(var(--motion-stagger) * 7);
+    }
+    .home-split[data-reveal="in"] :is(.home-bullets > li, .home-faq-item) {
+      animation: home-rise var(--motion-enter) var(--motion-ease)
+        calc(var(--motion-stagger) * 3) backwards;
+    }
+    .home-split[data-reveal="in"]
+      :is(.home-bullets > li, .home-faq-item):nth-child(2) {
+      animation-delay: calc(var(--motion-stagger) * 4);
+    }
+    .home-split[data-reveal="in"]
+      :is(.home-bullets > li, .home-faq-item):nth-child(3) {
+      animation-delay: calc(var(--motion-stagger) * 5);
+    }
+    .home-split[data-reveal="in"]
+      :is(.home-bullets > li, .home-faq-item):nth-child(4) {
+      animation-delay: calc(var(--motion-stagger) * 6);
+    }
+
+    /* The photo is unmasked from a smaller rounded frame out to its full
+       size while the picture inside settles from a slight zoom - the panel
+       grows toward you, the image eases back into place. The drift is scoped
+       to revealed sections so it starts WITH the unmask rather than having
+       quietly played out off-screen, and then carries on for each new photo
+       the slider brings up. */
+    .home-split[data-reveal="in"] .home-photo {
+      animation: home-unmask var(--motion-slow) var(--motion-ease) backwards;
+    }
+    .home-split[data-reveal="in"] .home-shot.is-active {
+      animation: home-drift 7s var(--motion-ease) backwards;
+    }
+
+    /* ------------------------------------------- photo panel, next photo ---
+       Used to be a flat cross-fade, which in the middle shows two
+       half-transparent photos at once - the muddy frame that makes a
+       slideshow look like a slideshow. Now the next photo is drawn across
+       the panel from the right edge, on top, settling from a zoom as it
+       lands, while the one it covers slips back and dims underneath. At no
+       point is either picture see-through.
+
+       The outgoing photo has to stay opaque until it is fully covered, so
+       an inactive shot drops its opacity only after the slide-over's length,
+       and the active one takes it back immediately. */
+    .home-photo .home-shot {
+      transition: opacity 0s linear var(--motion-slow);
+    }
+    .home-photo .home-shot.is-active {
+      transition: none;
+    }
+    .home-photo[data-moved] .home-shot.is-active {
+      animation:
+        shot-enter var(--motion-slow) var(--motion-ease) backwards,
+        home-drift 7s var(--motion-ease) backwards;
+    }
+    .home-photo[data-moved] .home-shot:not(.is-active) {
+      animation: shot-leave var(--motion-slow) var(--motion-ease) forwards;
+    }
+    .home-photo:not(.is-paused) .home-photo-dot.on::after {
+      animation: rail-progress var(--rail-rotate, 6000ms) linear both;
     }
 
     /* --------------------------------------------------- the steps band ---
@@ -2221,18 +2489,39 @@
        fading in together would have said the opposite. */
     .home-steps[data-reveal="in"]::before {
       transform-origin: left center;
-      animation: home-draw 760ms cubic-bezier(0.22, 0.75, 0.3, 1) both;
+      animation: home-draw var(--motion-slow) var(--motion-ease) both;
     }
     .home-steps[data-reveal="in"] .home-step-card {
-      animation: home-rise 460ms cubic-bezier(0.22, 0.75, 0.3, 1) both;
+      animation: home-rise var(--motion-enter) var(--motion-ease) backwards;
     }
-    /* Paced against the line, not evenly: the line crosses each gap in about
-       190ms, so a card lands just after it has been reached. */
+    /* Paced against the line, not evenly: on this curve the line crosses
+       each gap in about 180ms, so a card lands just after it is reached,
+       and its icon a beat after that. */
     .home-steps[data-reveal="in"] .home-step-card:nth-child(2) {
-      animation-delay: 190ms;
+      animation-delay: 180ms;
     }
     .home-steps[data-reveal="in"] .home-step-card:nth-child(3) {
-      animation-delay: 380ms;
+      animation-delay: 360ms;
+    }
+    .home-steps[data-reveal="in"] .home-step-icon {
+      animation: home-scale var(--motion-enter) var(--motion-ease) 120ms
+        backwards;
+    }
+    .home-steps[data-reveal="in"] .home-step-card:nth-child(2) .home-step-icon {
+      animation-delay: 300ms;
+    }
+    .home-steps[data-reveal="in"] .home-step-card:nth-child(3) .home-step-icon {
+      animation-delay: 480ms;
+    }
+    /* The payment note is the footnote to step two, so it follows the route
+       rather than arriving with it. It is not observed itself: it is hidden
+       while the steps are, and shown once the third card has landed. */
+    .home-steps[data-reveal="armed"] + .home-steps-note {
+      opacity: 0;
+    }
+    .home-steps[data-reveal="in"] + .home-steps-note {
+      animation: home-rise var(--motion-enter) var(--motion-ease) 560ms
+        backwards;
     }
 
     /* ------------------------------------------------- the events grid ---
@@ -2242,16 +2531,25 @@
        the catalogue page, which re-renders this grid on every filter change,
        does not flicker on each keystroke. */
     .home-events-section .grid-cards > * {
-      animation: home-rise 420ms cubic-bezier(0.22, 0.75, 0.3, 1) both;
+      animation: home-rise var(--motion-enter) var(--motion-ease) backwards;
     }
     .home-events-section .grid-cards > :nth-child(2) {
-      animation-delay: 45ms;
+      animation-delay: var(--motion-stagger);
     }
     .home-events-section .grid-cards > :nth-child(3) {
-      animation-delay: 90ms;
+      animation-delay: calc(var(--motion-stagger) * 2);
     }
     .home-events-section .grid-cards > :nth-child(4) {
-      animation-delay: 135ms;
+      animation-delay: calc(var(--motion-stagger) * 3);
+    }
+
+    /* The closing ask: the question, then the button to answer it. */
+    .home-cta-inner[data-reveal="in"] > * {
+      animation: home-focus var(--motion-enter) var(--motion-ease) backwards;
+    }
+    .home-cta-inner[data-reveal="in"] > .btn {
+      animation-name: home-rise;
+      animation-delay: calc(var(--motion-stagger) * 2);
     }
   }
 
@@ -2279,8 +2577,8 @@
         block-size: 0;
         overflow: hidden;
         transition:
-          block-size 280ms cubic-bezier(0.22, 0.75, 0.3, 1),
-          content-visibility 280ms allow-discrete;
+          block-size var(--motion-quick) var(--motion-ease),
+          content-visibility var(--motion-quick) allow-discrete;
       }
       .home-faq-item[open]::details-content {
         block-size: auto;
@@ -2605,22 +2903,35 @@
     @apply mt-[0.85rem] grid gap-[0.7rem] border-t border-dashed border-line pt-[0.85rem];
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   }
-  @media (max-width: 820px) {
+  /* At the width where the map leaves the page (EventsPage's isMobile query,
+     900px) the list runs full width, so the cap to the left column goes too -
+     it left the row stopping two thirds of the way across a tablet. Search
+     takes the first line; sort, Filters and Map share the second. It used to
+     go two-across here, which parked Map alone on a third row. */
+  @media (max-width: 900px) {
     .search-row {
-      @apply grid-cols-2;
+      max-width: none;
+      grid-template-columns: minmax(0, 1fr) auto auto;
     }
     .search-row .search-main {
       @apply col-span-full;
     }
+  }
+  @media (max-width: 820px) {
     .searchpanel {
       @apply static;
     }
   }
-  /* Below ~560px the two selects are too narrow for their labels once the
-     leading icon and chevron are accounted for; give each a full row. */
+  /* Below ~560px the sort select is too narrow for its label once the leading
+     icon and chevron are accounted for, so it takes a line of its own and the
+     two buttons pair up under it: three rows, where it used to be four
+     full-width ones before the first event. */
   @media (max-width: 560px) {
     .search-row {
-      @apply grid-cols-1;
+      @apply grid-cols-2;
+    }
+    .search-row .search-sort {
+      @apply col-span-full;
     }
   }
 
@@ -4259,6 +4570,53 @@
       @apply static;
     }
   }
+
+  /* ----------------------------------------------------- mobile buy bar ---
+     See MobileBuyBar.jsx. Only below the width where .split stacks; above
+     it the sticky .summary already keeps Reserve beside the content. It
+     slides off the bottom edge rather than fading, so a hidden bar is simply
+     not on screen, and `inert` in the component takes it out of the tab
+     order at the same time. */
+  .buybar {
+    @apply hidden;
+  }
+  @media (max-width: 900px) {
+    .buybar {
+      @apply fixed inset-x-0 bottom-0 z-40 flex items-center justify-between gap-4 border-t border-line bg-surface px-page pt-3;
+      padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+      box-shadow: 0 -10px 30px -12px rgba(0, 0, 0, 0.18);
+      translate: 0 110%;
+      transition: translate var(--motion-enter) var(--motion-ease);
+    }
+    .buybar.is-visible {
+      translate: 0 0;
+    }
+    .buybar-price {
+      @apply flex min-w-0 flex-col leading-tight;
+    }
+    .buybar-price .tiny {
+      @apply text-muted;
+    }
+    .buybar-price b {
+      @apply text-[1.2rem] font-extrabold tabular-nums text-ink;
+    }
+    .buybar .btn {
+      @apply min-h-11 flex-none whitespace-nowrap px-5;
+    }
+    /* Room for the bar, so the capacity card is never parked under it. */
+    .container:has(> .buybar) {
+      @apply pb-28;
+    }
+    /* Clear the sticky navbar when "Choose tickets" scrolls here. */
+    #pick-seats {
+      scroll-margin-top: 70px;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .buybar {
+      transition: none;
+    }
+  }
   .line {
     @apply flex justify-between gap-3 border-b border-dashed border-line py-[0.55rem] text-[0.88rem];
   }
@@ -5003,6 +5361,62 @@
    */
   .footer-col h4 {
     @apply mb-[0.35rem] text-[0.72rem] font-bold uppercase tracking-[0.09em] text-gold-500;
+  }
+  .footer-col-links {
+    @apply flex flex-col items-start gap-[0.55rem];
+  }
+
+  /*
+   * Phone: each link column collapses behind its heading (see FooterSection).
+   *
+   * Stacked, the three columns were fourteen links in one list, longer than
+   * the rest of the footer put together. The sections are hairline-separated
+   * rows now, the heading keeps its gold caps so it still reads as the same
+   * heading, and the whole row is the tap target at 48px tall.
+   */
+  @media (max-width: 580px) {
+    .footer-grid-4 {
+      @apply gap-y-0;
+    }
+    .footer-brand-col {
+      @apply mb-6;
+    }
+    .footer-col.is-compact {
+      @apply gap-0 border-t border-white/[0.11];
+    }
+    /* The last section closes the list with its own rule, so the bottom
+       bar's top rule would be a second line 2.6rem under the first. */
+    .footer-col.is-compact:last-child {
+      @apply border-b;
+    }
+    .footer .footer-bottom {
+      @apply border-t-0;
+    }
+    .footer-col.is-compact h4 {
+      @apply m-0 w-full;
+    }
+    .footer-col-toggle {
+      @apply flex min-h-12 w-full cursor-pointer items-center justify-between gap-3 border-0 bg-transparent p-0
+        text-left font-[inherit] uppercase tracking-[inherit] text-[inherit];
+    }
+    .footer-col-toggle svg {
+      @apply flex-none text-white/60;
+      transition: rotate 0.2s var(--motion-ease);
+    }
+    .footer-col.is-open .footer-col-toggle svg {
+      @apply rotate-180 text-gold-500;
+    }
+    .footer-col-toggle:focus-visible {
+      @apply rounded-[6px] outline-2 outline-offset-2 outline-gold-500;
+      box-shadow: none;
+    }
+    /* Roomier rows than the desktop column: these are thumb targets. */
+    .footer-col.is-compact .footer-col-links {
+      @apply gap-0 pb-3;
+    }
+    .footer-col.is-compact .footer-col-links > a {
+      @apply py-2;
+    }
   }
   /*
    * A white rule that draws itself in from the left, not a gold one.
@@ -5799,12 +6213,151 @@
     transform: scaleX(0);
   }
 }
+/* Headings: rise the same distance as everything else, but come into focus
+   rather than just fading. Kept to a few pixels of blur - past that it reads
+   as a loading glitch, not as a lens pulling focus. */
+@keyframes home-focus {
+  from {
+    opacity: 0;
+    filter: blur(8px);
+    transform: translateY(12px);
+  }
+}
+/* Small chips (step icons, the rail's date). No overshoot - see the motion
+   block. */
+@keyframes home-scale {
+  from {
+    opacity: 0;
+    transform: scale(0.88);
+  }
+}
+/* Explicit `to`: inset() cannot interpolate to the implicit `none`, and would
+   jump instead of opening. The negative end clears the panel's shadow, so
+   nothing is cut off while it runs and nothing changes when it lets go. */
+@keyframes home-unmask {
+  from {
+    opacity: 0;
+    clip-path: inset(9% 7% round 1.5rem);
+  }
+  to {
+    clip-path: inset(-2rem round 0);
+  }
+}
+@keyframes home-drift {
+  from {
+    transform: scale(1.1);
+  }
+}
+@keyframes hero-settle {
+  from {
+    opacity: 0;
+    transform: scale(1.08);
+  }
+}
+/* The photo panel's slide-over: the incoming photo is uncovered from the
+   right edge, the outgoing one moves back a little and darkens as it is
+   covered. Explicit `to` on the clip for the same reason as home-unmask. */
+@keyframes shot-enter {
+  from {
+    clip-path: inset(0 0 0 100%);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+@keyframes shot-leave {
+  to {
+    transform: translateX(-8%) scale(1.02);
+    filter: brightness(0.55);
+  }
+}
+@keyframes rail-progress {
+  from {
+    transform: scaleX(0);
+  }
+}
 @keyframes shimmer {
   from {
     transform: translateX(-100%);
   }
   to {
     transform: translateX(100%);
+  }
+}
+
+/* ------------------------------------------------ theme / language switch */
+/* Light/dark and EN/KM switches run as view transitions (lib/viewTransition.js);
+   this sets the pace of the page-wide crossfade (the browser default is a quick
+   250ms). */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 400ms;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* The language switch fades THROUGH rather than across. A theme switch keeps
+   every box where it was, so the two snapshots line up and a crossfade reads
+   as one page changing colour. A language switch does not: Khmer runs taller,
+   every line below the first moves, and a crossfade shows both languages at
+   once, offset from each other - a page of double-printed text for the middle
+   of the fade. Here the old page is gone before the new one arrives, so the
+   two layouts never share a frame. Short out, slightly longer in: the eye
+   should land on the new page, not watch the old one leave. */
+:root[data-transition="locale"]::view-transition-old(root) {
+  animation: vt-fade-out 140ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+:root[data-transition="locale"]::view-transition-new(root) {
+  animation: vt-fade-in 260ms cubic-bezier(0.16, 1, 0.3, 1) 110ms both;
+}
+/* ...except the navbar. Fading the whole page through would take the dark
+   bar down toward the paper colour and back, a flash across the top of the
+   screen. Named for the length of a language switch only, it becomes its own
+   layer: its ground and height are the same in both languages, so a plain
+   crossfade leaves the bar solid and only its labels dissolve in place. The
+   theme switch never sets the attribute, so it is untouched. */
+:root[data-transition="locale"] .nav {
+  view-transition-name: site-nav;
+}
+:root[data-transition="locale"]::view-transition-old(site-nav),
+:root[data-transition="locale"]::view-transition-new(site-nav) {
+  animation-duration: 300ms;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+/* ...and the account panel, when the switch is made from inside it. Unnamed,
+   the panel belongs to the page layer: it would fade out and back in under
+   the reader's own click, and the navbar's layer - drawn above the page -
+   would land ON TOP of the panel and its scrim for the length of the fade.
+   Named, both get layers of their own, and being later in paint order (a
+   z-60 portal after the z-40 nav) they stack above the navbar as they do
+   outside a transition. They then change in place with no animation at all:
+   the panel is the control that was just pressed, and it should answer the
+   way a settings screen does - the words change, the surface does not move.
+   Only the page underneath the scrim fades through. */
+:root[data-transition="locale"] .acct-overlay {
+  view-transition-name: acct-scrim;
+}
+:root[data-transition="locale"] .acct-panel {
+  view-transition-name: acct-panel;
+}
+:root[data-transition="locale"]::view-transition-old(acct-scrim),
+:root[data-transition="locale"]::view-transition-old(acct-panel) {
+  display: none;
+}
+:root[data-transition="locale"]::view-transition-new(acct-scrim),
+:root[data-transition="locale"]::view-transition-new(acct-panel),
+:root[data-transition="locale"]::view-transition-group(acct-scrim),
+:root[data-transition="locale"]::view-transition-group(acct-panel) {
+  animation: none;
+}
+@keyframes vt-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes vt-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
   }
 }
 
@@ -7498,14 +8051,9 @@
    ========================================================================== */
 
 .org-apply {
-  /* Narrower than .container-wide: a single column of fields reads badly past
-     about 70 characters, and the design caps it here. */
-  max-width: 680px;
+  /* The full shell width, so the page's edges line up with the navbar and
+     footer like every other storefront page. */
   padding-bottom: 3rem;
-}
-
-.org-apply.is-loading {
-  color: var(--color-muted);
 }
 
 /* Khmer runs taller than Latin and needs the script-aware family. Scoped to
@@ -7515,10 +8063,16 @@
   font-family: var(--font-khmer);
   line-height: 1.7;
 }
+/* ...except inside the input, where .input pins line-height so the English and
+   Khmer name fields sit at the same height side by side. */
+.org-apply .input[lang="km"] {
+  line-height: 1.6;
+}
 
 /* ------------------------------------------------------------------ head */
 .org-apply-head {
-  margin-bottom: 1.4rem;
+  margin-bottom: 1.75rem;
+  max-width: 62ch;
 }
 .org-apply-head h1 {
   margin: 0 0 0.15rem;
@@ -7527,17 +8081,36 @@
   font-size: 1rem;
   font-weight: 500;
   color: var(--color-muted);
-  margin: 0 0 0.6rem;
+  margin: 0 0 0.75rem;
 }
 .org-apply-head-note {
-  font-size: 0.9375rem;
+  font-size: 1rem;
   line-height: 1.6;
-  color: var(--color-muted);
+  color: var(--color-ink-2);
   margin: 0;
+}
+
+/* ---------------------------------------------------------------- layout */
+.org-apply-layout {
+  display: grid;
+  gap: 1.5rem;
+  align-items: start;
+}
+@media (min-width: 900px) {
+  .org-apply-layout {
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 2rem;
+  }
+}
+.org-apply-main {
+  min-width: 0;
 }
 
 /* ------------------------------------------------------------------ form */
 /* .card supplies the surface, border, radius and shadow. Sections divide it. */
+.org-apply-form {
+  overflow: hidden;
+}
 .org-apply-section {
   padding: 1.5rem;
 }
@@ -7545,28 +8118,54 @@
 .org-apply-foot {
   border-top: 1px solid var(--color-line);
 }
+.org-apply-section-head {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  margin-bottom: 1.1rem;
+}
+/* The same numbered disc as .steps, so a numbered sequence looks the same
+   everywhere in the app. */
+.org-apply-num {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  margin-top: 0.05rem;
+  border-radius: 999px;
+  background: var(--color-tint);
+  color: var(--color-on-tint);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
 .org-apply-section h2 {
-  font-size: 0.95rem;
+  font-size: 1rem;
   font-weight: 700;
   letter-spacing: -0.01em;
+  line-height: 1.4;
   margin: 0;
 }
 .org-apply-section-note {
   font-size: 0.8125rem;
+  line-height: 1.5;
   color: var(--color-muted);
-  margin: 0.1rem 0 1.1rem;
+  margin: 0.1rem 0 0;
+}
+/* Fields line up under the section title, not under its number. */
+@media (min-width: 640px) {
+  .org-apply-section-body {
+    padding-left: 2.35rem;
+  }
 }
 /* Direct children only. A descendant selector here also matched the second
    .field inside .org-apply-pair, pushing the Facebook input 1rem below the
    Telegram one it is supposed to sit beside - the grid already spaces them. */
-.org-apply-section > .field + .field,
-.org-apply-section > .org-apply-pair + .field,
-.org-apply-section > .field + .org-apply-chips,
-.org-apply-section > .org-apply-chips + .field {
-  margin-top: 1rem;
+.org-apply-section-body > * + * {
+  margin-top: 1.25rem;
 }
 
-/* Two contact fields side by side once there is room for both. */
+/* Two fields side by side once there is room for both. */
 .org-apply-pair {
   display: grid;
   gap: 1rem;
@@ -7577,13 +8176,36 @@
   }
 }
 
+.org-apply .label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+/* Service marks in their own colour, the same blues as .contact-btn-telegram
+   and .contact-btn-facebook, so the app shows each service one way. */
+.org-apply-label-icon {
+  flex: none;
+  display: inline-flex;
+}
+.org-apply-label-icon.is-telegram {
+  color: #229ed9;
+}
+.org-apply-label-icon.is-facebook {
+  color: #1877f2;
+}
+[data-theme="dark"] .org-apply-label-icon.is-telegram {
+  color: #7cd0f4;
+}
+[data-theme="dark"] .org-apply-label-icon.is-facebook {
+  color: #8fb4f7;
+}
 /* The required marker. Its own token so it is not mistaken for an error. */
 .org-apply-req {
   color: var(--color-danger);
+  margin-left: -0.2rem;
 }
-.org-apply-field-error {
-  font-size: 0.76rem;
-  color: var(--color-danger);
+.org-apply .textarea[aria-invalid="true"] {
+  border-color: var(--color-danger);
 }
 
 /* The "@" that lives inside the Telegram field rather than in its placeholder:
@@ -7595,15 +8217,16 @@
 }
 .org-apply-prefix {
   position: absolute;
-  left: 0.7rem;
+  left: 0.75rem;
   top: 50%;
   transform: translateY(-50%);
   color: var(--color-muted);
-  font-size: 0.9rem;
+  font-size: 0.95rem;
+  font-weight: 600;
   pointer-events: none;
 }
 .org-apply-prefixed .input {
-  padding-left: 1.6rem;
+  padding-left: 1.7rem;
 }
 
 /* ----------------------------------------------------------------- chips */
@@ -7614,25 +8237,31 @@
   min-width: 0;
 }
 .org-apply-chips legend {
-  font-size: var(--text-small, 0.8rem);
+  font-size: var(--text-small);
   font-weight: 650;
   color: var(--color-ink-2);
   padding: 0;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.6rem;
 }
 .org-apply-chips-row {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
 }
+/* Tall enough to be a comfortable tap target; the check icon is what makes a
+   selection readable without relying on the tint alone. */
 .org-apply-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-height: 2.25rem;
   border-radius: 999px;
   border: 1px solid var(--color-line);
   background: var(--color-surface);
   color: var(--color-ink-2);
-  font-size: 0.78rem;
-  font-weight: 500;
-  padding: 0.35rem 0.85rem;
+  font-size: 0.85rem;
+  font-weight: 550;
+  padding: 0.35rem 0.95rem;
   cursor: pointer;
   transition:
     border-color 0.15s ease,
@@ -7640,15 +8269,17 @@
     color 0.15s ease;
 }
 .org-apply-chip:hover {
-  border-color: color-mix(in oklab, var(--color-muted) 40%, var(--color-line));
+  border-color: color-mix(in oklab, var(--color-muted) 50%, var(--color-line));
+  background: var(--color-surface-2);
 }
 /* Selection is carried by aria-pressed, so the styling cannot drift from the
    state a screen reader announces. */
 .org-apply-chip[aria-pressed="true"] {
   background: var(--color-tint);
-  border-color: var(--color-brand-600);
+  border-color: var(--color-brand-500);
   color: var(--color-on-tint);
-  font-weight: 600;
+  font-weight: 650;
+  padding-left: 0.7rem;
 }
 .org-apply-chip:focus-visible {
   outline: none;
@@ -7666,109 +8297,255 @@
 }
 .org-apply-count {
   position: absolute;
-  right: 0.7rem;
+  right: 0.75rem;
   bottom: 0.5rem;
   font-size: 0.72rem;
   font-weight: 500;
+  font-variant-numeric: tabular-nums;
   color: var(--color-muted);
   pointer-events: none;
+}
+.org-apply-count.is-near {
+  color: var(--color-warning);
+  font-weight: 650;
 }
 
 /* ------------------------------------------------------------ card foot */
 .org-apply-foot {
-  padding: 1.5rem;
+  padding: 1.25rem 1.5rem;
+  background: var(--color-surface-2);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
 }
 .org-apply-note {
   display: flex;
   align-items: flex-start;
-  gap: 0.6rem;
-  margin: 0 0 1.25rem;
-  padding: 0.75rem;
-  border-radius: 8px;
-  background: var(--color-tint);
-  border: 1px solid var(--color-tint-2);
-  color: var(--color-on-tint);
+  gap: 0.5rem;
+  margin: 0;
+  flex: 1 1 16rem;
+  color: var(--color-ink-2);
   font-size: 0.8125rem;
-  line-height: 1.45;
-  font-weight: 500;
+  line-height: 1.5;
 }
 .org-apply-note .icon {
   flex: none;
-  margin-top: 0.08rem;
+  margin-top: 0.1rem;
+  color: var(--color-link);
 }
 .org-apply-actions {
   display: flex;
-  justify-content: flex-end;
   gap: 0.6rem;
+  margin-left: auto;
+}
+/* On a phone the submit button is the whole width: it is the one thing the
+   page is for, and a thumb should not have to aim for it. */
+@media (max-width: 520px) {
+  .org-apply-actions {
+    width: 100%;
+    flex-direction: column-reverse;
+  }
+  .org-apply-actions .btn {
+    width: 100%;
+  }
+}
+
+/* ----------------------------------------------------------------- rail */
+.org-apply-aside {
+  padding: 1.25rem;
+  border-radius: var(--radius-card);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-line-2);
+}
+@media (min-width: 900px) {
+  .org-apply-aside {
+    position: sticky;
+    top: calc(var(--nav-h, 61px) + 1.2rem);
+  }
+}
+.org-apply-aside h2 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin: 0 0 1rem;
+}
+.org-apply-stages {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 1rem;
+}
+.org-apply-stages li {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1.5rem minmax(0, 1fr);
+  gap: 0.7rem;
+  font-size: 0.875rem;
+  color: var(--color-ink-2);
+}
+/* The line joining one step's disc to the next. */
+.org-apply-stages li + li::before {
+  content: "";
+  position: absolute;
+  left: calc(0.75rem - 0.5px);
+  top: -1rem;
+  height: 1rem;
+  width: 1px;
+  background: var(--color-line);
+}
+.org-apply-stages strong {
+  display: block;
+  color: var(--color-ink);
+  font-weight: 650;
+  line-height: 1.5rem;
+}
+.org-apply-stage-note {
+  display: block;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--color-muted);
+}
+.org-apply-stage-mark {
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 999px;
+  background: var(--color-line-2);
+  border: 1px solid var(--color-line);
+  color: var(--color-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+.org-apply-stages .is-current .org-apply-stage-mark {
+  background: var(--color-brand-600);
+  border-color: var(--color-brand-600);
+  color: #fff;
+}
+.org-apply-stages .is-current strong {
+  color: var(--color-link);
+}
+.org-apply-stages .is-done .org-apply-stage-mark {
+  background: var(--color-success-soft);
+  border-color: transparent;
+  color: var(--color-success);
+}
+
+.org-apply-need {
+  margin-top: 1.25rem;
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--color-line);
+}
+.org-apply-need h3 {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--color-ink-2);
+  margin: 0 0 0.5rem;
+}
+.org-apply-need ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  list-style: disc;
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--color-muted);
 }
 
 /* -------------------------------------------------------- decided states */
 .org-apply-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
   margin-bottom: 1rem;
-  padding: 0.7rem 0.85rem;
+  padding: 0.75rem 0.9rem;
   border-radius: 10px;
   background: var(--color-danger-soft);
   border: 1px solid color-mix(in oklab, var(--color-danger) 22%, transparent);
   color: var(--color-danger);
-  font-size: 0.85rem;
+  font-size: 0.875rem;
+  font-weight: 550;
+}
+.org-apply-error .icon {
+  flex: none;
+  margin-top: 0.1rem;
 }
 
 .org-apply-status {
   padding: 1.75rem 1.5rem;
-  text-align: center;
 }
 .org-apply-status h2 {
-  font-size: 1.15rem;
+  font-size: 1.2rem;
   font-weight: 700;
-  margin: 0 0 0.25rem;
+  margin: 0.75rem 0 0.2rem;
 }
 .org-apply-status p {
   color: var(--color-ink-2);
   font-size: 0.9rem;
   line-height: 1.6;
-  margin: 0 auto;
-  max-width: 46ch;
+  margin: 0;
+  max-width: 60ch;
 }
-.org-apply-status-meta {
+.org-apply-status .org-apply-status-meta {
   font-size: 0.8rem;
   color: var(--color-muted);
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.9rem;
 }
-/* A coloured rule rather than an icon circle: the status is already stated in
-   the heading, and a second decorative signal on a page this quiet reads as
-   alarm rather than information. */
-.org-apply-status.is-pending {
-  border-top: 3px solid var(--color-warning);
+/* The status leads with a labelled tag in its semantic colour rather than a
+   decorative icon circle - it says what happened in words first. */
+.org-apply-status-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
 }
-.org-apply-status.is-rejected {
-  border-top: 3px solid var(--color-danger);
+.org-apply-status.is-pending .org-apply-status-tag {
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
+}
+.org-apply-status.is-rejected .org-apply-status-tag {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
 }
 .org-apply-status .btn {
   margin-top: 1.25rem;
 }
 
 .org-apply-reason {
-  margin: 1rem auto 0;
-  max-width: 46ch;
-  text-align: left;
-  padding: 0.7rem 0.9rem;
-  border-left: 3px solid var(--color-line);
+  margin: 0 0 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: 10px;
+  border-left: 3px solid var(--color-danger);
   background: var(--color-surface-2);
-  color: var(--color-ink-2);
-  font-size: 0.88rem;
+}
+.org-apply-reason figcaption {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--color-muted);
+  margin-bottom: 0.3rem;
+}
+.org-apply-reason blockquote {
+  margin: 0;
+  color: var(--color-ink);
+  font-size: 0.9rem;
   line-height: 1.6;
+  white-space: pre-line;
 }
 
 .org-apply-summary {
-  margin: 1.25rem auto 0;
-  max-width: 46ch;
-  text-align: left;
+  margin: 1.25rem 0 0;
   display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 0.35rem 1rem;
-  padding-top: 1rem;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.5rem 1.25rem;
+  padding-top: 1.1rem;
   border-top: 1px solid var(--color-line-2);
-  font-size: 0.85rem;
+  font-size: 0.875rem;
 }
 .org-apply-summary dt {
   color: var(--color-muted);
@@ -7776,6 +8553,10 @@
 .org-apply-summary dd {
   margin: 0;
   color: var(--color-ink);
+  font-weight: 550;
+}
+.org-apply-summary-url {
+  overflow-wrap: anywhere;
 }
 
 /* ============================================================

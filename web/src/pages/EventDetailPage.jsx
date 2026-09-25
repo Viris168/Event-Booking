@@ -2,6 +2,7 @@ import { useDocumentTitle } from "../lib/useDocumentTitle.js";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import ReserveModal from "../components/ReserveModal.jsx";
+import MobileBuyBar from "../components/MobileBuyBar.jsx";
 import Icon, { CATEGORY_ICON } from "../components/Icon.jsx";
 
 const EventLocationMap = lazy(
@@ -767,7 +768,7 @@ export default function EventDetailPage() {
               worse than not being offered the choice — the work is only
               discovered to be wasted at the moment of clicking Reserve. */}
           {canBuy && (showSeats || showZones) && (
-            <div className="card">
+            <div className="card" id="pick-seats">
               <div className="card-head">
                 <h2>{t("pickSeats")}</h2>
                 <span className="sub">
@@ -1063,6 +1064,19 @@ export default function EventDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Not while a hold is live - ReserveModal owns the next step then. */}
+      {!hold && canBuy && (showSeats || showZones) && (
+        <MobileBuyBar
+          pickerId="pick-seats"
+          summaryId="hold-summary"
+          fromCents={Math.min(...unifiedZones.map((z) => z.price_usd_cents ?? 0))}
+          hasSelection={hasSelection}
+          totalCents={selectionTotal}
+          reserving={reserving}
+          onReserve={onReserve}
+        />
+      )}
     </div>
   );
 }
