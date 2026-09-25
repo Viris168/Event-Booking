@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useDocumentTitle } from '../lib/useDocumentTitle.js'
 import { Link, useParams } from 'react-router-dom'
 import Icon from '../components/Icon.jsx'
+import DirectionsButton from '../components/DirectionsButton.jsx'
 import TicketWallet from '../components/TicketWallet.jsx'
 import { BookingDetailSkeleton } from '../components/Skeleton.jsx'
 import { Alert, Badge, ResponsiveTable, Steps } from '../components/ui.jsx'
@@ -195,6 +196,13 @@ export default function BookingDetailPage() {
   const history = []
   const act = actionsFor(booking.state)
   const mine = booking.user_id === user?.id
+  // Directions only matter while someone still has to get to the gate: a
+  // confirmed booking with at least one ticket not yet scanned. Expired and
+  // cancelled bookings never reach CONFIRMED, so they never show it. If the
+  // tickets failed to load, keep the button rather than guess they were used.
+  const allAdmitted =
+    tickets.length > 0 && tickets.every((x) => x.checked_in ?? !!x.checked_in_at)
+  const showDirections = booking.state === 'CONFIRMED' && !allAdmitted
 
   /**
    * Shared tail for both lifecycle actions. Each endpoint answers with the
@@ -272,10 +280,17 @@ export default function BookingDetailPage() {
           <h1 className="mono" style={{ fontSize: '1.6rem' }}>
             {booking.booking_ref}
           </h1>
-          <p>
-            <Link to={`/events/${event.id}`}>{locale === 'km' ? event.title_km : event.title_en}</Link> ·{' '}
-            {dateTime(event.starts_at)}
-          </p>
+          {/* The button rides on the line that names where and when, so the
+              question "how do I get there" is answered right beside it. */}
+          <div
+            style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem 0.75rem', marginTop: '0.5rem' }}
+          >
+            <p style={{ marginTop: 0 }}>
+              <Link to={`/events/${event.id}`}>{locale === 'km' ? event.title_km : event.title_en}</Link> ·{' '}
+              {dateTime(event.starts_at)}
+            </p>
+            {showDirections && <DirectionsButton venue={venue} />}
+          </div>
         </div>
         <div className="stack-sm" style={{ alignItems: 'flex-end' }}>
           <Badge status={booking.state} />
