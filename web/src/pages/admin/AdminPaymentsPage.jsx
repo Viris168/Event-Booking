@@ -12,7 +12,10 @@ import {
   ResponsiveTable,
   TablePager,
 } from "../../components/ui.jsx";
-import { TableSkeleton } from "../../components/Skeleton.jsx";
+import {
+  TableRowsSkeleton,
+  TableSkeleton,
+} from "../../components/Skeleton.jsx";
 import { useLocale } from "../../context/LocaleContext.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
 import { timeAgo, usd } from "../../lib/format.js";
@@ -140,6 +143,10 @@ export default function AdminPaymentsPage() {
    */
   const [events, setEvents] = useState([]);
   const [health, setHealth] = useState([]);
+  // Without this the panel read an empty `health` as "No payments yet" for as
+  // long as the request was in flight - telling an admin there was nothing
+  // there right before showing them the table.
+  const [loadingHealth, setLoadingHealth] = useState(true);
   // Which row is mid-check. One at a time: the button is per row, and a second
   // click on the same attempt would ask a provider that has just been asked.
   const [checkingId, setCheckingId] = useState(null);
@@ -158,7 +165,8 @@ export default function AdminPaymentsPage() {
         if (!live) return;
         setEvents([]);
         setHealth([]);
-      });
+      })
+      .finally(() => live && setLoadingHealth(false));
     return () => {
       live = false;
     };
@@ -509,7 +517,11 @@ export default function AdminPaymentsPage() {
               {km ? "អត្រាបរាជ័យខ្ពស់បំផុតមុនគេ" : "Highest failure rate first"}
             </span>
           </div>
-          {health.length === 0 ? (
+          {loadingHealth ? (
+            <table className="table" aria-busy="true">
+              <TableRowsSkeleton rows={6} cols={6} />
+            </table>
+          ) : health.length === 0 ? (
             <div className="panel-body">
               <Empty
                 icon="card"

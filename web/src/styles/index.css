@@ -2238,6 +2238,18 @@
       opacity: 0;
     }
 
+    /* Hold every entrance at its first frame while the boot splash is still
+       covering the page, and let them run the moment it starts to fade.
+       Otherwise the hero plays its whole arrival underneath the splash and
+       the reader is shown the end of it. Keyed on the splash element itself
+       (a sibling ahead of #root in index.html), so when the splash is gone -
+       faded, removed, or never there - nothing is held. */
+    #splash:not(.is-done) ~ #root *,
+    #splash:not(.is-done) ~ #root *::before,
+    #splash:not(.is-done) ~ #root *::after {
+      animation-play-state: paused;
+    }
+
     /* ---------------------------------------------------------- the hero ---
        The one entrance that plays without a scroll: the hero is the first
        thing on screen, so it arrives as the page does. The photograph settles
