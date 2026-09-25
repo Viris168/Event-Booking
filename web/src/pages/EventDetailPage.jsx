@@ -34,6 +34,7 @@ import {
   mapHoldResponse,
 } from "../api/adapters.js";
 import QrLightbox from "../components/QrLightbox.jsx";
+import DirectionsButton from "../components/DirectionsButton.jsx";
 
 export default function EventDetailPage() {
   const { id } = useParams();
@@ -723,17 +724,7 @@ export default function EventDetailPage() {
                       </p>
                     )}
                   </div>
-                  {venue.lat && venue.lng && (
-                    <a
-                      href={`https://www.google.com/maps/search/?api=1&query=${venue.lat},${venue.lng}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="btn btn-sm btn-outline inline-flex items-center gap-1.5 shrink-0"
-                    >
-                      <Icon name="externalLink" size={13} />
-                      <span>{t("openInMaps")}</span>
-                    </a>
-                  )}
+                  <DirectionsButton venue={venue} />
                 </div>
 
                 {venue.lat && venue.lng ? (

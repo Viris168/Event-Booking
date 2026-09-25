@@ -434,8 +434,7 @@
   .rq-head h1,
   .page-title-lockup h1,
   .checkin-head h1,
-  .about-head h1,
-  .contact-head h1,
+  .page-band h1,
   .org-apply-head h1 {
     font-size: clamp(1.85rem, 1.4rem + 1.4vw, 2.25rem);
     @apply font-extrabold leading-tight tracking-tight text-ink;
@@ -1832,16 +1831,70 @@
     @apply border-white/40 bg-white/[0.18] text-white -translate-y-0.5 no-underline;
   }
 
+  /* ======================================================= page bands ===
+     Between the hero and the footer the page alternates ground: paper for
+     the two buyer-facing sections, the warm second surface for the how-it-
+     works band, deep jade for the organiser band, burnt gold for the closing
+     CTA. It used to be six sections on one flat paper separated by identical
+     hairlines, which read as a single long column with rules in it.
+
+     One rhythm for all of them, too. Each section used to carry its own
+     mb-14 / mt-14 / pt-14 / mb-16, which drifted by a quarter-rem section to
+     section and read as slightly-off rather than as a decision. */
+  .home-lead {
+    @apply pt-10 pb-14 md:pt-12 md:pb-16;
+  }
+  .home-tail {
+    @apply pt-14 pb-16 md:pt-[4.5rem] md:pb-20;
+  }
+  .home-band {
+    @apply w-full;
+  }
+  .home-band-inner {
+    @apply mx-auto max-w-shell px-page py-14 md:py-[4.5rem];
+  }
+  .home-band-warm {
+    @apply border-y border-line bg-surface-2;
+  }
+  /* Deep jade, the same ground the navbar and footer stand on, so the page's
+     one dark band belongs to the shell rather than looking like a stray
+     coloured box. Brand tokens are not re-themed in dark mode (only the
+     neutrals are), so this reads identically under both. */
+  .home-band-dark {
+    @apply bg-brand-900 text-white;
+  }
+  .home-band-dark .home-split-text h2 {
+    @apply text-white;
+  }
+  .home-band-dark .home-split-text > p {
+    @apply text-white/70;
+  }
+  .home-band-dark .home-kicker {
+    @apply border-white/20 bg-white/10 text-white;
+  }
+  .home-band-dark .home-photo,
+  .home-band-dark .home-shot {
+    @apply border-white/15;
+  }
+
   /* ---------------------------------------- split: text beside an image ---
      The wireframe's "Outcome" and "Your Name" sections, and its accordion
      section reversed. One layout serves all three - which side carries the
      text is the only thing that changes between them. */
   .home-events-section {
-    @apply mb-14;
+    @apply m-0;
   }
   .home-split {
-    @apply mb-16 mt-14 grid items-center gap-12 border-t border-line pt-14;
+    @apply grid items-center gap-12;
     grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  }
+  /* Only the splits that share paper ground with a section above them need a
+     rule drawn between the two. The ones inside a band are already separated
+     by the change of ground, and a hairline there would just be a line
+     floating in the middle of a coloured box. */
+  .home-lead .home-split,
+  .home-tail .home-split + .home-split {
+    @apply mt-16 border-t border-line pt-16;
   }
   /* Column widths only - no `order` override. The panel is written FIRST in
      JSX for this variant, so plain grid auto-placement already lands it in
@@ -1852,7 +1905,11 @@
   }
   @media (max-width: 860px) {
     .home-split {
-      @apply grid-cols-1 gap-8 mb-12 mt-10 pt-10;
+      @apply grid-cols-1 gap-8;
+    }
+    .home-lead .home-split,
+    .home-tail .home-split + .home-split {
+      @apply mt-10 pt-10;
     }
   }
 
@@ -1896,7 +1953,7 @@
      adding height that would knock the split out of alignment with its text
      column. */
   .home-photo {
-    @apply relative m-0 overflow-hidden rounded-2xl border border-line/60 shadow-card;
+    @apply relative m-0 overflow-hidden rounded-2xl border border-line/60 shadow-float;
   }
   /* Every slide stacks in the same box; only the active one is opaque. A
      cross-fade rather than a slide - these boxes are too small for a track
@@ -1935,10 +1992,10 @@
   }
 
   /* --------------------------------------------------------- three steps ---
-     Numbered step cards with hover elevation and clear sequential structure. */
-  .home-steps-section {
-    @apply mb-14 border-t border-line pt-14;
-  }
+     Numbered cards threaded on a dashed line. The line is what stops this
+     reading as the generic three-icon-boxes-in-a-row feature grid: it runs
+     behind the cards, shows only in the gaps between them, and so draws the
+     three as one route rather than three unrelated boxes. */
   .home-steps-head {
     @apply mb-10 text-center;
   }
@@ -1951,6 +2008,14 @@
   .home-steps {
     @apply relative m-0 grid list-none gap-6 p-0 md:grid-cols-3;
   }
+  /* 3rem down is the vertical centre of the 3rem icon chip under the card's
+     1.5rem of padding, so the line meets each chip rather than crossing the
+     card at an arbitrary height. Inset from the ends: a rule running to the
+     outer edges would read as a divider across the band. */
+  .home-steps::before {
+    content: "";
+    @apply pointer-events-none absolute left-[14%] right-[14%] top-12 hidden border-t border-dashed border-brand-500/35 md:block;
+  }
   .home-step-card {
     @apply relative flex flex-col p-6 rounded-2xl bg-surface border border-line shadow-card hover:shadow-pop hover:-translate-y-1 transition-all duration-200 text-left;
   }
@@ -1958,10 +2023,18 @@
     @apply flex items-center justify-between mb-4 w-full;
   }
   .home-step-icon {
-    @apply flex-none w-12 h-12 rounded-xl bg-brand-500/10 text-link border border-brand-500/20 flex items-center justify-center transition-colors;
+    @apply flex-none w-12 h-12 rounded-xl bg-brand-500/10 text-link border border-brand-500/20 flex items-center justify-center transition-colors duration-200;
   }
+  /* The chip fills in on hover, so the card answers the pointer with
+     something more than a shadow. */
+  .home-step-card:hover .home-step-icon {
+    @apply border-brand-600 bg-brand-600 text-white;
+  }
+  /* Burnt gold rather than grey: the accent is otherwise absent from the body
+     of the page, and the step numbers are exactly the sort of ordinal detail
+     it exists for. */
   .home-step-num {
-    @apply text-2xl font-black text-muted/30 tracking-tight font-mono;
+    @apply text-2xl font-black tracking-tight text-gold-500/55 tabular-nums font-mono;
   }
   .home-step-card h3 {
     @apply m-0 mb-2 text-lg font-bold text-ink;
@@ -1970,28 +2043,18 @@
     @apply mb-0 text-sm leading-relaxed text-muted;
   }
 
-  /* ------------------------------------------------------------- proof ---
-     Real metrics wrapped in clean elevated cards with tabular numbers. */
-  .home-proof {
-    @apply mb-16 border-t border-line pt-14 text-center;
+  /* The one question that stops a first-time KHQR buyer at step two. Centred
+     under the steps as a footnote to them, not as a section of its own. */
+  .home-steps-note {
+    @apply mx-auto mt-10 mb-0 flex w-fit max-w-full items-center justify-center gap-2.5 rounded-full border border-line bg-surface px-6 py-3 text-center text-[0.9rem] font-medium text-ink-2 shadow-card;
   }
-  .home-proof-head h2 {
-    @apply m-0 text-2xl md:text-3xl font-extrabold tracking-tight text-ink;
+  .home-steps-note svg {
+    @apply flex-none text-link;
   }
-  .home-proof-head .section-sub {
-    @apply mt-2 text-muted text-base max-w-[48ch] mx-auto;
-  }
-  .home-proof-stats {
-    @apply mx-auto mt-8 grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-[780px];
-  }
-  .home-proof-stat-card {
-    @apply p-6 rounded-2xl bg-surface border border-line shadow-card hover:shadow-pop hover:-translate-y-0.5 transition-all duration-200 flex flex-col items-center justify-center;
-  }
-  .home-proof-stat-card b {
-    @apply block text-3xl md:text-4xl font-black text-link tracking-tight tabular-nums mb-1;
-  }
-  .home-proof-stat-card span {
-    @apply text-xs md:text-sm font-semibold text-muted uppercase tracking-wider;
+  @media (max-width: 640px) {
+    .home-steps-note {
+      @apply rounded-2xl text-left;
+    }
   }
 
   /* --------------------------------------------------------------- FAQ ---
@@ -2012,6 +2075,10 @@
   .home-faq-item summary::-webkit-details-marker {
     display: none;
   }
+  .home-faq-item summary:focus-visible {
+    @apply rounded-md outline-none;
+    box-shadow: var(--shadow-focus);
+  }
   .home-faq-item summary svg {
     @apply flex-none text-muted transition-transform duration-200;
   }
@@ -2022,41 +2089,182 @@
     @apply mb-0 mt-3 border-t border-line/60 pt-3 text-[0.92rem] leading-relaxed text-ink-2;
   }
 
-  /* --------------------------------------------------------- final strip ---
-     Full-width banner directly above footer with downward pointer notch. */
-  .home-final-strip {
-    @apply relative w-full bg-brand-700 text-white overflow-visible transition-colors duration-200;
+  /* --------------------------------------------------------- final CTA ---
+     The accent TINT, not the solid. On paper this band read as more page:
+     surface-2 sits a couple of percent off the body colour, so the closing
+     ask had no ground of its own.
+
+     gold-100 gives it one without repeating the earlier mistake. The solid
+     rungs - 500 and 600 - were both tried full-width and both failed for the
+     same reason: at this width the gold stops being an accent and becomes a
+     wall of orange, landing directly on the jade footer, the strongest colour
+     on the page. Two saturated bands stacked is what was uncomfortable. The
+     tint carries the same hue at a tenth of the strength, so the band is
+     visibly warm, the ink heading keeps its contrast, and the step down into
+     the footer still reads as a step rather than a collision. It also picks
+     up the gold the footer already uses for its column headings, which is
+     what ties the last two bands together.
+
+     The edge into the footer is a straight one. A downward arrow used to sit
+     on it, pointing into the footer from the middle of the band; against a
+     coloured ground it read as a notch bitten out of the green rather than as
+     a join, so the two bands now simply meet.
+
+     gold-100 is one of the tints that goes dark in [data-theme="dark"] - a
+     warm brown ground there, not a light patch - but not the right rung of
+     one, see below. */
+  .home-cta {
+    @apply w-full border-t border-gold-500/25 bg-gold-100 text-ink;
   }
-  .home-final-strip:hover {
-    @apply bg-brand-600;
+  /*
+   * Dark mode: the band has to clear the footer, not just differ from it.
+   *
+   * The token's dark value, #362415, measures 1.08:1 against the footer's
+   * #062718 - the same near-black trap the navbar and footer edges are dealt
+   * with further down, except those two are chrome meeting page, where a
+   * hairline is the whole answer. Here the point of the band IS that it is a
+   * ground of its own; at the token's lightness it stops being one and the
+   * closing ask is swallowed by the footer, with only hue left to separate
+   * two dark blocks stacked directly on each other.
+   *
+   * So the dark band takes a lifted rung of the same brown: above surface-2
+   * (#23201a), the highest warm surface in the dark scale, which is right for
+   * the one band that is asking for something. The token itself is left alone
+   * because it is also a small badge fill, where #362415 is correct - a badge
+   * sits ON a dark surface and would glow at this value.
+   */
+  [data-theme="dark"] .home-cta {
+    background-color: #4a331d;
   }
-  .home-final-strip::after {
-    content: "";
-    @apply absolute left-1/2 -bottom-[8px] -translate-x-1/2 z-10 pointer-events-none;
-    width: 0;
-    height: 0;
-    border-left: 9px solid transparent;
-    border-right: 9px solid transparent;
-    border-top: 8px solid var(--color-brand-700);
-    transition: border-top-color 0.2s ease;
+  .home-cta-inner {
+    @apply mx-auto flex max-w-shell flex-col items-center gap-6 px-page py-10 text-center md:flex-row md:justify-between md:gap-10 md:py-12 md:text-left;
   }
-  .home-final-strip:hover::after {
-    border-top-color: var(--color-brand-600);
+  /* No clamp: the line is one short question and should stay on one line
+     wherever it fits, rather than being broken in two by a measure meant for
+     running text. */
+  .home-cta h2 {
+    @apply m-0 text-2xl md:text-[1.9rem] font-extrabold tracking-tight leading-tight text-ink;
   }
-  .home-final-strip-link {
-    @apply mx-auto flex max-w-shell items-center justify-center gap-2.5 px-page py-5 md:py-6 text-center text-white no-underline select-none;
+  /* The one saturated thing in the band, which is the point - on a quiet
+     ground the button is the only place the eye can land. */
+  .home-cta-btn {
+    @apply flex-none border-transparent bg-brand-600 text-white shadow-float;
   }
-  .home-final-strip-link:hover {
-    @apply no-underline text-white;
+  .home-cta-btn:hover {
+    @apply bg-brand-700 text-white -translate-y-0.5 no-underline;
+    box-shadow: var(--shadow-pop);
   }
-  .home-final-strip-text {
-    @apply text-base md:text-lg font-bold tracking-tight text-white;
+
+  /* ======================================================== motion ===
+     Everything below is an ENTRANCE, never a resting state: each rule
+     animates *from* a hidden position and leaves the element in its ordinary
+     one. That is why nothing here can strand content invisible - if an
+     animation never runs, the element was already where it ends up.
+
+     The armed state is the one exception, and it is written by useReveal at
+     runtime rather than by these rules, and only ever inside the
+     no-preference query below. A reader who asked for less motion is served
+     a page with no hidden elements at all, not a page that hides things and
+     then rushes them in. */
+  @media (prefers-reduced-motion: no-preference) {
+    [data-reveal="armed"] {
+      opacity: 0;
+    }
+
+    /* The splits: the block rises a little as it arrives. Short and small -
+       16px and a third of a second - because this is punctuation between
+       sections, not an event in its own right. */
+    .home-split[data-reveal="in"] {
+      animation: home-rise 420ms cubic-bezier(0.22, 0.75, 0.3, 1) both;
+    }
+
+    /* --------------------------------------------------- the steps band ---
+       The one piece of motion on this page that carries meaning rather than
+       decorating: the dashed connector draws itself left to right, and each
+       card arrives as the line reaches it. The section claims to be a
+       sequence - find, pay, scan - so it is revealed as one. Three cards
+       fading in together would have said the opposite. */
+    .home-steps[data-reveal="in"]::before {
+      transform-origin: left center;
+      animation: home-draw 760ms cubic-bezier(0.22, 0.75, 0.3, 1) both;
+    }
+    .home-steps[data-reveal="in"] .home-step-card {
+      animation: home-rise 460ms cubic-bezier(0.22, 0.75, 0.3, 1) both;
+    }
+    /* Paced against the line, not evenly: the line crosses each gap in about
+       190ms, so a card lands just after it has been reached. */
+    .home-steps[data-reveal="in"] .home-step-card:nth-child(2) {
+      animation-delay: 190ms;
+    }
+    .home-steps[data-reveal="in"] .home-step-card:nth-child(3) {
+      animation-delay: 380ms;
+    }
+
+    /* ------------------------------------------------- the events grid ---
+       Not scroll-driven. These cards animate when the fetch returns and they
+       mount, so the motion is the grid actually filling rather than a
+       decoration replayed at a scroll position. Scoped to the home grid so
+       the catalogue page, which re-renders this grid on every filter change,
+       does not flicker on each keystroke. */
+    .home-events-section .grid-cards > * {
+      animation: home-rise 420ms cubic-bezier(0.22, 0.75, 0.3, 1) both;
+    }
+    .home-events-section .grid-cards > :nth-child(2) {
+      animation-delay: 45ms;
+    }
+    .home-events-section .grid-cards > :nth-child(3) {
+      animation-delay: 90ms;
+    }
+    .home-events-section .grid-cards > :nth-child(4) {
+      animation-delay: 135ms;
+    }
   }
-  .home-final-strip-arrow {
-    @apply flex-none text-white/80 transition-transform duration-200;
+
+  /* The arrow leans toward where it is taking you. Applies to the two places
+     on the page with a trailing arrow in a button. */
+  .home-cta-btn svg,
+  .section-head .btn svg {
+    transition: transform 0.18s ease;
   }
-  .home-final-strip:hover .home-final-strip-arrow {
-    @apply translate-x-1 text-white;
+  .home-cta-btn:hover svg,
+  .section-head .btn:hover svg {
+    transform: translateX(3px);
+  }
+
+  /* The FAQ answers slide rather than jump. Pure progressive enhancement:
+     interpolate-size + ::details-content is what makes a <details> animatable
+     at all, and where it is missing the accordion simply opens instantly, as
+     it always did. */
+  @supports (interpolate-size: allow-keywords) {
+    @media (prefers-reduced-motion: no-preference) {
+      .home-faq-item {
+        interpolate-size: allow-keywords;
+      }
+      .home-faq-item::details-content {
+        block-size: 0;
+        overflow: hidden;
+        transition:
+          block-size 280ms cubic-bezier(0.22, 0.75, 0.3, 1),
+          content-visibility 280ms allow-discrete;
+      }
+      .home-faq-item[open]::details-content {
+        block-size: auto;
+      }
+    }
+  }
+
+  /* Hover lift is decoration; a reduced-motion request turns it off without
+     taking the colour change with it. */
+  @media (prefers-reduced-motion: reduce) {
+    .home-step-card,
+    .home-cta-btn,
+    .home-faq-item {
+      transition: none;
+    }
+    .home-step-card:hover,
+    .home-cta-btn:hover {
+      transform: none;
+    }
   }
 
   /* ------------------------------------------------------------ search bar */
@@ -2642,26 +2850,29 @@
   .ev-card:hover {
     @apply -translate-y-[3px] no-underline shadow-float;
   }
+  /* The ring follows the pin button into gold - see .ev-pin. A jade ring round
+     a card whose pin is gold would say the card is pinned in one colour and
+     the button in another. */
   .ev-card.is-pinned {
-    border-color: var(--color-brand-500);
+    border-color: var(--color-gold-600);
     box-shadow:
-      0 0 0 1.5px var(--color-brand-500),
+      0 0 0 1.5px var(--color-gold-600),
       var(--shadow-card);
   }
   .ev-card.is-pinned:hover {
     box-shadow:
-      0 0 0 2px var(--color-brand-500),
+      0 0 0 2px var(--color-gold-600),
       var(--shadow-float);
   }
   [data-theme="dark"] .ev-card.is-pinned {
-    border-color: var(--color-brand-500);
+    border-color: var(--color-gold-500);
     box-shadow:
-      0 0 0 1.5px var(--color-brand-500),
+      0 0 0 1.5px var(--color-gold-500),
       0 4px 20px rgba(0, 0, 0, 0.45);
   }
   [data-theme="dark"] .ev-card.is-pinned:hover {
     box-shadow:
-      0 0 0 2px var(--color-brand-500),
+      0 0 0 2px var(--color-gold-500),
       0 8px 24px rgba(0, 0, 0, 0.55);
   }
   .ev-media {
@@ -2847,7 +3058,22 @@
   .ev-card:hover .ev-go {
     @apply border-brand-600 bg-brand-600 text-white;
   }
-  /* Pin button: always visible, subtle by default, active when pinned. */
+  /* Pin button: always visible, subtle by default, active when pinned.
+
+     Gold when pinned, NOT brand green, and the map marker matches it. The two
+     buttons in this footer sit 0.35rem apart and mean entirely different
+     things - one opens the event, the other pins it to the map - but both used
+     to go solid brand-600 with a white glyph, the arrow on card hover and the
+     pin on being pinned. Hovering a pinned card produced two identical green
+     squares side by side, which is exactly the competition .ev-go's own note
+     says it stays quiet to avoid.
+
+     So the page now keeps one colour per meaning: green is hover-and-navigate,
+     gold is pinned. Gold also makes pins findable - the point of pinning is to
+     pick a few events out of a long list, which a colour shared with every
+     hover state cannot do. gold-600 carries white at 5.9:1 and is the same
+     pairing .btn-accent already ships, and it is not re-themed in dark, so one
+     rule serves both. */
   .ev-pin {
     @apply border-line-2 bg-surface-2 text-muted;
     transition:
@@ -2857,20 +3083,16 @@
       transform 0.16s ease;
   }
   .ev-pin:hover {
-    @apply border-brand-500 text-brand-600;
+    @apply border-gold-600 text-gold-600;
   }
   .ev-pin.is-pinned {
-    @apply border-brand-600 bg-brand-600 text-white shadow-sm;
+    @apply border-gold-600 bg-gold-600 text-white shadow-sm;
     animation: ev-pin-pop 0.25s ease-out;
   }
   .ev-pin.is-pinned:hover {
-    @apply border-brand-700 bg-brand-700 text-white;
-  }
-  [data-theme="dark"] .ev-pin.is-pinned {
-    @apply border-brand-500 bg-brand-500 text-white;
-  }
-  [data-theme="dark"] .ev-pin.is-pinned:hover {
-    @apply border-brand-600 bg-brand-600 text-white;
+    background: #963a0b;
+    border-color: #963a0b;
+    @apply text-white;
   }
   @keyframes ev-pin-pop {
     0% {
@@ -5486,6 +5708,20 @@
     transform: translateY(6px);
   }
 }
+/* The home page's entrance pair. Both define only `from`, so the resting
+   state is the element's ordinary one and an animation that never runs costs
+   nothing - see the motion block in the components layer. */
+@keyframes home-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+}
+@keyframes home-draw {
+  from {
+    transform: scaleX(0);
+  }
+}
 @keyframes shimmer {
   from {
     transform: translateX(-100%);
@@ -7188,7 +7424,6 @@
   /* Narrower than .container-wide: a single column of fields reads badly past
      about 70 characters, and the design caps it here. */
   max-width: 680px;
-  padding-top: 2rem;
   padding-bottom: 3rem;
 }
 
@@ -7676,6 +7911,37 @@
 }
 
 /*
+ * The personalised "Continue as <name>" button, framed to match.
+ *
+ * On the deployed site GIS shows it in the iframe it otherwise keeps at
+ * `height: 0px`, so a frame with any other height is the personalised one -
+ * matched on that inline style rather than on Google's minified classes. Its
+ * contents are Google's and out of reach; only the box around it is ours.
+ *
+ * The host becomes the button: 48px and the UI radius like .btn-lg, with our
+ * hairline border, filled with the same colour as Google's button in each
+ * theme (white for `outline`, #202124 for `filled_black`) so the frame's edges
+ * disappear into it. The clip takes the frame's own 1px grey edge off, and 4px
+ * off the bottom, where the frame is taller than the button inside it: that
+ * strip is white in both themes, invisible on light and a bright line under
+ * the dark button. The white square behind the G in dark mode is Google's
+ * artwork and stays.
+ */
+.gsi-host:has(iframe:not([style*="height: 0px"])) {
+  height: 3rem;
+  align-items: center;
+  background: #fff;
+  border: 1px solid var(--color-line);
+}
+:root[data-theme="dark"] .gsi-host:has(iframe:not([style*="height: 0px"])) {
+  background: #202124;
+  border-color: #3c4043;
+}
+.gsi-host iframe:not([style*="height: 0px"]) {
+  clip-path: inset(1px 1px 4px 1px round 6px);
+}
+
+/*
  * Dark mode only: drop the white plate behind the G.
  *
  * Google's dark button puts the mark on a 36px white chip rounded 3px on its
@@ -7730,90 +7996,217 @@
   padding-bottom: 3.5rem;
 }
 
-.about-head {
-  margin-bottom: 2.4rem;
+/* -------------------------------------------------------------- page band */
+/* The header band About and Contact share. The homepage hero's ground without
+   its photograph: the same near-black jade, so the two static pages read as
+   the same product as the page you arrived from rather than as documents
+   bolted onto it. No image and no blooms - these bands introduce pages of
+   reading and a form, and they should be quieter than the storefront's.
+
+   Full bleed, so it sits outside .container and measures its content with
+   .page-band-inner, which has the same edges as the navbar. */
+.page-band {
+  color: #fff;
+  background: linear-gradient(168deg, #02100a 0%, #03150f 52%, #051d14 100%);
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+  /* The same 1.75rem the container utility's pt-7 gives every other page, so
+     the title sits the same distance under the navbar here as it does on
+     Events or My Bookings. */
+  padding-top: 1.75rem;
 }
-.about-head h1 {
-  margin: 0 0 0.6rem;
+/* Same box as .hero-inner / .container, so the heading starts on the navbar's
+   left edge. */
+.page-band-inner {
+  max-width: var(--container-shell);
+  margin: 0 auto;
+  padding: 0 var(--spacing-page) 2.6rem;
 }
-.about-lead {
+/* Size, weight and tracking come from the shared page-title rule with
+   .page-head h1, so these titles match every other page's. Only the colour
+   changes, for the dark ground. */
+.page-band h1 {
+  margin: 0 0 0.8rem;
+  color: #fff;
+}
+html[lang="km"] .page-band h1 {
+  font-family: var(--font-khmer);
+  line-height: 1.4;
+  letter-spacing: normal;
+}
+.page-band-lead {
   font-size: 1.05rem;
   line-height: 1.7;
-  color: var(--color-ink-2);
+  color: rgba(255, 255, 255, 0.78);
   margin: 0;
   max-width: 62ch;
 }
-html[lang="km"] .about-lead {
+html[lang="km"] .page-band-lead {
   line-height: 1.95;
 }
 
-.about-section {
-  margin-bottom: 2.6rem;
+/* The figures, set the way .hero-stats sets them: a large tabular number over
+   a quiet label, divided by hairlines. The label comes first in the source
+   because it is the <dt>; column-reverse puts the number on top visually. */
+.about-band-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 0;
+  margin: 2.2rem 0 0;
+  padding-top: 1.3rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
-.about-section > h2 {
-  font-size: 1.05rem;
-  letter-spacing: -0.01em;
-  margin: 0 0 1.1rem;
-  /* A rule under the heading rather than a card around the section. It
-     separates without boxing, which is what keeps the page reading as one
-     document instead of a stack of panels. */
-  padding-bottom: 0.55rem;
-  border-bottom: 1px solid var(--color-line);
+.about-band-stats > div {
+  display: flex;
+  flex-direction: column-reverse;
+  padding-right: 2.2rem;
 }
-.about-body {
+.about-band-stats > div + div {
+  padding-left: 2.2rem;
+  border-left: 1px solid rgba(255, 255, 255, 0.14);
+}
+.about-band-stats dt {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.62);
+}
+.about-band-stats dd {
   margin: 0;
-  max-width: 68ch;
-  color: var(--color-ink-2);
+  font-size: 1.7rem;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+}
+@media (max-width: 560px) {
+  .about-band-stats {
+    gap: 1rem 1.8rem;
+  }
+  .about-band-stats > div,
+  .about-band-stats > div + div {
+    padding: 0;
+    border-left: 0;
+  }
+}
+
+/* -------------------------------------------------------------- about rows */
+/*
+ * Heading on the left, content on the right, a hairline between rows.
+ *
+ * This is what spends the shell's width now that the page is full width: the
+ * left column holds a heading and one sentence of framing, and the right holds
+ * the list at a readable measure. Below 980px it is one column, heading first.
+ */
+.about-row {
+  display: grid;
+  gap: 1.2rem;
+  padding: 2.4rem 0;
+  border-top: 1px solid var(--color-line);
+}
+.about-row:first-child {
+  border-top: 0;
+  padding-top: 0.6rem;
+}
+@media (min-width: 980px) {
+  .about-row {
+    grid-template-columns: minmax(0, 320px) minmax(0, 1fr);
+    gap: 1.5rem 4rem;
+  }
+  /* The heading keeps you company down a long timeline, so the organiser
+     column still says what it is about by step five. Offset by the sticky
+     navbar's height. */
+  .about-row-head {
+    position: sticky;
+    top: 5.5rem;
+    align-self: start;
+  }
+}
+.about-row-head h2 {
+  font-size: 1.35rem;
+  font-weight: 800;
+  line-height: 1.3;
+  letter-spacing: -0.015em;
+  margin: 0 0 0.45rem;
+}
+.about-row-head > p {
+  margin: 0;
+  color: var(--color-muted);
+  max-width: 38ch;
+}
+.about-row-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.9rem;
+  font-weight: 650;
+}
+.about-row-link .icon {
+  transition: transform 0.18s ease;
+}
+.about-row-link:hover .icon {
+  transform: translateX(3px);
 }
 
 /* ------------------------------------------------------------------ steps */
 /* Numbered, because the steps are sequential - you cannot show a QR for a
    ticket you have not paid for. The alternative a page like this usually
    reaches for, three icon tiles in a row, says the opposite: that these are
-   independent features you may take in any order. */
+   independent features you may take in any order. One column, joined by a
+   rail, so the order is something you can see as well as read. */
 .about-steps {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: grid;
-  gap: 1.5rem 2.5rem;
-}
-/* Two abreast on a wide screen. The order still reads left-to-right then down,
-   which is how a numbered list is scanned - and the numerals are there to
-   settle it if the eye takes the columns the other way. Below this it is one
-   column, where a five-step list is simply five rows. */
-@media (min-width: 980px) {
-  .about-steps {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 .about-step {
+  --step-size: 2.25rem;
+  position: relative;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 0 1rem;
+  grid-template-columns: var(--step-size) minmax(0, 1fr);
+  gap: 0 1.1rem;
   align-items: start;
+  padding-bottom: 1.6rem;
+}
+.about-step:last-child {
+  padding-bottom: 0;
+}
+/* The rail, from under one numeral to the top of the next. Drawn on the step,
+   not the list, so it stops at the last numeral instead of running past it. */
+.about-step:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: calc(var(--step-size) / 2);
+  top: calc(var(--step-size) + 0.35rem);
+  bottom: 0.35rem;
+  width: 1px;
+  background: var(--color-line);
 }
 /* The numeral is the ornament this page gets, and the only one. Set in the
-   display face, large and in the warm accent - it is decorative, which is why
-   it is aria-hidden and why <ol> is still what carries the order. */
+   display face in the warm accent - it is decorative, which is why it is
+   aria-hidden and why <ol> is still what carries the order. Moul has no
+   lining numerals worth setting at this size, so it keeps the Latin face in
+   both locales, the way .nav-brand-text does for the wordmark. */
 .about-step-n {
-  font-family: var(--font-display);
-  font-size: 1.6rem;
-  line-height: 1;
+  display: grid;
+  place-items: center;
+  width: var(--step-size);
+  height: var(--step-size);
+  border-radius: 999px;
+  background: var(--color-gold-100);
   color: var(--color-gold-600);
-  min-width: 1.4rem;
-  /* Optical: the numeral's cap height sits above the heading's, so it needs
-     nudging down to share a baseline with the first line of text. */
-  padding-top: 0.1rem;
-}
-html[lang="km"] .about-step-n {
-  /* Moul has no lining numerals worth setting at this size, and the Latin
-     digits are what the numeral is - so it keeps the Latin face in both
-     locales, the way .nav-brand-text does for the wordmark. */
   font-family: var(--font-display);
+  font-size: 1.1rem;
+  line-height: 1;
+}
+[data-theme="dark"] .about-step-n {
+  color: var(--color-gold-500);
+}
+.about-step-body {
+  /* Optical: lines the heading's first line up with the circle's centre. */
+  padding-top: 0.3rem;
 }
 .about-step-body h3 {
-  font-size: 0.98rem;
+  font-size: 1rem;
   margin: 0 0 0.25rem;
 }
 .about-step-body p {
@@ -7825,22 +8218,15 @@ html[lang="km"] .about-step-n {
 /* ------------------------------------------------------------------ facts */
 .about-facts {
   display: grid;
-  /* Four across at full width, stepping down rather than stretching. Each cell
-     is a label and two short lines, so four of them read as a row of facts;
-     two of them stretched across 1360px read as a page with a hole in it. */
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  /* As many across as fit at a width a label and two short lines can use.
+     Stretched wider than that, a fact reads as a page with a hole in it. */
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 1.3rem 2rem;
   margin: 0;
 }
-@media (max-width: 1080px) {
-  .about-facts {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-@media (max-width: 620px) {
-  .about-facts {
-    grid-template-columns: minmax(0, 1fr);
-  }
+.about-fact {
+  padding-top: 0.9rem;
+  border-top: 2px solid var(--color-ink);
 }
 .about-fact dt {
   font-size: var(--text-tiny);
@@ -7849,6 +8235,10 @@ html[lang="km"] .about-step-n {
   letter-spacing: 0.05em;
   color: var(--color-muted);
   margin-bottom: 0.3rem;
+}
+html[lang="km"] .about-fact dt {
+  text-transform: none;
+  letter-spacing: 0;
 }
 .about-fact dd {
   margin: 0;
@@ -7885,6 +8275,7 @@ html[lang="km"] .about-step-n {
   align-items: center;
   justify-content: space-between;
   gap: 1.2rem;
+  margin-top: 1rem;
   padding: 1.4rem 1.5rem;
   border-radius: var(--radius-card);
   background: var(--color-tint);
@@ -7904,27 +8295,20 @@ html[lang="km"] .about-step-n {
 /* The panel spans the shell now, so the text and the button would otherwise
    sit at opposite ends of 1360px with a gulf between them. Capping the text
    block keeps the pair reading as one invitation. */
-.about-contact > div {
+.about-contact > div:first-child {
   min-width: 0;
   max-width: 70ch;
+}
+.about-contact-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
 }
 
 /* ---------------------------------------------------------------- contact */
 .contact {
   padding-bottom: 3.5rem;
 }
-.contact-head {
-  margin-bottom: 1.8rem;
-}
-.contact-head h1 {
-  margin: 0 0 0.5rem;
-}
-.contact-head p {
-  margin: 0;
-  max-width: 64ch;
-  color: var(--color-ink-2);
-}
-
 /* The form is the page; the aside is context for it. Not .split, which is
    sized for a 340px booking rail - this one wants a wider second column
    because the routing list in it is full sentences, not figures. */
@@ -8175,6 +8559,136 @@ html[lang="km"] .contact-card h2 {
   color: var(--color-muted);
 }
 
+/* ---------------------------------------------------------- contact topics */
+/* A fieldset only for its semantics - the legend names the group for a screen
+   reader. The browser's own border, padding and min-width all go. */
+.contact-topics {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+.contact-topics > legend {
+  padding: 0;
+  margin-bottom: 0.4rem;
+}
+.contact-topic-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.5rem;
+}
+/* The whole row is the hit area. The radio itself is visually hidden but kept
+   in the tab order, so arrow keys still move the selection and the focus ring
+   is drawn on the label through :has(). */
+.contact-topic {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-ui);
+  background: var(--color-surface);
+  color: var(--color-ink-2);
+  font-size: var(--text-small);
+  font-weight: 600;
+  line-height: 1.35;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+.contact-topic input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+.contact-topic > .icon {
+  flex: none;
+  color: var(--color-muted);
+}
+.contact-topic:hover {
+  border-color: var(--color-ink-2);
+}
+.contact-topic:has(input:checked) {
+  border-color: var(--color-brand-600);
+  background: var(--color-tint);
+  color: var(--color-on-tint);
+  box-shadow: inset 0 0 0 1px var(--color-brand-600);
+}
+.contact-topic:has(input:checked) > .icon {
+  color: var(--color-link);
+}
+.contact-topic:has(input:focus-visible) {
+  box-shadow:
+    inset 0 0 0 1px var(--color-brand-600),
+    var(--shadow-focus);
+}
+@media (prefers-reduced-motion: reduce) {
+  .contact-topic {
+    transition: none;
+  }
+}
+
+/* ------------------------------------------------------------- contact faq */
+/* Clear of the sticky navbar when /contact#faq scrolls it into view. */
+#faq {
+  scroll-margin-top: 5.5rem;
+}
+.contact-faq details {
+  border-bottom: 1px solid var(--color-line-2);
+}
+.contact-faq details:last-child {
+  border-bottom: 0;
+}
+.contact-faq summary {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.6rem 0;
+  font-size: var(--text-small);
+  font-weight: 650;
+  line-height: 1.45;
+  color: var(--color-ink);
+  cursor: pointer;
+  list-style: none;
+}
+.contact-faq details:first-child summary {
+  padding-top: 0;
+}
+.contact-faq summary::-webkit-details-marker {
+  display: none;
+}
+.contact-faq summary:hover {
+  color: var(--color-link);
+}
+.contact-faq summary > .icon {
+  flex: none;
+  margin-top: 0.1rem;
+  color: var(--color-muted);
+  transition: transform 0.18s ease;
+}
+.contact-faq details[open] summary > .icon {
+  transform: rotate(180deg);
+}
+.contact-faq details p {
+  margin: 0 0 0.8rem;
+  font-size: var(--text-small);
+  line-height: 1.6;
+  color: var(--color-ink-2);
+}
+html[lang="km"] .contact-faq details p {
+  line-height: 1.85;
+}
+@media (prefers-reduced-motion: reduce) {
+  .contact-faq summary > .icon {
+    transition: none;
+  }
+}
+
 /* ------------------------------------------------------------ contact sent */
 /* The receipt. Centred and short: it exists to say the message landed and to
    hand over the one number worth keeping, and anything else on it would be
@@ -8394,8 +8908,9 @@ html[lang="km"] .contact-card h2 {
   gap: 1px;
 }
 /* The SVG pin needle that appears when a marker is pinned (clicked). */
+/* Only ever drawn under a pinned marker, so it follows the pinned colour. */
 .evmap-needle {
-  color: var(--color-brand-600);
+  color: var(--color-gold-600);
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.32));
   flex-shrink: 0;
 }
@@ -8427,9 +8942,9 @@ html[lang="km"] .contact-card h2 {
 /* Pinned (clicked) marker: solid brand fill so the user knows it's locked.
    Overrides is-active when both apply (hover on top of pinned). */
 .evmap-pin.is-pinned {
-  background: var(--color-brand-600);
+  background: var(--color-gold-600);
   color: #fff;
-  border-color: var(--color-brand-700);
+  border-color: #963a0b;
   box-shadow:
     0 0 0 3px rgba(22, 116, 74, 0.32),
     0 3px 8px rgba(0, 0, 0, 0.28);
@@ -8453,14 +8968,17 @@ html[lang="km"] .contact-card h2 {
       0 3px 8px rgba(0, 0, 0, 0.28);
   }
 }
+/* Dark keeps the pinned marker gold, one rung lighter so it holds up against a
+   dark basemap. Without these it fell back to the jade the light theme no
+   longer uses for pinning. */
 [data-theme="dark"] .evmap-needle {
-  color: #4ade80;
+  color: var(--color-gold-500);
 }
 [data-theme="dark"] .evmap-pin.is-pinned {
-  background: var(--color-brand-600);
-  border-color: var(--color-brand-500);
+  background: var(--color-gold-600);
+  border-color: var(--color-gold-500);
   box-shadow:
-    0 0 0 3px rgba(74, 222, 128, 0.3),
+    0 0 0 3px rgba(224, 123, 57, 0.32),
     0 3px 8px rgba(0, 0, 0, 0.4);
 }
 
@@ -8615,9 +9133,6 @@ html[lang="km"] .contact-card h2 {
  * stays sticky on the right for continuous visual reference.
  */
 @media (min-width: 901px) {
-  .events-page {
-    padding-top: 1.1rem;
-  }
   .events-chrome {
     @apply mb-4;
   }

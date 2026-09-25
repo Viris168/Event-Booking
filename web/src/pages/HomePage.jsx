@@ -9,6 +9,7 @@ import {
 import { Empty, IconSelect, Money, SearchInput } from "../components/ui.jsx";
 import { useLocale } from "../context/LocaleContext.jsx";
 import { useProvinces } from "../lib/useProvinces.js";
+import { useReveal } from "../lib/useReveal.js";
 import { eventArt } from "../lib/eventArt.js";
 import { getEvents } from "../api/events.js";
 
@@ -60,6 +61,15 @@ const QUICK_SEARCHES = [
 const ROTATE_MS = 5000;
 /** Cards in the rail. More than this and the dots stop being scannable. */
 const RAIL_SIZE = 5;
+/* Cards in the "on sale now" grid: one full row of the four-across grid.
+   Deliberately a shop window rather than a catalogue - "View all" is one tap
+   away, and a second row cost more than it bought, stacking into a very long
+   single column on a phone that pushed every other section off the page.
+
+   This is NOT the reason the page fetches twelve: the rail ranks the top five
+   sellers out of that pool, and the hero's tickets-sold counter sums it, so
+   the other eight are read even though the grid does not print them. */
+const GRID_SIZE = 4;
 
 /** Tickets sold, across both field spellings the API and the mapper produce. */
 function soldCount(e) {
@@ -475,6 +485,12 @@ export default function HomePage() {
   const { t, locale } = useLocale();
   const { provinces } = useProvinces();
   const navigate = useNavigate();
+  /* One reveal per band below the hero. The hero itself is never armed - it
+     is the first thing on screen and has nothing to be revealed from. */
+  const whyRef = useReveal();
+  const stepsRef = useReveal();
+  const orgRef = useReveal();
+  const faqRef = useReveal();
   const [q, setQ] = useState("");
   const [province, setProvince] = useState("");
 
@@ -507,7 +523,7 @@ export default function HomePage() {
     .filter(isOnSale)
     .sort((a, b) => soldCount(b) - soldCount(a) || startMs(a) - startMs(b))
     .slice(0, RAIL_SIZE);
-  const featured = published.slice(0, 4);
+  const featured = published.slice(0, GRID_SIZE);
 
   /**
    * Hero counters, from the API instead of the retired mock store.
@@ -626,24 +642,35 @@ export default function HomePage() {
         </div>
       </section>
 
-      <div className="container">
-        {/* --------------------------------------------------- on sale now ---
-            The wireframe has no events grid - it was built for a practice
-            with one thing to sell, not a catalogue. Inserted here so a
-            first-time visitor sees actual tickets before anything else. */}
+      {/* ==================================================== on sale now ===
+          The storefront itself. The wireframe this page follows has no events
+          grid - it was drawn for a service business with one thing to sell -
+          so this band is an addition, and it leads because a ticketing
+          homepage that shows no tickets has buried its own point.
+
+          Eight rather than four: the fetch already pays for twelve, and a
+          single row of cards read as a nearly-empty catalogue. */}
+      <div className="container home-lead">
         <section className="home-events-section">
           <div className="section-head">
             <div>
+              <span className="home-kicker">
+                <Icon name="calendar" size={13} />
+                <span>{locale === "km" ? "កំពុងលក់" : "On sale now"}</span>
+              </span>
               <h2>{t("upcoming")}</h2>
               <p className="section-sub">{t("upcomingSub")}</p>
             </div>
-            <Link to="/events" className="with-icon">
+            {/* A bordered control rather than a bare text link: it sits at the
+                far edge of a wide header, where an underlined word is both
+                hard to spot and a small tap target on a phone. */}
+            <Link to="/events" className="btn btn-outline">
               {t("viewAll")}
               <Icon name="arrowRight" size={15} />
             </Link>
           </div>
           {loading ? (
-            <EventGridSkeleton count={4} />
+            <EventGridSkeleton count={GRID_SIZE} />
           ) : featured.length ? (
             <div className="grid grid-cards">
               {featured.map((e) => (
@@ -655,12 +682,10 @@ export default function HomePage() {
           )}
         </section>
 
-        {/* ---------------------------------------------- why book, split ---
+        {/* ----------------------------------------------- why book, split ---
             Text-and-bullets left, image right - the wireframe's "Outcome"
-            section verbatim. The bullets are checkCircle rather than plain
-            dots: the wireframe's own bullet character, drawn in the icon set
-            the rest of the product already uses instead of introducing one. */}
-        <section className="home-split">
+            section verbatim. */}
+        <section className="home-split" ref={whyRef}>
           <div className="home-split-text">
             <span className="home-kicker">
               <Icon name="shield" size={13} />
@@ -697,16 +722,21 @@ export default function HomePage() {
           </div>
           <FeatureSlider photos={WHY_BOOK_PHOTOS} />
         </section>
+      </div>
 
-        {/* ------------------------------------------------- three steps ---
-            The wireframe's "Next Steps" row: centred heading, three numbered
-            items, one CTA underneath. Numbered and joined by a rule rather
-            than three bare icon boxes - the same three-in-a-row shape
-            CLAUDE.md flags as a generic default, done deliberately here
-            because this wireframe explicitly calls for it, and distinguished
-            by treating it as a sequence (a real one - find, pay, scan) rather
-            than an unordered feature grid. */}
-        <section className="home-steps-section">
+      {/* ========================================================= steps ===
+          The wireframe's "Next Steps" row. Three-in-a-row is the shape
+          CLAUDE.md flags as a generic default, so it is drawn here as what it
+          actually is - a sequence, not a feature grid: numbered, and threaded
+          on a dashed line that runs through the gaps between the cards.
+
+          On its own ground, too. The page used to run six sections deep on one
+          flat paper, divided only by hairlines, which read as a single long
+          column with rules in it rather than as a page with parts. This is the
+          section that earns the change, being the one that explains the
+          product instead of selling it. */}
+      <section className="home-band home-band-warm">
+        <div className="home-band-inner">
           <div className="home-steps-head">
             <span className="home-kicker">
               <Icon name="ticket" size={13} />
@@ -721,7 +751,7 @@ export default function HomePage() {
                 : "Three simple steps from selecting your tickets to entering the venue"}
             </p>
           </div>
-          <ol className="home-steps">
+          <ol className="home-steps" ref={stepsRef}>
             {HOW_STEPS.map((s, i) => (
               <li key={s.icon} className="home-step-card">
                 <div className="home-step-top">
@@ -737,82 +767,70 @@ export default function HomePage() {
               </li>
             ))}
           </ol>
-        </section>
 
-        {/* --------------------------------------------- for organizers ---
-            The wireframe's "Your Name" bio card, same text-left/image-right
-            order as the section above it. An outline "Learn More" rather than
-            a solid button, matching the wireframe's own distinction between
-            its primary CTAs and this one. */}
-        <section className="home-split">
-          <div className="home-split-text">
-            <span className="home-kicker">
-              <Icon name="building" size={13} />
-              <span>
-                {locale === "km" ? "សម្រាប់អ្នករៀបចំ" : "For Organizers"}
-              </span>
+          {/* A "CamboBook in numbers" section used to stand further down and
+              print the hero's three counters a second time in bigger type -
+              the same figures one scroll apart, one of which (tickets sold) is
+              only a floor, summed from the single page of events this
+              component loads. Repeating an under-count is not social proof.
+
+              What replaces it is the thing a first-time buyer actually stalls
+              on at step two: how they are going to pay. Named as the two rails
+              the platform actually runs on - the same pair the footer badges
+              below carry - rather than as a longer list of banks. */}
+          <p className="home-steps-note">
+            <Icon name="bank" size={16} />
+            <span>
+              {locale === "km"
+                ? "ទូទាត់ដោយ ABA PayWay ឬ Bakong KHQR"
+                : "Pay with ABA PayWay or Bakong KHQR"}
             </span>
-            <h2>
-              {locale === "km"
-                ? "រៀបចំព្រឹត្តិការណ៍នៅកម្ពុជាមែនទេ?"
-                : "Running an event in Cambodia?"}
-            </h2>
-            <p>
-              {locale === "km"
-                ? "ចុះបញ្ជីកម្មវិធីរបស់អ្នក លក់កៅអីកក់ទុក ឬសំបុត្រទូទៅ ហើយពិនិត្យអ្នកចូលនៅទ្វារពីកម្មវិធីរុករកលើទូរស័ព្ទណាមួយ។ ពាក្យស្នើសុំត្រូវបានពិនិត្យមុននឹងផ្សាយ។"
-                : "List your show, sell reserved seats or general admission, and check people in at the door from any phone browser. Applications are reviewed before anything goes live."}
-            </p>
-            <Link className="btn btn-outline" to="/become-an-organizer">
-              {locale === "km" ? "ស្វែងយល់បន្ថែម" : "Learn more"}
-              <Icon name="arrowRight" size={14} />
-            </Link>
-          </div>
-          <FeatureSlider photos={ORGANIZER_PHOTOS} />
-        </section>
+          </p>
+        </div>
+      </section>
 
-        {/* ------------------------------------------------------- proof ---
-            The wireframe's testimonials slot: centred, plain, no card. There
-            are no customer quotes to put there yet, so it holds the numbers
-            the page already computes instead of an invented quote - real
-            social proof rather than placeholder praise. */}
-        <section className="home-proof">
-          <div className="home-proof-head">
-            <h2>
-              {locale === "km" ? "CamboBook ជាលេខ" : "CamboBook in numbers"}
-            </h2>
-            <p className="section-sub">
-              {locale === "km"
-                ? "ទិន្នន័យផ្សាយផ្ទាល់នៃសហគមន៍ព្រឹត្តិការណ៍នៅកម្ពុជា"
-                : "Live platform metrics from across Cambodia"}
-            </p>
-          </div>
-          <div className="home-proof-stats">
-            <div className="home-proof-stat-card">
-              <b>{totalLive}</b>
-              <span>
-                {locale === "km" ? "ព្រឹត្តិការណ៍ផ្សាយ" : "Live events"}
+      {/* ==================================================== organizers ===
+          The wireframe's "Your Name" bio card. Given the deep jade ground
+          rather than a third slab of paper identical to the two around it:
+          this is the one section addressed to somebody else - the person
+          selling the tickets, not the person buying them - and a change of
+          ground says that before the heading has to. */}
+      <section className="home-band home-band-dark">
+        <div className="home-band-inner">
+          <div className="home-split" ref={orgRef}>
+            <div className="home-split-text">
+              <span className="home-kicker">
+                <Icon name="building" size={13} />
+                <span>
+                  {locale === "km" ? "សម្រាប់អ្នករៀបចំ" : "For Organizers"}
+                </span>
               </span>
-            </div>
-            <div className="home-proof-stat-card">
-              <b>{ticketsSold.toLocaleString()}</b>
-              <span>{locale === "km" ? "សំបុត្រលក់រួច" : "Tickets sold"}</span>
-            </div>
-            <div className="home-proof-stat-card">
-              <b>{provinces.length}</b>
-              <span>
+              <h2>
                 {locale === "km"
-                  ? "ខេត្ត/ក្រុងគ្របដណ្តប់"
-                  : "Provinces covered"}
-              </span>
+                  ? "រៀបចំព្រឹត្តិការណ៍នៅកម្ពុជាមែនទេ?"
+                  : "Running an event in Cambodia?"}
+              </h2>
+              <p>
+                {locale === "km"
+                  ? "ចុះបញ្ជីកម្មវិធីរបស់អ្នក លក់កៅអីកក់ទុក ឬសំបុត្រទូទៅ ហើយពិនិត្យអ្នកចូលនៅទ្វារពីកម្មវិធីរុករកលើទូរស័ព្ទណាមួយ។ ពាក្យស្នើសុំត្រូវបានពិនិត្យមុននឹងផ្សាយ។"
+                  : "List your show, sell reserved seats or general admission, and check people in at the door from any phone browser. Applications are reviewed before anything goes live."}
+              </p>
+              <Link className="btn btn-accent" to="/become-an-organizer">
+                {locale === "km" ? "ស្វែងយល់បន្ថែម" : "Learn more"}
+                <Icon name="arrowRight" size={14} />
+              </Link>
             </div>
+            <FeatureSlider photos={ORGANIZER_PHOTOS} />
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* ------------------------------------------------------ FAQ ---
+      <div className="container home-tail">
+        {/* ----------------------------------------------------------- FAQ ---
             The wireframe's accordion section - image on the LEFT this time,
             text on the right, matching that one section's own reversed order
             in the source rather than repeating the split above unchanged. */}
-        <section className="home-split home-split-reverse">
+        <section className="home-split home-split-reverse" ref={faqRef}>
           <FeatureSlider photos={FAQ_PHOTOS} />
           <div className="home-split-text">
             <span className="home-kicker">
@@ -824,7 +842,11 @@ export default function HomePage() {
             </h2>
             <div className="home-faq">
               {FAQ_ITEMS.map((item) => (
-                <details className="home-faq-item" key={item.qEn}>
+                /* name= makes these one accordion rather than three
+                   independent toggles, so opening an answer closes the last
+                   one instead of pushing it off the screen. Browsers without
+                   it simply keep the old behaviour of several open at once. */
+                <details className="home-faq-item" name="home-faq" key={item.qEn}>
                   <summary>
                     <span>{locale === "km" ? item.qKm : item.qEn}</span>
                     <Icon name="chevronDown" size={16} />
@@ -841,19 +863,28 @@ export default function HomePage() {
         </section>
       </div>
 
-      {/* --------------------------------------------------- final strip ---
-          Full-width CTA strip directly above footer with downward pointer notch. */}
-      <section className="home-final-strip">
-        <Link to="/events" className="home-final-strip-link">
-          <span className="home-final-strip-text">
+      {/* ====================================================== final CTA ===
+          Full-width band above the footer, meeting it on a straight edge.
+
+          It used to be one link wrapping the whole band - a hit area several
+          thousand pixels wide with one short label, where a stray click
+          anywhere in the strip navigated. Now the band is ordinary content
+          and the button is the thing you press. The ground is the warm accent
+          tint rather than a third green, so the closing ask has a colour of
+          its own instead of dissolving into the paper above it, and the jade
+          button stays the single saturated thing in the strip. */}
+      <section className="home-cta">
+        <div className="home-cta-inner">
+          <h2>
             {locale === "km"
               ? "ត្រៀមរួចរាល់ស្វែងរកព្រឹត្តិការណ៍បន្ទាប់របស់អ្នកហើយឬនៅ?"
               : "Ready to find your next event?"}
-          </span>
-          <span className="home-final-strip-arrow">
+          </h2>
+          <Link to="/events" className="btn btn-lg home-cta-btn">
+            {locale === "km" ? "រកមើលព្រឹត្តិការណ៍" : "Browse events"}
             <Icon name="arrowRight" size={16} />
-          </span>
-        </Link>
+          </Link>
+        </div>
       </section>
     </>
   );
