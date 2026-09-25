@@ -4003,8 +4003,13 @@
   }
   /* Surfaces that stay light in both themes — a QR must keep its contrast to
      scan, and the date chips sit on cover art. Re-declaring the neutral tokens
-     locally re-themes every descendant utility in one place. */
-  [data-theme="dark"] :is(.qr-frame, .ev-media .ev-date) {
+     locally re-themes every descendant utility in one place.
+
+     .rail-date is the hero rail's copy of the card chip - same white fill,
+     same text-ink - and was missing from this list, so in dark mode it drew
+     the dark theme's near-white ink on its white fill and the date all but
+     vanished from the hero card. */
+  [data-theme="dark"] :is(.qr-frame, .ev-media .ev-date, .rail-date) {
     /* Re-declaring the tokens fixes descendants that apply a colour utility… */
     --color-ink: #1d1a16;
     --color-ink-2: #4a443b;
