@@ -434,8 +434,7 @@
   .rq-head h1,
   .page-title-lockup h1,
   .checkin-head h1,
-  .about-head h1,
-  .contact-head h1,
+  .page-band h1,
   .org-apply-head h1 {
     font-size: clamp(1.85rem, 1.4rem + 1.4vw, 2.25rem);
     @apply font-extrabold leading-tight tracking-tight text-ink;
@@ -7425,7 +7424,6 @@
   /* Narrower than .container-wide: a single column of fields reads badly past
      about 70 characters, and the design caps it here. */
   max-width: 680px;
-  padding-top: 2rem;
   padding-bottom: 3rem;
 }
 
@@ -7967,90 +7965,217 @@
   padding-bottom: 3.5rem;
 }
 
-.about-head {
-  margin-bottom: 2.4rem;
+/* -------------------------------------------------------------- page band */
+/* The header band About and Contact share. The homepage hero's ground without
+   its photograph: the same near-black jade, so the two static pages read as
+   the same product as the page you arrived from rather than as documents
+   bolted onto it. No image and no blooms - these bands introduce pages of
+   reading and a form, and they should be quieter than the storefront's.
+
+   Full bleed, so it sits outside .container and measures its content with
+   .page-band-inner, which has the same edges as the navbar. */
+.page-band {
+  color: #fff;
+  background: linear-gradient(168deg, #02100a 0%, #03150f 52%, #051d14 100%);
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+  /* The same 1.75rem the container utility's pt-7 gives every other page, so
+     the title sits the same distance under the navbar here as it does on
+     Events or My Bookings. */
+  padding-top: 1.75rem;
 }
-.about-head h1 {
-  margin: 0 0 0.6rem;
+/* Same box as .hero-inner / .container, so the heading starts on the navbar's
+   left edge. */
+.page-band-inner {
+  max-width: var(--container-shell);
+  margin: 0 auto;
+  padding: 0 var(--spacing-page) 2.6rem;
 }
-.about-lead {
+/* Size, weight and tracking come from the shared page-title rule with
+   .page-head h1, so these titles match every other page's. Only the colour
+   changes, for the dark ground. */
+.page-band h1 {
+  margin: 0 0 0.8rem;
+  color: #fff;
+}
+html[lang="km"] .page-band h1 {
+  font-family: var(--font-khmer);
+  line-height: 1.4;
+  letter-spacing: normal;
+}
+.page-band-lead {
   font-size: 1.05rem;
   line-height: 1.7;
-  color: var(--color-ink-2);
+  color: rgba(255, 255, 255, 0.78);
   margin: 0;
   max-width: 62ch;
 }
-html[lang="km"] .about-lead {
+html[lang="km"] .page-band-lead {
   line-height: 1.95;
 }
 
-.about-section {
-  margin-bottom: 2.6rem;
+/* The figures, set the way .hero-stats sets them: a large tabular number over
+   a quiet label, divided by hairlines. The label comes first in the source
+   because it is the <dt>; column-reverse puts the number on top visually. */
+.about-band-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 0;
+  margin: 2.2rem 0 0;
+  padding-top: 1.3rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
-.about-section > h2 {
-  font-size: 1.05rem;
-  letter-spacing: -0.01em;
-  margin: 0 0 1.1rem;
-  /* A rule under the heading rather than a card around the section. It
-     separates without boxing, which is what keeps the page reading as one
-     document instead of a stack of panels. */
-  padding-bottom: 0.55rem;
-  border-bottom: 1px solid var(--color-line);
+.about-band-stats > div {
+  display: flex;
+  flex-direction: column-reverse;
+  padding-right: 2.2rem;
 }
-.about-body {
+.about-band-stats > div + div {
+  padding-left: 2.2rem;
+  border-left: 1px solid rgba(255, 255, 255, 0.14);
+}
+.about-band-stats dt {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.62);
+}
+.about-band-stats dd {
   margin: 0;
-  max-width: 68ch;
-  color: var(--color-ink-2);
+  font-size: 1.7rem;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+}
+@media (max-width: 560px) {
+  .about-band-stats {
+    gap: 1rem 1.8rem;
+  }
+  .about-band-stats > div,
+  .about-band-stats > div + div {
+    padding: 0;
+    border-left: 0;
+  }
+}
+
+/* -------------------------------------------------------------- about rows */
+/*
+ * Heading on the left, content on the right, a hairline between rows.
+ *
+ * This is what spends the shell's width now that the page is full width: the
+ * left column holds a heading and one sentence of framing, and the right holds
+ * the list at a readable measure. Below 980px it is one column, heading first.
+ */
+.about-row {
+  display: grid;
+  gap: 1.2rem;
+  padding: 2.4rem 0;
+  border-top: 1px solid var(--color-line);
+}
+.about-row:first-child {
+  border-top: 0;
+  padding-top: 0.6rem;
+}
+@media (min-width: 980px) {
+  .about-row {
+    grid-template-columns: minmax(0, 320px) minmax(0, 1fr);
+    gap: 1.5rem 4rem;
+  }
+  /* The heading keeps you company down a long timeline, so the organiser
+     column still says what it is about by step five. Offset by the sticky
+     navbar's height. */
+  .about-row-head {
+    position: sticky;
+    top: 5.5rem;
+    align-self: start;
+  }
+}
+.about-row-head h2 {
+  font-size: 1.35rem;
+  font-weight: 800;
+  line-height: 1.3;
+  letter-spacing: -0.015em;
+  margin: 0 0 0.45rem;
+}
+.about-row-head > p {
+  margin: 0;
+  color: var(--color-muted);
+  max-width: 38ch;
+}
+.about-row-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.9rem;
+  font-weight: 650;
+}
+.about-row-link .icon {
+  transition: transform 0.18s ease;
+}
+.about-row-link:hover .icon {
+  transform: translateX(3px);
 }
 
 /* ------------------------------------------------------------------ steps */
 /* Numbered, because the steps are sequential - you cannot show a QR for a
    ticket you have not paid for. The alternative a page like this usually
    reaches for, three icon tiles in a row, says the opposite: that these are
-   independent features you may take in any order. */
+   independent features you may take in any order. One column, joined by a
+   rail, so the order is something you can see as well as read. */
 .about-steps {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: grid;
-  gap: 1.5rem 2.5rem;
-}
-/* Two abreast on a wide screen. The order still reads left-to-right then down,
-   which is how a numbered list is scanned - and the numerals are there to
-   settle it if the eye takes the columns the other way. Below this it is one
-   column, where a five-step list is simply five rows. */
-@media (min-width: 980px) {
-  .about-steps {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 .about-step {
+  --step-size: 2.25rem;
+  position: relative;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 0 1rem;
+  grid-template-columns: var(--step-size) minmax(0, 1fr);
+  gap: 0 1.1rem;
   align-items: start;
+  padding-bottom: 1.6rem;
+}
+.about-step:last-child {
+  padding-bottom: 0;
+}
+/* The rail, from under one numeral to the top of the next. Drawn on the step,
+   not the list, so it stops at the last numeral instead of running past it. */
+.about-step:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: calc(var(--step-size) / 2);
+  top: calc(var(--step-size) + 0.35rem);
+  bottom: 0.35rem;
+  width: 1px;
+  background: var(--color-line);
 }
 /* The numeral is the ornament this page gets, and the only one. Set in the
-   display face, large and in the warm accent - it is decorative, which is why
-   it is aria-hidden and why <ol> is still what carries the order. */
+   display face in the warm accent - it is decorative, which is why it is
+   aria-hidden and why <ol> is still what carries the order. Moul has no
+   lining numerals worth setting at this size, so it keeps the Latin face in
+   both locales, the way .nav-brand-text does for the wordmark. */
 .about-step-n {
-  font-family: var(--font-display);
-  font-size: 1.6rem;
-  line-height: 1;
+  display: grid;
+  place-items: center;
+  width: var(--step-size);
+  height: var(--step-size);
+  border-radius: 999px;
+  background: var(--color-gold-100);
   color: var(--color-gold-600);
-  min-width: 1.4rem;
-  /* Optical: the numeral's cap height sits above the heading's, so it needs
-     nudging down to share a baseline with the first line of text. */
-  padding-top: 0.1rem;
-}
-html[lang="km"] .about-step-n {
-  /* Moul has no lining numerals worth setting at this size, and the Latin
-     digits are what the numeral is - so it keeps the Latin face in both
-     locales, the way .nav-brand-text does for the wordmark. */
   font-family: var(--font-display);
+  font-size: 1.1rem;
+  line-height: 1;
+}
+[data-theme="dark"] .about-step-n {
+  color: var(--color-gold-500);
+}
+.about-step-body {
+  /* Optical: lines the heading's first line up with the circle's centre. */
+  padding-top: 0.3rem;
 }
 .about-step-body h3 {
-  font-size: 0.98rem;
+  font-size: 1rem;
   margin: 0 0 0.25rem;
 }
 .about-step-body p {
@@ -8062,22 +8187,15 @@ html[lang="km"] .about-step-n {
 /* ------------------------------------------------------------------ facts */
 .about-facts {
   display: grid;
-  /* Four across at full width, stepping down rather than stretching. Each cell
-     is a label and two short lines, so four of them read as a row of facts;
-     two of them stretched across 1360px read as a page with a hole in it. */
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  /* As many across as fit at a width a label and two short lines can use.
+     Stretched wider than that, a fact reads as a page with a hole in it. */
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 1.3rem 2rem;
   margin: 0;
 }
-@media (max-width: 1080px) {
-  .about-facts {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-@media (max-width: 620px) {
-  .about-facts {
-    grid-template-columns: minmax(0, 1fr);
-  }
+.about-fact {
+  padding-top: 0.9rem;
+  border-top: 2px solid var(--color-ink);
 }
 .about-fact dt {
   font-size: var(--text-tiny);
@@ -8086,6 +8204,10 @@ html[lang="km"] .about-step-n {
   letter-spacing: 0.05em;
   color: var(--color-muted);
   margin-bottom: 0.3rem;
+}
+html[lang="km"] .about-fact dt {
+  text-transform: none;
+  letter-spacing: 0;
 }
 .about-fact dd {
   margin: 0;
@@ -8122,6 +8244,7 @@ html[lang="km"] .about-step-n {
   align-items: center;
   justify-content: space-between;
   gap: 1.2rem;
+  margin-top: 1rem;
   padding: 1.4rem 1.5rem;
   border-radius: var(--radius-card);
   background: var(--color-tint);
@@ -8141,27 +8264,20 @@ html[lang="km"] .about-step-n {
 /* The panel spans the shell now, so the text and the button would otherwise
    sit at opposite ends of 1360px with a gulf between them. Capping the text
    block keeps the pair reading as one invitation. */
-.about-contact > div {
+.about-contact > div:first-child {
   min-width: 0;
   max-width: 70ch;
+}
+.about-contact-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
 }
 
 /* ---------------------------------------------------------------- contact */
 .contact {
   padding-bottom: 3.5rem;
 }
-.contact-head {
-  margin-bottom: 1.8rem;
-}
-.contact-head h1 {
-  margin: 0 0 0.5rem;
-}
-.contact-head p {
-  margin: 0;
-  max-width: 64ch;
-  color: var(--color-ink-2);
-}
-
 /* The form is the page; the aside is context for it. Not .split, which is
    sized for a 340px booking rail - this one wants a wider second column
    because the routing list in it is full sentences, not figures. */
@@ -8410,6 +8526,136 @@ html[lang="km"] .contact-card h2 {
   font-size: var(--text-small);
   line-height: 1.6;
   color: var(--color-muted);
+}
+
+/* ---------------------------------------------------------- contact topics */
+/* A fieldset only for its semantics - the legend names the group for a screen
+   reader. The browser's own border, padding and min-width all go. */
+.contact-topics {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+.contact-topics > legend {
+  padding: 0;
+  margin-bottom: 0.4rem;
+}
+.contact-topic-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.5rem;
+}
+/* The whole row is the hit area. The radio itself is visually hidden but kept
+   in the tab order, so arrow keys still move the selection and the focus ring
+   is drawn on the label through :has(). */
+.contact-topic {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-ui);
+  background: var(--color-surface);
+  color: var(--color-ink-2);
+  font-size: var(--text-small);
+  font-weight: 600;
+  line-height: 1.35;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+.contact-topic input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+.contact-topic > .icon {
+  flex: none;
+  color: var(--color-muted);
+}
+.contact-topic:hover {
+  border-color: var(--color-ink-2);
+}
+.contact-topic:has(input:checked) {
+  border-color: var(--color-brand-600);
+  background: var(--color-tint);
+  color: var(--color-on-tint);
+  box-shadow: inset 0 0 0 1px var(--color-brand-600);
+}
+.contact-topic:has(input:checked) > .icon {
+  color: var(--color-link);
+}
+.contact-topic:has(input:focus-visible) {
+  box-shadow:
+    inset 0 0 0 1px var(--color-brand-600),
+    var(--shadow-focus);
+}
+@media (prefers-reduced-motion: reduce) {
+  .contact-topic {
+    transition: none;
+  }
+}
+
+/* ------------------------------------------------------------- contact faq */
+/* Clear of the sticky navbar when /contact#faq scrolls it into view. */
+#faq {
+  scroll-margin-top: 5.5rem;
+}
+.contact-faq details {
+  border-bottom: 1px solid var(--color-line-2);
+}
+.contact-faq details:last-child {
+  border-bottom: 0;
+}
+.contact-faq summary {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.6rem 0;
+  font-size: var(--text-small);
+  font-weight: 650;
+  line-height: 1.45;
+  color: var(--color-ink);
+  cursor: pointer;
+  list-style: none;
+}
+.contact-faq details:first-child summary {
+  padding-top: 0;
+}
+.contact-faq summary::-webkit-details-marker {
+  display: none;
+}
+.contact-faq summary:hover {
+  color: var(--color-link);
+}
+.contact-faq summary > .icon {
+  flex: none;
+  margin-top: 0.1rem;
+  color: var(--color-muted);
+  transition: transform 0.18s ease;
+}
+.contact-faq details[open] summary > .icon {
+  transform: rotate(180deg);
+}
+.contact-faq details p {
+  margin: 0 0 0.8rem;
+  font-size: var(--text-small);
+  line-height: 1.6;
+  color: var(--color-ink-2);
+}
+html[lang="km"] .contact-faq details p {
+  line-height: 1.85;
+}
+@media (prefers-reduced-motion: reduce) {
+  .contact-faq summary > .icon {
+    transition: none;
+  }
 }
 
 /* ------------------------------------------------------------ contact sent */
@@ -8856,9 +9102,6 @@ html[lang="km"] .contact-card h2 {
  * stays sticky on the right for continuous visual reference.
  */
 @media (min-width: 901px) {
-  .events-page {
-    padding-top: 1.1rem;
-  }
   .events-chrome {
     @apply mb-4;
   }
