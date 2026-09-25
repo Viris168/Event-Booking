@@ -7911,6 +7911,37 @@
 }
 
 /*
+ * The personalised "Continue as <name>" button, framed to match.
+ *
+ * On the deployed site GIS shows it in the iframe it otherwise keeps at
+ * `height: 0px`, so a frame with any other height is the personalised one -
+ * matched on that inline style rather than on Google's minified classes. Its
+ * contents are Google's and out of reach; only the box around it is ours.
+ *
+ * The host becomes the button: 48px and the UI radius like .btn-lg, with our
+ * hairline border, filled with the same colour as Google's button in each
+ * theme (white for `outline`, #202124 for `filled_black`) so the frame's edges
+ * disappear into it. The clip takes the frame's own 1px grey edge off, and 4px
+ * off the bottom, where the frame is taller than the button inside it: that
+ * strip is white in both themes, invisible on light and a bright line under
+ * the dark button. The white square behind the G in dark mode is Google's
+ * artwork and stays.
+ */
+.gsi-host:has(iframe:not([style*="height: 0px"])) {
+  height: 3rem;
+  align-items: center;
+  background: #fff;
+  border: 1px solid var(--color-line);
+}
+:root[data-theme="dark"] .gsi-host:has(iframe:not([style*="height: 0px"])) {
+  background: #202124;
+  border-color: #3c4043;
+}
+.gsi-host iframe:not([style*="height: 0px"]) {
+  clip-path: inset(1px 1px 4px 1px round 6px);
+}
+
+/*
  * Dark mode only: drop the white plate behind the G.
  *
  * Google's dark button puts the mark on a 36px white chip rounded 3px on its
