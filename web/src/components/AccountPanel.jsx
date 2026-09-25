@@ -235,6 +235,18 @@ export default function AccountPanel({ open, onClose }) {
 
         {view === "menu" && user && (
           <footer className="acct-foot">
+            {/* The way out, down where the thumb already is. The close button
+                sits in the top corner, which on a tall phone is the one place
+                a one-handed reader cannot reach. Same action as it - on the
+                menu there is nowhere further back to go than the page. */}
+            <button
+              type="button"
+              className="acct-btn acct-btn-back"
+              onClick={beginClose}
+            >
+              <Icon name="arrowLeft" size={15} />
+              {km ? "ត្រឡប់ក្រោយ" : "Back"}
+            </button>
             <button
               type="button"
               className="acct-btn acct-btn-signout"
@@ -1532,15 +1544,48 @@ button.acct-row:focus-visible .acct-row-chev { color: var(--color-ink-2);
 /* Signing out ends the session rather than configuring anything, so it is a
    button, not one more row in a settings list. Pinned cleanly to the foot of
    the panel as a fixed footer so it stays accessible without having to scroll. */
-.acct-foot { flex: none;
+/* Back and Sign out side by side, equal widths, back first: the everyday
+   action leads and the one that ends the session is at the far end. The two
+   are told apart by colour as well as position, and signing out still stops
+   at a confirm dialog, so a missed tap on either costs nothing. */
+.acct-foot { flex: none; display: grid; grid-template-columns: 1fr 1fr;
+             gap: var(--acct-3);
              padding: var(--acct-3) var(--acct-5) max(var(--acct-4), env(safe-area-inset-bottom, 0px));
              border-top: 1px solid var(--color-line);
              background: var(--color-page);
              box-shadow: 0 -4px 16px rgb(0 0 0 / .04); }
-.acct-btn-signout { width: 100%; background: var(--color-surface);
-                    border-color: var(--color-line); color: var(--color-danger); }
-.acct-btn-signout:hover { background: var(--color-danger-soft);
-                          border-color: var(--color-danger); }
+/* Tinted, not white. A surface fill with a --color-line border sat on the
+   paper footer at almost no contrast - the red label was the only thing
+   saying there was a button there at all. The danger tint gives it a shape
+   of its own and says what kind of action it is before it is read; the
+   border is the danger tone thinned, so the edge is visible without the
+   whole control shouting. Still not a solid red fill: this is a routine
+   action, and the confirm dialog behind it is where the weight belongs.
+   Every tone here is a theme token, so dark mode follows. */
+/* Neutral, but with an edge that holds on the paper footer - the stock
+   .acct-btn-quiet (transparent, --color-line border) disappears there the
+   same way the old sign-out button did. */
+.acct-btn-back { min-height: 44px; font-size: .9375rem;
+                 background: var(--color-surface);
+                 border-color: color-mix(in oklab, var(--color-ink) 18%, transparent);
+                 color: var(--color-ink-2);
+                 transition: background .15s, border-color .15s, transform .06s; }
+.acct-btn-back:hover { background: var(--color-surface-2);
+                       border-color: color-mix(in oklab, var(--color-ink) 30%, transparent);
+                       color: var(--color-ink); }
+.acct-btn-back:active { transform: translateY(1px); }
+.acct-btn-back:focus-visible { outline: 2px solid var(--color-brand-500);
+                               outline-offset: 2px; }
+.acct-btn-signout { min-height: 44px; font-size: .9375rem;
+                    background: var(--color-danger-soft);
+                    border-color: color-mix(in oklab, var(--color-danger) 32%, transparent);
+                    color: var(--color-danger);
+                    transition: background .15s, border-color .15s, transform .06s; }
+.acct-btn-signout:hover { background: color-mix(in oklab, var(--color-danger) 8%, var(--color-danger-soft));
+                          border-color: color-mix(in oklab, var(--color-danger) 60%, transparent); }
+.acct-btn-signout:active { transform: translateY(1px); }
+.acct-btn-signout:focus-visible { outline: 2px solid var(--color-danger);
+                                  outline-offset: 2px; }
 
 /* How you sign in, when there is no password to change. */
 .acct-signin { display: flex; align-items: center; gap: var(--acct-3);

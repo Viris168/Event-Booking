@@ -6096,13 +6096,80 @@
   }
 }
 
-/* ---------------------------------------------------------- theme switch */
-/* Light/dark switches run as view transitions (lib/viewTransition.js); this sets the
-   pace of the page-wide crossfade (the browser default is a quick 250ms). */
+/* ------------------------------------------------ theme / language switch */
+/* Light/dark and EN/KM switches run as view transitions (lib/viewTransition.js);
+   this sets the pace of the page-wide crossfade (the browser default is a quick
+   250ms). */
 ::view-transition-old(root),
 ::view-transition-new(root) {
   animation-duration: 400ms;
   animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* The language switch fades THROUGH rather than across. A theme switch keeps
+   every box where it was, so the two snapshots line up and a crossfade reads
+   as one page changing colour. A language switch does not: Khmer runs taller,
+   every line below the first moves, and a crossfade shows both languages at
+   once, offset from each other - a page of double-printed text for the middle
+   of the fade. Here the old page is gone before the new one arrives, so the
+   two layouts never share a frame. Short out, slightly longer in: the eye
+   should land on the new page, not watch the old one leave. */
+:root[data-transition="locale"]::view-transition-old(root) {
+  animation: vt-fade-out 140ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+:root[data-transition="locale"]::view-transition-new(root) {
+  animation: vt-fade-in 260ms cubic-bezier(0.16, 1, 0.3, 1) 110ms both;
+}
+/* ...except the navbar. Fading the whole page through would take the dark
+   bar down toward the paper colour and back, a flash across the top of the
+   screen. Named for the length of a language switch only, it becomes its own
+   layer: its ground and height are the same in both languages, so a plain
+   crossfade leaves the bar solid and only its labels dissolve in place. The
+   theme switch never sets the attribute, so it is untouched. */
+:root[data-transition="locale"] .nav {
+  view-transition-name: site-nav;
+}
+:root[data-transition="locale"]::view-transition-old(site-nav),
+:root[data-transition="locale"]::view-transition-new(site-nav) {
+  animation-duration: 300ms;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+/* ...and the account panel, when the switch is made from inside it. Unnamed,
+   the panel belongs to the page layer: it would fade out and back in under
+   the reader's own click, and the navbar's layer - drawn above the page -
+   would land ON TOP of the panel and its scrim for the length of the fade.
+   Named, both get layers of their own, and being later in paint order (a
+   z-60 portal after the z-40 nav) they stack above the navbar as they do
+   outside a transition. They then change in place with no animation at all:
+   the panel is the control that was just pressed, and it should answer the
+   way a settings screen does - the words change, the surface does not move.
+   Only the page underneath the scrim fades through. */
+:root[data-transition="locale"] .acct-overlay {
+  view-transition-name: acct-scrim;
+}
+:root[data-transition="locale"] .acct-panel {
+  view-transition-name: acct-panel;
+}
+:root[data-transition="locale"]::view-transition-old(acct-scrim),
+:root[data-transition="locale"]::view-transition-old(acct-panel) {
+  display: none;
+}
+:root[data-transition="locale"]::view-transition-new(acct-scrim),
+:root[data-transition="locale"]::view-transition-new(acct-panel),
+:root[data-transition="locale"]::view-transition-group(acct-scrim),
+:root[data-transition="locale"]::view-transition-group(acct-panel) {
+  animation: none;
+}
+@keyframes vt-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes vt-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
 }
 
 /* ------------------------------------------------------- reduced motion */
