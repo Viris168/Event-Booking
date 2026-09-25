@@ -1,5 +1,6 @@
 import { useDocumentTitle } from "../../lib/useDocumentTitle.js";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Icon from "../../components/Icon.jsx";
 import { Field } from "../../components/ui.jsx";
 import { Skeleton, SkeletonRegion } from "../../components/Skeleton.jsx";
@@ -126,6 +127,15 @@ export default function CheckInPage() {
   // somebody else's party by naming it.
   const [party, setParty] = useState(null);
   const [partyPayload, setPartyPayload] = useState(null);
+
+  // Whether the latest verdict is showing full screen. Raised on every new
+  // result or error, lowered by a tap (or the timer, for a clean admit).
+  const [popup, setPopup] = useState(false);
+  useEffect(() => {
+    setPopup(!!(last || error));
+  }, [last, error]);
+  // Stable, so the popup's auto-close timer is not restarted by every render.
+  const closePopup = useCallback(() => setPopup(false), []);
 
   const km = locale === "km";
 
@@ -343,64 +353,19 @@ export default function CheckInPage() {
 
       <div className="split">
         <div className="stack">
-          {/* Verdict FIRST. A steward scans and looks up: the answer has to
-              be the top of the column, not below a camera viewport. The
-              earlier order put it ~600px down, so a scan looked like it did
-              nothing at all. */}
-          {error && (
-            <div className="scan-result warn">
-              <span className="icon" aria-hidden="true">
-                <Icon name="alert" size={36} strokeWidth={2} />
-              </span>
-              <div>
-                <b>{km ? "បញ្ហាឧបករណ៍ស្កេន" : "Scanner problem"}</b>
-                <span>{error}</span>
-              </div>
-            </div>
-          )}
+          {/* The verdict is a full-screen popup, not a card in the column.
+              On a phone a card sits under the steward's thumb or above the
+              fold, and a glance at the door has to be enough. A clean admit clears itself so the queue
+              keeps moving; anything else waits for a tap, because a refusal
+              that vanishes on its own is a refusal nobody saw. Suppressed
+              while the group dialog is up: that dialog IS the verdict. */}
+          <VerdictPopup
+            result={popup && !party ? last : null}
+            error={popup && !party && !last ? error : null}
+            tone={tone}
+            onClose={closePopup}
+          />
 
-          {last && (
-            <div className={`scan-result ${tone}`}>
-              <span className="icon" aria-hidden="true">
-                <Icon name={ICON[tone]} size={36} strokeWidth={2} />
-              </span>
-              <div>
-                <b>{headlineFor(last, locale)}</b>
-
-                {last.ticket && (
-                  <span>
-                    {last.ticket.buyer_name} · {last.ticket.booking_ref} ·{" "}
-                    {last.ticket.tier_name}
-                    {last.ticket.seat_location
-                      ? ` · ${last.ticket.seat_location}`
-                      : ""}
-                  </span>
-                )}
-
-                {/* The rest of the party. A steward scanning the third of four
-                    codes otherwise has no idea anyone else is still outside. */}
-                {last.booking && last.booking.total > 1 && (
-                  <span>
-                    {km ? "ក្រុមនេះ" : "This booking"}:{" "}
-                    {last.booking.checked_in}/{last.booking.total}{" "}
-                    {km ? "បានចូល" : "admitted"}
-                    {last.booking.remaining > 0 &&
-                      ` · ${last.booking.remaining} ${km ? "នៅសល់" : "still outside"}`}
-                  </span>
-                )}
-
-                {last.outcome === "ALREADY_CHECKED_IN" &&
-                  last.previous_check_in_at && (
-                    <span>
-                      {km ? "ស្កេនដំបូង" : "First scanned"}{" "}
-                      {dateTime(last.previous_check_in_at)}
-                    </span>
-                  )}
-
-                {!last.ticket && <span>{last.message}</span>}
-              </div>
-            </div>
-          )}
           {/* The party is a MODAL, not a panel further down the column.
               Admitting four people off one code is a judgement, and a judgement
               should interrupt — an inline card competes with the scanner and
@@ -420,6 +385,8 @@ export default function CheckInPage() {
               setParty(null);
               setPartyPayload(null);
               setError(null);
+              // Otherwise the "pick who is here" preview pops up behind it.
+              setPopup(false);
             }}
           />
 
@@ -602,6 +569,110 @@ export default function CheckInPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+/** The lines of a scan verdict, shared by the inline card and the popup. */
+function VerdictBody({ result, tone }) {
+  const { locale, dateTime } = useLocale();
+  const km = locale === "km";
+  return (
+    <>
+      <span className="icon" aria-hidden="true">
+        <Icon name={ICON[tone]} size={36} strokeWidth={2} />
+      </span>
+      <div>
+        <b>{headlineFor(result, locale)}</b>
+
+        {result.ticket && (
+          <span>
+            {result.ticket.buyer_name} · {result.ticket.booking_ref} ·{" "}
+            {result.ticket.tier_name}
+            {result.ticket.seat_location
+              ? ` · ${result.ticket.seat_location}`
+              : ""}
+          </span>
+        )}
+
+        {/* The rest of the party. A steward scanning the third of four
+            codes otherwise has no idea anyone else is still outside. */}
+        {result.booking && result.booking.total > 1 && (
+          <span>
+            {km ? "ក្រុមនេះ" : "This booking"}: {result.booking.checked_in}/
+            {result.booking.total} {km ? "បានចូល" : "admitted"}
+            {result.booking.remaining > 0 &&
+              ` · ${result.booking.remaining} ${km ? "នៅសល់" : "still outside"}`}
+          </span>
+        )}
+
+        {result.outcome === "ALREADY_CHECKED_IN" &&
+          result.previous_check_in_at && (
+            <span>
+              {km ? "ស្កេនដំបូង" : "First scanned"}{" "}
+              {dateTime(result.previous_check_in_at)}
+            </span>
+          )}
+
+        {!result.ticket && <span>{result.message}</span>}
+      </div>
+    </>
+  );
+}
+
+/** How long a clean admit stays up before the scanner is back in view. */
+const OK_POPUP_MS = 2200;
+
+function VerdictPopup({ result, error, tone, onClose }) {
+  const { locale } = useLocale();
+  const km = locale === "km";
+  const open = !!(result || error);
+  const autoClose = !!result && tone === "ok";
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKey = (e) => {
+      if (e.key === "Escape" || e.key === "Enter") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    const timer = autoClose ? setTimeout(onClose, OK_POPUP_MS) : null;
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      if (timer) clearTimeout(timer);
+    };
+  }, [open, autoClose, onClose, result, error]);
+
+  if (!open) return null;
+
+  return createPortal(
+    <div
+      className="scan-popup-overlay"
+      role="alertdialog"
+      aria-modal="true"
+      aria-live="assertive"
+      onClick={onClose}
+    >
+      <div
+        className={`scan-result scan-popup ${result ? tone : "warn"}${autoClose ? " auto" : ""}`}
+      >
+        {result ? (
+          <VerdictBody result={result} tone={tone} />
+        ) : (
+          <>
+            <span className="icon" aria-hidden="true">
+              <Icon name="alert" size={36} strokeWidth={2} />
+            </span>
+            <div>
+              <b>{km ? "បញ្ហាឧបករណ៍ស្កេន" : "Scanner problem"}</b>
+              <span>{error}</span>
+            </div>
+          </>
+        )}
+        <button type="button" className="scan-popup-next" onClick={onClose}>
+          {km ? "ស្កេនបន្ទាប់" : "Next scan"}
+        </button>
+      </div>
+    </div>,
+    document.body,
   );
 }
 
