@@ -40,7 +40,15 @@ export const RQ_CSS = `
   --rq-1: .25rem; --rq-2: .5rem; --rq-3: .75rem; --rq-4: 1rem;
   --rq-5: 1.5rem; --rq-6: 2rem;
   max-width: var(--container-shell, 1360px); margin: 0 auto;
-  padding: var(--spacing-page, 1.15rem); color: var(--color-ink);
+  /* Vertical padding matches .container (pt-7 / pb-16), NOT --spacing-page.
+     Every other admin and organizer screen is a .container, which pads
+     1.75rem at the top; these two were the only ones padding 1.15rem all
+     round, so the title lockup sat ~10px higher than on every tab either side
+     of them and the header visibly jumped when you switched tabs. Horizontal
+     padding stays --spacing-page, which is what .container's px-page uses, so
+     the left edge still lines up with the navbar and footer. */
+  padding: 1.75rem var(--spacing-page, 1.15rem) 4rem;
+  color: var(--color-ink);
 }
 
 .rq-head { display: flex; gap: var(--rq-4); align-items: flex-end;
