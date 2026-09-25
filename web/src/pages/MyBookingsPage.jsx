@@ -528,6 +528,9 @@ export default function MyBookingsPage() {
    *
    * An event still loading has no date yet; those sort as upcoming rather than
    * dropping into the archive and appearing to vanish.
+   *
+   * Within each half, bookings that need nothing more from you (cancelled,
+   * expired, or every ticket already scanned) sink below the live ones.
    */
   const { upcoming, past } = useMemo(() => {
     const now = Date.now();
@@ -536,13 +539,15 @@ export default function MyBookingsPage() {
     for (const b of filtered) {
       const startsAt = apiEvents[b.event_id]?.starts_at;
       const ts = startsAt ? new Date(startsAt).getTime() : null;
-      if (ts != null && ts < now) done.push([b, ts]);
-      else up.push([b, ts ?? Number.MAX_SAFE_INTEGER]);
+      const inactive =
+        CLOSED.includes(b.state) || Boolean(ticketCounts[b.id]?.allUsed);
+      if (ts != null && ts < now) done.push([b, ts, inactive]);
+      else up.push([b, ts ?? Number.MAX_SAFE_INTEGER, inactive]);
     }
-    up.sort((a, z) => a[1] - z[1]);
-    done.sort((a, z) => z[1] - a[1]);
+    up.sort((a, z) => a[2] - z[2] || a[1] - z[1]);
+    done.sort((a, z) => a[2] - z[2] || z[1] - a[1]);
     return { upcoming: up.map(([b]) => b), past: done.map(([b]) => b) };
-  }, [filtered, apiEvents]);
+  }, [filtered, apiEvents, ticketCounts]);
 
   // Signed out: nothing to fetch, and an empty "no bookings" state would be a
   // lie — the bookings may well exist, just not for an anonymous caller.
