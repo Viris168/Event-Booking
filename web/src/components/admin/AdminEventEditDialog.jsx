@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import FormDialog from '../FormDialog.jsx'
-import { Alert, Field } from '../ui.jsx'
+import { Alert, DateInput, Field } from '../ui.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
 import { CATEGORIES } from '../../lib/categories.js'
 
@@ -193,24 +193,21 @@ export default function AdminEventEditDialog({ open, event, busy, error, onSave,
             </Field>
 
             <Field label={km ? 'ពេលចាប់ផ្ដើម' : 'Starts'}>
-              <input
-                className="input"
+              <DateInput
                 type="datetime-local"
                 value={form.starts_at}
                 onChange={(e) => set('starts_at', e.target.value)}
               />
             </Field>
             <Field label={km ? 'ពេលបើកទ្វារ' : 'Doors open'}>
-              <input
-                className="input"
+              <DateInput
                 type="datetime-local"
                 value={form.doors_open_at}
                 onChange={(e) => set('doors_open_at', e.target.value)}
               />
             </Field>
             <Field label={km ? 'ការលក់បើក' : 'Sales open'}>
-              <input
-                className="input"
+              <DateInput
                 type="datetime-local"
                 value={form.sales_open_at}
                 onChange={(e) => set('sales_open_at', e.target.value)}
@@ -221,8 +218,7 @@ export default function AdminEventEditDialog({ open, event, busy, error, onSave,
               className="span-2"
               error={scheduleError}
             >
-              <input
-                className="input"
+              <DateInput
                 type="datetime-local"
                 value={form.sales_close_at}
                 onChange={(e) => set('sales_close_at', e.target.value)}

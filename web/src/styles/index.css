@@ -4073,6 +4073,95 @@
     -webkit-appearance: none;
     appearance: none;
   }
+
+  /* iOS Safari zooms the whole page in when a field under 16px takes focus,
+     and leaves it zoomed after. Every field here is 15px, so tapping search,
+     login or a date filter on an iPhone threw the layout sideways. The common
+     cure - maximum-scale=1 in the viewport meta - also stops readers who need
+     to pinch-zoom from zooming at all, so instead the fields go to 16px on
+     touch screens only. Desktop, where there is no zoom-on-focus, keeps its
+     15px. The custom select's hidden native <select> is included because it
+     is the element that actually takes focus on a phone. */
+  @media (hover: none) and (pointer: coarse) {
+    :is(.input, .select, .textarea, .custom-select-hidden),
+    .searchbar :is(.input, .select),
+    .nav-search input {
+      font-size: 16px;
+    }
+  }
+
+  /* ------------------------------------------------------- date fields ---
+     <DateInput> in ui.jsx - the component comment has the why. The native
+     input stays underneath, so every browser still opens its own picker; what
+     changes is only how the closed field is drawn, which is what differed.
+
+     A field in a grid or flex row must be allowed to shrink below its content
+     width. Without min-width: 0 on the wrapper, the field and the input, iOS
+     Safari's intrinsic date width wins over the column and the field spills
+     into its neighbour. */
+  .field {
+    min-width: 0;
+  }
+  .date-input {
+    @apply relative block min-w-0;
+  }
+  .date-input .input {
+    @apply block w-full min-w-0 text-left;
+    /* Drops iOS Safari's own rounded, centred, fixed-width rendering. */
+    -webkit-appearance: none;
+    appearance: none;
+    padding-right: 2.4rem;
+  }
+  /* iOS centres the chosen date and gives the value box no height when it is
+     empty, so an empty field came out shorter than its neighbours. */
+  .date-input .input::-webkit-date-and-time-value {
+    margin: 0;
+    min-height: 1.6em;
+    text-align: left;
+  }
+  /* Chrome and Edge draw their own picker button; stretched invisibly over our
+     icon, it keeps the icon clickable on desktop without a second glyph. */
+  .date-input .input::-webkit-calendar-picker-indicator {
+    position: absolute;
+    inset-block: 0;
+    right: 0;
+    width: 2.6rem;
+    height: auto;
+    margin: 0;
+    padding: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+  .date-input-icon {
+    @apply pointer-events-none absolute right-[0.8rem] top-1/2 -translate-y-1/2 text-muted;
+  }
+  /* Firefox draws a calendar button of its own that cannot be hidden, so once
+     the field has a value ours would be the second one. While it is empty the
+     rule below paints the field's text transparent, which takes Firefox's
+     button with it - that is the one state where ours is needed. */
+  @supports (-moz-appearance: none) {
+    .date-input:not(.is-empty) .date-input-icon {
+      display: none;
+    }
+  }
+
+  /* Empty and not being edited: hide whatever the browser prints for "no
+     value" (Chrome/Firefox's mm/dd/yyyy mask in the reader's SYSTEM locale,
+     not the page's) and show our hint in its place, in the page's language.
+     Focus hands it straight back to the browser - segments, wheel, calendar -
+     so editing is exactly native. */
+  .date-input.is-empty .input:not(:focus) {
+    color: transparent;
+  }
+  .date-input.is-empty .input:not(:focus)::-webkit-datetime-edit {
+    color: transparent;
+  }
+  .date-input-hint {
+    @apply pointer-events-none absolute left-[calc(0.7rem+1px)] right-[2.4rem] top-1/2 -translate-y-1/2 truncate text-placeholder;
+  }
+  .date-input.is-empty .input:focus ~ .date-input-hint {
+    display: none;
+  }
   .hint {
     @apply text-[0.76rem] text-muted;
   }

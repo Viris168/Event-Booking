@@ -415,7 +415,7 @@ export default function CheckInPage() {
                   </SkeletonRegion>
                 ) : (
                   <select
-                    className="input"
+                    className="select"
                     value={eventId}
                     onChange={(e) => setEventId(e.target.value)}
                   >

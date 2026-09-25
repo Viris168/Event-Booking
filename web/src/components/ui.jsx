@@ -178,6 +178,66 @@ export function Field({
 }
 
 /** Text input with a leading icon and a clear button once it has a value. */
+/**
+ * A date or date-and-time field that looks and behaves the same everywhere.
+ *
+ * <p>The native control is kept - it is what brings up the phone's own wheel
+ * or the desktop calendar - but every browser draws it differently, and iOS
+ * Safari draws it worst:
+ * <ul>
+ *   <li>it gives the field an intrinsic minimum width that ignores its column,
+ *       so two side by side overflow into each other and off the screen;
+ *   <li>an empty one is a blank box - no placeholder, no icon, nothing saying
+ *       it is a date at all;
+ *   <li>a filled one centres its value, unlike every other field.
+ * </ul>
+ * Desktop Chrome and Firefox have the opposite problem: an empty field prints
+ * a "mm/dd/yyyy" mask in the reader's system locale, whatever language the
+ * page is in.
+ *
+ * <p>So the field is drawn by us: our calendar icon on the right, and our own
+ * placeholder while it is empty - hidden the moment it is focused, so the
+ * browser's own editing (segments, wheel, calendar) takes over untouched.
+ * The value and `onChange` are the native input's own, so it is a drop-in
+ * replacement for `<input className="input" type="date">`.
+ */
+export function DateInput({
+  type = "date",
+  value,
+  placeholder,
+  className = "",
+  ...rest
+}) {
+  const { locale } = useLocale();
+  const km = locale === "km";
+  const hint =
+    placeholder ??
+    (type === "date"
+      ? km
+        ? "ជ្រើសរើសថ្ងៃ"
+        : "Select date"
+      : km
+        ? "ជ្រើសរើសថ្ងៃ និងម៉ោង"
+        : "Select date & time");
+  const empty = !value;
+  return (
+    <span className={`date-input${empty ? " is-empty" : ""}`}>
+      <input
+        className={`input ${className}`}
+        type={type}
+        value={value ?? ""}
+        {...rest}
+      />
+      <Icon name="calendar" size={16} className="date-input-icon" />
+      {empty && (
+        <span className="date-input-hint" aria-hidden="true">
+          {hint}
+        </span>
+      )}
+    </span>
+  );
+}
+
 export function SearchInput({
   value,
   onChange,

@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import EventImageField from '../../components/EventImageField.jsx'
 import Icon from '../../components/Icon.jsx'
 import SeatMapEditor from '../../components/SeatMapEditor.jsx'
-import { Alert, Badge, Field } from '../../components/ui.jsx'
+import { Alert, Badge, DateInput, Field } from '../../components/ui.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
 import { usd } from '../../lib/format.js'
@@ -989,24 +989,21 @@ export default function EventFormPage() {
             </div>
             <div className="panel-body stack-sm">
               <Field label={t('starts')} error={errors.starts_at}>
-                <input
-                  className="input"
+                <DateInput
                   type="datetime-local"
                   value={form.starts_at}
                   onChange={(e) => set('starts_at', e.target.value)}
                 />
               </Field>
               <Field label={t('doorsOpen')} error={errors.doors_open_at}>
-                <input
-                  className="input"
+                <DateInput
                   type="datetime-local"
                   value={form.doors_open_at}
                   onChange={(e) => set('doors_open_at', e.target.value)}
                 />
               </Field>
               <Field label={locale === 'km' ? 'បើកការលក់' : 'Sales open'} error={errors.sales_open_at}>
-                <input
-                  className="input"
+                <DateInput
                   type="datetime-local"
                   value={form.sales_open_at}
                   onChange={(e) => set('sales_open_at', e.target.value)}
@@ -1017,8 +1014,7 @@ export default function EventFormPage() {
                 error={errors.sales_close_at}
                 hint={locale === 'km' ? 'ត្រូវមុន ឬស្មើពេលចាប់ផ្តើម' : 'Must be at or before the start time'}
               >
-                <input
-                  className="input"
+                <DateInput
                   type="datetime-local"
                   value={form.sales_close_at}
                   onChange={(e) => set('sales_close_at', e.target.value)}
