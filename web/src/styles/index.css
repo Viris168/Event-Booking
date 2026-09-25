@@ -1942,6 +1942,12 @@
   .home-split-text > p {
     @apply mb-0 mt-3 max-w-[54ch] text-[0.98rem] leading-relaxed text-muted;
   }
+  /* A button straight after the paragraph gets the same 1.5rem the bullet
+     list takes (my-6), so the action reads as its own step rather than a
+     line of the paragraph. */
+  .home-split-text > p + .btn {
+    @apply mt-6;
+  }
   .home-bullets {
     @apply m-0 my-6 flex list-none flex-col gap-3.5 p-0;
   }
