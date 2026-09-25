@@ -543,6 +543,8 @@ export default function EventsPage() {
                   <DateInput
                     type="date"
                     placeholder={locale === "km" ? "គ្រប់ថ្ងៃ" : "Any date"}
+                    max={filters.to || undefined}
+                    aria-label={t("from")}
                     value={filters.from}
                     onChange={(e) => update({ from: e.target.value })}
                   />
@@ -553,6 +555,8 @@ export default function EventsPage() {
                   <DateInput
                     type="date"
                     placeholder={locale === "km" ? "គ្រប់ថ្ងៃ" : "Any date"}
+                    min={filters.from || undefined}
+                    aria-label={t("to")}
                     value={filters.to}
                     onChange={(e) => update({ to: e.target.value })}
                   />

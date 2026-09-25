@@ -1,10 +1,18 @@
 // Small shared presentational pieces used across all three role areas.
 
-import { Children, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  Children,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { Link } from "react-router-dom";
 import Icon from "./Icon.jsx";
 import { useLocale } from "../context/LocaleContext.jsx";
-import { usd } from "../lib/format.js";
+import { formatDate, usd } from "../lib/format.js";
+import CalendarPopover, { parseISODate } from "./CalendarPopover.jsx";
 
 /** Booking / event / payment status pill. Every state gets its own colour. */
 export function Badge({ status, children, className = "" }) {
@@ -200,6 +208,11 @@ export function Field({
  * browser's own editing (segments, wheel, calendar) takes over untouched.
  * The value and `onChange` are the native input's own, so it is a drop-in
  * replacement for `<input className="input" type="date">`.
+ *
+ * <p>On a desktop (a mouse or trackpad) a date-only field opens our own
+ * calendar instead of the browser's - see CalendarPopover. Touch screens keep
+ * the native control and its picker. Date-and-time fields stay native
+ * everywhere for now.
  */
 export function DateInput({
   type = "date",
@@ -210,6 +223,7 @@ export function DateInput({
 }) {
   const { locale } = useLocale();
   const km = locale === "km";
+  const finePointer = useFinePointer();
   const hint =
     placeholder ??
     (type === "date"
@@ -220,6 +234,16 @@ export function DateInput({
         ? "ជ្រើសរើសថ្ងៃ និងម៉ោង"
         : "Select date & time");
   const empty = !value;
+  if (type === "date" && finePointer) {
+    return (
+      <DesktopDateField
+        value={value}
+        hint={hint}
+        className={className}
+        {...rest}
+      />
+    );
+  }
   return (
     <span className={`date-input${empty ? " is-empty" : ""}`}>
       <input
@@ -233,6 +257,94 @@ export function DateInput({
         <span className="date-input-hint" aria-hidden="true">
           {hint}
         </span>
+      )}
+    </span>
+  );
+}
+
+/** True on a device whose main pointer is a mouse or trackpad. Follows changes
+ * (a tablet docking to a keyboard and trackpad) rather than reading it once. */
+const FINE_POINTER = "(hover: hover) and (pointer: fine)";
+function useFinePointer() {
+  return useSyncExternalStore(
+    (notify) => {
+      const mq = window.matchMedia?.(FINE_POINTER);
+      mq?.addEventListener("change", notify);
+      return () => mq?.removeEventListener("change", notify);
+    },
+    () => !!window.matchMedia?.(FINE_POINTER).matches,
+    () => false,
+  );
+}
+
+/**
+ * The desktop half of DateInput: a button that looks like the field, and our
+ * calendar under it. `onChange` is called with an event-shaped object, so the
+ * callers' `(e) => set(e.target.value)` handlers work unchanged.
+ */
+function DesktopDateField({
+  value,
+  hint,
+  className,
+  onChange,
+  min,
+  max,
+  disabled,
+  id,
+  "aria-label": ariaLabel,
+}) {
+  const { locale } = useLocale();
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef(null);
+  const triggerRef = useRef(null);
+  const date = parseISODate(value);
+  const shown = date ? formatDate(date, locale) : hint;
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onDown = (e) => {
+      if (!wrapRef.current?.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
+
+  function close(returnFocus) {
+    setOpen(false);
+    if (returnFocus) triggerRef.current?.focus();
+  }
+
+  return (
+    <span
+      ref={wrapRef}
+      className={`date-input is-custom${date ? "" : " is-empty"}${open ? " is-open" : ""}`}
+    >
+      <button
+        ref={triggerRef}
+        id={id}
+        type="button"
+        className={`input date-trigger ${className}`}
+        disabled={disabled}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-label={ariaLabel ? `${ariaLabel}: ${shown}` : undefined}
+        onClick={() => setOpen((o) => !o)}
+      >
+        <span className="date-trigger-text">{shown}</span>
+      </button>
+      <Icon name="calendar" size={16} className="date-input-icon" />
+      {open && (
+        <CalendarPopover
+          value={value}
+          min={min}
+          max={max}
+          locale={locale}
+          onClose={close}
+          onPick={(iso) => {
+            onChange?.({ target: { value: iso }, currentTarget: { value: iso } });
+            close(true);
+          }}
+        />
       )}
     </span>
   );

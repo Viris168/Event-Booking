@@ -4150,10 +4150,10 @@
      not the page's) and show our hint in its place, in the page's language.
      Focus hands it straight back to the browser - segments, wheel, calendar -
      so editing is exactly native. */
-  .date-input.is-empty .input:not(:focus) {
+  .date-input.is-empty input.input:not(:focus) {
     color: transparent;
   }
-  .date-input.is-empty .input:not(:focus)::-webkit-datetime-edit {
+  .date-input.is-empty input.input:not(:focus)::-webkit-datetime-edit {
     color: transparent;
   }
   .date-input-hint {
@@ -4161,6 +4161,135 @@
   }
   .date-input.is-empty .input:focus ~ .date-input-hint {
     display: none;
+  }
+
+  /* --------------------------------------------------- desktop calendar ---
+     <DesktopDateField> + CalendarPopover.jsx. The trigger is a button drawn as
+     the field, so it lines up with every input beside it; the popover shares
+     the province dropdown's surface, radius, shadow and entrance, so the two
+     menus on the events page read as one family. */
+  .date-trigger {
+    @apply flex cursor-pointer items-center;
+  }
+  .date-trigger-text {
+    @apply min-w-0 truncate;
+  }
+  .date-input.is-empty .date-trigger-text {
+    @apply text-placeholder;
+  }
+  .date-input.is-open .date-trigger,
+  .date-trigger:focus-visible {
+    @apply border-brand-500 outline-none;
+    box-shadow: var(--shadow-focus);
+  }
+  .date-input.is-open .date-input-icon {
+    @apply text-link;
+  }
+
+  .cal {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 100;
+    width: 300px;
+    padding: 0.75rem;
+    background: var(--color-surface);
+    border: 1px solid var(--color-line);
+    border-radius: 14px;
+    box-shadow:
+      0 16px 36px -6px rgba(0, 0, 0, 0.16),
+      0 4px 12px rgba(0, 0, 0, 0.05);
+    animation: custom-menu-pop-in 0.16s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .cal.is-right {
+    left: auto;
+    right: 0;
+  }
+  .cal.is-up {
+    top: auto;
+    bottom: calc(100% + 6px);
+  }
+  [data-theme="dark"] .cal {
+    background: #1c1915;
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow:
+      0 20px 42px -6px rgba(0, 0, 0, 0.8),
+      0 0 0 1px rgba(255, 255, 255, 0.05);
+  }
+  .cal-head {
+    @apply mb-2 flex items-center justify-between gap-2;
+  }
+  .cal-title {
+    @apply text-[0.95rem] font-bold text-ink;
+  }
+  .cal-nav {
+    @apply grid size-8 cursor-pointer place-items-center rounded-full border-0 bg-transparent p-0 text-ink-2;
+    transition: background-color 0.15s ease;
+  }
+  .cal-nav:hover {
+    @apply bg-surface-2 text-ink;
+  }
+  .cal-nav:focus-visible,
+  .cal-day:focus-visible,
+  .cal-link:focus-visible {
+    @apply outline-2 outline-offset-1 outline-brand-500;
+  }
+  .cal-grid {
+    @apply w-full;
+    table-layout: fixed;
+    border-collapse: separate;
+    border-spacing: 2px;
+  }
+  .cal-grid th {
+    @apply pb-1 text-center text-[0.72rem] font-semibold text-muted;
+  }
+  .cal-grid td {
+    @apply p-0;
+  }
+  .cal-day {
+    @apply grid aspect-square w-full cursor-pointer place-items-center rounded-[10px] border-0 bg-transparent p-0 text-[0.86rem] text-ink;
+    font-variant-numeric: tabular-nums;
+    transition:
+      background-color 0.12s ease,
+      color 0.12s ease;
+  }
+  .cal-day:hover:not(:disabled) {
+    @apply bg-surface-2;
+  }
+  /* Days from the neighbouring months fill the grid so it never changes
+     height, but they are quieter than this month's. */
+  .cal-day.is-outside {
+    @apply text-muted;
+  }
+  .cal-day.is-today {
+    @apply font-bold text-link;
+    box-shadow: inset 0 0 0 1.5px var(--color-brand-500);
+  }
+  .cal-day.is-selected,
+  .cal-day.is-selected:hover:not(:disabled) {
+    @apply bg-brand-600 font-bold text-white;
+    box-shadow: none;
+  }
+  .cal-day:disabled {
+    @apply cursor-not-allowed opacity-35;
+  }
+  .cal-foot {
+    @apply mt-2 flex items-center justify-between border-t border-line-2 pt-2;
+  }
+  .cal-link {
+    @apply cursor-pointer rounded-lg border-0 bg-transparent px-2 py-1.5 text-[0.85rem] font-semibold text-link;
+    transition: background-color 0.15s ease;
+  }
+  .cal-link:hover:not(:disabled) {
+    @apply bg-tint;
+  }
+  .cal-link:disabled {
+    @apply cursor-not-allowed opacity-40;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .cal {
+      animation: none;
+    }
   }
   .hint {
     @apply text-[0.76rem] text-muted;
