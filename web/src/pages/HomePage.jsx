@@ -231,7 +231,12 @@ function HeroRail({ events }) {
             <div
               className="hero-slide"
               key={e.id}
-              inert={i !== active ? "" : undefined}
+              /* Boolean, not "" / undefined. React 19 takes `inert` as a real
+                 boolean prop and warned on every render about the empty
+                 string ("Received an empty string for a boolean attribute"),
+                 treating it as false - which meant the off-screen slides were
+                 never actually inert and stayed keyboard-reachable. */
+              inert={i !== active}
             >
               <RailCard event={e} />
             </div>
@@ -449,7 +454,14 @@ function FeatureSlider({ photos }) {
           className={`home-shot${i === active ? " is-active" : ""}`}
           src={p.src}
           alt={i === active ? (locale === "km" ? p.alt.km : p.alt.en) : ""}
-          loading={i === 0 ? "eager" : "lazy"}
+          /* All lazy. This used to mark each slider's first photo eager, but
+             the flag is per-slider and all three sliders sit below the fold,
+             so it eagerly fetched three off-screen photos that competed with
+             the hero art and the event covers for the first paint. Lazy still
+             loads immediately once a slider is on screen, and the second photo
+             is inside the same box, so it is fetched well before the
+             cross-fade needs it. */
+          loading="lazy" 
           decoding="async"
           aria-hidden={i !== active}
         />
