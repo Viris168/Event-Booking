@@ -10,6 +10,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { useLocale } from '../context/LocaleContext.jsx'
 import { useToast } from '../context/ToastContext.jsx'
 import { countdown, usd } from '../lib/format.js'
+import { ticketsExpired } from '../lib/ticketExpiry.js'
 
 /** Which actions each of the eight booking states allows. */
 function actionsFor(state) {
@@ -56,6 +57,12 @@ const STATE_COPY = {
     en: 'This booking was cancelled. Nothing was charged.',
     km: 'ការកក់នេះត្រូវបានបោះបង់។ គ្មានការកាត់ប្រាក់ទេ។',
   },
+}
+
+/** Shown instead of CONFIRMED's copy once the event's day has passed. */
+const TICKETS_OVER_COPY = {
+  en: 'This event is over. Tickets that were not scanned have expired and can no longer be used.',
+  km: 'ព្រឹត្តិការណ៍នេះបានបញ្ចប់ហើយ។ សំបុត្រដែលមិនទាន់ស្កេនបានផុតកំណត់ ហើយមិនអាចប្រើបានទៀតទេ។',
 }
 
 const TONE = {
@@ -202,7 +209,10 @@ export default function BookingDetailPage() {
   // tickets failed to load, keep the button rather than guess they were used.
   const allAdmitted =
     tickets.length > 0 && tickets.every((x) => x.checked_in ?? !!x.checked_in_at)
-  const showDirections = booking.state === 'CONFIRMED' && !allAdmitted
+  // The event's day is over with someone still unscanned. The server refuses
+  // these codes at the gate now, so the page stops presenting them as live.
+  const ticketsOver = booking.state === 'CONFIRMED' && !allAdmitted && ticketsExpired(event)
+  const showDirections = booking.state === 'CONFIRMED' && !allAdmitted && !ticketsOver
 
   /**
    * Shared tail for both lifecycle actions. Each endpoint answers with the
@@ -296,7 +306,7 @@ export default function BookingDetailPage() {
           </div>
         </div>
         <div className="stack-sm" style={{ alignItems: 'flex-end' }}>
-          <Badge status={booking.state} />
+          <Badge status={ticketsOver ? 'EXPIRED' : booking.state} />
           <span className="small muted">
             {t('status')} · {dateTime(booking.state_changed_at)}
           </span>
@@ -316,9 +326,13 @@ export default function BookingDetailPage() {
         </div>
       </div>
 
-      <Alert tone={TONE[booking.state]}>
+      <Alert tone={ticketsOver ? 'warn' : TONE[booking.state]}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
-          <span>{STATE_COPY[booking.state]?.[locale] || STATE_COPY[booking.state]?.en}</span>
+          <span>
+            {ticketsOver
+              ? TICKETS_OVER_COPY[locale] || TICKETS_OVER_COPY.en
+              : STATE_COPY[booking.state]?.[locale] || STATE_COPY[booking.state]?.en}
+          </span>
           {msLeft !== null && msLeft > 0 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontWeight: '700', whiteSpace: 'nowrap' }}>
               <Icon name="clock" size={16} />
@@ -379,6 +393,7 @@ export default function BookingDetailPage() {
                     event={event}
                     venue={venue}
                     labelFor={labelForTicket}
+                    expired={ticketsOver}
                   />
                 </div>
               ) : (

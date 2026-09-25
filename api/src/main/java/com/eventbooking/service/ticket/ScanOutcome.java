@@ -41,6 +41,13 @@ public enum ScanOutcome {
     WRONG_EVENT,
 
     /**
+     * A real ticket for this event, but the event's day is over. Unscanned
+     * tickets lapse at midnight Cambodia time on the day the event starts -
+     * see {@link TicketService#ticketsExpireAt}.
+     */
+    TICKET_EXPIRED,
+
+    /**
      * Group scan only: the steward asked to admit more people than the booking
      * has left. Never returned by the single-ticket endpoint.
      *

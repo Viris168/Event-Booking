@@ -38,6 +38,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -46,6 +47,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
@@ -310,6 +312,36 @@ class TicketServiceTest {
 
         assertThat(response.outcome()).isEqualTo(ScanOutcome.BOOKING_NOT_CONFIRMED);
         assertThat(ticket.getCheckedInAt()).isNull();
+    }
+
+    @Test
+    void refusesATicketOnceTheEventDayIsOverWithoutConsumingIt() {
+        Ticket ticket = issuedTicket();
+        ticket.getBookingItem().getBooking().getEvent()
+                .setStartsAt(Instant.now().minus(Duration.ofDays(2)));
+        givenTicketUnderLock(ticket);
+
+        ScanResponse response = service.scan(payloadFor(ticket), EVENT_ID, OPERATOR_ID);
+
+        assertThat(response.outcome()).isEqualTo(ScanOutcome.TICKET_EXPIRED);
+        assertThat(ticket.getCheckedInAt()).isNull();
+    }
+
+    @Test
+    void stillAdmitsALatecomerLaterOnTheEventDay() {
+        // "Past" means starts_at has gone by, but the gate must not turn away
+        // someone who arrives after the doors opened.
+        Ticket ticket = issuedTicket();
+        Event event = ticket.getBookingItem().getBooking().getEvent();
+        event.setStartsAt(Instant.now().minus(Duration.ofMinutes(1)));
+        // Skip the few minutes either side of midnight, where "a minute ago" is
+        // already yesterday in Phnom Penh.
+        assumeTrue(Instant.now().isBefore(TicketService.ticketsExpireAt(event)));
+        givenTicketUnderLock(ticket);
+
+        ScanResponse response = service.scan(payloadFor(ticket), EVENT_ID, OPERATOR_ID);
+
+        assertThat(response.outcome()).isEqualTo(ScanOutcome.VALID);
     }
 
     @Test

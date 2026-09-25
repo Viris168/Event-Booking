@@ -7584,6 +7584,12 @@
   text-align: center;
 }
 
+.wallet-done.is-expired {
+  border-color: color-mix(in srgb, var(--color-quiet) 35%, transparent);
+  background: var(--color-quiet-soft);
+  color: var(--color-quiet);
+}
+
 .wallet-toggle {
   display: flex;
   align-items: center;

@@ -11,6 +11,7 @@ import { Badge, Empty, Money } from "../components/ui.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useLocale } from "../context/LocaleContext.jsx";
 import { eventArt } from "../lib/eventArt.js";
+import { ticketsExpired } from "../lib/ticketExpiry.js";
 import { getMyBookings } from "../api/bookings.js";
 import { getEvent as getApiEvent } from "../api/events.js";
 import { getBookingTickets } from "../api/tickets.js";
@@ -57,11 +58,15 @@ function Row({ booking, event, ticketCount }) {
       ? ticketCount
       : { total: ticketCount || 0, used: 0, allUsed: false };
   const { total, used, allUsed } = stats;
+  // Confirmed, but the event's day is over: whatever was not scanned can no
+  // longer get anyone in, so it reads as spent rather than as a live ticket.
+  const expired =
+    booking.state === "CONFIRMED" && !allUsed && ticketsExpired(event);
 
   return (
     <Link
       to={`/bookings/${booking.id}`}
-      className={`bk-row${closed ? " is-closed" : ""}${payable ? " is-payable" : ""}${allUsed ? " is-used" : ""}`}
+      className={`bk-row${closed || expired ? " is-closed" : ""}${payable ? " is-payable" : ""}${allUsed ? " is-used" : ""}`}
     >
       {/* Same artwork resolution as the event cards, so a booking is
           recognisable by the picture you bought it from. */}
@@ -96,6 +101,8 @@ function Row({ booking, event, ticketCount }) {
               <Icon name="checkCircle" size={11} />
               {locale === "km" ? "បានប្រើរួច" : "Used"}
             </span>
+          ) : expired ? (
+            <Badge status="EXPIRED" />
           ) : (
             <>
               <Badge status={booking.state} />
@@ -135,6 +142,13 @@ function Row({ booking, event, ticketCount }) {
                   {" · "}
                   <span className="font-semibold text-muted">
                     {locale === "km" ? "បានប្រើទាំងអស់" : "All used"}
+                  </span>
+                </>
+              ) : expired ? (
+                <>
+                  {" · "}
+                  <span className="font-semibold text-muted">
+                    {locale === "km" ? "ផុតកំណត់" : "Expired"}
                   </span>
                 </>
               ) : used > 0 ? (
@@ -183,6 +197,10 @@ function GridCard({ booking, event, ticketCount }) {
       ? ticketCount
       : { total: ticketCount || 0, used: 0, allUsed: false };
   const { total, used, allUsed } = stats;
+  // Confirmed, but the event's day is over: whatever was not scanned can no
+  // longer get anyone in, so it reads as spent rather than as a live ticket.
+  const expired =
+    booking.state === "CONFIRMED" && !allUsed && ticketsExpired(event);
 
   const startDate = event?.starts_at ? new Date(event.starts_at) : null;
   const month = startDate
@@ -203,7 +221,7 @@ function GridCard({ booking, event, ticketCount }) {
   return (
     <Link
       to={`/bookings/${booking.id}`}
-      className={`bk-card${closed ? " is-closed" : ""}${payable ? " is-payable" : ""}${allUsed ? " is-used" : ""}`}
+      className={`bk-card${closed || expired ? " is-closed" : ""}${payable ? " is-payable" : ""}${allUsed ? " is-used" : ""}`}
     >
       <div
         className={`bk-card-media ${art.className}${art.hasImage ? " has-photo" : ""}`}
@@ -235,6 +253,8 @@ function GridCard({ booking, event, ticketCount }) {
                 <Icon name="checkCircle" size={11} />
                 {locale === "km" ? "បានប្រើរួច" : "Used"}
               </span>
+            ) : expired ? (
+              <Badge status="EXPIRED" />
             ) : (
               <>
                 <Badge status={booking.state} />
@@ -291,6 +311,13 @@ function GridCard({ booking, event, ticketCount }) {
                   {" · "}
                   <span className="font-semibold text-muted">
                     {locale === "km" ? "បានប្រើទាំងអស់" : "All used"}
+                  </span>
+                </>
+              ) : expired ? (
+                <>
+                  {" · "}
+                  <span className="font-semibold text-muted">
+                    {locale === "km" ? "ផុតកំណត់" : "Expired"}
                   </span>
                 </>
               ) : used > 0 ? (
@@ -530,7 +557,8 @@ export default function MyBookingsPage() {
    * dropping into the archive and appearing to vanish.
    *
    * Within each half, bookings that need nothing more from you (cancelled,
-   * expired, or every ticket already scanned) sink below the live ones.
+   * expired, every ticket already scanned, or tickets whose event day is over)
+   * sink below the live ones.
    */
   const { upcoming, past } = useMemo(() => {
     const now = Date.now();
@@ -540,7 +568,9 @@ export default function MyBookingsPage() {
       const startsAt = apiEvents[b.event_id]?.starts_at;
       const ts = startsAt ? new Date(startsAt).getTime() : null;
       const inactive =
-        CLOSED.includes(b.state) || Boolean(ticketCounts[b.id]?.allUsed);
+        CLOSED.includes(b.state) ||
+        Boolean(ticketCounts[b.id]?.allUsed) ||
+        (b.state === "CONFIRMED" && ticketsExpired(apiEvents[b.event_id], now));
       if (ts != null && ts < now) done.push([b, ts, inactive]);
       else up.push([b, ts ?? Number.MAX_SAFE_INTEGER, inactive]);
     }
