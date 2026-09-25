@@ -441,9 +441,11 @@ export default function EventsPage() {
         <div className="page-head">
           <div>
             <h1>{t("events")}</h1>
+            {/* No count when the read failed: "0 events currently on sale"
+                states a fact about a catalogue we never reached. */}
             {loading ? (
               <Skeleton className="skel-line mt-2 w-52" />
-            ) : (
+            ) : failed ? null : (
               <p>
                 {totalElements}{" "}
                 {locale === "km"
@@ -693,34 +695,26 @@ export default function EventsPage() {
                 ? "មិនអាចផ្ទុកព្រឹត្តិការណ៍"
                 : "Could not load events"
             }
+            actions={
+              <button
+                className="btn btn-sm btn-primary"
+                onClick={() => setReload((n) => n + 1)}
+              >
+                <Icon name="refresh" size={14} />
+                {locale === "km" ? "ព្យាយាមម្តងទៀត" : "Retry"}
+              </button>
+            }
           >
             {locale === "km"
               ? "សូមព្យាយាមម្តងទៀត។"
               : "The catalogue is unavailable right now. Please try again."}
-            <button
-              className="btn btn-sm btn-primary"
-              style={{ marginTop: "0.8rem" }}
-              onClick={() => setReload((n) => n + 1)}
-            >
-              <Icon name="refresh" size={14} />
-              {locale === "km" ? "ព្យាយាមម្តងទៀត" : "Retry"}
-            </button>
           </Empty>
         ) : (
-          <>
-            <Empty icon="search" title={t("noEvents")}>
-              {locale === "km"
-                ? "សូមសម្រួលតម្រងរបស់អ្នក"
-                : "Try widening your filters."}
-            </Empty>
-            {chips.length > 0 && (
-              <div
-                style={{
-                  textAlign: "center",
-                  marginTop: "-1.5rem",
-                  paddingBottom: "2rem",
-                }}
-              >
+          <Empty
+            icon="search"
+            title={t("noEvents")}
+            actions={
+              chips.length > 0 && (
                 <button
                   className="btn btn-sm btn-outline"
                   onClick={() => setParams(new URLSearchParams())}
@@ -728,9 +722,13 @@ export default function EventsPage() {
                   <Icon name="close" size={14} />
                   {t("reset")}
                 </button>
-              </div>
-            )}
-          </>
+              )
+            }
+          >
+            {locale === "km"
+              ? "សូមសម្រួលតម្រងរបស់អ្នក"
+              : "Try widening your filters."}
+          </Empty>
         )}
       </div>
 

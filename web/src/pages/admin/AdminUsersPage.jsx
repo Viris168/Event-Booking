@@ -353,19 +353,17 @@ export default function AdminUsersPage() {
         <Empty
           icon="search"
           title={km ? "រកមិនឃើញអ្នកប្រើទេ" : "No users match"}
+          actions={
+            chips.length > 0 && (
+              <button className="btn btn-sm btn-outline" onClick={clearAll}>
+                {t("reset")}
+              </button>
+            )
+          }
         >
           {km
             ? "សាកល្បងលុបតម្រងចេញ ឬស្វែងរកពាក្យផ្សេង។"
             : "Try clearing a filter or searching for something else."}
-          {chips.length > 0 && (
-            <button
-              className="btn btn-sm btn-outline"
-              onClick={clearAll}
-              style={{ marginTop: "0.7rem" }}
-            >
-              {t("reset")}
-            </button>
-          )}
         </Empty>
       ) : (
         <div className="panel">

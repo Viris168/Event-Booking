@@ -57,7 +57,16 @@ export function Alert({ tone = "info", icon, title, children, actions }) {
   );
 }
 
-export function Empty({ icon = "ticket", title, children }) {
+/**
+ * An empty or failed region: icon, title, a line of explanation, then
+ * `actions` on a row of their own.
+ *
+ * <p>Buttons go in `actions`, not `children`. The children sit in a text
+ * block, and a button there is inline-flex, so it ran on at the end of the
+ * sentence ("...Please try again.[Retry]") - every call site then nudged it
+ * with its own marginTop, which could not fix a line it was still part of.
+ */
+export function Empty({ icon = "ticket", title, children, actions }) {
   return (
     <div className="empty">
       <span className="icon-chip lg plain" style={{ marginBottom: "0.7rem" }}>
@@ -65,6 +74,7 @@ export function Empty({ icon = "ticket", title, children }) {
       </span>
       <p className="font-bold">{title}</p>
       {children && <div className="small">{children}</div>}
+      {actions && <div className="empty-actions">{actions}</div>}
     </div>
   );
 }

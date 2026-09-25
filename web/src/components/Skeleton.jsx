@@ -190,24 +190,130 @@ export function SpotlightSkeleton() {
   );
 }
 
-/** Event detail: breadcrumb, cover hero, seat map beside the ticket sidebar. */
+/**
+ * Event detail: breadcrumb, hero, About and Location beside the ticket sidebar.
+ *
+ * <p>Built from the page's own classes - .event-hero, .about-event-card,
+ * .event-location-map-box, .summary, .totals - for the same reason
+ * EventCardSkeleton is: the geometry then lives in one place. The version this
+ * replaced drew a 210px grey band where the real hero stands 280px (360px from
+ * 768px up), so the whole page dropped 70-150px the moment the event arrived;
+ * and it put a seat-map panel first in the column, where the page actually
+ * opens with About and Location and only shows the picker further down, if at
+ * all.
+ *
+ * <p>The seat picker and venue layout are left out on purpose. They depend on
+ * the seat and zone reads, not the event read this placeholder waits on, and
+ * whether they render at all depends on the inventory mode - drawing them here
+ * would promise a card that is often never coming.
+ */
 export function EventDetailSkeleton() {
   return (
     <SkeletonRegion className="container container-wide">
-      <Skeleton className="skel-line mb-4 w-48" />
-      <Skeleton className="h-[210px] w-full rounded-hero" />
-      <div className="split" style={{ marginTop: "1.4rem" }}>
-        <div className="panel">
-          <div className="panel-head">
-            <Skeleton className="h-4 w-40" />
-          </div>
-          <div className="panel-body">
-            <Skeleton className="h-[320px] w-full rounded-card" />
+      <div className="breadcrumb flex h-[1.4rem] items-center">
+        <Skeleton className="skel-line w-48" />
+      </div>
+
+      {/* The real shell, so min-height and padding come from the stylesheet.
+          Dark because the hero always is - a cover gradient or a scrimmed
+          photo - so the bars are the `dark` variant, as in SpotlightSkeleton. */}
+      <div className="event-hero event-hero-skel" aria-hidden="true">
+        <div className="hero-body">
+          <div className="hero-copy">
+            <div className="row row-tight">
+              <Skeleton className="h-[1.51rem] w-20 rounded-full" dark />
+              <Skeleton className="h-[1.51rem] w-16 rounded-full" dark />
+            </div>
+            {/* h1's clamp() at line-height 1.3, then the .km-title line. */}
+            <Skeleton
+              className="w-[70%]"
+              style={{ height: "calc(clamp(1.6rem, 1.2rem + 1.6vw, 2.2rem) * 1.3)" }}
+              dark
+            />
+            <Skeleton className="h-[1.8rem] w-[45%]" dark />
+            <div className="hero-facts">
+              <Skeleton className="h-[1.1rem] w-44" dark />
+              <Skeleton className="h-[1.1rem] w-72 max-w-full" dark />
+            </div>
           </div>
         </div>
+      </div>
+
+      <div className="split" style={{ marginTop: "1.4rem" }}>
         <div className="stack">
-          <SkeletonPanel lines={4} />
-          <SkeletonPanel lines={3} />
+          {/* About: heading, the starts / organizer pair, the description. */}
+          <div className="card" aria-hidden="true">
+            <div className="card-body about-event-card">
+              <Skeleton className="h-[1.69rem] w-40" />
+              <div className="about-event-meta">
+                {["w-40", "w-32"].map((w) => (
+                  <div key={w} className="about-event-meta-item">
+                    <Skeleton className="size-[38px] flex-none rounded-full" />
+                    <div className="flex flex-col gap-[0.35rem]">
+                      <Skeleton className="skel-line h-[0.65rem] w-14" />
+                      <Skeleton className={`h-[1.1rem] ${w}`} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <SkeletonText lines={4} />
+            </div>
+          </div>
+
+          {/* Location: heading and address beside Directions, then the map. */}
+          <div className="card" aria-hidden="true">
+            <div className="card-body event-location-card">
+              <div className="event-location-head">
+                <div className="flex flex-col gap-2">
+                  <Skeleton className="h-[1.69rem] w-32" />
+                  <Skeleton className="skel-line w-64 max-w-full" />
+                </div>
+                <Skeleton className="h-10 w-32 rounded-[10px]" />
+              </div>
+              <div className="event-location-map-box">
+                <Skeleton className="h-full w-full rounded-none" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* The sidebar in its empty state - which is exactly what it shows once
+            the event lands and nothing is picked yet - so this column should
+            not move at all. */}
+        <div className="summary" aria-hidden="true">
+          <div className="card">
+            <div className="card-head">
+              <Skeleton className="h-[1.3rem] w-28" />
+            </div>
+            <div className="card-body">
+              <Skeleton className="skel-line w-36" />
+              <div className="totals">
+                <div className="total-row items-center">
+                  <Skeleton className="skel-line w-16" />
+                  <Skeleton className="h-[1.3rem] w-16" />
+                </div>
+              </div>
+              <Skeleton className="mt-[0.9rem] h-12 w-full" />
+              <div className="mt-2 flex flex-col items-center gap-[0.4rem]">
+                <Skeleton className="skel-line h-[0.6rem] w-[85%]" />
+                <Skeleton className="skel-line h-[0.6rem] w-[55%]" />
+              </div>
+            </div>
+          </div>
+
+          <div className="card" style={{ marginTop: "1rem" }}>
+            <div className="card-body stack-sm">
+              <div className="spread">
+                <Skeleton className="skel-line w-16" />
+                <Skeleton className="skel-line w-12" />
+              </div>
+              <Skeleton className="h-[7px] w-full rounded-full" />
+              <div className="legend">
+                <Skeleton className="skel-line w-12" />
+                <Skeleton className="skel-line w-20" />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </SkeletonRegion>
