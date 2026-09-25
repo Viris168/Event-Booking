@@ -133,7 +133,16 @@ const dict = {
   salesClose: { en: "Sales close", km: "បិទលក់សំបុត្រ" },
   about: { en: "About this event", km: "អំពីព្រឹត្តិការណ៍នេះ" },
   location: { en: "Location", km: "ទីតាំង" },
-  openInMaps: { en: "Open in Maps", km: "បើកក្នុងផែនទី" },
+  getDirections: { en: "Get directions", km: "បង្ហាញផ្លូវ" },
+  locatingYou: { en: "Finding you…", km: "កំពុងស្វែងរកទីតាំង…" },
+  locationRough: {
+    en: "We couldn't pin down where you are, so check the starting point in Google Maps.",
+    km: "យើងមិនអាចកំណត់ទីតាំងរបស់អ្នកបានច្បាស់ទេ សូមពិនិត្យចំណុចចាប់ផ្តើមនៅក្នុង Google Maps។",
+  },
+  locationDenied: {
+    en: "Location is off, so Google Maps will ask where you're starting from.",
+    km: "ទីតាំងត្រូវបានបិទ ដូច្នេះ Google Maps នឹងសួរចំណុចចាប់ផ្តើមរបស់អ្នក។",
+  },
   pickSeats: { en: "Choose your seats", km: "ជ្រើសរើសកៅអីរបស់អ្នក" },
   pickZones: { en: "General admission", km: "សំបុត្រចូលទូទៅ" },
   seatHint: {

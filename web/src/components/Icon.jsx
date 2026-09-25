@@ -6,6 +6,7 @@
 
 const PATHS = {
   // wayfinding
+  navigate: "M20 4 3.5 11.2l7 2.3 2.3 7L20 4Z",
   home: "M3 10.5 12 3l9 7.5M5.5 9.5V20h13V9.5",
   search: "M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14ZM20 20l-4.2-4.2",
   filter: "M4 5h16M7 12h10M10 19h4",
