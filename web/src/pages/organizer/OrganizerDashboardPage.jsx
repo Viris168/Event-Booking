@@ -654,14 +654,15 @@ export default function OrganizerDashboardPage() {
             <Empty
               icon="calendar"
               title={km ? "គ្មានព្រឹត្តិការណ៍" : "No events yet"}
-            >
-              <Link
-                className="btn btn-sm btn-primary"
-                to="/organizer/events/new"
-              >
-                {t("createEvent")}
-              </Link>
-            </Empty>
+              actions={
+                <Link
+                  className="btn btn-sm btn-primary"
+                  to="/organizer/events/new"
+                >
+                  {t("createEvent")}
+                </Link>
+              }
+            />
           )}
 
           {/* Ten per page: these rows are two lines tall with a progress bar

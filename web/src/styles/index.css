@@ -2886,7 +2886,10 @@
 
   .search-row {
     @apply grid items-center gap-[0.6rem];
-    grid-template-columns: minmax(0, 1fr) 190px auto;
+    /* The sort column fits its longest option, "Price · low to high" (and the
+       Khmer, which runs about as long): 190px cut it to "Price · low to ...",
+       since the filter icon and chevron take ~75px of the box. */
+    grid-template-columns: minmax(0, 1fr) 236px auto;
     /* Cap to the left cards column so the input does not stretch across the
        full 1360px container — keeps it proportional to the grid below. */
     max-width: calc(
@@ -4984,6 +4987,9 @@
 
   .empty {
     @apply flex flex-col items-center gap-[0.15rem] px-4 py-12 text-center text-muted;
+  }
+  .empty-actions {
+    @apply mt-[0.9rem] flex flex-wrap justify-center gap-2;
   }
 
   /* ------------------------------------------------------------------- misc */

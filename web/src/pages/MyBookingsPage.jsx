@@ -557,15 +557,12 @@ export default function MyBookingsPage() {
           title={
             locale === "km" ? "សូមចូលគណនី" : "Sign in to see your bookings"
           }
-        >
-          <Link
-            className="btn btn-sm btn-primary"
-            to="/login"
-            style={{ marginTop: "0.6rem" }}
-          >
-            {t("login")}
-          </Link>
-        </Empty>
+          actions={
+            <Link className="btn btn-sm btn-primary" to="/login">
+              {t("login")}
+            </Link>
+          }
+        />
       </div>
     );
   }
@@ -674,18 +671,19 @@ export default function MyBookingsPage() {
               ? "មិនអាចផ្ទុកការកក់"
               : "Could not load your bookings"
           }
+          actions={
+            <button
+              className="btn btn-sm btn-primary"
+              onClick={() => setReload((n) => n + 1)}
+            >
+              <Icon name="refresh" size={14} />
+              {locale === "km" ? "ព្យាយាមម្តងទៀត" : "Retry"}
+            </button>
+          }
         >
           {locale === "km"
             ? "សូមព្យាយាមម្តងទៀត។"
             : "Your bookings are unavailable right now. Please try again."}
-          <button
-            className="btn btn-sm btn-primary"
-            style={{ marginTop: "0.8rem" }}
-            onClick={() => setReload((n) => n + 1)}
-          >
-            <Icon name="refresh" size={14} />
-            {locale === "km" ? "ព្យាយាមម្តងទៀត" : "Retry"}
-          </button>
         </Empty>
       ) : filtered.length ? (
         <>
@@ -707,24 +705,25 @@ export default function MyBookingsPage() {
           />
         </>
       ) : (
-        <Empty icon="ticket" title={t("noBookings")}>
-          {state && (
-            <button
-              className="btn btn-sm btn-outline"
-              style={{ marginTop: "0.6rem", marginRight: "0.4rem" }}
-              onClick={() => setState("")}
-            >
-              {t("allStatuses")}
-            </button>
-          )}
-          <Link
-            className="btn btn-sm btn-primary"
-            to="/events"
-            style={{ marginTop: "0.6rem" }}
-          >
-            {t("browseEvents")}
-          </Link>
-        </Empty>
+        <Empty
+          icon="ticket"
+          title={t("noBookings")}
+          actions={
+            <>
+              {state && (
+                <button
+                  className="btn btn-sm btn-outline"
+                  onClick={() => setState("")}
+                >
+                  {t("allStatuses")}
+                </button>
+              )}
+              <Link className="btn btn-sm btn-primary" to="/events">
+                {t("browseEvents")}
+              </Link>
+            </>
+          }
+        />
       )}
     </div>
   );
