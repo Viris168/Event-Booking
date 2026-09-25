@@ -53,7 +53,7 @@ const TONE = {
 const ICON = { ok: "checkCircle", warn: "alert", bad: "xCircle" };
 
 const HEADLINE = {
-  VALID: { en: "Valid — admit", km: "សំបុត្រត្រឹមត្រូវ — អនុញ្ញាតឲ្យចូល" },
+  VALID: { en: "Valid admit", km: "សំបុត្រត្រឹមត្រូវ អនុញ្ញាតឲ្យចូល" },
   ALREADY_CHECKED_IN: { en: "Already used", km: "សំបុត្រនេះបានប្រើរួចហើយ" },
   BOOKING_NOT_CONFIRMED: {
     en: "Booking not confirmed",
