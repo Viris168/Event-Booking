@@ -456,6 +456,9 @@ function extractSelectOptions(children) {
           disabled: Boolean(node.props?.disabled),
           // Secondary text shown at the right of the row, e.g. a date.
           hint: node.props?.["data-hint"],
+          // Optional narrow-screen version of the hint ("3 Oct" for
+          // "Sat, 3 Oct 2026"); CSS shows one or the other by width.
+          hintShort: node.props?.["data-hint-short"],
         });
       } else if (node.type === "optgroup") {
         // A heading row, then the group's options. Kept flat so the menu is
@@ -593,9 +596,15 @@ export function IconSelect({
                 }}
               >
                 <span className="custom-select-option-text">{opt.label}</span>
-                {opt.hint && (
-                  <span className="custom-select-option-hint">{opt.hint}</span>
-                )}
+                {opt.hint &&
+                  (opt.hintShort ? (
+                    <span className="custom-select-option-hint">
+                      <span className="hint-long">{opt.hint}</span>
+                      <span className="hint-short">{opt.hintShort}</span>
+                    </span>
+                  ) : (
+                    <span className="custom-select-option-hint">{opt.hint}</span>
+                  ))}
                 {isSelected && (
                   <span className="custom-select-check" aria-hidden="true">
                     <Icon name="check" size={14} />

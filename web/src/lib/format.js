@@ -32,6 +32,20 @@ export function formatDate(iso, locale = 'en') {
   })
 }
 
+/**
+ * "3 Oct" - for a hint beside a name, where the full "Sat, 3 Oct 2026" crowds
+ * the name out. The year appears only when it is not this one, so an event a
+ * year out still reads unambiguously.
+ */
+export function formatShortDate(iso, locale = 'en') {
+  const d = new Date(iso)
+  return d.toLocaleDateString(locale === 'km' ? 'km-KH' : 'en-GB', {
+    day: 'numeric',
+    month: 'short',
+    ...(d.getFullYear() !== new Date().getFullYear() && { year: 'numeric' }),
+  })
+}
+
 export function formatTime(iso, locale = 'en') {
   const d = new Date(iso)
   return d.toLocaleTimeString(locale === 'km' ? 'km-KH' : 'en-GB', {

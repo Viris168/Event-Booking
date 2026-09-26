@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Icon from "../../components/Icon.jsx";
 import { Field, IconSelect } from "../../components/ui.jsx";
+import { formatShortDate } from "../../lib/format.js";
 import { Skeleton, SkeletonRegion } from "../../components/Skeleton.jsx";
 import GroupPassModal from "../../components/GroupPassModal.jsx";
 import { useLocale } from "../../context/LocaleContext.jsx";
@@ -163,6 +164,9 @@ export default function CheckInPage() {
       disabled={finished}
       data-hint={
         isEventDay(ev) ? (km ? "ថ្ងៃនេះ" : "Today") : ev.starts_at ? date(ev.starts_at) : undefined
+      }
+      data-hint-short={
+        !isEventDay(ev) && ev.starts_at ? formatShortDate(ev.starts_at, locale) : undefined
       }
     >
       {km ? ev.title_km : ev.title_en}
