@@ -439,7 +439,7 @@ function Group({
       )}
 
       {(left > 0 || shown > initial) && (
-        <div className="bk-more">
+        <div className="list-more">
           {left > 0 && (
             <button
               type="button"

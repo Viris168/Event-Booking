@@ -1180,6 +1180,11 @@
   .notif-page-list {
     @apply flex flex-col gap-[0.5rem];
     max-width: 46rem;
+    scroll-margin-top: calc(var(--nav-h, 61px) + 1rem);
+  }
+  /* Sits under the list, which is capped at 46rem and left-aligned. */
+  .notif-more {
+    max-width: 46rem;
   }
 
   .role-switch {
@@ -3533,12 +3538,13 @@
     /* "Show less" scrolls back here; clear the sticky navbar when it does. */
     scroll-margin-top: calc(var(--nav-h, 61px) + 1rem);
   }
-  .bk-more {
+  /* "Show more / Show less" under a long list (My Bookings, Notifications). */
+  .list-more {
     @apply mt-[0.9rem] flex flex-wrap items-center justify-center gap-[0.5rem];
   }
   /* Full-width on a phone: it is the one thing to tap at the end of a list. */
   @media (max-width: 640px) {
-    .bk-more .btn-outline {
+    .list-more .btn-outline {
       @apply w-full justify-center;
     }
   }
