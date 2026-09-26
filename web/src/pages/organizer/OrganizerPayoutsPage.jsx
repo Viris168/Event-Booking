@@ -419,7 +419,7 @@ export default function OrganizerPayoutsPage() {
                     <tr key={p.id} className="border-b border-line-2">
                       <td className="font-mono text-small">{p.invoice_no}</td>
                       <td>{km ? p.event_title_km : p.event_title_en}</td>
-                      <td className="whitespace-nowrap">
+                      <td className="min-[901px]:whitespace-nowrap">
                         {date(p.requested_at)}
                       </td>
                       <td>
@@ -436,7 +436,7 @@ export default function OrganizerPayoutsPage() {
                           </p>
                         )}
                       </td>
-                      <td className="text-right font-semibold whitespace-nowrap">
+                      <td className="text-right font-semibold min-[901px]:whitespace-nowrap">
                         {usd(p.net_usd_cents)}
                       </td>
                       <td className="num">

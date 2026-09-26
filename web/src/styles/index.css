@@ -1276,8 +1276,12 @@
   .subnav-inner {
     @apply mx-auto flex max-w-shell gap-1 px-page;
   }
+  /* relative: each tab's .sr-only badge label is position:absolute, and
+     without a positioned ancestor inside the scroller it anchored to the
+     sticky .subnav instead - escaping the strip's overflow clip and widening
+     the whole page to wherever the last tab sat (924px on a 390px phone). */
   .subnav a {
-    @apply inline-flex items-center whitespace-nowrap border-b-2 border-transparent px-[0.7rem]
+    @apply relative inline-flex items-center whitespace-nowrap border-b-2 border-transparent px-[0.7rem]
       py-3 text-[0.88rem] font-semibold text-muted;
   }
   .subnav a:hover {
@@ -4470,9 +4474,14 @@
   }
 
   /* --------------------------------------------------------------- filters */
+  /* 210px, not 150px: at 150 a phone fits two columns of ~160px, and a select
+     with a leading icon and a chevron has room for about eight characters -
+     "All provi…". One full-width column there, three or four on a tablet or
+     desktop. min(100%, …) keeps a single column from overflowing a very
+     narrow screen. */
   .filterbar {
     @apply grid items-end gap-[0.7rem];
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
   }
   .chips {
     @apply flex flex-wrap gap-[0.4rem];
@@ -4579,6 +4588,32 @@
     /* Action buttons read better full-width at the foot of the card. */
     .table td .row {
       @apply gap-[0.4rem];
+    }
+  }
+
+  /* Tablet: still cards, since seven columns do not fit 820px either, but the
+     fields sit three across with the label over the value. One field per line
+     across a tablet-wide card left two thirds of it empty and made each row
+     four screens of scrolling per dozen records. The first cell is the row's
+     name, so it keeps the full width as the card's heading. */
+  @media (min-width: 641px) and (max-width: 900px) {
+    .table tbody tr {
+      @apply grid gap-x-5 gap-y-1 py-[0.6rem];
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .table td {
+      @apply gap-[0.2rem] border-b-0 py-[0.35rem];
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .table td[data-label] > * {
+      grid-column: 1;
+    }
+    .table tbody tr > td:first-child,
+    .table td:not([data-label]) {
+      grid-column: 1 / -1;
+    }
+    .table tbody tr > td:first-child {
+      @apply mb-1 border-b border-dashed border-line-2 pb-[0.6rem];
     }
   }
 

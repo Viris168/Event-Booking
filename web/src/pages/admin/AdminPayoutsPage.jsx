@@ -434,7 +434,7 @@ export default function AdminPayoutsPage() {
                           {p.account_number}
                         </p>
                       </td>
-                      <td className="num whitespace-nowrap">
+                      <td className="num min-[901px]:whitespace-nowrap">
                         <b>{usd(p.net_usd_cents)}</b>
                         {/* The derivation, small, under the number an admin is
                             about to transfer. Checking it should not require
@@ -466,7 +466,7 @@ export default function AdminPayoutsPage() {
                           </p>
                         )}
                       </td>
-                      <td className="num whitespace-nowrap">
+                      <td className="num min-[901px]:whitespace-nowrap">
                         {p.status === "REQUESTED" && (
                           <button
                             type="button"

@@ -225,14 +225,14 @@ export default function OrganizerTransactionsPage() {
       <div className="bg-surface border border-line rounded-hero shadow-card overflow-hidden">
         {/* --------------------------------------------------------- toolbar */}
         <div className="px-5 py-3 border-b border-line-2 bg-surface-2 flex items-center gap-3 flex-wrap">
-          <div className="relative">
+          <div className="relative w-full sm:w-64">
             <Icon
               name="search"
               size={15}
               className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none"
             />
             <input
-              className="input pl-9 w-64"
+              className="input pl-9 w-full"
               value={q}
               onChange={(e) => {
                 setQ(e.target.value);
@@ -247,7 +247,7 @@ export default function OrganizerTransactionsPage() {
 
           <IconSelect
             icon="filter"
-            className="w-48"
+            className="flex-1 min-w-0 sm:flex-none sm:w-48"
             value={sort}
             onChange={setSort}
             ariaLabel={km ? "តម្រៀប" : "Sort"}
@@ -306,12 +306,12 @@ export default function OrganizerTransactionsPage() {
 
         {showFilters && (
           <div className="px-5 py-3 border-b border-line-2 flex items-end gap-3 flex-wrap">
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-1 w-full sm:w-auto">
               <span className="text-tiny font-semibold text-muted uppercase tracking-wide">
                 {t("status")}
               </span>
               <IconSelect
-                className="w-48"
+                className="w-full sm:w-48"
                 value={state}
                 onChange={(v) => {
                   setState(v);
@@ -329,12 +329,12 @@ export default function OrganizerTransactionsPage() {
                 ))}
               </IconSelect>
             </div>
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-1 w-full sm:w-auto">
               <span className="text-tiny font-semibold text-muted uppercase tracking-wide">
                 {km ? "ព្រឹត្តិការណ៍" : "Event"}
               </span>
               <IconSelect
-                className="w-48"
+                className="w-full sm:w-48"
                 value={eventId}
                 onChange={(v) => {
                   setEventId(String(v));
@@ -352,12 +352,12 @@ export default function OrganizerTransactionsPage() {
                 ))}
               </IconSelect>
             </div>
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-1 w-full sm:w-auto">
               <span className="text-tiny font-semibold text-muted uppercase tracking-wide">
                 {km ? "មធ្យោបាយបង់ប្រាក់" : "Paid with"}
               </span>
               <IconSelect
-                className="w-48"
+                className="w-full sm:w-48"
                 value={provider}
                 onChange={(v) => {
                   setProvider(v);
@@ -441,7 +441,7 @@ export default function OrganizerTransactionsPage() {
                           {km ? r.event_title_km : r.event_title_en}
                         </Link>
                       </td>
-                      <td className="whitespace-nowrap">
+                      <td className="min-[901px]:whitespace-nowrap">
                         <div className="font-medium text-ink">
                           {date(r.created_at)}
                         </div>
