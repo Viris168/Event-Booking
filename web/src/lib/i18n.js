@@ -325,6 +325,7 @@ const dict = {
   save: { en: "Save", km: "រក្សាទុក" },
   cancel: { en: "Cancel", km: "បោះបង់" },
   revenue: { en: "Revenue", km: "ប្រាក់ចំណូល" },
+  eventTitle: { en: "Event", km: "ព្រឹត្តិការណ៍" },
   ticketsSold: { en: "Tickets sold", km: "សំបុត្រដែលបានលក់" },
   capacity: { en: "Capacity", km: "ចំនួនអ្នកចូលរួមសរុប" },
   scanTicket: { en: "Scan a ticket", km: "ស្កេនសំបុត្រ" },

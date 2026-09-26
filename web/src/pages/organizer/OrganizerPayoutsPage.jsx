@@ -249,7 +249,7 @@ export default function OrganizerPayoutsPage() {
         <Stat
           label={km ? "អាចស្នើសុំបាន" : "Ready to claim"}
           value={usd(totals.claimable)}
-          sub={`${payable.length} ${km ? "ព្រឹត្តិការណ៍" : "events"}`}
+          sub={`${payable.length} ${km ? "ព្រឹត្តិការណ៍" : payable.length === 1 ? "event" : "events"}`}
           icon="wallet"
           tone="gold"
         />
@@ -264,7 +264,10 @@ export default function OrganizerPayoutsPage() {
         <Stat
           label={km ? "បានទទួលរួច" : "Paid out"}
           value={usd(totals.paid)}
-          sub={`${payouts.filter((p) => p.status === "PAID").length} ${km ? "វិក្កយបត្រ" : "invoices"}`}
+          sub={(() => {
+            const paid = payouts.filter((p) => p.status === "PAID").length;
+            return `${paid} ${km ? "វិក្កយបត្រ" : paid === 1 ? "invoice" : "invoices"}`;
+          })()}
           icon="checkCircle"
           tone="green"
         />

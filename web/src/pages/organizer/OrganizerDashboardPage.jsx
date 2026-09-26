@@ -906,6 +906,7 @@ function RowMenu({ event, onChanged }) {
 
       <ActionMenu
         disabled={busy}
+        title={km ? event.title_km : event.title_en}
         label={km ? "សកម្មភាព" : "Actions"}
         items={[
           // Edit goes once the event has happened: the API refuses the PATCH
@@ -1067,7 +1068,7 @@ function KpiCard({
     <>
       {/* Top row: Upper label + Accented Icon */}
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[11px] font-bold text-muted tracking-wider uppercase truncate">
+        <span className="text-[11px] font-bold text-muted tracking-wider uppercase leading-tight">
           {label}
         </span>
         <span
@@ -1085,10 +1086,10 @@ function KpiCard({
       </div>
 
       {/* Bottom row: Pill Badge + Navigation Hint */}
-      <div className="flex items-center justify-between gap-2 pt-0.5">
+      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5 pt-0.5">
         {pill ? (
           <span
-            className={`inline-flex items-center text-[11px] font-semibold px-2 py-0.5 rounded-full leading-tight ${currentTheme.pillBg}`}
+            className={`inline-flex items-center whitespace-nowrap text-[11px] font-semibold px-2 py-0.5 rounded-full leading-tight ${currentTheme.pillBg}`}
           >
             {pill}
           </span>

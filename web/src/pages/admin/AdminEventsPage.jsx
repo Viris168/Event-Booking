@@ -552,6 +552,7 @@ export default function AdminEventsPage() {
                        */}
                       <ActionMenu
                         disabled={busyId === e.id}
+                        title={km ? e.title_km : e.title_en}
                         label={km ? "សកម្មភាព" : "Actions"}
                         items={[
                           {
