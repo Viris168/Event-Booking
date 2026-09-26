@@ -10,6 +10,7 @@ import Icon from "../components/Icon.jsx";
 import { EventGridSkeleton, Skeleton } from "../components/Skeleton.jsx";
 import {
   ActiveFilters,
+  DateInput,
   Empty,
   Field,
   IconSelect,
@@ -537,17 +538,25 @@ export default function EventsPage() {
             {showAdvanced && (
               <div className="advanced-row">
                 <Field label={t("from")}>
-                  <input
-                    className="input"
+                  {/* A bound left empty is no bound at all, so the hint says
+                      what an empty filter means rather than asking for one. */}
+                  <DateInput
                     type="date"
+                    placeholder={locale === "km" ? "គ្រប់ថ្ងៃ" : "Any date"}
+                    max={filters.to || undefined}
+                    aria-label={t("from")}
                     value={filters.from}
                     onChange={(e) => update({ from: e.target.value })}
                   />
                 </Field>
                 <Field label={t("to")}>
-                  <input
-                    className="input"
+                  {/* A bound left empty is no bound at all, so the hint says
+                      what an empty filter means rather than asking for one. */}
+                  <DateInput
                     type="date"
+                    placeholder={locale === "km" ? "គ្រប់ថ្ងៃ" : "Any date"}
+                    min={filters.from || undefined}
+                    aria-label={t("to")}
                     value={filters.to}
                     onChange={(e) => update({ to: e.target.value })}
                   />

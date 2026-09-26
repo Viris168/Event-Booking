@@ -1,10 +1,22 @@
 // Small shared presentational pieces used across all three role areas.
 
-import { Children, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  Children,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { Link } from "react-router-dom";
 import Icon from "./Icon.jsx";
 import { useLocale } from "../context/LocaleContext.jsx";
-import { usd } from "../lib/format.js";
+import { formatDate, usd } from "../lib/format.js";
+import CalendarPopover, {
+  parseISODate,
+  startOfToday,
+  toISODate,
+} from "./CalendarPopover.jsx";
 
 /** Booking / event / payment status pill. Every state gets its own colour. */
 export function Badge({ status, children, className = "" }) {
@@ -178,6 +190,226 @@ export function Field({
 }
 
 /** Text input with a leading icon and a clear button once it has a value. */
+/**
+ * A date or date-and-time field that looks and behaves the same everywhere.
+ *
+ * <p>The native control is kept - it is what brings up the phone's own wheel
+ * or the desktop calendar - but every browser draws it differently, and iOS
+ * Safari draws it worst:
+ * <ul>
+ *   <li>it gives the field an intrinsic minimum width that ignores its column,
+ *       so two side by side overflow into each other and off the screen;
+ *   <li>an empty one is a blank box - no placeholder, no icon, nothing saying
+ *       it is a date at all;
+ *   <li>a filled one centres its value, unlike every other field.
+ * </ul>
+ * Desktop Chrome and Firefox have the opposite problem: an empty field prints
+ * a "mm/dd/yyyy" mask in the reader's system locale, whatever language the
+ * page is in.
+ *
+ * <p>So the field is drawn by us: our calendar icon on the right, and our own
+ * placeholder while it is empty - hidden the moment it is focused, so the
+ * browser's own editing (segments, wheel, calendar) takes over untouched.
+ * The value and `onChange` are the native input's own, so it is a drop-in
+ * replacement for `<input className="input" type="date">`.
+ *
+ * <p>On a desktop (a mouse or trackpad) the field opens our own calendar
+ * instead of the browser's, with hour and minute columns beside it for a
+ * date-and-time field - see CalendarPopover. Touch screens keep the native
+ * control and its picker.
+ */
+export function DateInput({
+  type = "date",
+  value,
+  placeholder,
+  className = "",
+  ...rest
+}) {
+  const { locale } = useLocale();
+  const km = locale === "km";
+  const finePointer = useFinePointer();
+  const hint =
+    placeholder ??
+    (type === "date"
+      ? km
+        ? "ជ្រើសរើសថ្ងៃ"
+        : "Select date"
+      : km
+        ? "ជ្រើសរើសថ្ងៃ និងម៉ោង"
+        : "Select date & time");
+  const empty = !value;
+  if (finePointer && (type === "date" || type === "datetime-local")) {
+    return (
+      <DesktopDateField
+        type={type}
+        value={value}
+        hint={hint}
+        className={className}
+        {...rest}
+      />
+    );
+  }
+  return (
+    <span className={`date-input${empty ? " is-empty" : ""}`}>
+      <input
+        className={`input ${className}`}
+        type={type}
+        value={value ?? ""}
+        {...rest}
+      />
+      <Icon name="calendar" size={16} className="date-input-icon" />
+      {empty && (
+        <span className="date-input-hint" aria-hidden="true">
+          {hint}
+        </span>
+      )}
+    </span>
+  );
+}
+
+/** True on a device whose main pointer is a mouse or trackpad. Follows changes
+ * (a tablet docking to a keyboard and trackpad) rather than reading it once. */
+const FINE_POINTER = "(hover: hover) and (pointer: fine)";
+function useFinePointer() {
+  return useSyncExternalStore(
+    (notify) => {
+      const mq = window.matchMedia?.(FINE_POINTER);
+      mq?.addEventListener("change", notify);
+      return () => mq?.removeEventListener("change", notify);
+    },
+    () => !!window.matchMedia?.(FINE_POINTER).matches,
+    () => false,
+  );
+}
+
+/** A new date-and-time with no time chosen yet starts here, and the time
+ * columns open on it so it is one click to change. */
+const DEFAULT_TIME = "09:00";
+
+/**
+ * The desktop half of DateInput: a button that looks like the field, and our
+ * calendar under it. Values are the native input's own formats -
+ * "YYYY-MM-DD", or "YYYY-MM-DDTHH:mm" for datetime-local - and `onChange` is
+ * called with an event-shaped object, so the callers'
+ * `(e) => set(e.target.value)` handlers work unchanged.
+ *
+ * <p>A date field closes the moment a day is picked. A date-and-time field
+ * writes each change through as it is made - day, hour, minute - and closes
+ * on Done, so nothing is lost if the reader clicks away half way.
+ */
+function DesktopDateField({
+  type,
+  value,
+  hint,
+  className,
+  onChange,
+  min,
+  max,
+  disabled,
+  id,
+  "aria-label": ariaLabel,
+}) {
+  const { locale } = useLocale();
+  const withTime = type === "datetime-local";
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef(null);
+  const triggerRef = useRef(null);
+  const popRef = useRef(null);
+
+  const datePart = value ? String(value).slice(0, 10) : "";
+  const timePart = withTime && value ? String(value).slice(11, 16) : "";
+  const date = parseISODate(datePart);
+  let shown = hint;
+  if (date) {
+    if (withTime && timePart) {
+      // The time as the columns show it, 24-hour. The locale formatter prints
+      // "07:30 PM" for Khmer, which read as a different time from the "19"
+      // and "30" picked a moment ago in the columns right under it.
+      shown = `${formatDate(date, locale)} · ${timePart}`;
+    } else {
+      shown = formatDate(date, locale);
+    }
+  }
+
+  const emit = (v) =>
+    onChange?.({ target: { value: v }, currentTarget: { value: v } });
+
+  function close(returnFocus) {
+    setOpen(false);
+    if (returnFocus) triggerRef.current?.focus();
+  }
+
+  useEffect(() => {
+    if (!open) return undefined;
+    // The popover lives in <body>, outside this wrapper, so a click is only
+    // "outside" when it is outside both.
+    const onDown = (e) => {
+      if (!wrapRef.current?.contains(e.target) && !popRef.current?.contains(e.target))
+        setOpen(false);
+    };
+    // Capture phase, so Escape closes the calendar and stops there - inside
+    // an edit dialog, the dialog's own document-level Escape handler would
+    // otherwise close the whole dialog along with it.
+    const onKey = (e) => {
+      if (e.key !== "Escape") return;
+      e.stopPropagation();
+      setOpen(false);
+      triggerRef.current?.focus();
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey, true);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey, true);
+    };
+  }, [open]);
+
+  return (
+    <span
+      ref={wrapRef}
+      className={`date-input is-custom${date ? "" : " is-empty"}${open ? " is-open" : ""}`}
+    >
+      <button
+        ref={triggerRef}
+        id={id}
+        type="button"
+        className={`input date-trigger ${className}`}
+        disabled={disabled}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-label={ariaLabel ? `${ariaLabel}: ${shown}` : undefined}
+        onClick={() => setOpen((o) => !o)}
+      >
+        <span className="date-trigger-text">{shown}</span>
+      </button>
+      <Icon name="calendar" size={16} className="date-input-icon" />
+      {open && (
+        <CalendarPopover
+          value={datePart}
+          min={min ? String(min).slice(0, 10) : undefined}
+          max={max ? String(max).slice(0, 10) : undefined}
+          locale={locale}
+          anchorRef={wrapRef}
+          popRef={popRef}
+          withTime={withTime}
+          time={timePart || null}
+          onClose={close}
+          onDone={() => close(true)}
+          onTime={(t) => emit(`${datePart || toISODate(startOfToday())}T${t}`)}
+          onPick={(iso) => {
+            if (!withTime || !iso) {
+              emit(iso);
+              close(true);
+              return;
+            }
+            emit(`${iso}T${timePart || DEFAULT_TIME}`);
+          }}
+        />
+      )}
+    </span>
+  );
+}
+
 export function SearchInput({
   value,
   onChange,
@@ -222,7 +454,17 @@ function extractSelectOptions(children) {
           value: node.props?.value ?? "",
           label: node.props?.children ?? node.props?.value ?? "",
           disabled: Boolean(node.props?.disabled),
+          // Secondary text shown at the right of the row, e.g. a date.
+          hint: node.props?.["data-hint"],
+          // Optional narrow-screen version of the hint ("3 Oct" for
+          // "Sat, 3 Oct 2026"); CSS shows one or the other by width.
+          hintShort: node.props?.["data-hint-short"],
         });
+      } else if (node.type === "optgroup") {
+        // A heading row, then the group's options. Kept flat so the menu is
+        // one list to render and the headings cannot be picked.
+        result.push({ group: node.props?.label ?? "" });
+        walk(node.props?.children);
       } else if (node.props?.children) {
         walk(node.props.children);
       }
@@ -241,11 +483,15 @@ export function IconSelect({
   children,
   className = "",
   placeholder = "",
+  id,
+  disabled = false,
 }) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef(null);
+  const triggerRef = useRef(null);
 
-  const options = extractSelectOptions(children);
+  const entries = extractSelectOptions(children);
+  const options = entries.filter((o) => !("group" in o));
   const selectedOption = options.find((o) => String(o.value) === String(value));
   const currentLabel = selectedOption
     ? selectedOption.label
@@ -258,23 +504,28 @@ export function IconSelect({
         setOpen(false);
       }
     }
+    // Captured on window so it runs before a surrounding dialog's own
+    // document-level Escape handler: the first Escape closes the menu only,
+    // not the form the menu sits in.
     function handleKeyDown(e) {
       if (e.key === "Escape") {
+        e.stopPropagation();
         setOpen(false);
+        triggerRef.current?.focus();
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown, true);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keydown", handleKeyDown, true);
     };
   }, [open]);
 
   return (
     <div
       ref={containerRef}
-      className={`field-icon custom-select-wrap ${className} ${open ? "is-open" : ""}`}
+      className={`${icon ? "field-icon " : ""}custom-select-wrap ${className} ${open ? "is-open" : ""}`}
     >
       {icon && (
         <span className="custom-select-icon" aria-hidden="true">
@@ -282,9 +533,12 @@ export function IconSelect({
         </span>
       )}
       <button
+        ref={triggerRef}
+        id={id}
         type="button"
         className={`select custom-select-trigger ${open ? "is-active" : ""}`}
         onClick={() => setOpen((v) => !v)}
+        disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label={ariaLabel}
@@ -315,7 +569,18 @@ export function IconSelect({
           role="listbox"
           aria-label={ariaLabel}
         >
-          {options.map((opt, index) => {
+          {entries.map((opt, index) => {
+            if ("group" in opt) {
+              return (
+                <div
+                  key={`group-${index}`}
+                  className="custom-select-group"
+                  role="presentation"
+                >
+                  {opt.group}
+                </div>
+              );
+            }
             const isSelected = String(opt.value) === String(value);
             return (
               <button
@@ -331,6 +596,15 @@ export function IconSelect({
                 }}
               >
                 <span className="custom-select-option-text">{opt.label}</span>
+                {opt.hint &&
+                  (opt.hintShort ? (
+                    <span className="custom-select-option-hint">
+                      <span className="hint-long">{opt.hint}</span>
+                      <span className="hint-short">{opt.hintShort}</span>
+                    </span>
+                  ) : (
+                    <span className="custom-select-option-hint">{opt.hint}</span>
+                  ))}
                 {isSelected && (
                   <span className="custom-select-check" aria-hidden="true">
                     <Icon name="check" size={14} />

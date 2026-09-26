@@ -64,7 +64,8 @@ export const RQ_CSS = `
   margin: 0;
 }
 .rq-head p { margin: 0.5rem 0 0; font-size: 1.1rem; font-weight: 500; color: var(--color-muted); max-width: 60ch; }
-.rq-head-right { display: flex; gap: var(--rq-4); align-items: baseline; }
+.rq-head-right { display: flex; gap: var(--rq-4); align-items: baseline;
+  min-width: 0; max-width: 100%; }
 
 /*
  * The dropdown the browser opens is NOT styled by the rules below - it is an
@@ -108,7 +109,13 @@ export const RQ_CSS = `
    Underline rather than pills: this sits under a page title in a console that
    uses underlined tabs for its own top-level nav, and two different tab shapes
    on one screen read as two different kinds of thing. */
-.rq-tabs { display: flex; gap: var(--rq-1); flex-wrap: wrap; }
+/* One row that scrolls sideways on a phone, like the console's own tab strip
+   above it (scroll-hint-x draws the edge shadows). Wrapping put "Approved" and
+   "Rejected" on a second line that read as a separate control. The cover
+   colour is the page's, since these tabs sit on the page, not on a card. */
+.rq-tabs { display: flex; gap: var(--rq-1); flex-wrap: nowrap; min-width: 0;
+  --scroll-hint-bg: var(--color-page); }
+.rq-tabs > .rq-tab { flex: none; }
 .rq-tab { display: inline-flex; align-items: center; gap: .4rem;
   padding: .4rem .6rem; border: 0; border-bottom: 2px solid transparent;
   background: none; color: var(--color-muted); font: inherit; font-size: .86rem;

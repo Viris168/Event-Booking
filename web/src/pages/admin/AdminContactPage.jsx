@@ -4,6 +4,7 @@ import Icon from "../../components/Icon.jsx";
 import {
   Alert,
   Empty,
+  IconSelect,
   ResponsiveTable,
   TablePager,
 } from "../../components/ui.jsx";
@@ -411,18 +412,18 @@ export default function AdminContactPage() {
               <label className="label" htmlFor="move">
                 {km ? "ស្ថានភាព" : "Status"}
               </label>
-              <select
+              <IconSelect
                 id="move"
-                className="select"
                 value={move}
-                onChange={(e) => setMove(e.target.value)}
+                onChange={setMove}
+                ariaLabel={km ? "ស្ថានភាព" : "Status"}
               >
                 {MOVES.map((s) => (
                   <option key={s} value={s}>
                     {km ? TAB_LABEL[s].km : TAB_LABEL[s].en}
                   </option>
                 ))}
-              </select>
+              </IconSelect>
             </div>
 
             <div className="field">

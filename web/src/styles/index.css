@@ -1180,6 +1180,11 @@
   .notif-page-list {
     @apply flex flex-col gap-[0.5rem];
     max-width: 46rem;
+    scroll-margin-top: calc(var(--nav-h, 61px) + 1rem);
+  }
+  /* Sits under the list, which is capped at 46rem and left-aligned. */
+  .notif-more {
+    max-width: 46rem;
   }
 
   .role-switch {
@@ -1271,8 +1276,12 @@
   .subnav-inner {
     @apply mx-auto flex max-w-shell gap-1 px-page;
   }
+  /* relative: each tab's .sr-only badge label is position:absolute, and
+     without a positioned ancestor inside the scroller it anchored to the
+     sticky .subnav instead - escaping the strip's overflow clip and widening
+     the whole page to wherever the last tab sat (924px on a 390px phone). */
   .subnav a {
-    @apply inline-flex items-center whitespace-nowrap border-b-2 border-transparent px-[0.7rem]
+    @apply relative inline-flex items-center whitespace-nowrap border-b-2 border-transparent px-[0.7rem]
       py-3 text-[0.88rem] font-semibold text-muted;
   }
   .subnav a:hover {
@@ -2641,8 +2650,12 @@
   .searchbar .sb-cell:focus-within {
     @apply bg-transparent shadow-none;
   }
+  /* A little air before the button only. The query and province cells stay
+     joined by their hairline - they are one question - while the button is
+     the answer to it, and butting straight up against the province box made
+     the two read as one control. */
   .searchbar .btn {
-    @apply min-h-[46px] whitespace-nowrap rounded-full px-[1.5rem] font-bold transition-all duration-200;
+    @apply ml-1.5 min-h-[46px] whitespace-nowrap rounded-full px-[1.5rem] font-bold transition-all duration-200;
   }
   .searchbar .btn:hover {
     @apply shadow-float -translate-y-px;
@@ -2655,7 +2668,7 @@
       @apply left-2 right-2 top-0 bottom-auto h-px w-auto;
     }
     .searchbar .btn {
-      @apply rounded-[10px];
+      @apply ml-0 rounded-[10px];
     }
   }
 
@@ -2705,6 +2718,10 @@
     text-align: left;
     cursor: pointer;
     user-select: none;
+  }
+  .custom-select-trigger:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
   }
   .custom-select-trigger.is-active,
   .custom-select-wrap.is-open .custom-select-trigger {
@@ -2836,6 +2853,48 @@
     place-items: center;
     flex: none;
     color: var(--color-brand-600);
+  }
+  /* <optgroup> heading inside the menu. Same small caps as the list group
+     heads on My Bookings, so a grouped list reads the same everywhere. */
+  .custom-select-group {
+    padding: 0.6rem 0.75rem 0.25rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+  }
+  .custom-select-group:first-child {
+    padding-top: 0.35rem;
+  }
+  .custom-select-option-hint {
+    flex: none;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--color-muted);
+  }
+  .custom-select-option.is-selected .custom-select-option-hint {
+    color: inherit;
+  }
+  /* A hint with a short form: the full one where there is room, the short one
+     on a phone, where "Sat, 3 Oct 2026" took half the row from the name. */
+  .custom-select-option-hint .hint-short {
+    display: none;
+  }
+  @media (max-width: 640px) {
+    .custom-select-option-hint .hint-long {
+      display: none;
+    }
+    .custom-select-option-hint .hint-short {
+      display: inline;
+    }
+  }
+  /* Full-width variant: the menu matches the trigger instead of sizing to its
+     longest label, for long option lists such as the check-in gate. */
+  .custom-select-block .custom-select-menu {
+    width: 100%;
+    max-width: none;
+    max-height: 340px;
   }
   [data-theme="dark"] .custom-select-check {
     color: var(--color-brand-400);
@@ -3526,6 +3585,18 @@
   .bk-group-head {
     @apply mb-[0.6rem] flex items-center gap-[0.5rem] text-[0.72rem] font-bold uppercase
       tracking-[0.08em] text-muted;
+    /* "Show less" scrolls back here; clear the sticky navbar when it does. */
+    scroll-margin-top: calc(var(--nav-h, 61px) + 1rem);
+  }
+  /* "Show more / Show less" under a long list (My Bookings, Notifications). */
+  .list-more {
+    @apply mt-[0.9rem] flex flex-wrap items-center justify-center gap-[0.5rem];
+  }
+  /* Full-width on a phone: it is the one thing to tap at the end of a list. */
+  @media (max-width: 640px) {
+    .list-more .btn-outline {
+      @apply w-full justify-center;
+    }
   }
   .bk-group-count {
     @apply rounded-full bg-line/60 px-[0.45rem] py-[0.05rem] text-[0.7rem] tracking-normal;
@@ -4003,8 +4074,13 @@
   }
   /* Surfaces that stay light in both themes — a QR must keep its contrast to
      scan, and the date chips sit on cover art. Re-declaring the neutral tokens
-     locally re-themes every descendant utility in one place. */
-  [data-theme="dark"] :is(.qr-frame, .ev-media .ev-date) {
+     locally re-themes every descendant utility in one place.
+
+     .rail-date is the hero rail's copy of the card chip - same white fill,
+     same text-ink - and was missing from this list, so in dark mode it drew
+     the dark theme's near-white ink on its white fill and the date all but
+     vanished from the hero card. */
+  [data-theme="dark"] :is(.qr-frame, .ev-media .ev-date, .rail-date) {
     /* Re-declaring the tokens fixes descendants that apply a colour utility… */
     --color-ink: #1d1a16;
     --color-ink-2: #4a443b;
@@ -4067,6 +4143,270 @@
     @apply hidden;
     -webkit-appearance: none;
     appearance: none;
+  }
+
+  /* iOS Safari zooms the whole page in when a field under 16px takes focus,
+     and leaves it zoomed after. Every field here is 15px, so tapping search,
+     login or a date filter on an iPhone threw the layout sideways. The common
+     cure - maximum-scale=1 in the viewport meta - also stops readers who need
+     to pinch-zoom from zooming at all, so instead the fields go to 16px on
+     touch screens only. Desktop, where there is no zoom-on-focus, keeps its
+     15px. The custom select's hidden native <select> is included because it
+     is the element that actually takes focus on a phone. */
+  @media (hover: none) and (pointer: coarse) {
+    :is(.input, .select, .textarea, .custom-select-hidden),
+    .searchbar :is(.input, .select),
+    .nav-search input {
+      font-size: 16px;
+    }
+  }
+
+  /* ------------------------------------------------------- date fields ---
+     <DateInput> in ui.jsx - the component comment has the why. The native
+     input stays underneath, so every browser still opens its own picker; what
+     changes is only how the closed field is drawn, which is what differed.
+
+     A field in a grid or flex row must be allowed to shrink below its content
+     width. Without min-width: 0 on the wrapper, the field and the input, iOS
+     Safari's intrinsic date width wins over the column and the field spills
+     into its neighbour. */
+  .field {
+    min-width: 0;
+  }
+  .date-input {
+    @apply relative block min-w-0;
+  }
+  .date-input .input {
+    @apply block w-full min-w-0 text-left;
+    /* Drops iOS Safari's own rounded, centred, fixed-width rendering. */
+    -webkit-appearance: none;
+    appearance: none;
+    padding-right: 2.4rem;
+  }
+  /* iOS centres the chosen date and gives the value box no height when it is
+     empty, so an empty field came out shorter than its neighbours. */
+  .date-input .input::-webkit-date-and-time-value {
+    margin: 0;
+    min-height: 1.6em;
+    text-align: left;
+  }
+  /* Chrome and Edge draw their own picker button; stretched invisibly over our
+     icon, it keeps the icon clickable on desktop without a second glyph. */
+  .date-input .input::-webkit-calendar-picker-indicator {
+    position: absolute;
+    inset-block: 0;
+    right: 0;
+    width: 2.6rem;
+    height: auto;
+    margin: 0;
+    padding: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+  .date-input-icon {
+    @apply pointer-events-none absolute right-[0.8rem] top-1/2 -translate-y-1/2 text-muted;
+  }
+  /* Firefox draws a calendar button of its own that cannot be hidden, so once
+     the field has a value ours would be the second one. While it is empty the
+     rule below paints the field's text transparent, which takes Firefox's
+     button with it - that is the one state where ours is needed. */
+  @supports (-moz-appearance: none) {
+    .date-input:not(.is-empty) .date-input-icon {
+      display: none;
+    }
+  }
+
+  /* Empty and not being edited: hide whatever the browser prints for "no
+     value" (Chrome/Firefox's mm/dd/yyyy mask in the reader's SYSTEM locale,
+     not the page's) and show our hint in its place, in the page's language.
+     Focus hands it straight back to the browser - segments, wheel, calendar -
+     so editing is exactly native. */
+  .date-input.is-empty input.input:not(:focus) {
+    color: transparent;
+  }
+  .date-input.is-empty input.input:not(:focus)::-webkit-datetime-edit {
+    color: transparent;
+  }
+  .date-input-hint {
+    @apply pointer-events-none absolute left-[calc(0.7rem+1px)] right-[2.4rem] top-1/2 -translate-y-1/2 truncate text-placeholder;
+  }
+  .date-input.is-empty .input:focus ~ .date-input-hint {
+    display: none;
+  }
+
+  /* --------------------------------------------------- desktop calendar ---
+     <DesktopDateField> + CalendarPopover.jsx. The trigger is a button drawn as
+     the field, so it lines up with every input beside it; the popover shares
+     the province dropdown's surface, radius, shadow and entrance, so the two
+     menus on the events page read as one family. */
+  .date-trigger {
+    @apply flex cursor-pointer items-center;
+  }
+  .date-trigger-text {
+    @apply min-w-0 truncate;
+  }
+  .date-input.is-empty .date-trigger-text {
+    @apply text-placeholder;
+  }
+  .date-input.is-open .date-trigger,
+  .date-trigger:focus-visible {
+    @apply border-brand-500 outline-none;
+    box-shadow: var(--shadow-focus);
+  }
+  .date-input.is-open .date-input-icon {
+    @apply text-link;
+  }
+
+  /* Fixed and portalled to <body> - see CalendarPopover - so it can never be
+     clipped by a narrow column or a scrolling dialog; the component sets top
+     and left from the field. Above .confirm-overlay (1100), since it opens
+     from inside edit dialogs too. */
+  .cal {
+    position: fixed;
+    z-index: 1200;
+    padding: 0.75rem;
+    background: var(--color-surface);
+    border: 1px solid var(--color-line);
+    border-radius: 14px;
+    box-shadow:
+      0 16px 36px -6px rgba(0, 0, 0, 0.16),
+      0 4px 12px rgba(0, 0, 0, 0.05);
+    animation: custom-menu-pop-in 0.16s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .cal-body {
+    @apply flex gap-3;
+  }
+  .cal-main {
+    width: 276px;
+  }
+  [data-theme="dark"] .cal {
+    background: #1c1915;
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow:
+      0 20px 42px -6px rgba(0, 0, 0, 0.8),
+      0 0 0 1px rgba(255, 255, 255, 0.05);
+  }
+  .cal-head {
+    @apply mb-2 flex items-center justify-between gap-2;
+  }
+  .cal-title {
+    @apply text-[0.95rem] font-bold text-ink;
+  }
+  .cal-nav {
+    @apply grid size-8 cursor-pointer place-items-center rounded-full border-0 bg-transparent p-0 text-ink-2;
+    transition: background-color 0.15s ease;
+  }
+  .cal-nav:hover {
+    @apply bg-surface-2 text-ink;
+  }
+  .cal-nav:focus-visible,
+  .cal-day:focus-visible,
+  .cal-link:focus-visible {
+    @apply outline-2 outline-offset-1 outline-brand-500;
+  }
+  .cal-grid {
+    @apply w-full;
+    table-layout: fixed;
+    border-collapse: separate;
+    border-spacing: 2px;
+  }
+  .cal-grid th {
+    @apply pb-1 text-center text-[0.72rem] font-semibold text-muted;
+  }
+  .cal-grid td {
+    @apply p-0;
+  }
+  .cal-day {
+    @apply grid aspect-square w-full cursor-pointer place-items-center rounded-[10px] border-0 bg-transparent p-0 text-[0.86rem] text-ink;
+    font-variant-numeric: tabular-nums;
+    transition:
+      background-color 0.12s ease,
+      color 0.12s ease;
+  }
+  .cal-day:hover:not(:disabled) {
+    @apply bg-surface-2;
+  }
+  /* Days from the neighbouring months fill the grid so it never changes
+     height, but they are quieter than this month's. */
+  .cal-day.is-outside {
+    @apply text-muted;
+  }
+  .cal-day.is-today {
+    @apply font-bold text-link;
+    box-shadow: inset 0 0 0 1.5px var(--color-brand-500);
+  }
+  .cal-day.is-selected,
+  .cal-day.is-selected:hover:not(:disabled) {
+    @apply bg-brand-600 font-bold text-white;
+    box-shadow: none;
+  }
+  .cal-day:disabled {
+    @apply cursor-not-allowed opacity-35;
+  }
+  .cal-foot {
+    @apply mt-2 flex items-center justify-between border-t border-line-2 pt-2;
+  }
+  .cal-link {
+    @apply cursor-pointer rounded-lg border-0 bg-transparent px-2 py-1.5 text-[0.85rem] font-semibold text-link;
+    transition: background-color 0.15s ease;
+  }
+  .cal-link:hover:not(:disabled) {
+    @apply bg-tint;
+  }
+  .cal-link:disabled {
+    @apply cursor-not-allowed opacity-40;
+  }
+  .cal-done {
+    @apply cursor-pointer rounded-lg border-0 bg-brand-600 px-4 py-1.5 text-[0.85rem] font-semibold text-white;
+    transition: background-color 0.15s ease;
+  }
+  .cal-done:hover {
+    @apply bg-brand-700;
+  }
+  .cal-done:focus-visible {
+    @apply outline-2 outline-offset-2 outline-brand-500;
+  }
+
+  /* Hour and minute columns beside the calendar, the layout Chrome's own
+     date-and-time picker uses. Each column scrolls on its own; its height is
+     the calendar grid's, so the two halves end on the same line. */
+  .cal-time {
+    @apply flex flex-col border-l border-line-2 pl-3;
+  }
+  .cal-time-head {
+    @apply mb-2 flex h-8 items-center justify-center gap-1.5 text-[0.85rem] font-bold text-ink;
+  }
+  .cal-time-head svg {
+    @apply text-muted;
+  }
+  .cal-time-cols {
+    @apply flex gap-1.5;
+  }
+  .cal-time-col {
+    @apply flex w-[52px] flex-col gap-0.5 overflow-y-auto;
+    height: 262px;
+    scrollbar-width: thin;
+    overscroll-behavior: contain;
+  }
+  .cal-time-opt {
+    @apply flex-none cursor-pointer rounded-[10px] border-0 bg-transparent py-[0.45rem] text-center text-[0.86rem] text-ink;
+    font-variant-numeric: tabular-nums;
+    transition: background-color 0.12s ease;
+  }
+  .cal-time-opt:hover {
+    @apply bg-surface-2;
+  }
+  .cal-time-opt.is-selected,
+  .cal-time-opt.is-selected:hover {
+    @apply bg-brand-600 font-bold text-white;
+  }
+  .cal-time-opt:focus-visible {
+    @apply outline-2 -outline-offset-2 outline-brand-500;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .cal {
+      animation: none;
+    }
   }
   .hint {
     @apply text-[0.76rem] text-muted;
@@ -4147,9 +4487,14 @@
   }
 
   /* --------------------------------------------------------------- filters */
+  /* 210px, not 150px: at 150 a phone fits two columns of ~160px, and a select
+     with a leading icon and a chevron has room for about eight characters -
+     "All provi…". One full-width column there, three or four on a tablet or
+     desktop. min(100%, …) keeps a single column from overflowing a very
+     narrow screen. */
   .filterbar {
     @apply grid items-end gap-[0.7rem];
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
   }
   .chips {
     @apply flex flex-wrap gap-[0.4rem];
@@ -4256,6 +4601,32 @@
     /* Action buttons read better full-width at the foot of the card. */
     .table td .row {
       @apply gap-[0.4rem];
+    }
+  }
+
+  /* Tablet: still cards, since seven columns do not fit 820px either, but the
+     fields sit three across with the label over the value. One field per line
+     across a tablet-wide card left two thirds of it empty and made each row
+     four screens of scrolling per dozen records. The first cell is the row's
+     name, so it keeps the full width as the card's heading. */
+  @media (min-width: 641px) and (max-width: 900px) {
+    .table tbody tr {
+      @apply grid gap-x-5 gap-y-1 py-[0.6rem];
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .table td {
+      @apply gap-[0.2rem] border-b-0 py-[0.35rem];
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .table td[data-label] > * {
+      grid-column: 1;
+    }
+    .table tbody tr > td:first-child,
+    .table td:not([data-label]) {
+      grid-column: 1 / -1;
+    }
+    .table tbody tr > td:first-child {
+      @apply mb-1 border-b border-dashed border-line-2 pb-[0.6rem];
     }
   }
 
@@ -7311,6 +7682,12 @@
   text-align: center;
 }
 
+.wallet-done.is-expired {
+  border-color: color-mix(in srgb, var(--color-quiet) 35%, transparent);
+  background: var(--color-quiet-soft);
+  color: var(--color-quiet);
+}
+
 .wallet-toggle {
   display: flex;
   align-items: center;
@@ -7735,6 +8112,102 @@
 .action-menu-item > .icon {
   flex: none;
   opacity: 0.75;
+}
+
+/* Same dark treatment as the custom select menu: on a near-black page the
+   light-theme shadow does nothing, and the panel's surface is one step off the
+   card it opens over, so without a lighter edge it had no outline at all. */
+[data-theme="dark"] .action-menu-pop {
+  background: #1c1915;
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow:
+    0 20px 42px -6px rgba(0, 0, 0, 0.8),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+/* ---- ActionMenu on a phone: bottom sheet (see the component's note). */
+.action-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: flex-end;
+  background: rgba(9, 11, 16, 0.5);
+  animation: action-sheet-fade 0.16s ease-out both;
+}
+.action-sheet {
+  width: 100%;
+  max-height: 80dvh;
+  overflow-y: auto;
+  padding: 0.35rem 1rem calc(1rem + env(safe-area-inset-bottom));
+  background: var(--color-surface);
+  border-top-left-radius: 1.1rem;
+  border-top-right-radius: 1.1rem;
+  box-shadow: 0 -12px 32px rgba(9, 11, 16, 0.18);
+  animation: action-sheet-rise 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+[data-theme="dark"] .action-sheet {
+  background: #1c1915;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+.action-sheet-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.3rem 0 0.75rem;
+  margin-bottom: 0.35rem;
+  border-bottom: 1px solid var(--color-line-2);
+}
+.action-sheet-grip {
+  width: 2.25rem;
+  height: 0.25rem;
+  border-radius: 999px;
+  background: var(--color-line);
+}
+/* The row the actions apply to - on a phone the card it came from is under
+   the dimmed backdrop, so the sheet has to say which one. */
+.action-sheet-title {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--color-ink);
+}
+.action-sheet-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.action-sheet .action-menu-item {
+  min-height: 3rem;
+  padding: 0.6rem 0.75rem;
+  gap: 0.8rem;
+  font-size: 0.98rem;
+  border-radius: 0.6rem;
+}
+.action-sheet .action-menu-item > .icon {
+  width: 18px;
+  height: 18px;
+}
+.action-sheet-cancel {
+  width: 100%;
+  min-height: 3rem;
+  margin-top: 0.6rem;
+}
+@keyframes action-sheet-fade {
+  from { opacity: 0; }
+}
+@keyframes action-sheet-rise {
+  from { transform: translateY(100%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .action-sheet-overlay,
+  .action-sheet {
+    animation: none;
+  }
 }
 
 /* FormDialog: the same overlay as a confirmation, holding a form instead of a
@@ -10768,4 +11241,16 @@ html[lang="km"] .contact-faq details p {
 .pricerange-dash {
   @apply h-px w-3 shrink-0 self-center;
   background: var(--color-line);
+}
+
+/* Card-mode tables (<ResponsiveTable> below 900px): every cell reads from the
+   left. Money and action columns carry `text-right` for the desktop grid, and
+   in a card that pushed the label ("AMOUNT", "ACTIONS") to the far edge of its
+   column with the value flush against the card border. Unlayered on purpose -
+   the card rules live in @layer components, which the `text-right` utility
+   outranks whatever the selector. */
+@media (max-width: 900px) {
+  .table td[data-label] {
+    text-align: start;
+  }
 }

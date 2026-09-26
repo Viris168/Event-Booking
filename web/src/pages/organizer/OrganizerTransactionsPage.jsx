@@ -2,7 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useDocumentTitle } from "../../lib/useDocumentTitle.js";
 import Icon from "../../components/Icon.jsx";
-import { Badge, ResponsiveTable, TablePager } from "../../components/ui.jsx";
+import {
+  Badge,
+  IconSelect,
+  ResponsiveTable,
+  TablePager,
+} from "../../components/ui.jsx";
 import {
   SkeletonRegion,
   TableRowsSkeleton,
@@ -220,14 +225,14 @@ export default function OrganizerTransactionsPage() {
       <div className="bg-surface border border-line rounded-hero shadow-card overflow-hidden">
         {/* --------------------------------------------------------- toolbar */}
         <div className="px-5 py-3 border-b border-line-2 bg-surface-2 flex items-center gap-3 flex-wrap">
-          <div className="relative">
+          <div className="relative w-full sm:w-64">
             <Icon
               name="search"
               size={15}
               className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none"
             />
             <input
-              className="input pl-9 w-64"
+              className="input pl-9 w-full"
               value={q}
               onChange={(e) => {
                 setQ(e.target.value);
@@ -240,11 +245,12 @@ export default function OrganizerTransactionsPage() {
             />
           </div>
 
-          <select
-            className="select w-auto"
+          <IconSelect
+            icon="filter"
+            className="flex-1 min-w-0 sm:flex-none sm:w-48"
             value={sort}
-            onChange={(e) => setSort(e.target.value)}
-            aria-label={km ? "តម្រៀប" : "Sort"}
+            onChange={setSort}
+            ariaLabel={km ? "តម្រៀប" : "Sort"}
           >
             <option value="newest">{km ? "ថ្មីបំផុត" : "Newest"}</option>
             <option value="oldest">{km ? "ចាស់បំផុត" : "Oldest"}</option>
@@ -254,7 +260,7 @@ export default function OrganizerTransactionsPage() {
             <option value="lowest">
               {km ? "ទឹកប្រាក់តិច" : "Lowest amount"}
             </option>
-          </select>
+          </IconSelect>
 
           <button
             type="button"
@@ -300,17 +306,18 @@ export default function OrganizerTransactionsPage() {
 
         {showFilters && (
           <div className="px-5 py-3 border-b border-line-2 flex items-end gap-3 flex-wrap">
-            <label className="flex flex-col gap-1">
+            <div className="flex flex-col gap-1 w-full sm:w-auto">
               <span className="text-tiny font-semibold text-muted uppercase tracking-wide">
                 {t("status")}
               </span>
-              <select
-                className="select w-auto"
+              <IconSelect
+                className="w-full sm:w-48"
                 value={state}
-                onChange={(e) => {
-                  setState(e.target.value);
+                onChange={(v) => {
+                  setState(v);
                   setPage(1);
                 }}
+                ariaLabel={t("status")}
               >
                 <option value="">
                   {km ? "ស្ថានភាពទាំងអស់" : "All states"}
@@ -320,19 +327,20 @@ export default function OrganizerTransactionsPage() {
                     {s.replace(/_/g, " ").toLowerCase()}
                   </option>
                 ))}
-              </select>
-            </label>
-            <label className="flex flex-col gap-1">
+              </IconSelect>
+            </div>
+            <div className="flex flex-col gap-1 w-full sm:w-auto">
               <span className="text-tiny font-semibold text-muted uppercase tracking-wide">
                 {km ? "ព្រឹត្តិការណ៍" : "Event"}
               </span>
-              <select
-                className="select w-auto"
+              <IconSelect
+                className="w-full sm:w-48"
                 value={eventId}
-                onChange={(e) => {
-                  setEventId(e.target.value);
+                onChange={(v) => {
+                  setEventId(String(v));
                   setPage(1);
                 }}
+                ariaLabel={km ? "ព្រឹត្តិការណ៍" : "Event"}
               >
                 <option value="">
                   {km ? "ព្រឹត្តិការណ៍ទាំងអស់" : "All events"}
@@ -342,19 +350,20 @@ export default function OrganizerTransactionsPage() {
                     {km ? e.title_km : e.title_en}
                   </option>
                 ))}
-              </select>
-            </label>
-            <label className="flex flex-col gap-1">
+              </IconSelect>
+            </div>
+            <div className="flex flex-col gap-1 w-full sm:w-auto">
               <span className="text-tiny font-semibold text-muted uppercase tracking-wide">
                 {km ? "មធ្យោបាយបង់ប្រាក់" : "Paid with"}
               </span>
-              <select
-                className="select w-auto"
+              <IconSelect
+                className="w-full sm:w-48"
                 value={provider}
-                onChange={(e) => {
-                  setProvider(e.target.value);
+                onChange={(v) => {
+                  setProvider(v);
                   setPage(1);
                 }}
+                ariaLabel={km ? "មធ្យោបាយបង់ប្រាក់" : "Paid with"}
               >
                 <option value="">{km ? "ទាំងអស់" : "All providers"}</option>
                 {Object.entries(PROVIDER_LABEL).map(([value, label]) => (
@@ -362,8 +371,8 @@ export default function OrganizerTransactionsPage() {
                     {label}
                   </option>
                 ))}
-              </select>
-            </label>
+              </IconSelect>
+            </div>
           </div>
         )}
 
@@ -432,7 +441,7 @@ export default function OrganizerTransactionsPage() {
                           {km ? r.event_title_km : r.event_title_en}
                         </Link>
                       </td>
-                      <td className="whitespace-nowrap">
+                      <td className="min-[901px]:whitespace-nowrap">
                         <div className="font-medium text-ink">
                           {date(r.created_at)}
                         </div>

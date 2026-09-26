@@ -2,6 +2,25 @@ import client from './client.js'
 
 export const createBooking = (data) => client.post('/bookings', data).then((r) => r.data)
 export const getMyBookings = () => client.get('/bookings/me').then((r) => r.data)
+
+/**
+ * Every booking the caller has, newest first. /bookings/me is paged and
+ * answers 20 by default, which My Bookings used to take as the whole list: an
+ * account with 81 bookings saw 20 and was told it had 20. Pages are walked
+ * until one comes back short.
+ */
+export async function getAllMyBookings(size = 100) {
+  const all = []
+  for (let page = 0; ; page++) {
+    const batch = await client
+      .get('/bookings/me', { params: { page, size } })
+      .then((r) => r.data)
+    if (!Array.isArray(batch)) break
+    all.push(...batch)
+    if (batch.length < size) break
+  }
+  return all
+}
 export const getBooking = (id) => client.get(`/bookings/${id}`).then((r) => r.data)
 /**
  * Cancel an unpaid booking. Returns the updated booking, so the caller can

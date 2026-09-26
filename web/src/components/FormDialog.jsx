@@ -75,7 +75,11 @@ export default function FormDialog({
     // The first real control, not the dialog itself. An edit form that opens
     // with nothing focused makes the keyboard user tab in from the top every
     // time, past the close button, to reach the field they came for.
-    formRef.current?.querySelector("input, select, textarea")?.focus();
+    formRef.current
+      ?.querySelector(
+        "input, select:not(.custom-select-hidden), textarea, .custom-select-trigger",
+      )
+      ?.focus();
 
     return () => {
       document.body.style.overflow = previous;

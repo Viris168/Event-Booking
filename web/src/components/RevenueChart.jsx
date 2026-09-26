@@ -125,8 +125,8 @@ export function RevenueChart({ months = [], km = false, metric = "revenue" }) {
         borderWidth: 1,
         padding: [10, 14],
         extraCssText: isDark
-          ? "box-shadow: 0 10px 25px -5px rgba(0,0,0,0.6); backdrop-filter: blur(8px); border-radius: 12px;"
-          : "box-shadow: 0 10px 25px -5px rgba(0,0,0,0.08); backdrop-filter: blur(8px); border-radius: 12px;",
+          ? "box-shadow: 0 10px 25px -5px rgba(0,0,0,0.6); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); border-radius: 12px;"
+          : "box-shadow: 0 10px 25px -5px rgba(0,0,0,0.08); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); border-radius: 12px;",
         axisPointer: {
           type: "shadow",
           shadowStyle: {

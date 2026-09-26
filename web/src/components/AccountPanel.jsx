@@ -749,8 +749,8 @@ function DetailsForm({ user, km, t, toast, refreshUser, onSaved, onCancel }) {
           emailError
             ? undefined
             : km
-              ? "ប្រើសម្រាប់បង្កាន់ដៃ។ ការចូលប្រើនៅតែប្រើលេខទូរស័ព្ទ។"
-              : "Used for receipts. You still sign in with your phone number."
+              ? "ប្រើសម្រាប់បង្កាន់ដៃ។ អ្នកក៏អាចប្រើវាជំនួសលេខទូរស័ព្ទ ដើម្បីចូលគណនីបានដែរ។"
+              : "Used for receipts. You can also sign in with it instead of your phone number."
         }
       >
         <input
@@ -1141,8 +1141,8 @@ function GoogleLinkCard({ km, user, toast, refreshUser }) {
       >
         <p className="small muted">
           {km
-            ? "អ្នកនឹងនៅតែចូលបានដោយប្រើលេខទូរស័ព្ទ និងពាក្យសម្ងាត់របស់អ្នក។"
-            : "You will still be able to sign in with your phone number and password."}
+            ? "អ្នកនឹងនៅតែចូលបានដោយប្រើលេខទូរស័ព្ទ ឬអ៊ីមែល និងពាក្យសម្ងាត់របស់អ្នក។"
+            : "You will still be able to sign in with your phone number or email and password."}
         </p>
       </ConfirmDialog>
     </section>
@@ -1220,8 +1220,8 @@ function SetPasswordForm({ km, user, toast, refreshUser, onCancel }) {
       <h2>{km ? "កំណត់ពាក្យសម្ងាត់" : "Set a password"}</h2>
       <p className="muted small acct-lede">
         {km
-          ? "បច្ចុប្បន្នអ្នកចូលដោយ Google តែមួយគត់។ ការកំណត់ពាក្យសម្ងាត់អនុញ្ញាតឱ្យអ្នកចូលដោយលេខទូរស័ព្ទផងដែរ ហើយអ្នកនឹងមិនជាប់ខាងក្រៅ ប្រសិនបើបាត់គណនី Google។"
-          : "Right now Google is the only way into this account. A password lets you sign in with your phone number too, so losing your Google account does not lock you out."}
+          ? "បច្ចុប្បន្នអ្នកចូលដោយ Google តែមួយគត់។ ការកំណត់ពាក្យសម្ងាត់អនុញ្ញាតឱ្យអ្នកចូលដោយលេខទូរស័ព្ទ ឬអ៊ីមែលផងដែរ ហើយអ្នកនឹងមិនជាប់ខាងក្រៅ ប្រសិនបើបាត់គណនី Google។"
+          : "Right now Google is the only way into this account. A password lets you sign in with your phone number or email too, so losing your Google account does not lock you out."}
       </p>
 
       {error && (

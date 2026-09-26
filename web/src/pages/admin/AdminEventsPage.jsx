@@ -480,7 +480,7 @@ export default function AdminEventsPage() {
                   <th>{locale === "km" ? "កាលបរិច្ឆេទ" : "Date"}</th>
                   <th style={{ minWidth: 150 }}>{t("ticketsSold")}</th>
                   <th className="num">{t("revenue")}</th>
-                  <th />
+                  <th className="text-right">{t("actions")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -537,7 +537,7 @@ export default function AdminEventsPage() {
                     <td className="num font-bold">
                       {usd(e.revenue_usd_cents)}
                     </td>
-                    <td>
+                    <td className="text-right">
                       {/*
                        * One kebab rather than up to four buttons. The actions a
                        * row offers depend entirely on its status, so laid out
@@ -552,6 +552,7 @@ export default function AdminEventsPage() {
                        */}
                       <ActionMenu
                         disabled={busyId === e.id}
+                        title={km ? e.title_km : e.title_en}
                         label={km ? "សកម្មភាព" : "Actions"}
                         items={[
                           {

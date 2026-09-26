@@ -5,7 +5,7 @@ import ConfirmDialog from "../../components/ConfirmDialog.jsx";
 import FormDialog from "../../components/FormDialog.jsx";
 import Icon from "../../components/Icon.jsx";
 import MapLinkField from "../../components/MapLinkField.jsx";
-import { Alert, Empty, Field } from "../../components/ui.jsx";
+import { Alert, Empty, Field, IconSelect } from "../../components/ui.jsx";
 import { useLocale } from "../../context/LocaleContext.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
 import {
@@ -365,10 +365,11 @@ export default function OrganizerVenuesPage() {
             />
           </Field>
           <Field label={t("province")}>
-            <select
-              className="select"
+            <IconSelect
+              icon="mapPin"
               value={form.province_code}
-              onChange={(e) => set("province_code", e.target.value)}
+              onChange={(v) => set("province_code", v)}
+              ariaLabel={t("province")}
             >
               {provinces.map((p) => (
                 <option key={p.code} value={p.code}>
@@ -377,7 +378,7 @@ export default function OrganizerVenuesPage() {
                     : (p.nameEn ?? p.name_en)}
                 </option>
               ))}
-            </select>
+            </IconSelect>
           </Field>
           <Field label="Khan / District" error={errors.khan_district}>
             <input

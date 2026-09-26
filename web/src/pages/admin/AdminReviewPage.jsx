@@ -334,7 +334,7 @@ export default function AdminReviewPage() {
             out whether anything had been rejected meant changing the filter and
             changing it back. Four tabs, four counts, one click between them. */}
         <div className="rq-head-right">
-          <div className="rq-tabs" role="tablist" aria-label={t("status")}>
+          <div className="rq-tabs scroll-hint-x" role="tablist" aria-label={t("status")}>
             {QUEUES.map((s) => (
               <button
                 key={s}

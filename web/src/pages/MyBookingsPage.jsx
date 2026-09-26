@@ -1,5 +1,5 @@
 import { useDocumentTitle } from "../lib/useDocumentTitle.js";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import Icon, { CATEGORY_ICON } from "../components/Icon.jsx";
 import {
@@ -11,13 +11,10 @@ import { Badge, Empty, Money } from "../components/ui.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useLocale } from "../context/LocaleContext.jsx";
 import { eventArt } from "../lib/eventArt.js";
-import { getMyBookings } from "../api/bookings.js";
+import { ticketsExpired } from "../lib/ticketExpiry.js";
+import { getAllMyBookings } from "../api/bookings.js";
 import { getEvent as getApiEvent } from "../api/events.js";
-import { getBookingTickets } from "../api/tickets.js";
-import { mapBooking, mapEvent, mapTicket } from "../api/adapters.js";
-
-/** States in which a booking has tickets worth counting. */
-const TICKETED = ["CONFIRMED"];
+import { mapBooking, mapEvent } from "../api/adapters.js";
 
 /**
  * States the buyer can still act on, mirroring PaymentService.PAYABLE on the
@@ -34,6 +31,7 @@ const STATES = [
   "AWAITING_CONFIRMATION",
   "PAYMENT_FAILED",
   "CONFIRMED",
+  "USED",
   "EXPIRED",
   "CANCELLED",
 ];
@@ -57,11 +55,15 @@ function Row({ booking, event, ticketCount }) {
       ? ticketCount
       : { total: ticketCount || 0, used: 0, allUsed: false };
   const { total, used, allUsed } = stats;
+  // Confirmed, but the event is over: whatever was not scanned can no
+  // longer get anyone in, so it reads as spent rather than as a live ticket.
+  const expired =
+    booking.state === "CONFIRMED" && !allUsed && ticketsExpired(event);
 
   return (
     <Link
       to={`/bookings/${booking.id}`}
-      className={`bk-row${closed ? " is-closed" : ""}${payable ? " is-payable" : ""}${allUsed ? " is-used" : ""}`}
+      className={`bk-row${closed || expired ? " is-closed" : ""}${payable ? " is-payable" : ""}${allUsed ? " is-used" : ""}`}
     >
       {/* Same artwork resolution as the event cards, so a booking is
           recognisable by the picture you bought it from. */}
@@ -96,6 +98,8 @@ function Row({ booking, event, ticketCount }) {
               <Icon name="checkCircle" size={11} />
               {locale === "km" ? "បានប្រើរួច" : "Used"}
             </span>
+          ) : expired ? (
+            <Badge status="EXPIRED" />
           ) : (
             <>
               <Badge status={booking.state} />
@@ -135,6 +139,13 @@ function Row({ booking, event, ticketCount }) {
                   {" · "}
                   <span className="font-semibold text-muted">
                     {locale === "km" ? "បានប្រើទាំងអស់" : "All used"}
+                  </span>
+                </>
+              ) : expired ? (
+                <>
+                  {" · "}
+                  <span className="font-semibold text-muted">
+                    {locale === "km" ? "ផុតកំណត់" : "Expired"}
                   </span>
                 </>
               ) : used > 0 ? (
@@ -183,6 +194,10 @@ function GridCard({ booking, event, ticketCount }) {
       ? ticketCount
       : { total: ticketCount || 0, used: 0, allUsed: false };
   const { total, used, allUsed } = stats;
+  // Confirmed, but the event is over: whatever was not scanned can no
+  // longer get anyone in, so it reads as spent rather than as a live ticket.
+  const expired =
+    booking.state === "CONFIRMED" && !allUsed && ticketsExpired(event);
 
   const startDate = event?.starts_at ? new Date(event.starts_at) : null;
   const month = startDate
@@ -203,7 +218,7 @@ function GridCard({ booking, event, ticketCount }) {
   return (
     <Link
       to={`/bookings/${booking.id}`}
-      className={`bk-card${closed ? " is-closed" : ""}${payable ? " is-payable" : ""}${allUsed ? " is-used" : ""}`}
+      className={`bk-card${closed || expired ? " is-closed" : ""}${payable ? " is-payable" : ""}${allUsed ? " is-used" : ""}`}
     >
       <div
         className={`bk-card-media ${art.className}${art.hasImage ? " has-photo" : ""}`}
@@ -235,6 +250,8 @@ function GridCard({ booking, event, ticketCount }) {
                 <Icon name="checkCircle" size={11} />
                 {locale === "km" ? "បានប្រើរួច" : "Used"}
               </span>
+            ) : expired ? (
+              <Badge status="EXPIRED" />
             ) : (
               <>
                 <Badge status={booking.state} />
@@ -291,6 +308,13 @@ function GridCard({ booking, event, ticketCount }) {
                   {" · "}
                   <span className="font-semibold text-muted">
                     {locale === "km" ? "បានប្រើទាំងអស់" : "All used"}
+                  </span>
+                </>
+              ) : expired ? (
+                <>
+                  {" · "}
+                  <span className="font-semibold text-muted">
+                    {locale === "km" ? "ផុតកំណត់" : "Expired"}
                   </span>
                 </>
               ) : used > 0 ? (
@@ -356,6 +380,14 @@ function GridCard({ booking, event, ticketCount }) {
   );
 }
 
+/**
+ * How many of a group show before "Show more", and how many each press adds.
+ * Upcoming starts generous because those are the bookings you will use; the
+ * archive starts short because you only open it to look for one.
+ */
+const STEP = 12;
+const INITIAL = { upcoming: 12, past: 8 };
+
 function Group({
   title,
   icon,
@@ -363,18 +395,28 @@ function Group({
   apiEvents,
   ticketCounts,
   viewMode = "list",
+  initial = STEP,
 }) {
+  const { locale } = useLocale();
+  const [shown, setShown] = useState(initial);
+  const headRef = useRef(null);
   if (!list.length) return null;
+
+  const visible = list.slice(0, shown);
+  const left = list.length - visible.length;
+  const next = Math.min(STEP, left);
+  const km = locale === "km";
+
   return (
     <div className="bk-group">
-      <div className="bk-group-head">
+      <div className="bk-group-head" ref={headRef}>
         {icon && <Icon name={icon} size={15} />}
         <span>{title}</span>
         <span className="bk-group-count">{list.length}</span>
       </div>
       {viewMode === "grid" ? (
         <div className="grid grid-cards">
-          {list.map((b) => (
+          {visible.map((b) => (
             <GridCard
               key={b.id}
               booking={b}
@@ -385,7 +427,7 @@ function Group({
         </div>
       ) : (
         <div className="stack-sm">
-          {list.map((b) => (
+          {visible.map((b) => (
             <Row
               key={b.id}
               booking={b}
@@ -393,6 +435,42 @@ function Group({
               ticketCount={ticketCounts[b.id] ?? 0}
             />
           ))}
+        </div>
+      )}
+
+      {(left > 0 || shown > initial) && (
+        <div className="list-more">
+          {left > 0 && (
+            <button
+              type="button"
+              className="btn btn-outline"
+              onClick={() => setShown((n) => n + STEP)}
+            >
+              <Icon name="chevronDown" size={15} />
+              {left > STEP
+                ? km
+                  ? `បង្ហាញ ${next} ទៀត · នៅសល់ ${left}`
+                  : `Show ${next} more · ${left} left`
+                : km
+                  ? `បង្ហាញ ${left} ចុងក្រោយ`
+                  : `Show the last ${left}`}
+            </button>
+          )}
+          {shown > initial && (
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => {
+                setShown(initial);
+                // Collapsing from far down the list would leave you staring at
+                // whatever section follows, so bring this one's heading back.
+                headRef.current?.scrollIntoView({ block: "start" });
+              }}
+            >
+              <Icon name="chevronUp" size={15} />
+              {km ? "បង្ហាញតិច" : "Show less"}
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -406,7 +484,6 @@ export default function MyBookingsPage() {
   const [state, setState] = useState("");
   const [bookingsData, setBookingsData] = useState([]);
   const [apiEvents, setApiEvents] = useState({});
-  const [ticketCounts, setTicketCounts] = useState({});
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [reload, setReload] = useState(0);
@@ -435,7 +512,7 @@ export default function MyBookingsPage() {
     }
     setLoading(true);
     setFailed(false);
-    getMyBookings()
+    getAllMyBookings()
       .then((res) => {
         if (!active) return;
         setBookingsData(Array.isArray(res) ? res.map(mapBooking) : []);
@@ -482,44 +559,48 @@ export default function MyBookingsPage() {
       setApiEvents(byId);
     });
 
-    // Ticket stats drive the "N QR" badge and used status. Only asked for where tickets can
-    // exist: they are issued at payment, so an unpaid booking would just cost a
-    // round trip to be told nothing.
-    const ticketed = bookingsData.filter((b) => TICKETED.includes(b.state));
-    Promise.all(
-      ticketed.map((b) =>
-        getBookingTickets(b.id)
-          .then((ts) => {
-            const list = (ts || []).map(mapTicket);
-            const used = list.filter(
-              (t) => t.checked_in || Boolean(t.checked_in_at),
-            ).length;
-            return [
-              b.id,
-              {
-                total: list.length,
-                used,
-                allUsed: list.length > 0 && used === list.length,
-              },
-            ];
-          })
-          .catch(() => [b.id, { total: 0, used: 0, allUsed: false }]),
-      ),
-    ).then((pairs) => {
-      if (active) setTicketCounts(Object.fromEntries(pairs));
-    });
-
     return () => {
       active = false;
     };
   }, [bookingsData]);
 
   const all = bookingsData;
-  const counts = all.reduce(
-    (acc, b) => ({ ...acc, [b.state]: (acc[b.state] || 0) + 1 }),
-    {},
+
+  // Ticket counts ride along on each booking from /bookings/me, so "N QR",
+  // "Used" and the chip counts are right on first paint - no request per row.
+  const ticketCounts = useMemo(
+    () =>
+      Object.fromEntries(
+        bookingsData
+          .filter((b) => b.tickets)
+          .map((b) => {
+            const { total, checked_in: used } = b.tickets;
+            return [b.id, { total, used, allUsed: total > 0 && used === total }];
+          }),
+      ),
+    [bookingsData],
   );
-  const filtered = state ? all.filter((b) => b.state === state) : all;
+
+  /**
+   * The status the filter chips sort by. A confirmed booking whose tickets are
+   * all scanned reads as Used, and one whose event day is over as Expired, so
+   * "Confirmed" only counts bookings you can still walk in with. Each booking
+   * lands under exactly one chip.
+   */
+  const shownState = useCallback(
+    (b) => {
+      if (b.state !== "CONFIRMED") return b.state;
+      if (ticketCounts[b.id]?.allUsed) return "USED";
+      if (ticketsExpired(apiEvents[b.event_id])) return "EXPIRED";
+      return "CONFIRMED";
+    },
+    [ticketCounts, apiEvents],
+  );
+  const counts = all.reduce((acc, b) => {
+    const s = shownState(b);
+    return { ...acc, [s]: (acc[s] || 0) + 1 };
+  }, {});
+  const filtered = state ? all.filter((b) => shownState(b) === state) : all;
 
   /**
    * Split by whether the event has happened, then sort each half towards the
@@ -528,6 +609,10 @@ export default function MyBookingsPage() {
    *
    * An event still loading has no date yet; those sort as upcoming rather than
    * dropping into the archive and appearing to vanish.
+   *
+   * Within each half, bookings that need nothing more from you (cancelled,
+   * expired, every ticket already scanned, or tickets whose event day is over)
+   * sink below the live ones.
    */
   const { upcoming, past } = useMemo(() => {
     const now = Date.now();
@@ -536,13 +621,14 @@ export default function MyBookingsPage() {
     for (const b of filtered) {
       const startsAt = apiEvents[b.event_id]?.starts_at;
       const ts = startsAt ? new Date(startsAt).getTime() : null;
-      if (ts != null && ts < now) done.push([b, ts]);
-      else up.push([b, ts ?? Number.MAX_SAFE_INTEGER]);
+      const inactive = [...CLOSED, "USED"].includes(shownState(b));
+      if (ts != null && ts < now) done.push([b, ts, inactive]);
+      else up.push([b, ts ?? Number.MAX_SAFE_INTEGER, inactive]);
     }
-    up.sort((a, z) => a[1] - z[1]);
-    done.sort((a, z) => z[1] - a[1]);
+    up.sort((a, z) => a[2] - z[2] || a[1] - z[1]);
+    done.sort((a, z) => a[2] - z[2] || z[1] - a[1]);
     return { upcoming: up.map(([b]) => b), past: done.map(([b]) => b) };
-  }, [filtered, apiEvents]);
+  }, [filtered, apiEvents, shownState]);
 
   // Signed out: nothing to fetch, and an empty "no bookings" state would be a
   // lie — the bookings may well exist, just not for an anonymous caller.
@@ -579,7 +665,7 @@ export default function MyBookingsPage() {
           ) : (
             <p>
               {all.length} {locale === "km" ? "ការកក់" : "bookings"} ·{" "}
-              {all.filter((b) => b.state === "CONFIRMED").length}{" "}
+              {counts.CONFIRMED || 0}{" "}
               {status("CONFIRMED").toLowerCase()}
             </p>
           )}
@@ -691,6 +777,8 @@ export default function MyBookingsPage() {
             title={locale === "km" ? "ជិតមកដល់" : "Upcoming"}
             icon="calendar"
             list={upcoming}
+            initial={INITIAL.upcoming}
+            key={`up-${state}`}
             apiEvents={apiEvents}
             ticketCounts={ticketCounts}
             viewMode={viewMode}
@@ -699,6 +787,8 @@ export default function MyBookingsPage() {
             title={locale === "km" ? "កន្លងផុត" : "Past"}
             icon="clock"
             list={past}
+            initial={INITIAL.past}
+            key={`past-${state}`}
             apiEvents={apiEvents}
             ticketCounts={ticketCounts}
             viewMode={viewMode}

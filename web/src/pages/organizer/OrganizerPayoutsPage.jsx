@@ -7,6 +7,7 @@ import {
   Badge,
   Empty,
   Field,
+  IconSelect,
   ResponsiveTable,
   Stat,
   TablePager,
@@ -248,7 +249,7 @@ export default function OrganizerPayoutsPage() {
         <Stat
           label={km ? "អាចស្នើសុំបាន" : "Ready to claim"}
           value={usd(totals.claimable)}
-          sub={`${payable.length} ${km ? "ព្រឹត្តិការណ៍" : "events"}`}
+          sub={`${payable.length} ${km ? "ព្រឹត្តិការណ៍" : payable.length === 1 ? "event" : "events"}`}
           icon="wallet"
           tone="gold"
         />
@@ -263,7 +264,10 @@ export default function OrganizerPayoutsPage() {
         <Stat
           label={km ? "បានទទួលរួច" : "Paid out"}
           value={usd(totals.paid)}
-          sub={`${payouts.filter((p) => p.status === "PAID").length} ${km ? "វិក្កយបត្រ" : "invoices"}`}
+          sub={(() => {
+            const paid = payouts.filter((p) => p.status === "PAID").length;
+            return `${paid} ${km ? "វិក្កយបត្រ" : paid === 1 ? "invoice" : "invoices"}`;
+          })()}
           icon="checkCircle"
           tone="green"
         />
@@ -418,7 +422,7 @@ export default function OrganizerPayoutsPage() {
                     <tr key={p.id} className="border-b border-line-2">
                       <td className="font-mono text-small">{p.invoice_no}</td>
                       <td>{km ? p.event_title_km : p.event_title_en}</td>
-                      <td className="whitespace-nowrap">
+                      <td className="min-[901px]:whitespace-nowrap">
                         {date(p.requested_at)}
                       </td>
                       <td>
@@ -435,7 +439,7 @@ export default function OrganizerPayoutsPage() {
                           </p>
                         )}
                       </td>
-                      <td className="text-right font-semibold whitespace-nowrap">
+                      <td className="text-right font-semibold min-[901px]:whitespace-nowrap">
                         {usd(p.net_usd_cents)}
                       </td>
                       <td className="num">
@@ -505,19 +509,17 @@ export default function OrganizerPayoutsPage() {
             </dl>
 
             <Field label={km ? "ធនាគារ / សេវាកម្ម" : "Bank or service"}>
-              <select
-                className="select"
+              <IconSelect
                 value={form.method}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, method: e.target.value }))
-                }
+                onChange={(v) => setForm((f) => ({ ...f, method: v }))}
+                ariaLabel={km ? "ធនាគារ / សេវាកម្ម" : "Bank or service"}
               >
                 {METHODS.map((m) => (
                   <option key={m} value={m}>
                     {m === "OTHER" ? (km ? "ផ្សេងទៀត" : "Other") : m}
                   </option>
                 ))}
-              </select>
+              </IconSelect>
             </Field>
 
             <Field

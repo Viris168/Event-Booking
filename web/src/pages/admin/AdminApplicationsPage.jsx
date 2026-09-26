@@ -265,7 +265,7 @@ export default function AdminApplicationsPage() {
             at what they wrote without leaving the page. */}
         <div className="rq-head-right">
           <div
-            className="rq-tabs"
+            className="rq-tabs scroll-hint-x"
             role="tablist"
             aria-label={km ? "ស្ថានភាព" : "Status"}
           >

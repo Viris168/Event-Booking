@@ -38,12 +38,23 @@ import { useLocale } from '../context/LocaleContext.jsx'
  * the menu to momentum: on a trackpad the scroll events keep arriving after
  * the finger is gone, so a click that lands during the glide opened the menu
  * and the next frame shut it again.
+ *
+ * <p><b>On a phone it is a bottom sheet instead.</b> In the card layout the
+ * trigger sits mid-card, and a 12rem panel hung off it covered the next card
+ * with no edge to say where the menu stopped and the page began. The sheet
+ * dims the page, names the row it acts on (`title`), and gives each action a
+ * thumb-sized row at the bottom of the screen where the thumb already is.
+ * Decided when the menu opens, not live - a rotation mid-menu closes it via
+ * the resize handler anyway.
  */
-export default function ActionMenu({ items, label, disabled = false }) {
+const SHEET_QUERY = '(max-width: 640px)'
+
+export default function ActionMenu({ items, label, title, disabled = false }) {
   const { locale } = useLocale()
   const km = locale === 'km'
   const [open, setOpen] = useState(false)
   const [pos, setPos] = useState(null)
+  const [sheet, setSheet] = useState(false)
   const triggerRef = useRef(null)
   const popRef = useRef(null)
   const menuId = useId()
@@ -71,8 +82,20 @@ export default function ActionMenu({ items, label, disabled = false }) {
 
   // Before paint, so the panel never appears at 0,0 for a frame first.
   useLayoutEffect(() => {
-    if (open) place()
-  }, [open, place])
+    if (open && !sheet) place()
+  }, [open, sheet, place])
+
+  // The sheet covers the page, so the page underneath should not scroll away
+  // behind it on a stray swipe.
+  useEffect(() => {
+    if (!open || !sheet) return undefined
+    const previous = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    popRef.current?.querySelector('.action-menu-item')?.focus({ preventScroll: true })
+    return () => {
+      document.body.style.overflow = previous
+    }
+  }, [open, sheet])
 
   useEffect(() => {
     if (!open) return undefined
@@ -89,6 +112,7 @@ export default function ActionMenu({ items, label, disabled = false }) {
      * nothing, so that one does close.
      */
     const onScroll = () => {
+      if (sheet) return
       const r = triggerRef.current?.getBoundingClientRect()
       if (!r || r.bottom < 0 || r.top > window.innerHeight) setOpen(false)
       else place()
@@ -102,18 +126,53 @@ export default function ActionMenu({ items, label, disabled = false }) {
     // Capture, so a scroll inside the table wrapper is seen too - that one
     // does not bubble.
     window.addEventListener('scroll', onScroll, true)
-    window.addEventListener('resize', close)
+    // A phone fires resize whenever the address bar slides, which would shut
+    // the sheet on the first scroll attempt - it has nothing to re-anchor.
+    if (!sheet) window.addEventListener('resize', close)
     return () => {
       document.removeEventListener('pointerdown', onDown)
       document.removeEventListener('keydown', onKey)
       window.removeEventListener('scroll', onScroll, true)
       window.removeEventListener('resize', close)
     }
-  }, [open, place])
+  }, [open, sheet, place])
 
   // A row whose every action is hidden renders nothing rather than a menu that
   // opens onto a blank panel.
   if (visible.length === 0) return null
+
+  const renderItems = () =>
+    visible.map((item) =>
+      item.to ? (
+        <Link
+          key={item.key}
+          role="menuitem"
+          className={`action-menu-item no-underline${item.tone === 'danger' ? ' danger' : ''}`}
+          to={item.to}
+          onClick={() => setOpen(false)}
+        >
+          {item.icon && <Icon name={item.icon} size={15} />}
+          <span>{item.label}</span>
+          {item.hint && <span className="action-menu-hint">{item.hint}</span>}
+        </Link>
+      ) : (
+        <button
+          key={item.key}
+          type="button"
+          role="menuitem"
+          className={`action-menu-item${item.tone === 'danger' ? ' danger' : ''}`}
+          disabled={item.disabled}
+          onClick={() => {
+            setOpen(false)
+            item.onSelect()
+          }}
+        >
+          {item.icon && <Icon name={item.icon} size={15} />}
+          <span>{item.label}</span>
+          {item.hint && <span className="action-menu-hint">{item.hint}</span>}
+        </button>
+      ),
+    )
 
   return (
     <>
@@ -126,12 +185,16 @@ export default function ActionMenu({ items, label, disabled = false }) {
         aria-controls={open ? menuId : undefined}
         aria-label={label ?? (km ? 'សកម្មភាព' : 'Actions')}
         disabled={disabled}
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          if (!open) setSheet(window.matchMedia(SHEET_QUERY).matches)
+          setOpen((v) => !v)
+        }}
       >
         <Icon name="moreVertical" size={16} />
       </button>
 
       {open &&
+        !sheet &&
         createPortal(
           <div
             ref={popRef}
@@ -141,37 +204,25 @@ export default function ActionMenu({ items, label, disabled = false }) {
             // Hidden until placed, so the first paint is never in the corner.
             style={pos ? { top: pos.top, right: pos.right } : { visibility: 'hidden' }}
           >
-            {visible.map((item) =>
-              item.to ? (
-                <Link
-                  key={item.key}
-                  role="menuitem"
-                  className={`action-menu-item no-underline${item.tone === 'danger' ? ' danger' : ''}`}
-                  to={item.to}
-                  onClick={() => setOpen(false)}
-                >
-                  {item.icon && <Icon name={item.icon} size={15} />}
-                  <span>{item.label}</span>
-                  {item.hint && <span className="action-menu-hint">{item.hint}</span>}
-                </Link>
-              ) : (
-                <button
-                  key={item.key}
-                  type="button"
-                  role="menuitem"
-                  className={`action-menu-item${item.tone === 'danger' ? ' danger' : ''}`}
-                  disabled={item.disabled}
-                  onClick={() => {
-                    setOpen(false)
-                    item.onSelect()
-                  }}
-                >
-                  {item.icon && <Icon name={item.icon} size={15} />}
-                  <span>{item.label}</span>
-                  {item.hint && <span className="action-menu-hint">{item.hint}</span>}
-                </button>
-              ),
-            )}
+            {renderItems()}
+          </div>,
+          document.body,
+        )}
+
+      {open &&
+        sheet &&
+        createPortal(
+          <div className="action-sheet-overlay" onPointerDown={(e) => e.target === e.currentTarget && setOpen(false)}>
+            <div ref={popRef} className="action-sheet" id={menuId} role="menu" aria-label={title ?? label}>
+              <div className="action-sheet-head">
+                <span className="action-sheet-grip" aria-hidden="true" />
+                <span className="action-sheet-title">{title ?? label ?? (km ? 'សកម្មភាព' : 'Actions')}</span>
+              </div>
+              <div className="action-sheet-list">{renderItems()}</div>
+              <button type="button" className="btn btn-outline action-sheet-cancel" onClick={() => setOpen(false)}>
+                {km ? 'បោះបង់' : 'Cancel'}
+              </button>
+            </div>
           </div>,
           document.body,
         )}

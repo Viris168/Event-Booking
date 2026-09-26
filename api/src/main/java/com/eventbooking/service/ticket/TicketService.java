@@ -26,6 +26,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -62,6 +65,11 @@ import java.util.UUID;
 public class TicketService {
 
     private static final Logger log = LoggerFactory.getLogger(TicketService.class);
+
+    private static final ZoneId CAMBODIA = ZoneId.of("Asia/Phnom_Penh");
+
+    /** Local time on the morning after an event when its tickets lapse. */
+    private static final LocalTime GRACE_UNTIL = LocalTime.of(6, 0);
 
     private final TicketRepository ticketRepository;
     private final BookingRepository bookingRepository;
@@ -265,6 +273,11 @@ public class TicketService {
                     "Already checked in.", scanned, ticket.getCheckedInAt(),
                     progressOf(booking));
         }
+        if (isExpired(booking.getEvent(), Instant.now())) {
+            return ScanResponse.refused(ScanOutcome.TICKET_EXPIRED,
+                    "This ticket has expired.", scanned, null,
+                    progressOf(booking));
+        }
 
         ticket.setCheckedInAt(Instant.now());
         ticket.setCheckedInBy(operatorUserId);
@@ -277,6 +290,30 @@ public class TicketService {
         // here. Reading it before would always be one behind and a steward
         // would wave through a party that is already complete.
         return ScanResponse.admitted(scanned, progressOf(booking));
+    }
+
+    /**
+     * When an event's unscanned tickets stop admitting anyone: 06:00 Cambodia
+     * time the morning after the day the event starts.
+     *
+     * <p>There is no {@code ends_at}, and "finished" elsewhere means
+     * {@code startsAt} has passed - but that is too early for the gate, where
+     * it would turn away someone five minutes late. Midnight was tried and is
+     * too early as well: a New Year countdown starting at 22:00 on 31 December
+     * would refuse everyone arriving at 00:05. The morning after covers any
+     * late-night event, and nobody queues at 06:00 for last night's show.
+     *
+     * <p>The web app applies the same rule (lib/ticketExpiry.js) so the
+     * customer sees "Expired" exactly when the scanner starts saying it.
+     */
+    public static Instant ticketsExpireAt(Event event) {
+        LocalDate day = event.getStartsAt().atZone(CAMBODIA).toLocalDate();
+        return day.plusDays(1).atTime(GRACE_UNTIL).atZone(CAMBODIA).toInstant();
+    }
+
+    /** An event with no date yet is never expired, rather than always. */
+    public static boolean isExpired(Event event, Instant now) {
+        return event.getStartsAt() != null && !now.isBefore(ticketsExpireAt(event));
     }
 
     // ------------------------------------------------------------------
@@ -332,6 +369,10 @@ public class TicketService {
         if (!booking.getEvent().getId().equals(eventId)) {
             return GroupPreviewResponse.refused(ScanOutcome.WRONG_EVENT,
                     "This ticket is for a different event.", party, rows);
+        }
+        if (isExpired(booking.getEvent(), Instant.now())) {
+            return GroupPreviewResponse.refused(ScanOutcome.TICKET_EXPIRED,
+                    "These tickets have expired.", party, rows);
         }
 
         return GroupPreviewResponse.of(party, rows);
@@ -401,6 +442,10 @@ public class TicketService {
         if (!booking.getEvent().getId().equals(eventId)) {
             return GroupConfirmResponse.refused(ScanOutcome.WRONG_EVENT,
                     "This ticket is for a different event.", party, total, free);
+        }
+        if (isExpired(booking.getEvent(), Instant.now())) {
+            return GroupConfirmResponse.refused(ScanOutcome.TICKET_EXPIRED,
+                    "These tickets have expired.", party, total, free);
         }
 
         // Resolved against the LOCKED set, so an id belonging to another booking

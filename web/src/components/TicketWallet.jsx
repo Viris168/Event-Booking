@@ -24,7 +24,7 @@ import { useLocale } from '../context/LocaleContext.jsx'
  * customer always had, shown at the size the moment deserves. A token that
  * meant "admit six" would turn one forwarded screenshot into six admissions.
  */
-export default function TicketWallet({ tickets, bookingRef, event, venue, labelFor }) {
+export default function TicketWallet({ tickets, bookingRef, event, venue, labelFor, expired = false }) {
   const { t, locale, dateTime } = useLocale()
   const km = locale === 'km'
 
@@ -51,7 +51,19 @@ export default function TicketWallet({ tickets, bookingRef, event, venue, labelF
         </span>
       </div>
 
-      {remaining === 0 ? (
+      {expired ? (
+        /* The event is over. The gate refuses these codes, so showing
+           one would only send someone to a door that will turn them away. */
+        <div className="wallet-done is-expired">
+          <Icon name="clock" size={26} />
+          <b>{km ? 'សំបុត្រផុតកំណត់' : 'Tickets expired'}</b>
+          <span className="small">
+            {km
+              ? `សំបុត្រ ${remaining} ដែលមិនបានប្រើ មិនអាចប្រើបានទៀតទេ`
+              : `${remaining} unused ${remaining === 1 ? 'ticket' : 'tickets'} can no longer be used`}
+          </span>
+        </div>
+      ) : remaining === 0 ? (
         /* Nobody is left to admit, so a QR here would only invite a scan that
            comes back "already used". */
         <div className="wallet-done">
@@ -102,7 +114,7 @@ export default function TicketWallet({ tickets, bookingRef, event, venue, labelF
         </div>
       )}
 
-      {total > 1 && (
+      {total > 1 && !expired && (
         <>
           <button
             type="button"
@@ -155,7 +167,7 @@ export default function TicketWallet({ tickets, bookingRef, event, venue, labelF
         )}
       </QrLightbox>
 
-      {used > 0 && remaining > 0 && (
+      {used > 0 && remaining > 0 && !expired && (
         <p className="tiny muted wallet-note">
           {km
             ? `មាន ${used} នាក់បានចូលរួចហើយ`

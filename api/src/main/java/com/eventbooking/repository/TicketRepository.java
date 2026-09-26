@@ -63,6 +63,19 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
     long countCheckedInByBookingId(@Param("bookingId") Long bookingId);
 
     /**
+     * Issued and checked-in ticket counts per booking, for a whole page of
+     * bookings in one query. Each row is {@code [bookingId, total, checkedIn]};
+     * a booking with no tickets has no row.
+     */
+    @Query("""
+            select t.bookingItem.booking.id, count(t), count(t.checkedInAt)
+              from Ticket t
+             where t.bookingItem.booking.id in :bookingIds
+             group by t.bookingItem.booking.id
+            """)
+    List<Object[]> countTicketsByBookingIds(@Param("bookingIds") Collection<Long> bookingIds);
+
+    /**
      * Checked-in tickets per event, for a whole page of events in one query.
      *
      * <p>Walks ticket -> booking_item -> booking to reach the event, because a

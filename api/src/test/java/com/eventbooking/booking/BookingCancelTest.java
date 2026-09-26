@@ -26,6 +26,7 @@ import com.eventbooking.repository.EventZoneRepository;
 import com.eventbooking.repository.HoldRepository;
 import com.eventbooking.repository.HoldZoneLineRepository;
 import com.eventbooking.repository.PaymentTransactionRepository;
+import com.eventbooking.repository.TicketRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
@@ -93,7 +94,8 @@ class BookingCancelTest {
                 new BookingStateMachine(historyRepository, mock(ApplicationEventPublisher.class)),
                 mock(BookingRefGenerator.class),
                 new BookingMapper(properties),
-                properties);
+                properties,
+                mock(TicketRepository.class));
     }
 
     // ------------------------------------------------------------------

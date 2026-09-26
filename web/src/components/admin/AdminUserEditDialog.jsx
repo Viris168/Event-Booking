@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import FormDialog from '../FormDialog.jsx'
-import { Alert, Field } from '../ui.jsx'
+import { Alert, Field, IconSelect } from '../ui.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
 
 const ROLES = ['CUSTOMER', 'ORGANIZER', 'PLATFORM_ADMIN']
@@ -126,10 +126,10 @@ export default function AdminUserEditDialog({ open, user, isSelf, busy, error, o
               : undefined
           }
         >
-          <select
-            className="select"
+          <IconSelect
             value={form.role}
-            onChange={(e) => set('role', e.target.value)}
+            onChange={(v) => set('role', v)}
+            ariaLabel={km ? 'តួនាទី' : 'Role'}
             /*
              * The server refuses this regardless - it is the one role change
              * that can revoke the access needed to undo it. Disabling the
@@ -142,7 +142,7 @@ export default function AdminUserEditDialog({ open, user, isSelf, busy, error, o
                 {r}
               </option>
             ))}
-          </select>
+          </IconSelect>
         </Field>
 
         {promotingToOrganizer && (

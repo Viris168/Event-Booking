@@ -448,6 +448,7 @@ export default function AdminUsersPage() {
 
                               <ActionMenu
                                 disabled={busyId === u.id}
+                                title={u.display_name}
                                 label={km ? "សកម្មភាព" : "Actions"}
                                 items={[
                                   {

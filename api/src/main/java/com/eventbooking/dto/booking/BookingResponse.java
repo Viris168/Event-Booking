@@ -23,6 +23,12 @@ public record BookingResponse(
         Instant createdAt,
         Instant stateChangedAt,
         Instant expiresAt,
-        List<BookingItemResponse> items
+        List<BookingItemResponse> items,
+        /*
+         * Ticket counts. Filled in on the "my bookings" list only; null
+         * everywhere else, where the caller either has the tickets already or
+         * has no use for them.
+         */
+        BookingTicketSummary tickets
 ) {
 }
