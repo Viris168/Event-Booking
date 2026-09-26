@@ -279,6 +279,13 @@ export function mapBooking(b) {
     created_at: b.createdAt ?? b.created_at,
     state_changed_at: b.stateChangedAt ?? b.state_changed_at,
     items: (b.items || []).map(mapBookingItem),
+    // Only the "my bookings" list carries these; null on every other endpoint.
+    tickets: b.tickets
+      ? {
+          total: b.tickets.total,
+          checked_in: b.tickets.checked_in ?? b.tickets.checkedIn,
+        }
+      : null,
   };
 }
 

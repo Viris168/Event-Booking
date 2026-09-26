@@ -1,5 +1,5 @@
 import { useDocumentTitle } from "../lib/useDocumentTitle.js";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import Icon, { CATEGORY_ICON } from "../components/Icon.jsx";
 import {
@@ -12,13 +12,9 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { useLocale } from "../context/LocaleContext.jsx";
 import { eventArt } from "../lib/eventArt.js";
 import { ticketsExpired } from "../lib/ticketExpiry.js";
-import { getMyBookings } from "../api/bookings.js";
+import { getAllMyBookings } from "../api/bookings.js";
 import { getEvent as getApiEvent } from "../api/events.js";
-import { getBookingTickets } from "../api/tickets.js";
-import { mapBooking, mapEvent, mapTicket } from "../api/adapters.js";
-
-/** States in which a booking has tickets worth counting. */
-const TICKETED = ["CONFIRMED"];
+import { mapBooking, mapEvent } from "../api/adapters.js";
 
 /**
  * States the buyer can still act on, mirroring PaymentService.PAYABLE on the
@@ -384,6 +380,14 @@ function GridCard({ booking, event, ticketCount }) {
   );
 }
 
+/**
+ * How many of a group show before "Show more", and how many each press adds.
+ * Upcoming starts generous because those are the bookings you will use; the
+ * archive starts short because you only open it to look for one.
+ */
+const STEP = 12;
+const INITIAL = { upcoming: 12, past: 8 };
+
 function Group({
   title,
   icon,
@@ -391,18 +395,28 @@ function Group({
   apiEvents,
   ticketCounts,
   viewMode = "list",
+  initial = STEP,
 }) {
+  const { locale } = useLocale();
+  const [shown, setShown] = useState(initial);
+  const headRef = useRef(null);
   if (!list.length) return null;
+
+  const visible = list.slice(0, shown);
+  const left = list.length - visible.length;
+  const next = Math.min(STEP, left);
+  const km = locale === "km";
+
   return (
     <div className="bk-group">
-      <div className="bk-group-head">
+      <div className="bk-group-head" ref={headRef}>
         {icon && <Icon name={icon} size={15} />}
         <span>{title}</span>
         <span className="bk-group-count">{list.length}</span>
       </div>
       {viewMode === "grid" ? (
         <div className="grid grid-cards">
-          {list.map((b) => (
+          {visible.map((b) => (
             <GridCard
               key={b.id}
               booking={b}
@@ -413,7 +427,7 @@ function Group({
         </div>
       ) : (
         <div className="stack-sm">
-          {list.map((b) => (
+          {visible.map((b) => (
             <Row
               key={b.id}
               booking={b}
@@ -421,6 +435,42 @@ function Group({
               ticketCount={ticketCounts[b.id] ?? 0}
             />
           ))}
+        </div>
+      )}
+
+      {(left > 0 || shown > initial) && (
+        <div className="bk-more">
+          {left > 0 && (
+            <button
+              type="button"
+              className="btn btn-outline"
+              onClick={() => setShown((n) => n + STEP)}
+            >
+              <Icon name="chevronDown" size={15} />
+              {left > STEP
+                ? km
+                  ? `បង្ហាញ ${next} ទៀត · នៅសល់ ${left}`
+                  : `Show ${next} more · ${left} left`
+                : km
+                  ? `បង្ហាញ ${left} ចុងក្រោយ`
+                  : `Show the last ${left}`}
+            </button>
+          )}
+          {shown > initial && (
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => {
+                setShown(initial);
+                // Collapsing from far down the list would leave you staring at
+                // whatever section follows, so bring this one's heading back.
+                headRef.current?.scrollIntoView({ block: "start" });
+              }}
+            >
+              <Icon name="chevronUp" size={15} />
+              {km ? "បង្ហាញតិច" : "Show less"}
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -434,7 +484,6 @@ export default function MyBookingsPage() {
   const [state, setState] = useState("");
   const [bookingsData, setBookingsData] = useState([]);
   const [apiEvents, setApiEvents] = useState({});
-  const [ticketCounts, setTicketCounts] = useState({});
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [reload, setReload] = useState(0);
@@ -463,7 +512,7 @@ export default function MyBookingsPage() {
     }
     setLoading(true);
     setFailed(false);
-    getMyBookings()
+    getAllMyBookings()
       .then((res) => {
         if (!active) return;
         setBookingsData(Array.isArray(res) ? res.map(mapBooking) : []);
@@ -510,39 +559,27 @@ export default function MyBookingsPage() {
       setApiEvents(byId);
     });
 
-    // Ticket stats drive the "N QR" badge and used status. Only asked for where tickets can
-    // exist: they are issued at payment, so an unpaid booking would just cost a
-    // round trip to be told nothing.
-    const ticketed = bookingsData.filter((b) => TICKETED.includes(b.state));
-    Promise.all(
-      ticketed.map((b) =>
-        getBookingTickets(b.id)
-          .then((ts) => {
-            const list = (ts || []).map(mapTicket);
-            const used = list.filter(
-              (t) => t.checked_in || Boolean(t.checked_in_at),
-            ).length;
-            return [
-              b.id,
-              {
-                total: list.length,
-                used,
-                allUsed: list.length > 0 && used === list.length,
-              },
-            ];
-          })
-          .catch(() => [b.id, { total: 0, used: 0, allUsed: false }]),
-      ),
-    ).then((pairs) => {
-      if (active) setTicketCounts(Object.fromEntries(pairs));
-    });
-
     return () => {
       active = false;
     };
   }, [bookingsData]);
 
   const all = bookingsData;
+
+  // Ticket counts ride along on each booking from /bookings/me, so "N QR",
+  // "Used" and the chip counts are right on first paint - no request per row.
+  const ticketCounts = useMemo(
+    () =>
+      Object.fromEntries(
+        bookingsData
+          .filter((b) => b.tickets)
+          .map((b) => {
+            const { total, checked_in: used } = b.tickets;
+            return [b.id, { total, used, allUsed: total > 0 && used === total }];
+          }),
+      ),
+    [bookingsData],
+  );
 
   /**
    * The status the filter chips sort by. A confirmed booking whose tickets are
@@ -740,6 +777,8 @@ export default function MyBookingsPage() {
             title={locale === "km" ? "ជិតមកដល់" : "Upcoming"}
             icon="calendar"
             list={upcoming}
+            initial={INITIAL.upcoming}
+            key={`up-${state}`}
             apiEvents={apiEvents}
             ticketCounts={ticketCounts}
             viewMode={viewMode}
@@ -748,6 +787,8 @@ export default function MyBookingsPage() {
             title={locale === "km" ? "កន្លងផុត" : "Past"}
             icon="clock"
             list={past}
+            initial={INITIAL.past}
+            key={`past-${state}`}
             apiEvents={apiEvents}
             ticketCounts={ticketCounts}
             viewMode={viewMode}

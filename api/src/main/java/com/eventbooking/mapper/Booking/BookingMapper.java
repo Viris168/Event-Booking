@@ -2,6 +2,7 @@ package com.eventbooking.mapper.Booking;
 
 import com.eventbooking.dto.booking.BookingItemResponse;
 import com.eventbooking.dto.booking.BookingResponse;
+import com.eventbooking.dto.booking.BookingTicketSummary;
 import com.eventbooking.model.Booking;
 import com.eventbooking.model.BookingItem;
 import org.springframework.stereotype.Component;
@@ -26,6 +27,11 @@ public class BookingMapper {
     }
 
     public BookingResponse toResponse(Booking booking) {
+        return toResponse(booking, null);
+    }
+
+    /** As {@link #toResponse(Booking)}, with the booking's ticket counts attached. */
+    public BookingResponse toResponse(Booking booking, BookingTicketSummary tickets) {
         List<BookingItemResponse> items = booking.getItems().stream()
                 .map(this::toItemResponse)
                 .toList();
@@ -54,7 +60,8 @@ public class BookingMapper {
                 booking.getCreatedAt(),
                 booking.getStateChangedAt(),
                 expiresAt,
-                items
+                items,
+                tickets
         );
     }
 

@@ -9,6 +9,7 @@ import com.eventbooking.Enumeration.SeatStatus;
 import com.eventbooking.exception.booking.BookingNotFoundException;
 import com.eventbooking.exception.booking.EmptyHoldException;
 import com.eventbooking.dto.booking.BookingResponse;
+import com.eventbooking.dto.booking.BookingTicketSummary;
 import com.eventbooking.dto.booking.CheckoutRequest;
 import com.eventbooking.exception.inventory.HoldExpiredException;
 import com.eventbooking.exception.inventory.HoldNotActiveException;
@@ -27,6 +28,7 @@ import com.eventbooking.repository.EventZoneRepository;
 import com.eventbooking.repository.HoldRepository;
 import com.eventbooking.repository.HoldZoneLineRepository;
 import com.eventbooking.repository.PaymentTransactionRepository;
+import com.eventbooking.repository.TicketRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
@@ -72,6 +74,7 @@ public class BookingService {
     private final BookingRefGenerator refGenerator;
     private final BookingMapper mapper;
     private final BookingProperties properties;
+    private final TicketRepository ticketRepository;
 
     public BookingService(BookingRepository bookingRepository,
                           HoldRepository holdRepository,
@@ -82,7 +85,8 @@ public class BookingService {
                           BookingStateMachine stateMachine,
                           BookingRefGenerator refGenerator,
                           BookingMapper mapper,
-                          BookingProperties properties) {
+                          BookingProperties properties,
+                          TicketRepository ticketRepository) {
         this.bookingRepository = bookingRepository;
         this.holdRepository = holdRepository;
         this.holdZoneLineRepository = holdZoneLineRepository;
@@ -93,6 +97,7 @@ public class BookingService {
         this.refGenerator = refGenerator;
         this.mapper = mapper;
         this.properties = properties;
+        this.ticketRepository = ticketRepository;
     }
 
     // ------------------------------------------------------------------
@@ -420,10 +425,24 @@ public class BookingService {
 
     @Transactional(readOnly = true)
     public List<BookingResponse> listForUser(Long actorUserId, int page, int size) {
-        return bookingRepository
+        List<Booking> bookings = bookingRepository
                 .findByUserIdOrderByCreatedAtDesc(actorUserId, PageRequest.of(page, size))
-                .map(mapper::toResponse)
                 .getContent();
+        if (bookings.isEmpty()) return List.of();
+
+        // One grouped query for the whole page. The web app used to fetch every
+        // confirmed booking's tickets separately just to count them - fifty
+        // requests for fifty bookings.
+        Map<Long, BookingTicketSummary> tickets = new HashMap<>();
+        for (Object[] row : ticketRepository.countTicketsByBookingIds(
+                bookings.stream().map(Booking::getId).toList())) {
+            tickets.put((Long) row[0],
+                    new BookingTicketSummary(((Number) row[1]).longValue(), ((Number) row[2]).longValue()));
+        }
+
+        return bookings.stream()
+                .map(b -> mapper.toResponse(b, tickets.getOrDefault(b.getId(), BookingTicketSummary.NONE)))
+                .toList();
     }
 
     @Transactional(readOnly = true)

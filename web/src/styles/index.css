@@ -3530,6 +3530,17 @@
   .bk-group-head {
     @apply mb-[0.6rem] flex items-center gap-[0.5rem] text-[0.72rem] font-bold uppercase
       tracking-[0.08em] text-muted;
+    /* "Show less" scrolls back here; clear the sticky navbar when it does. */
+    scroll-margin-top: calc(var(--nav-h, 61px) + 1rem);
+  }
+  .bk-more {
+    @apply mt-[0.9rem] flex flex-wrap items-center justify-center gap-[0.5rem];
+  }
+  /* Full-width on a phone: it is the one thing to tap at the end of a list. */
+  @media (max-width: 640px) {
+    .bk-more .btn-outline {
+      @apply w-full justify-center;
+    }
   }
   .bk-group-count {
     @apply rounded-full bg-line/60 px-[0.45rem] py-[0.05rem] text-[0.7rem] tracking-normal;
