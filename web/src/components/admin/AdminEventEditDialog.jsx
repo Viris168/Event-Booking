@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import FormDialog from '../FormDialog.jsx'
-import { Alert, DateInput, Field } from '../ui.jsx'
+import { Alert, DateInput, Field, IconSelect } from '../ui.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
 import { CATEGORIES } from '../../lib/categories.js'
 
@@ -179,17 +179,17 @@ export default function AdminEventEditDialog({ open, event, busy, error, onSave,
             </Field>
 
             <Field label={km ? 'ប្រភេទ' : 'Category'}>
-              <select
-                className="select"
+              <IconSelect
                 value={form.category}
-                onChange={(e) => set('category', e.target.value)}
+                onChange={(v) => set('category', v)}
+                ariaLabel={km ? 'ប្រភេទ' : 'Category'}
               >
                 {CATEGORIES.map((c) => (
                   <option key={c} value={c}>
                     {c}
                   </option>
                 ))}
-              </select>
+              </IconSelect>
             </Field>
 
             <Field label={km ? 'ពេលចាប់ផ្ដើម' : 'Starts'}>

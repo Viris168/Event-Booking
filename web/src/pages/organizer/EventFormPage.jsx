@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import EventImageField from '../../components/EventImageField.jsx'
 import Icon from '../../components/Icon.jsx'
 import SeatMapEditor from '../../components/SeatMapEditor.jsx'
-import { Alert, Badge, DateInput, Field } from '../../components/ui.jsx'
+import { Alert, Badge, DateInput, Field, IconSelect } from '../../components/ui.jsx'
 import { useLocale } from '../../context/LocaleContext.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
 import { usd } from '../../lib/format.js'
@@ -677,13 +677,17 @@ export default function EventFormPage() {
             </div>
             <div className="panel-body stack-sm">
               <Field label={locale === 'km' ? 'ប្រភេទ' : 'Category'}>
-                <select className="select" value={form.category} onChange={(e) => set('category', e.target.value)}>
+                <IconSelect
+                  value={form.category}
+                  onChange={(v) => set('category', v)}
+                  ariaLabel={locale === 'km' ? 'ប្រភេទ' : 'Category'}
+                >
                   {CATEGORIES.map((c) => (
                     <option key={c} value={c}>
                       {c}
                     </option>
                   ))}
-                </select>
+                </IconSelect>
               </Field>
               <div className="field">
                 <span className="label">{locale === 'km' ? 'ពណ៌គម្រប' : 'Cover'}</span>
@@ -765,10 +769,11 @@ export default function EventFormPage() {
             <div className="panel-body stack-sm">
               <div className="form-grid">
                 <Field label={t('venues')} error={errors.venue_id}>
-                  <select
-                    className="select"
+                  <IconSelect
+                    icon="mapPin"
                     value={form.venue_id || ''}
-                    onChange={(e) => set('venue_id', Number(e.target.value))}
+                    onChange={(v) => set('venue_id', Number(v))}
+                    ariaLabel={t('venues')}
                   >
                     {venues.map((v) => (
                       <option key={v.id} value={v.id}>
@@ -778,18 +783,18 @@ export default function EventFormPage() {
                         {v.is_disabled ? (locale === 'km' ? ' · បានដកចេញ' : ' · retired') : ''}
                       </option>
                     ))}
-                  </select>
+                  </IconSelect>
                 </Field>
                 <Field label="Inventory mode" error={errors.inventory_mode}>
-                  <select
-                    className="select"
+                  <IconSelect
                     value={form.inventory_mode}
-                    onChange={(e) => set('inventory_mode', e.target.value)}
+                    onChange={(v) => set('inventory_mode', v)}
+                    ariaLabel="Inventory mode"
                   >
                     <option value="SEATED">SEATED — assigned seats only</option>
                     <option value="ZONED">ZONED — general admission only</option>
                     <option value="MIXED">MIXED — seats and GA together</option>
-                  </select>
+                  </IconSelect>
                 </Field>
               </div>
               {venue && (

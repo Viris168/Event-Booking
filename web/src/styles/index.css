@@ -2715,6 +2715,10 @@
     cursor: pointer;
     user-select: none;
   }
+  .custom-select-trigger:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
   .custom-select-trigger.is-active,
   .custom-select-wrap.is-open .custom-select-trigger {
     border-color: var(--color-brand-500);

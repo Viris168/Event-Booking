@@ -7,6 +7,7 @@ import {
   Badge,
   Empty,
   Field,
+  IconSelect,
   ResponsiveTable,
   Stat,
   TablePager,
@@ -505,19 +506,17 @@ export default function OrganizerPayoutsPage() {
             </dl>
 
             <Field label={km ? "ធនាគារ / សេវាកម្ម" : "Bank or service"}>
-              <select
-                className="select"
+              <IconSelect
                 value={form.method}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, method: e.target.value }))
-                }
+                onChange={(v) => setForm((f) => ({ ...f, method: v }))}
+                ariaLabel={km ? "ធនាគារ / សេវាកម្ម" : "Bank or service"}
               >
                 {METHODS.map((m) => (
                   <option key={m} value={m}>
                     {m === "OTHER" ? (km ? "ផ្សេងទៀត" : "Other") : m}
                   </option>
                 ))}
-              </select>
+              </IconSelect>
             </Field>
 
             <Field

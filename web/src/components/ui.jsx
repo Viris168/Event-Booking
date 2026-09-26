@@ -480,9 +480,12 @@ export function IconSelect({
   children,
   className = "",
   placeholder = "",
+  id,
+  disabled = false,
 }) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef(null);
+  const triggerRef = useRef(null);
 
   const entries = extractSelectOptions(children);
   const options = entries.filter((o) => !("group" in o));
@@ -498,23 +501,28 @@ export function IconSelect({
         setOpen(false);
       }
     }
+    // Captured on window so it runs before a surrounding dialog's own
+    // document-level Escape handler: the first Escape closes the menu only,
+    // not the form the menu sits in.
     function handleKeyDown(e) {
       if (e.key === "Escape") {
+        e.stopPropagation();
         setOpen(false);
+        triggerRef.current?.focus();
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown, true);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keydown", handleKeyDown, true);
     };
   }, [open]);
 
   return (
     <div
       ref={containerRef}
-      className={`field-icon custom-select-wrap ${className} ${open ? "is-open" : ""}`}
+      className={`${icon ? "field-icon " : ""}custom-select-wrap ${className} ${open ? "is-open" : ""}`}
     >
       {icon && (
         <span className="custom-select-icon" aria-hidden="true">
@@ -522,9 +530,12 @@ export function IconSelect({
         </span>
       )}
       <button
+        ref={triggerRef}
+        id={id}
         type="button"
         className={`select custom-select-trigger ${open ? "is-active" : ""}`}
         onClick={() => setOpen((v) => !v)}
+        disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label={ariaLabel}
