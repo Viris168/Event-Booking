@@ -8,13 +8,12 @@ import { getProvinces } from "../api/provinces.js";
 
 /*
  * The platform's social & community channels.
- * Live Telegram bot link connects to @cambobookbot.
  */
 const SOCIAL = [
   {
     name: "Telegram",
     icon: "telegram",
-    url: "https://t.me/cambobookbot",
+    url: "https://t.me",
     brandColor: "#24A1DE",
   },
   {
