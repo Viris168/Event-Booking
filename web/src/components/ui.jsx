@@ -454,7 +454,14 @@ function extractSelectOptions(children) {
           value: node.props?.value ?? "",
           label: node.props?.children ?? node.props?.value ?? "",
           disabled: Boolean(node.props?.disabled),
+          // Secondary text shown at the right of the row, e.g. a date.
+          hint: node.props?.["data-hint"],
         });
+      } else if (node.type === "optgroup") {
+        // A heading row, then the group's options. Kept flat so the menu is
+        // one list to render and the headings cannot be picked.
+        result.push({ group: node.props?.label ?? "" });
+        walk(node.props?.children);
       } else if (node.props?.children) {
         walk(node.props.children);
       }
@@ -477,7 +484,8 @@ export function IconSelect({
   const [open, setOpen] = useState(false);
   const containerRef = useRef(null);
 
-  const options = extractSelectOptions(children);
+  const entries = extractSelectOptions(children);
+  const options = entries.filter((o) => !("group" in o));
   const selectedOption = options.find((o) => String(o.value) === String(value));
   const currentLabel = selectedOption
     ? selectedOption.label
@@ -547,7 +555,18 @@ export function IconSelect({
           role="listbox"
           aria-label={ariaLabel}
         >
-          {options.map((opt, index) => {
+          {entries.map((opt, index) => {
+            if ("group" in opt) {
+              return (
+                <div
+                  key={`group-${index}`}
+                  className="custom-select-group"
+                  role="presentation"
+                >
+                  {opt.group}
+                </div>
+              );
+            }
             const isSelected = String(opt.value) === String(value);
             return (
               <button
@@ -563,6 +582,9 @@ export function IconSelect({
                 }}
               >
                 <span className="custom-select-option-text">{opt.label}</span>
+                {opt.hint && (
+                  <span className="custom-select-option-hint">{opt.hint}</span>
+                )}
                 {isSelected && (
                   <span className="custom-select-check" aria-hidden="true">
                     <Icon name="check" size={14} />

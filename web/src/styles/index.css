@@ -2846,6 +2846,35 @@
     flex: none;
     color: var(--color-brand-600);
   }
+  /* <optgroup> heading inside the menu. Same small caps as the list group
+     heads on My Bookings, so a grouped list reads the same everywhere. */
+  .custom-select-group {
+    padding: 0.6rem 0.75rem 0.25rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+  }
+  .custom-select-group:first-child {
+    padding-top: 0.35rem;
+  }
+  .custom-select-option-hint {
+    flex: none;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--color-muted);
+  }
+  .custom-select-option.is-selected .custom-select-option-hint {
+    color: inherit;
+  }
+  /* Full-width variant: the menu matches the trigger instead of sizing to its
+     longest label, for long option lists such as the check-in gate. */
+  .custom-select-block .custom-select-menu {
+    width: 100%;
+    max-width: none;
+    max-height: 340px;
+  }
   [data-theme="dark"] .custom-select-check {
     color: var(--color-brand-400);
   }

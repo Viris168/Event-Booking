@@ -55,7 +55,7 @@ function Row({ booking, event, ticketCount }) {
       ? ticketCount
       : { total: ticketCount || 0, used: 0, allUsed: false };
   const { total, used, allUsed } = stats;
-  // Confirmed, but the event's day is over: whatever was not scanned can no
+  // Confirmed, but the event is over: whatever was not scanned can no
   // longer get anyone in, so it reads as spent rather than as a live ticket.
   const expired =
     booking.state === "CONFIRMED" && !allUsed && ticketsExpired(event);
@@ -194,7 +194,7 @@ function GridCard({ booking, event, ticketCount }) {
       ? ticketCount
       : { total: ticketCount || 0, used: 0, allUsed: false };
   const { total, used, allUsed } = stats;
-  // Confirmed, but the event's day is over: whatever was not scanned can no
+  // Confirmed, but the event is over: whatever was not scanned can no
   // longer get anyone in, so it reads as spent rather than as a live ticket.
   const expired =
     booking.state === "CONFIRMED" && !allUsed && ticketsExpired(event);

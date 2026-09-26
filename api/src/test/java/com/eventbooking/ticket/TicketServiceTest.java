@@ -40,6 +40,8 @@ import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -47,7 +49,6 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
@@ -334,14 +335,52 @@ class TicketServiceTest {
         Ticket ticket = issuedTicket();
         Event event = ticket.getBookingItem().getBooking().getEvent();
         event.setStartsAt(Instant.now().minus(Duration.ofMinutes(1)));
-        // Skip the few minutes either side of midnight, where "a minute ago" is
-        // already yesterday in Phnom Penh.
-        assumeTrue(Instant.now().isBefore(TicketService.ticketsExpireAt(event)));
         givenTicketUnderLock(ticket);
 
         ScanResponse response = service.scan(payloadFor(ticket), EVENT_ID, OPERATOR_ID);
 
         assertThat(response.outcome()).isEqualTo(ScanOutcome.VALID);
+    }
+
+    @Test
+    void ticketsLastUntilSixTheMorningAfterTheEventDay() {
+        // A New Year countdown: 22:00 on 31 December in Phnom Penh. Guests
+        // arriving after midnight must still get in; by 06:00 it is over.
+        Event countdown = Event.builder()
+                .startsAt(ZonedDateTime.of(2026, 12, 31, 22, 0, 0, 0, KH).toInstant())
+                .build();
+
+        assertThat(TicketService.ticketsExpireAt(countdown))
+                .isEqualTo(ZonedDateTime.of(2027, 1, 1, 6, 0, 0, 0, KH).toInstant());
+        assertThat(TicketService.isExpired(countdown, at(2026, 12, 31, 23, 59))).isFalse();
+        assertThat(TicketService.isExpired(countdown, at(2027, 1, 1, 0, 30))).as("00:30 on New Year").isFalse();
+        assertThat(TicketService.isExpired(countdown, at(2027, 1, 1, 5, 59))).isFalse();
+        assertThat(TicketService.isExpired(countdown, at(2027, 1, 1, 6, 0))).as("06:00 sharp").isTrue();
+        assertThat(TicketService.isExpired(countdown, at(2027, 1, 2, 12, 0))).isTrue();
+    }
+
+    @Test
+    void anEarlyMorningEventCountsFromItsOwnDay() {
+        // Starts at 05:00 - the day is its own, not the night before it.
+        Event sunrise = Event.builder()
+                .startsAt(ZonedDateTime.of(2026, 11, 2, 5, 0, 0, 0, KH).toInstant())
+                .build();
+
+        assertThat(TicketService.ticketsExpireAt(sunrise))
+                .isEqualTo(ZonedDateTime.of(2026, 11, 3, 6, 0, 0, 0, KH).toInstant());
+        assertThat(TicketService.isExpired(sunrise, at(2026, 11, 2, 4, 0))).isFalse();
+        assertThat(TicketService.isExpired(sunrise, at(2026, 11, 3, 6, 0))).isTrue();
+    }
+
+    @Test
+    void anEventWithNoDateIsNeverExpired() {
+        assertThat(TicketService.isExpired(Event.builder().build(), Instant.now())).isFalse();
+    }
+
+    private static final ZoneId KH = ZoneId.of("Asia/Phnom_Penh");
+
+    private static Instant at(int y, int mo, int d, int h, int mi) {
+        return ZonedDateTime.of(y, mo, d, h, mi, 0, 0, KH).toInstant();
     }
 
     @Test

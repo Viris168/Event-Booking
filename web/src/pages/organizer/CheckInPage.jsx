@@ -2,7 +2,7 @@ import { useDocumentTitle } from "../../lib/useDocumentTitle.js";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Icon from "../../components/Icon.jsx";
-import { Field } from "../../components/ui.jsx";
+import { Field, IconSelect } from "../../components/ui.jsx";
 import { Skeleton, SkeletonRegion } from "../../components/Skeleton.jsx";
 import GroupPassModal from "../../components/GroupPassModal.jsx";
 import { useLocale } from "../../context/LocaleContext.jsx";
@@ -14,6 +14,7 @@ import {
 } from "../../api/adapters.js";
 import { getOrganizerEvents } from "../../api/events.js";
 import { mapEvent } from "../../api/adapters.js";
+import { isEventDay, ticketsExpired } from "../../lib/ticketExpiry.js";
 
 /**
  * The gate.
@@ -110,7 +111,7 @@ function headlineFor(result, locale) {
 }
 
 export default function CheckInPage() {
-  const { t, locale, dateTime } = useLocale();
+  const { t, locale, date, dateTime } = useLocale();
   useDocumentTitle(t("checkIn"));
 
   const [events, setEvents] = useState([]);
@@ -141,6 +142,39 @@ export default function CheckInPage() {
 
   const km = locale === "km";
 
+  /*
+   * Finished events are listed, greyed out, below the ones a gate can still
+   * admit to - visible so a steward is not left wondering where last week's
+   * show went, but not selectable, because every scan there could only answer
+   * "Ticket expired". "Finished" is the ticket rule, not starts_at: an event
+   * moves down only once its tickets stop working, so tonight's show stays on
+   * top all evening.
+   */
+  const byStart = (a, z) =>
+    new Date(a.starts_at).getTime() - new Date(z.starts_at).getTime();
+  const liveEvents = events.filter((ev) => !ticketsExpired(ev)).sort(byStart);
+  const finishedEvents = events
+    .filter((ev) => ticketsExpired(ev))
+    .sort((a, z) => byStart(z, a));
+  const eventOption = (ev, finished = false) => (
+    <option
+      key={ev.id}
+      value={ev.id}
+      disabled={finished}
+      data-hint={
+        isEventDay(ev) ? (km ? "ថ្ងៃនេះ" : "Today") : ev.starts_at ? date(ev.starts_at) : undefined
+      }
+    >
+      {km ? ev.title_km : ev.title_en}
+    </option>
+  );
+
+  // The picked event can finish while this page is open (the clock passes
+  // 06:00 the morning after). The server refuses its tickets from then on, so
+  // stop offering to scan rather than let every guest come back amber.
+  const selectedEvent = events.find((ev) => String(ev.id) === String(eventId));
+  const gateClosed = Boolean(selectedEvent && ticketsExpired(selectedEvent));
+
   // Only events this organiser owns — the server would 403 anything else, so
   // offering a wider list would only produce failures at the door.
   useEffect(() => {
@@ -150,7 +184,12 @@ export default function CheckInPage() {
         if (cancelled) return;
         const mapped = (list || []).map(mapEvent).filter(Boolean);
         setEvents(mapped);
+        // Pre-select the gate a steward is almost certainly standing at: the
+        // only event, or else the only one happening today. Two today is a
+        // real choice, so it is left to them.
+        const today = mapped.filter((ev) => isEventDay(ev));
         if (mapped.length === 1) setEventId(String(mapped[0].id));
+        else if (today.length === 1) setEventId(String(today[0].id));
       })
       .catch(() => !cancelled && setEvents([]))
       .finally(() => !cancelled && setEventsLoading(false));
@@ -416,25 +455,40 @@ export default function CheckInPage() {
                     <Skeleton className="h-10.5 w-full rounded-[10px]" />
                   </SkeletonRegion>
                 ) : (
-                  <select
-                    className="select"
+                  <IconSelect
+                    className="custom-select-block"
+                    icon="calendar"
+                    ariaLabel={km ? "ព្រឹត្តិការណ៍" : "Gate"}
                     value={eventId}
-                    onChange={(e) => setEventId(e.target.value)}
+                    onChange={(v) => setEventId(String(v))}
                   >
                     <option value="">
                       {km ? "ជ្រើសរើសព្រឹត្តិការណ៍…" : "Choose an event…"}
                     </option>
-                    {events.map((ev) => (
-                      <option key={ev.id} value={ev.id}>
-                        {km ? ev.title_km : ev.title_en}
-                      </option>
-                    ))}
-                  </select>
+                    {liveEvents.length > 0 && (
+                      <optgroup
+                        label={km ? "ថ្ងៃនេះ និងខាងមុខ" : "Today & upcoming"}
+                      >
+                        {liveEvents.map((ev) => eventOption(ev))}
+                      </optgroup>
+                    )}
+                    {finishedEvents.length > 0 && (
+                      <optgroup
+                        label={
+                          km
+                            ? "បានបញ្ចប់ · មិនអាចស្កេនបាន"
+                            : "Finished · scanning closed"
+                        }
+                      >
+                        {finishedEvents.map((ev) => eventOption(ev, true))}
+                      </optgroup>
+                    )}
+                  </IconSelect>
                 )}
               </Field>
 
               <Scanner
-                active={cameraOn && !!eventId}
+                active={cameraOn && !!eventId && !gateClosed}
                 onDecode={scan}
                 onError={() => setCameraOn(false)}
               />
@@ -448,7 +502,7 @@ export default function CheckInPage() {
               <button
                 className={`btn btn-lg btn-block btn-outline${cameraOn ? " btn-cam-active" : ""}`}
                 onClick={() => setCameraOn((v) => !v)}
-                disabled={!eventId}
+                disabled={!eventId || gateClosed}
               >
                 <Icon name={cameraOn ? "scan" : "scan"} size={18} />
                 {cameraOn
@@ -480,7 +534,7 @@ export default function CheckInPage() {
                     <button
                       className="btn btn-primary"
                       type="submit"
-                      disabled={!code.trim() || !eventId || busy}
+                      disabled={!code.trim() || !eventId || gateClosed || busy}
                     >
                       <Icon name="scan" size={15} />
                       {busy ? t("loading") : km ? "ពិនិត្យ" : "Check"}
@@ -502,7 +556,20 @@ export default function CheckInPage() {
                 </div>
               )}
 
-              {eventId && cameraOn && !last && !error && (
+              {gateClosed && (
+                <div className="scan-prompt">
+                  <span className="scan-prompt-icon">
+                    <Icon name="clock" size={20} />
+                  </span>
+                  <span>
+                    {km
+                      ? "ព្រឹត្តិការណ៍នេះបានបញ្ចប់ហើយ។ សំបុត្រមិនអាចស្កេនបានទៀតទេ។"
+                      : "This event is over. Its tickets can no longer be scanned."}
+                  </span>
+                </div>
+              )}
+
+              {eventId && !gateClosed && cameraOn && !last && !error && (
                 <div className="scan-prompt">
                   <span className="scan-prompt-icon">
                     <Icon name="qr" size={20} />

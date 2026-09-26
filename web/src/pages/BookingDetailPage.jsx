@@ -209,7 +209,7 @@ export default function BookingDetailPage() {
   // tickets failed to load, keep the button rather than guess they were used.
   const allAdmitted =
     tickets.length > 0 && tickets.every((x) => x.checked_in ?? !!x.checked_in_at)
-  // The event's day is over with someone still unscanned. The server refuses
+  // The event is over with someone still unscanned. The server refuses
   // these codes at the gate now, so the page stops presenting them as live.
   const ticketsOver = booking.state === 'CONFIRMED' && !allAdmitted && ticketsExpired(event)
   const showDirections = booking.state === 'CONFIRMED' && !allAdmitted && !ticketsOver

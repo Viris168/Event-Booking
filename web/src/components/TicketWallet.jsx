@@ -52,7 +52,7 @@ export default function TicketWallet({ tickets, bookingRef, event, venue, labelF
       </div>
 
       {expired ? (
-        /* The event's day is over. The gate refuses these codes, so showing
+        /* The event is over. The gate refuses these codes, so showing
            one would only send someone to a door that will turn them away. */
         <div className="wallet-done is-expired">
           <Icon name="clock" size={26} />

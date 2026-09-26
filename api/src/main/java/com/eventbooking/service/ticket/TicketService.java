@@ -27,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
@@ -66,6 +67,9 @@ public class TicketService {
     private static final Logger log = LoggerFactory.getLogger(TicketService.class);
 
     private static final ZoneId CAMBODIA = ZoneId.of("Asia/Phnom_Penh");
+
+    /** Local time on the morning after an event when its tickets lapse. */
+    private static final LocalTime GRACE_UNTIL = LocalTime.of(6, 0);
 
     private final TicketRepository ticketRepository;
     private final BookingRepository bookingRepository;
@@ -289,23 +293,26 @@ public class TicketService {
     }
 
     /**
-     * When an event's unscanned tickets stop admitting anyone: midnight
-     * Cambodia time at the end of the day the event starts.
+     * When an event's unscanned tickets stop admitting anyone: 06:00 Cambodia
+     * time the morning after the day the event starts.
      *
      * <p>There is no {@code ends_at}, and "finished" elsewhere means
      * {@code startsAt} has passed - but that is too early for the gate, where
-     * it would turn away someone five minutes late. The end of the event's day
-     * is the latest any single-day event runs to. The web app applies the same
-     * rule (lib/ticketExpiry.js) so the customer sees "Expired" exactly when
-     * the scanner starts saying it.
+     * it would turn away someone five minutes late. Midnight was tried and is
+     * too early as well: a New Year countdown starting at 22:00 on 31 December
+     * would refuse everyone arriving at 00:05. The morning after covers any
+     * late-night event, and nobody queues at 06:00 for last night's show.
+     *
+     * <p>The web app applies the same rule (lib/ticketExpiry.js) so the
+     * customer sees "Expired" exactly when the scanner starts saying it.
      */
     public static Instant ticketsExpireAt(Event event) {
         LocalDate day = event.getStartsAt().atZone(CAMBODIA).toLocalDate();
-        return day.plusDays(1).atStartOfDay(CAMBODIA).toInstant();
+        return day.plusDays(1).atTime(GRACE_UNTIL).atZone(CAMBODIA).toInstant();
     }
 
     /** An event with no date yet is never expired, rather than always. */
-    private static boolean isExpired(Event event, Instant now) {
+    public static boolean isExpired(Event event, Instant now) {
         return event.getStartsAt() != null && !now.isBefore(ticketsExpireAt(event));
     }
 
